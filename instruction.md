@@ -101,6 +101,13 @@ Inhaltsverzeichnis rechts und machen lange Seiten navigierbar.
 |---|---|
 | `## Kernideen aus dem Kurs` | 4 bis 6 Stichpunkte, Begriffe statt Sätze — das Inhaltsverzeichnis der Lektion |
 | `## Erklärung` | Das Herzstück: das Thema ausführlich erklärt, mit Formeln, gerechneten Beispielen und Abbildungen im Fluss |
+
+Die Seiten sollen auch für jemanden funktionieren, der bei null anfängt.
+Konkret heisst das: vor jedem Konzept steht, welches Problem es löst, bevor
+Formel oder Befehl kommen; Beispiele werden hergeleitet statt nur im Ergebnis
+gezeigt; je inhaltlichem Block folgen zwei bis drei Verständnisfragen mit
+zugeklappter Lösung. Ganz oben in der Erklärung steht in einer `.note-box`,
+welches Vorwissen die Seite voraussetzt, mit Link auf die betreffende Lektion.
 | `## Verlinkte Ressourcen` | Links zum Nachschlagen |
 
 Der Abschnitt heisst **Erklärung**, nicht „Meine Zusammenfassung": erklärt wird
@@ -274,6 +281,7 @@ hell und dunkel:
 | `::: {.placeholder-notice}` | Platzhalter: Inhalt existiert noch nicht |
 | `::: {.lesson-card}` in `:::: {.card-grid}` | Kartenraster auf Übersichtsseiten |
 | `::: panel-tabset` | R/Python nebeneinander |
+| `::: {.callout-note collapse="true" title="Lösung"}` | Lösung zu einer Mini-Übung, zugeklappt |
 
 **Karten immer im Raster.** Eine `.lesson-card` ohne umschließendes
 `.card-grid` läuft über die volle Breite und sieht anders aus als überall sonst.
