@@ -34,6 +34,9 @@ mas-data-science-notizen/
 ├── index.qmd                       Startseite mit Modulkarten
 ├── tags.qmd                        Tag-Übersicht (automatisch befüllt)
 ├── instruction.md                  diese Datei
+├── glossary.yml                    das Glossar - eine Datei fuer alle Themen
+├── glossary.lua                    markiert Begriffe, baut die Glossarseite
+├── glossar.qmd                     Glossaruebersicht mit Fundstellen
 ├── _quarto.yml                     Navigation, Rendern, Theme
 ├── styles.scss                     gesamtes Design
 ├── lastupdate.lua                  setzt den Zeitstempel oben auf jeder Seite
@@ -317,6 +320,48 @@ davon hängen Syntaxhervorhebung und die farbige Kante links ab.
 
 Nicht verwenden: eigene HTML-`<div>`s mit Inline-Styles, eigene Farbangaben,
 zusätzliche CSS-Klassen. Alles Gestalterische gehört in `styles.scss`.
+
+---
+
+## 6b. Glossar
+
+Fachbegriffe stehen zentral in `glossary.yml`. Jeder Eintrag dort wird
+site-weit automatisch im Fliesstext markiert und bekommt einen Tooltip — in
+den `.qmd`-Dateien ist **nichts** einzutragen.
+
+```yaml
+- term: Median
+  topic: Statistik
+  aliases: [Medians]
+  def: Der Wert in der Mitte der sortierten Datenreihe. Er reagiert kaum auf Ausreisser.
+```
+
+| Feld | Regel |
+|---|---|
+| `term` | Der Begriff, exakt wie im Text geschrieben. Mehrwortbegriffe sind erlaubt. |
+| `def` | Ein bis zwei Sätze, reiner Text. Keine Anführungszeichen, kein Markdown, keine Zeilenumbrüche — der Text landet in einem HTML-Attribut. |
+| `topic` | Themenbereich für die Gruppierung auf der Glossarseite. |
+| `aliases` | Optional, für Plural- und Beugungsformen. |
+
+**Was der Filter tut und was nicht**
+
+- Ganze Wörter, keine Treffer in anderen Wörtern: `Median` trifft nicht in
+  `Medianwert`. Wer den will, ergänzt ein Alias.
+- Gross-/Kleinschreibung egal, Umlaute eingeschlossen.
+- Pro Seite wird nur das **erste** Vorkommen je Eintrag markiert. Alias und
+  Grundform zählen als derselbe Eintrag.
+- Unberührt bleiben Überschriften, Links, Code, Fussnoten, Tabellen und
+  Bildunterschriften.
+- Eine Seite nimmt sich mit `glossary-skip: true` im Front Matter aus.
+
+**Verhältnis zu den Querverweisen aus Abschnitt 6:** beide Mechanismen
+ergänzen sich. Der Querverweis führt zur Lektion, die den Begriff *behandelt*;
+das Glossar erklärt ihn *an Ort und Stelle*. Ein Begriff kann beides haben.
+
+**Die Glossarseite** (`glossar.qmd`) listet alle Einträge nach Thema und zeigt
+unter jedem, auf welchen Seiten er vorkommt. Diese Fundstellen entstehen im
+Browser aus `search.json`, dem Suchindex, den Quarto ohnehin baut — es gibt
+also keine zweite Liste, die veralten könnte.
 
 ---
 

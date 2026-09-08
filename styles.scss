@@ -816,3 +816,141 @@ figure > p > img {
 a.lightbox img {
   cursor: zoom-in;
 }
+
+// ============================================================================
+// 13. Glossar
+// ============================================================================
+//
+// Zwei Dinge: die Markierung im Fliesstext samt Tooltip, und die Glossarseite.
+// Die Spans setzt glossary.lua zur Build-Zeit, gespeist aus glossary.yml.
+//
+// Der Tooltip kommt ohne JavaScript aus - content: attr(data-def) holt den
+// Text direkt aus dem Attribut. tabindex="0" am Span macht ihn fokussierbar,
+// damit er auch per Tastatur und auf dem Touchscreen aufgeht.
+
+.glossary-term {
+  position: relative;
+  border-bottom: 1px dotted var(--py-blue-edge);
+  cursor: help;
+}
+
+.glossary-term:focus {
+  outline: 2px solid var(--py-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.glossary-term::after {
+  content: attr(data-def);
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  width: max-content;
+  max-width: min(24rem, 78vw);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--nb-border);
+  border-left: 3px solid var(--py-blue);
+  border-radius: var(--nb-radius-sm);
+  background: var(--nb-surface);
+  box-shadow: var(--nb-shadow-hover);
+  color: var(--nb-text);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+}
+
+.glossary-term:hover::after,
+.glossary-term:focus::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+// Steht der Begriff in der rechten Haelfte, wuerde der Kasten aus dem
+// Textbereich laufen. Dann wird er am rechten Rand des Begriffs ausgerichtet.
+.glossary-term:nth-last-child(-n + 3)::after {
+  left: auto;
+  right: 0;
+}
+
+// Beispiel im Einleitungstext der Glossarseite - sieht aus wie eine
+// Markierung, ist aber keine.
+.glossary-term-demo {
+  border-bottom: 1px dotted var(--py-blue-edge);
+}
+
+// --- Glossarseite -----------------------------------------------------------
+
+.glossary-search {
+  margin: 1.4rem 0 1.8rem;
+}
+
+.glossary-search input {
+  max-width: 26rem;
+  border-radius: var(--nb-radius-sm);
+}
+
+.glossary-group__title {
+  margin-top: 2.2rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--py-blue);
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.glossary-entry {
+  margin: 1.1rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius);
+  background: var(--nb-surface-alt);
+}
+
+.glossary-entry__term {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--py-blue);
+}
+
+.glossary-entry__def {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.glossary-entry__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.glossary-entry__pageslabel,
+.glossary-entry__pending,
+.glossary-entry__none {
+  color: var(--nb-text-muted);
+}
+
+.glossary-entry__page {
+  padding: 0.08rem 0.5rem;
+  border: 1px solid var(--py-blue-edge);
+  border-radius: 999px;
+  background: var(--py-blue-soft);
+  color: var(--py-blue);
+  text-decoration: none;
+}
+
+.glossary-entry__page:hover {
+  background: var(--py-blue);
+  border-color: var(--py-blue);
+  color: #fff;
+}

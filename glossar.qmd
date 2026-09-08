@@ -1,0 +1,123 @@
+---
+title: "Glossar"
+glossary-skip: true
+---
+
+Alle Fachbegriffe an einem Ort. Im Fliesstext der Lektionsseiten sind sie
+[unterstrichen]{.glossary-term-demo} — Zeigen oder Antippen blendet die
+Definition ein.
+
+Unter jedem Eintrag steht, auf welchen Seiten der Begriff vorkommt. Diese Liste
+entsteht beim Aufruf aus dem Suchindex der Website und ist damit immer aktuell.
+
+::: {.note-box}
+Gepflegt wird das Glossar in `glossary.yml`. Ein Eintrag dort genügt — die
+Markierung im Text und dieser Überblick entstehen automatisch.
+:::
+
+```{=html}
+<div class="glossary-search">
+  <input type="search" id="glossary-filter" class="form-control"
+         placeholder="Begriff oder Definition filtern …"
+         aria-label="Glossar filtern" autocomplete="off">
+</div>
+```
+
+::: {#glossar-liste}
+:::
+
+```{=html}
+<script>
+(function () {
+  // --------------------------------------------------------------------
+  // Fundstellen: welcher Begriff kommt auf welcher Seite vor?
+  // --------------------------------------------------------------------
+  // Quarto legt fuer die Volltextsuche eine search.json an, die den Text
+  // jeder Seite enthaelt. Die werten wir hier aus, statt beim Build eine
+  // zweite Liste zu fuehren, die veralten koennte.
+
+  // glossar.html liegt im Wurzelverzeichnis der Site, search.json daneben.
+  // Ein relativer Pfad reicht deshalb und funktioniert auch im
+  // Unterverzeichnis, unter dem GitHub Pages die Seite ausliefert.
+  const wurzel = "";
+
+  // Wortgrenzen ohne \b, das kennt bei Umlauten die falschen Grenzen:
+  // \b stuetzt sich auf [A-Za-z0-9_], "ä" gilt dort als Nicht-Wortzeichen.
+  const WORT = "A-Za-zÀ-ÖØ-öø-ÿ0-9";
+  function findet(text, begriff) {
+    const escaped = begriff.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp("(^|[^" + WORT + "])" + escaped + "($|[^" + WORT + "])", "i")
+      .test(text);
+  }
+
+  function zeigeFehler(meldung) {
+    document.querySelectorAll(".glossary-entry__pages").forEach(function (box) {
+      box.innerHTML = '<span class="glossary-entry__pending">' + meldung + "</span>";
+    });
+  }
+
+  fetch(wurzel + "search.json")
+    .then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    })
+    .then(function (index) {
+      // Abschnitte derselben Seite zu einem Eintrag zusammenfassen
+      const seiten = new Map();
+      index.forEach(function (e) {
+        const href = (e.href || "").split("#")[0];
+        if (!href || href === "glossar.html") return;
+        if (!seiten.has(href)) {
+          seiten.set(href, { href: href, titel: e.title || href, text: "" });
+        }
+        seiten.get(href).text += " " + (e.text || "") + " " + (e.section || "");
+      });
+      const alle = Array.from(seiten.values());
+
+      document.querySelectorAll(".glossary-entry__pages").forEach(function (box) {
+        const begriff = box.getAttribute("data-term");
+        const treffer = alle
+          .filter(function (s) { return findet(s.text, begriff); })
+          .sort(function (a, b) { return a.titel.localeCompare(b.titel, "de"); });
+
+        if (!treffer.length) {
+          box.innerHTML =
+            '<span class="glossary-entry__none">Kommt noch auf keiner Seite vor.</span>';
+          return;
+        }
+
+        box.innerHTML =
+          '<span class="glossary-entry__pageslabel">Auf diesen Seiten:</span> ' +
+          treffer.map(function (s) {
+            const url = wurzel + s.href;
+            return '<a class="glossary-entry__page" href="' + url + '">' +
+                   s.titel.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</a>";
+          }).join(" ");
+      });
+    })
+    .catch(function () {
+      zeigeFehler("Fundstellen nicht verfügbar — der Suchindex konnte nicht geladen werden.");
+    });
+
+  // --------------------------------------------------------------------
+  // Filterfeld
+  // --------------------------------------------------------------------
+  const feld = document.getElementById("glossary-filter");
+  if (feld) {
+    feld.addEventListener("input", function () {
+      const q = feld.value.trim().toLowerCase();
+      document.querySelectorAll(".glossary-group").forEach(function (gruppe) {
+        let sichtbar = 0;
+        gruppe.querySelectorAll(".glossary-entry").forEach(function (eintrag) {
+          const treffer = q === "" ||
+            eintrag.textContent.toLowerCase().indexOf(q) !== -1;
+          eintrag.hidden = !treffer;
+          if (treffer) sichtbar++;
+        });
+        gruppe.hidden = sichtbar === 0;
+      });
+    });
+  }
+})();
+</script>
+```
