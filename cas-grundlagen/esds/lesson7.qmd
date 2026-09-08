@@ -4,6 +4,28 @@ description: "Abzählverfahren sowie der Laplacesche, statistische und axiomatis
 categories: ["Wahrscheinlichkeit", "R", "Python"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import math
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
 - Auswahl mit und ohne Zurücklegen, mit und ohne Anordnung
@@ -13,56 +35,235 @@ categories: ["Wahrscheinlichkeit", "R", "Python"]
 - Axiomatischer Zugang nach Kolmogorow
 - Additionssatz und Gegenereignis
 
-## Meine Zusammenfassung
+## Erklärung
 
-Die Kombinatorik beantwortet die Frage, wie viele Ergebnisse ein Zufallsvorgang haben kann — und weil die Laplace-Wahrscheinlichkeit nichts anderes ist als der Quotient aus günstigen und möglichen Fällen, ist sauberes Abzählen die Voraussetzung für alles Weitere. Der Schlüssel liegt in zwei Fragen, die vor jeder Formel zu beantworten sind: Wird ein gezogenes Element zurückgelegt? Und spielt die Reihenfolge eine Rolle? Aus den vier Kombinationen dieser Antworten ergeben sich die Standardfälle.
+::: {.note-box}
+**Vorwissen:** [L3 – Skalenniveaus & Häufigkeiten](lesson3.qmd) für den Begriff
+der relativen Häufigkeit. Alles Weitere wird hier aufgebaut. Diese Seite ist
+der Übergang von der beschreibenden zur schliessenden Statistik.
+:::
 
-Beim Wahrscheinlichkeitsbegriff selbst gibt es drei Zugänge, die einander nicht widersprechen, sondern verschiedene Fragen beantworten. Der Laplacesche Zugang setzt gleich wahrscheinliche Elementarereignisse voraus und rechnet dann rein kombinatorisch — er passt zu Würfel und Karten, versagt aber, sobald diese Symmetrie fehlt. Der statistische Zugang bestimmt Wahrscheinlichkeit als Grenzwert relativer Häufigkeiten bei vielen Wiederholungen und begründet, warum sich empirische Anteile überhaupt als Wahrscheinlichkeiten lesen lassen. Der axiomatische Zugang legt schliesslich nur noch Rechenregeln fest — Nichtnegativität, Gesamtwahrscheinlichkeit eins, Additivität disjunkter Ereignisse — und ist deshalb der allgemeinste.
+### Warum Abzählen der Anfang ist
 
-Praktisch nützlich sind vor allem zwei Konsequenzen. Erstens der Additionssatz: bei nicht disjunkten Ereignissen muss der Überschneidungsteil abgezogen werden, sonst wird er doppelt gezählt. Zweitens der Weg über das Gegenereignis — Aufgaben mit "mindestens ein" lassen sich fast immer leichter über "keiner" rechnen.
+Die Frage, wie wahrscheinlich etwas ist, lässt sich in einfachen Fällen durch
+Zählen beantworten: Wie viele Ergebnisse gibt es insgesamt, und wie viele davon
+sind die gesuchten? Beim Würfel sind es sechs und eines. Bei sechs Richtigen im
+Lotto sind es rund vierzehn Millionen und eines, und diese Zahl will berechnet
+und nicht abgezählt werden.
 
-## Eigene Beispiele / Code
+Genau dafür ist die Kombinatorik da. Sie ist kein Selbstzweck, sondern die
+Rechenmaschine hinter dem Nenner.
+
+### Die zwei Fragen vor jeder Formel
+
+Statt vier Formeln auswendig zu lernen, lohnt es sich, zwei Fragen zu stellen:
+
+1. **Wird zurückgelegt?** Kann dasselbe Element mehrfach gewählt werden?
+2. **Spielt die Reihenfolge eine Rolle?** Ist ABC etwas anderes als CBA?
+
+Aus den Antworten ergeben sich die vier Standardfälle. Gezogen werden $k$ aus
+$n$ Elementen:
+
+| Zurücklegen | Reihenfolge | Anzahl | Beispiel |
+|---|---|---|---|
+| ja | ja | $n^k$ | dreistelliger Zahlencode |
+| nein | ja | $\frac{n!}{(n-k)!}$ | Podestplätze bei einem Rennen |
+| nein | nein | $\binom{n}{k} = \frac{n!}{k!\,(n-k)!}$ | Lottozahlen |
+| ja | nein | $\binom{n+k-1}{k}$ | Kugeln aus einer Urne, nur die Anzahl je Farbe zählt |
+
+Die dritte Zeile lässt sich aus der zweiten herleiten, und das erklärt, woher
+der Binomialkoeffizient kommt. Zieht man drei aus zehn mit Beachtung der
+Reihenfolge, gibt es $10 \cdot 9 \cdot 8 = 720$ Möglichkeiten. Interessiert die
+Reihenfolge nicht, ist jede Auswahl dabei $3! = 6$ mal gezählt worden, einmal
+je Anordnung. Also bleiben $720 / 6 = 120$.
 
 ::: panel-tabset
 ## R
 
-```r
-# Anzahl Moeglichkeiten
-factorial(5)            # Permutationen von 5 Elementen
-choose(49, 6)           # ohne Zurueckl., ohne Anordnung
-6^3                     # mit Zurueckl., mit Anordnung
+```{r}
+#| label: kombinatorik-r
+n <- 10; k <- 3
 
-# Laplace: mindestens eine Sechs bei 3 Wuerfen
-1 - (5/6)^3
+n^k                      # mit Zuruecklegen, mit Anordnung
+factorial(n) / factorial(n - k)   # ohne Zuruecklegen, mit Anordnung
+choose(n, k)             # ohne Zuruecklegen, ohne Anordnung
+choose(n + k - 1, k)     # mit Zuruecklegen, ohne Anordnung
 
-# Statistischer Zugang: Simulation
-set.seed(42)
-wuerfe <- matrix(sample(1:6, 3 * 1e5, replace = TRUE), ncol = 3)
-mean(apply(wuerfe, 1, function(z) any(z == 6)))
+# die Herleitung von oben, Schritt fuer Schritt
+720 / factorial(3)
 ```
 
 ## Python
 
-```python
-import math
-import numpy as np
+```{python}
+#| label: kombinatorik-py
+n, k = 10, 3
 
-math.factorial(5)
-math.comb(49, 6)
-6**3
-
-1 - (5/6)**3
-
-rng = np.random.default_rng(42)
-wuerfe = rng.integers(1, 7, size=(100_000, 3))
-(wuerfe == 6).any(axis=1).mean()
+print(n**k)
+print(math.perm(n, k))
+print(math.comb(n, k))
+print(math.comb(n + k - 1, k))
+print(720 / math.factorial(3))
 ```
 :::
 
-## Offene Fragen
+**Verständnisfragen**
 
-::: {.open-question}
-Bei welchen Aufgabentypen führt der Weg über das Gegenereignis nicht zum Ziel? Mir fehlt ein Gegenbeispiel, an dem ich die Grenze sehe.
+1. Ein Zahlenschloss hat vier Ringe mit je zehn Ziffern. Wie viele Kombinationen gibt es, und welcher der vier Fälle liegt vor?
+2. Warum ist $\binom{49}{6}$ und nicht $49 \cdot 48 \cdot 47 \cdot 46 \cdot 45 \cdot 44$ die Zahl der Lottoziehungen?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Zehntausend, also $10^4$. Jede Ziffer kann mehrfach vorkommen, und die
+   Position ist entscheidend; es wird also mit Zurücklegen und mit Anordnung
+   gezogen. Der umgangssprachliche Begriff Zahlenkombination ist damit
+   mathematisch falsch, gemeint ist eine Variation.
+2. Weil beim Lotto die Reihenfolge der gezogenen Kugeln keine Rolle spielt. Das
+   Produkt zählt jede Auswahl so oft, wie sie sich anordnen lässt, also $6!$ mal
+   zu häufig. Der Binomialkoeffizient teilt genau diesen Faktor wieder heraus.
+:::
+
+### Drei Zugänge zum Wahrscheinlichkeitsbegriff
+
+Die drei Zugänge widersprechen einander nicht, sie beantworten verschiedene
+Fragen.
+
+**Laplace** setzt voraus, dass alle Elementarereignisse gleich wahrscheinlich
+sind, und rechnet dann rein kombinatorisch: günstige durch mögliche Fälle. Das
+passt zu Würfel, Münze und Karten. Es versagt, sobald die Symmetrie fehlt, und
+für die Frage, wie wahrscheinlich ein Maschinenausfall ist, gibt es keine
+gleich wahrscheinlichen Elementarereignisse.
+
+**Statistisch** wird Wahrscheinlichkeit als Grenzwert relativer Häufigkeiten
+bei vielen Wiederholungen bestimmt. Dieser Zugang begründet, warum sich
+empirische Anteile überhaupt als Wahrscheinlichkeiten lesen lassen, und er
+funktioniert auch ohne Symmetrie.
+
+Dass die relative Häufigkeit sich tatsächlich einpendelt, lässt sich zeigen:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-konvergenz-r
+#| fig-cap: "Relative Häufigkeit einer Sechs über 5000 Würfe. Sie pendelt sich auf 1/6 ein, ohne den Wert je fest zu erreichen."
+wuerfe <- sample(1:6, 5000, replace = TRUE)
+verlauf <- cumsum(wuerfe == 6) / seq_along(wuerfe)
+
+ggplot(data.frame(wurf = seq_along(verlauf), anteil = verlauf),
+       aes(wurf, anteil)) +
+  geom_line(linewidth = 0.4) +
+  geom_hline(yintercept = 1/6, linetype = "dashed") +
+  coord_cartesian(ylim = c(0, 0.4)) +
+  labs(x = "Anzahl Würfe", y = "relative Häufigkeit einer Sechs")
+```
+
+## Python
+
+```{python}
+#| label: fig-konvergenz-py
+#| fig-cap: "Derselbe Verlauf mit matplotlib."
+wuerfe = rng.integers(1, 7, 5000)
+verlauf = np.cumsum(wuerfe == 6) / np.arange(1, len(wuerfe) + 1)
+
+fig, ax = plt.subplots()
+ax.plot(np.arange(1, len(verlauf) + 1), verlauf, linewidth=0.5)
+ax.axhline(1/6, linestyle="--", color="black")
+ax.set_ylim(0, 0.4)
+ax.set_xlabel("Anzahl Würfe")
+ax.set_ylabel("relative Häufigkeit einer Sechs")
+plt.show()
+```
+:::
+
+Am Anfang schwankt der Anteil stark, später immer weniger. Wichtig ist, was die
+Kurve nicht zeigt: Sie erreicht den Wert nie endgültig und kehrt auch nicht zu
+ihm zurück, weil eine Serie ohne Sechsen später ausgeglichen würde. Diese
+Vorstellung ist der Spielerfehlschluss. Der Würfel hat kein Gedächtnis; die
+Schwankungen werden nur relativ zur wachsenden Anzahl kleiner.
+
+**Axiomatisch** legt Kolmogorow schliesslich nur noch Rechenregeln fest. Jede
+Wahrscheinlichkeit ist nicht negativ, die Wahrscheinlichkeit des sicheren
+Ereignisses ist eins, und für disjunkte Ereignisse addieren sich die
+Wahrscheinlichkeiten. Dieser Zugang sagt nichts darüber, woher die Zahlen
+kommen, und ist deshalb der allgemeinste.
+
+### Additionssatz und Gegenereignis
+
+Zwei Regeln decken einen grossen Teil der Aufgaben ab.
+
+Der **Additionssatz** gilt in seiner einfachen Form nur für disjunkte
+Ereignisse. Überschneiden sie sich, wird der gemeinsame Teil zweimal gezählt
+und muss abgezogen werden:
+
+$$P(A \cup B) = P(A) + P(B) - P(A \cap B)$$
+
+Beim Würfel, mit A gleich gerade Zahl und B gleich Zahl grösser als vier: Die
+Vier und die Sechs sind gerade, die Fünf und die Sechs sind grösser als vier,
+die Sechs gehört zu beiden.
+
+```{r}
+#| label: additionssatz-r
+p_a  <- 3/6      # 2, 4, 6
+p_b  <- 2/6      # 5, 6
+p_ab <- 1/6      # nur die 6
+
+p_a + p_b - p_ab           # korrekt
+p_a + p_b                  # zu gross, die 6 doppelt gezaehlt
+
+# Gegenprobe durch Abzaehlen
+augen <- 1:6
+mean(augen %% 2 == 0 | augen > 4)
+```
+
+Das **Gegenereignis** ist der zweite Griff. Aufgaben mit mindestens ein lassen
+sich fast immer leichter über keiner rechnen, weil dort nur ein einziges
+Produkt entsteht statt einer Summe vieler Fälle:
+
+$$P(\text{mindestens eine Sechs}) = 1 - P(\text{keine Sechs}) = 1 - \left(\tfrac{5}{6}\right)^n$$
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: gegenereignis-r
+n <- 3
+1 - (5/6)^n                       # ueber das Gegenereignis
+
+# Gegenprobe per Simulation
+versuche <- matrix(sample(1:6, 3 * 1e5, replace = TRUE), ncol = 3)
+mean(apply(versuche, 1, function(z) any(z == 6)))
+```
+
+## Python
+
+```{python}
+#| label: gegenereignis-py
+n = 3
+print(1 - (5/6)**n)
+
+versuche = rng.integers(1, 7, size=(100_000, 3))
+print((versuche == 6).any(axis=1).mean())
+```
+:::
+
+Der direkte Weg müsste alle Fälle mit genau einer, genau zwei und genau drei
+Sechsen aufsummieren. Über das Gegenereignis bleibt eine Potenz.
+
+**Verständnisfragen**
+
+1. Beim Werfen zweier Würfel: Wie wahrscheinlich ist es, mindestens eine Sechs zu sehen? Warum ist die Antwort nicht 2/6?
+2. Eine Serie von zehn Würfen brachte keine Sechs. Ist die nächste Sechs jetzt wahrscheinlicher?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Über das Gegenereignis: $1 - (5/6)^2 = 11/36$, also rund 30.6 Prozent. Die
+   Antwort 2/6 addiert die beiden Einzelwahrscheinlichkeiten und zählt dabei
+   den Fall zweier Sechsen doppelt. Genau diesen Überschneidungsteil zieht der
+   Additionssatz wieder ab, und $1/6 + 1/6 - 1/36$ ergibt ebenfalls 11/36.
+2. Nein. Die Würfe sind unabhängig, die Wahrscheinlichkeit bleibt bei jedem
+   Wurf 1/6. Die Vorstellung eines Ausgleichs ist der Spielerfehlschluss. Was
+   sich ausgleicht, ist der Anteil, und zwar nicht durch Gegenbewegung, sondern
+   weil die frühen Abweichungen gegenüber der wachsenden Gesamtzahl an Gewicht
+   verlieren.
 :::
 
 ## Verlinkte Ressourcen
