@@ -4,6 +4,28 @@ description: "Messniveaus, eindimensionale Häufigkeitsverteilungen und die Vert
 categories: ["Deskriptive Statistik", "R", "Python", "Visualisierung"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(dplyr)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
 - Nominal, ordinal, intervall, verhältnis
@@ -12,65 +34,290 @@ categories: ["Deskriptive Statistik", "R", "Python", "Visualisierung"]
 - Klassenbildung bei stetigen Merkmalen
 - Stabdiagramm gegenüber Histogramm
 
-## Meine Zusammenfassung
-
-Das Skalenniveau entscheidet, welche Rechnungen überhaupt zulässig sind, und ist damit die erste Frage vor jeder Auswertung. Bei nominalen Merkmalen lassen sich nur Häufigkeiten zählen; die Zahlen, mit denen Kategorien codiert sind, tragen keine Ordnung. Ordinale Merkmale erlauben zusätzlich eine Rangfolge, aber die Abstände zwischen den Stufen sind nicht vergleichbar — deshalb ist der [Mittelwert](lesson4.qmd) einer Schulnotenskala streng genommen nicht definiert, auch wenn er ständig berechnet wird. Erst bei metrischen Merkmalen sind Differenzen sinnvoll, und erst bei einem echten Nullpunkt auch Verhältnisse.
-
-Die Häufigkeitsverteilung ist die erste Zusammenfassung eines einzelnen Merkmals. Die absolute Häufigkeit zählt, die relative setzt ins Verhältnis zur Gesamtzahl und macht Gruppen unterschiedlicher Grösse vergleichbar. Die kumulierte Häufigkeit beantwortet die Frage, wie viele Fälle höchstens einen bestimmten Wert aufweisen — und führt direkt zur empirischen Verteilungsfunktion, einer Treppenfunktion, die an jedem beobachteten Wert um dessen relative Häufigkeit springt.
-
-Bei stetigen Merkmalen muss klassiert werden, und diese Wahl ist folgenreich. Zu wenige Klassen glätten die Struktur weg, zu viele lassen zufälliges Rauschen wie Struktur aussehen. Wichtig ist ausserdem der Unterschied in der Darstellung: das Stabdiagramm zeigt getrennte Kategorien und hat deshalb Lücken zwischen den Stäben, das Histogramm zeigt ein Kontinuum, seine Balken stossen aneinander, und bei ungleichen Klassenbreiten trägt die Fläche und nicht die Höhe die Information.
+## Erklärung
 
 ::: {.note-box}
-Ein Balkendiagramm für ein stetiges Merkmal oder ein Histogramm für Kategorien ist keine Geschmacksfrage, sondern ein Fehler in der Aussage.
+**Vorwissen:** [L1 – R & RStudio](lesson1.qmd) für Faktor und Data Frame. Der
+Faktor ist hier zentral, weil das Skalenniveau eines Merkmals bestimmt, ob es
+überhaupt als Faktor gespeichert gehört. Was danach kommt, sind die Kennzahlen
+in [L4](lesson4.qmd).
 :::
 
-## Eigene Beispiele / Code
+### Die Frage, die vor jeder Rechnung steht
+
+Ein Datensatz enthält Zahlen. Das heisst nicht, dass mit ihnen gerechnet werden
+darf. Postleitzahlen sind Zahlen, aber ihr Mittelwert ist sinnlos.
+Kleidergrössen lassen sich ordnen, aber die Differenz zwischen 38 und 40 ist
+nicht dieselbe wie zwischen 46 und 48. Temperaturen in Grad Celsius lassen sich
+subtrahieren, aber 20 Grad sind nicht doppelt so warm wie 10.
+
+Das Skalenniveau beantwortet, welche dieser Operationen zulässig sind. Es ist
+keine Eigenschaft der gespeicherten Zahl, sondern der Bedeutung dahinter, und
+deshalb muss es ein Mensch festlegen.
+
+| Niveau | erlaubt | Beispiel | zulässiges Lagemass |
+|---|---|---|---|
+| nominal | Gleichheit | Standort, Gerätetyp | Modus |
+| ordinal | zusätzlich Rangfolge | Schulnote, Zufriedenheit | zusätzlich Median |
+| intervall | zusätzlich Differenzen | Temperatur in Grad Celsius | zusätzlich Mittelwert |
+| verhältnis | zusätzlich Verhältnisse | Länge, Masse, Anzahl | alle, zusätzlich Variationskoeffizient |
+
+Die beiden oberen Stufen werden häufig zu metrisch zusammengefasst. Der
+Unterschied zwischen ihnen liegt allein im Nullpunkt: Bei einer
+Verhältnisskala bedeutet null, dass nichts vorhanden ist, weshalb sich Aussagen
+wie doppelt so viel bilden lassen. Bei Grad Celsius ist die Null gesetzt und
+nicht absolut, weshalb solche Aussagen dort nicht gelten.
+
+::: {.note-box}
+In der Praxis wird die Regel bei ordinalen Daten regelmässig gebrochen. Der
+Mittelwert einer Zufriedenheitsskala von 1 bis 5 ist streng genommen nicht
+definiert, wird aber überall berichtet. Wer ihn verwendet, sollte wenigstens
+wissen, dass er unterstellt, die Abstände zwischen den Stufen seien gleich.
+:::
+
+**Verständnisfragen**
+
+1. Eine Umfrage codiert Geschlecht als 1 und 2. Welches Skalenniveau liegt vor, und was sagt ein Mittelwert von 1.4 aus?
+2. Warum ist die Anzahl Ausfälle pro Monat verhältnisskaliert, die Jahreszahl aber nicht?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Nominal. Die Zahlen sind reine Etiketten, ihre Ordnung ist willkürlich
+   gewählt. Der Wert 1.4 sagt über das Merkmal nichts aus; er beziffert
+   lediglich indirekt den Anteil der mit 2 codierten Gruppe, nämlich 40
+   Prozent. Diesen Anteil sollte man dann auch so berichten.
+2. Weil null Ausfälle bedeuten, dass nichts passiert ist, und zwanzig Ausfälle
+   deshalb doppelt so viele sind wie zehn. Das Jahr 0 ist dagegen ein gesetzter
+   Bezugspunkt; das Jahr 2000 ist nicht doppelt so spät wie das Jahr 1000. Die
+   Jahreszahl ist intervallskaliert.
+:::
+
+### Häufigkeiten: die erste Zusammenfassung
+
+Ein Merkmal mit tausend Beobachtungen lässt sich nicht ansehen. Die
+Häufigkeitsverteilung reduziert es auf die Frage, wie oft jede Ausprägung
+vorkommt, und ist damit die einfachste Form der Verdichtung.
+
+Drei Varianten beantworten drei verschiedene Fragen:
 
 ::: panel-tabset
 ## R
 
-```r
-gruppe <- factor(c("A", "B", "A", "C", "B", "A"))
+```{r}
+#| label: haeufigkeit-r
+zufriedenheit <- factor(
+  sample(c("gering", "mittel", "hoch"), 60, replace = TRUE,
+         prob = c(0.2, 0.5, 0.3)),
+  levels = c("gering", "mittel", "hoch")
+)
 
-table(gruppe)                       # absolut
-prop.table(table(gruppe))           # relativ
-cumsum(prop.table(table(gruppe)))   # kumuliert
-
-# Empirische Verteilungsfunktion
-x <- c(2.1, 3.4, 3.9, 5.2, 5.5)
-plot(ecdf(x))
-
-# Histogramm mit gewaehlter Klassenzahl
-hist(x, breaks = 5)
+table(zufriedenheit)                        # absolut: wie viele?
+round(prop.table(table(zufriedenheit)), 3)  # relativ: welcher Anteil?
+cumsum(prop.table(table(zufriedenheit)))    # kumuliert: hoechstens diese Stufe
 ```
 
 ## Python
 
-```python
-import pandas as pd
-import matplotlib.pyplot as plt
+```{python}
+#| label: haeufigkeit-py
+stufen = ["gering", "mittel", "hoch"]
+zufriedenheit = pd.Categorical(
+    rng.choice(stufen, size=60, p=[0.2, 0.5, 0.3]),
+    categories=stufen, ordered=True
+)
+s = pd.Series(zufriedenheit)
 
-gruppe = pd.Series(["A", "B", "A", "C", "B", "A"])
-
-gruppe.value_counts()                       # absolut
-gruppe.value_counts(normalize=True)         # relativ
-gruppe.value_counts(normalize=True).sort_index().cumsum()
-
-x = pd.Series([2.1, 3.4, 3.9, 5.2, 5.5])
-
-fig, ax = plt.subplots()
-ax.step(x.sort_values(), (x.rank(method="first") / len(x)).sort_values(),
-        where="post")
-ax.set_ylabel("F(x)")
+print(s.value_counts().reindex(stufen))                     # absolut
+print(s.value_counts(normalize=True).reindex(stufen).round(3))  # relativ
+print(s.value_counts(normalize=True).reindex(stufen).cumsum()) # kumuliert
 ```
 :::
 
-## Offene Fragen
+Die absolute Häufigkeit zählt. Die relative teilt durch die Gesamtzahl und macht
+damit Gruppen unterschiedlicher Grösse vergleichbar: Zwölf Ausfälle in einem
+Betrieb mit zwanzig Maschinen sind etwas anderes als zwölf in einem mit
+zweihundert. Die kumulierte Häufigkeit summiert von unten auf und beantwortet
+die Frage, welcher Anteil höchstens eine bestimmte Stufe erreicht. Sie setzt
+eine Ordnung voraus und ist bei nominalen Merkmalen sinnlos.
 
-::: {.open-question}
-Welche Regel für die Klassenzahl im Histogramm ist in der Praxis brauchbar, und wie begründe ich eine Abweichung davon in einem Bericht?
+### Die empirische Verteilungsfunktion
+
+Die kumulierte Häufigkeit, konsequent für alle Werte eines metrischen Merkmals
+gebildet, ergibt eine Funktion: Sie gibt zu jedem Wert an, welcher Anteil der
+Beobachtungen höchstens so gross ist. Weil die Daten endlich sind, springt sie
+an jedem beobachteten Wert und ist dazwischen konstant.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-ecdf-r
+#| fig-cap: "Empirische Verteilungsfunktion. Jeder Sprung entspricht einer Beobachtung."
+x <- round(rnorm(40, mean = 20, sd = 4), 1)
+
+ggplot(data.frame(x), aes(x)) +
+  stat_ecdf(geom = "step", linewidth = 0.8) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  labs(x = "Messwert", y = "Anteil höchstens so gross")
+```
+
+## Python
+
+```{python}
+#| label: fig-ecdf-py
+#| fig-cap: "Dieselbe Treppenfunktion mit matplotlib."
+x = np.round(rng.normal(20, 4, 40), 1)
+sortiert = np.sort(x)
+anteil = np.arange(1, len(x) + 1) / len(x)
+
+fig, ax = plt.subplots()
+ax.step(sortiert, anteil, where="post", linewidth=1.2)
+ax.axhline(0.5, linestyle="--", color="black", linewidth=0.8)
+ax.set_xlabel("Messwert")
+ax.set_ylabel("Anteil höchstens so gross")
+plt.show()
+```
+:::
+
+Aus dieser Kurve lässt sich jedes Quantil ablesen: Man geht auf der senkrechten
+Achse zum gewünschten Anteil und liest waagerecht ab. Die gestrichelte Linie
+bei 0.5 trifft die Kurve am Median. Diese Verbindung zwischen Häufigkeit und
+Kennzahl ist der Grund, warum die Verteilungsfunktion mehr ist als eine
+Darstellungsvariante.
+
+### Klassenbildung: eine Entscheidung mit Folgen
+
+Bei stetigen Merkmalen kommt fast jeder Wert nur einmal vor. Eine Auszählung
+brächte nichts, deshalb werden benachbarte Werte zu Klassen zusammengefasst.
+Wie viele Klassen gewählt werden, verändert das Bild erheblich:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-klassen-r
+#| fig-cap: "Dieselben 300 Werte mit 5, 15 und 60 Klassen. Links verschwindet die Struktur, rechts entsteht Rauschen."
+#| fig-height: 3.2
+werte <- c(rnorm(150, 18, 2), rnorm(150, 28, 3))
+
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+for (k in c(5, 15, 60)) {
+  hist(werte, breaks = k, col = "grey75", border = "white",
+       main = paste(k, "Klassen"), xlab = "Wert", ylab = "Anzahl")
+}
+```
+
+## Python
+
+```{python}
+#| label: fig-klassen-py
+#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
+werte = np.concatenate([rng.normal(18, 2, 150), rng.normal(28, 3, 150)])
+
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2), sharey=False)
+for ax, k in zip(achsen, [5, 15, 60]):
+    ax.hist(werte, bins=k, color="0.75", edgecolor="white")
+    ax.set_title(f"{k} Klassen")
+    ax.set_xlabel("Wert")
+achsen[0].set_ylabel("Anzahl")
+fig.tight_layout()
+plt.show()
+```
+:::
+
+Die Daten stammen aus zwei überlagerten Gruppen. Mit fünf Klassen ist davon
+nichts zu sehen, mit sechzig geht die Struktur im Zufall unter. Die mittlere
+Wahl zeigt, was tatsächlich vorliegt. Eine Faustregel wie die Wurzel aus der
+Beobachtungszahl liefert einen Startwert; die Entscheidung bleibt inhaltlich
+und gehört im Bericht begründet, sobald sie vom Standard abweicht.
+
+**Verständnisfragen**
+
+1. Warum ist die empirische Verteilungsfunktion unabhängig von der Klassenzahl, das Histogramm aber nicht?
+2. Was spricht dagegen, einfach immer sehr viele Klassen zu wählen?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil sie keine Klassen bildet. Sie springt an jedem einzelnen beobachteten
+   Wert und enthält damit die vollständige Information der Stichprobe. Genau
+   deshalb eignet sie sich, wenn eine Darstellung frei von willkürlichen
+   Entscheidungen sein soll.
+2. Weil dann jede Klasse nur noch wenige Beobachtungen enthält und die Höhen
+   überwiegend Zufall abbilden. Man sieht Zacken, die bei einer neuen
+   Stichprobe woanders lägen, und liest daraus Struktur heraus, die es nicht
+   gibt.
+:::
+
+### Stabdiagramm oder Histogramm
+
+Beide zeigen Balken, meinen aber Verschiedenes, und die Verwechslung ist ein
+inhaltlicher Fehler.
+
+Das Stabdiagramm stellt getrennte Kategorien dar. Zwischen den Stäben bleibt
+Luft, weil zwischen Bern und Chur nichts liegt. Das Histogramm stellt ein
+Kontinuum dar, seine Balken stossen aneinander, weil der Bereich lückenlos
+abgedeckt ist.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-stab-hist-r
+#| fig-cap: "Links Kategorien mit Abstand, rechts ein Kontinuum ohne Lücken."
+#| fig-height: 3.2
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(table(zufriedenheit), col = "grey75",
+        main = "Stabdiagramm, nominal/ordinal", ylab = "Anzahl")
+hist(werte, breaks = 15, col = "grey75", border = "white",
+     main = "Histogramm, metrisch", xlab = "Wert", ylab = "Anzahl")
+```
+
+## Python
+
+```{python}
+#| label: fig-stab-hist-py
+#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
+anzahl = s.value_counts().reindex(stufen)
+
+fig, (a, b) = plt.subplots(1, 2, figsize=(7, 3.2))
+a.bar(list(anzahl.index), anzahl.values, color="0.75", width=0.6)
+a.set_title("Stabdiagramm, nominal/ordinal")
+a.set_ylabel("Anzahl")
+b.hist(werte, bins=15, color="0.75", edgecolor="white")
+b.set_title("Histogramm, metrisch")
+b.set_xlabel("Wert")
+fig.tight_layout()
+plt.show()
+```
+:::
+
+Ein Detail, das häufig übergangen wird: Bei ungleich breiten Klassen trägt im
+Histogramm die Fläche die Information, nicht die Höhe. Wer dort einfach
+Häufigkeiten als Höhe aufträgt, verzerrt das Bild zugunsten der breiten
+Klassen. Die korrekte Grösse ist dann die Häufigkeitsdichte, also Häufigkeit
+geteilt durch Klassenbreite.
+
+::: {.note-box}
+Ein Balkendiagramm für ein stetiges Merkmal oder ein Histogramm für Kategorien
+ist keine Geschmacksfrage, sondern ein Fehler in der Aussage.
+:::
+
+**Verständnisfragen**
+
+1. Woran erkennt man in einer fremden Grafik, ob ein Histogramm oder ein Stabdiagramm gemeint war?
+2. Eine Altersverteilung wird in den Klassen 0 bis 18, 19 bis 25 und 26 bis 65 dargestellt. Was ist beim Zeichnen zu beachten?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Am Abstand zwischen den Balken und an der Achse. Berühren sich die Balken
+   und trägt die waagerechte Achse eine kontinuierliche Skala, ist es ein
+   Histogramm. Stehen die Balken getrennt über beschrifteten Kategorien, ist es
+   ein Stabdiagramm.
+2. Die Klassen sind unterschiedlich breit, nämlich 19, 7 und 40 Jahre. Trägt
+   man die reinen Häufigkeiten als Höhe auf, erscheint die letzte Klasse
+   dominant, nur weil sie mehr Jahre umfasst. Aufzutragen ist die Dichte, also
+   die Häufigkeit geteilt durch die Klassenbreite, damit die Fläche der
+   Häufigkeit entspricht.
 :::
 
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
+- [Dokumentation zu `hist` in R](https://stat.ethz.ch/R-manual/R-devel/library/graphics/html/hist.html)

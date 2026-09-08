@@ -4,77 +4,526 @@ description: "Datenimport, tidy data und die dplyr-Verben als Grundlage jeder sp
 categories: ["R", "tidyverse", "EDA", "Python", "pandas"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
 - Tidy data: eine Zeile je Beobachtung, eine Spalte je Merkmal
 - Import mit readr, Typerkennung prüfen
 - dplyr-Verben: `filter`, `select`, `mutate`, `arrange`, `summarise`
+- Die Pipe als Verkettung
 - Gruppieren mit `group_by`
 - Umformen mit `pivot_longer` und `pivot_wider`
 - Datum und Zeit mit lubridate
 
-## Meine Zusammenfassung
-
-Data Wrangling ist der Teil der Arbeit, der in der Zeitplanung immer unterschätzt wird. Der Ausgangspunkt ist das Prinzip der tidy data: jede Zeile eine Beobachtung, jede Spalte ein Merkmal, jede Tabelle eine Beobachtungseinheit. Liegt eine Tabelle in dieser Form vor, passen alle weiteren Werkzeuge ohne Umbau — liegt sie es nicht, kostet jeder Schritt Sonderbehandlung.
-
-Die dplyr-Verben decken den Alltag fast vollständig ab, weil jedes von ihnen genau eine Sache tut und einen [Data Frame](lesson1.qmd) zurückgibt. Dadurch lassen sie sich zu einer Pipeline aneinanderreihen, die von oben nach unten gelesen werden kann. Das ist der eigentliche Gewinn gegenüber verschachtelten Aufrufen: die Reihenfolge im Code entspricht der Reihenfolge im Kopf.
-
-Beim Import lohnt der zweite Blick auf die erkannten Spaltentypen. Ein Dezimalkomma, eine Tausendertrennung oder ein Platzhalter für fehlende Werte reichen, damit eine numerische Spalte als Text ankommt — und dann rechnet nichts mehr richtig. Ebenso wichtig ist, fehlende Werte bewusst zu behandeln statt sie durch stillschweigendes `na.rm` verschwinden zu lassen.
-
-Das Umformen zwischen langem und breitem Format ist der Schritt, den ich am häufigsten brauche. Auswertung und Grafik wollen in der Regel das lange Format, Berichtstabellen das breite. Datum und Zeit behandle ich separat, weil ein Datum als Text gespeichert weder sortierbar noch differenzierbar ist.
+## Erklärung
 
 ::: {.note-box}
-Vor jeder Analyse dieselben drei Prüfungen: Zeilenzahl plausibel, Spaltentypen korrekt, fehlende Werte gezählt. Das findet die meisten Importfehler, bevor sie in ein Ergebnis einfliessen.
+**Vorwissen:** [L1 – R & RStudio](lesson1.qmd). Gebraucht werden von dort der
+Data Frame, der Faktor und die Vorstellung, dass eine Spalte genau einen Typ
+trägt. Wer weiss, was Coercion anrichtet, versteht den Abschnitt zum Import
+ohne Umweg.
 :::
 
-## Eigene Beispiele / Code
+### Warum die Aufbereitung den grössten Teil der Zeit frisst
+
+Daten kommen so, wie sie irgendwo entstanden sind, und nicht so, wie eine
+Auswertung sie braucht. Eine Exportdatei aus einer Maschinensteuerung hat
+Datumsangaben als Text, Messwerte mit Dezimalkomma, Kategorien mit Tippfehlern
+und irgendwo einen Strich für einen fehlenden Wert. Nichts davon ist ein Fehler
+der Daten; es ist der Normalzustand.
+
+Das Werkzeug dagegen erwartet eine bestimmte Form. Wird sie hergestellt, läuft
+alles Weitere glatt. Wird sie nicht hergestellt, kostet jeder einzelne Schritt
+Sonderbehandlung, und diese Sonderbehandlungen summieren sich zu genau dem
+Aufwand, der in Projektplänen fehlt.
+
+### Tidy data: die Form, auf die alles passt
+
+Das Prinzip klingt banal und ist es nicht. Eine Tabelle heisst aufgeräumt, wenn
+jede Zeile eine Beobachtung ist, jede Spalte ein Merkmal und jede Tabelle eine
+Beobachtungseinheit beschreibt.
+
+Der Unterschied wird sichtbar, sobald dieselben Zahlen in beiden Formen
+nebeneinander stehen. Diese Tabelle ist nicht aufgeräumt, weil die Spaltennamen
+selbst eine Information tragen, nämlich das Jahr:
+
+```{r}
+#| label: untidy-r
+breit <- data.frame(
+  standort  = c("Bern", "Chur", "Sion"),
+  jahr_2024 = c(120, 95, 143),
+  jahr_2025 = c(131, 92, 150)
+)
+breit
+```
+
+Aufgeräumt sieht dasselbe so aus:
+
+```{r}
+#| label: tidy-r
+lang <- breit |>
+  pivot_longer(cols = starts_with("jahr_"),
+               names_to = "jahr", values_to = "menge",
+               names_prefix = "jahr_")
+lang
+```
+
+Jetzt ist das Jahr ein Merkmal wie jedes andere, und damit lässt sich danach
+filtern, gruppieren und gruppenweise zeichnen. In der breiten Form ginge das
+nur über Spaltennamen, also über Umwege.
+
+::: {.note-box}
+Merkhilfe für den Zweifelsfall: Steht in einem Spaltennamen eine Information,
+die eigentlich ein Wert ist, etwa ein Jahr, ein Monat oder ein Gerätename, dann
+ist die Tabelle breit und die Auswertung will sie lang.
+:::
+
+**Verständnisfragen**
+
+1. Eine Tabelle hat die Spalten `patient`, `blutdruck_vorher`, `blutdruck_nachher`. Warum ist sie nicht aufgeräumt, und wie sähe die aufgeräumte Form aus?
+2. Wann ist die breite Form trotzdem die richtige?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Der Zeitpunkt der Messung steckt im Spaltennamen, ist aber ein Merkmal.
+   Aufgeräumt hätte die Tabelle die Spalten `patient`, `zeitpunkt` mit den
+   Werten vorher und nachher sowie `blutdruck`. Jede Zeile wäre dann eine
+   Messung statt eines Patienten.
+2. Für die Darstellung. Eine Berichtstabelle, die ein Mensch liest, ist breit
+   besser lesbar, weil der Vergleich zeilenweise ins Auge fällt. Die Umformung
+   ins Breite ist deshalb typischerweise der letzte Schritt, nicht der erste.
+:::
+
+### Import: der erste Blick gehört den Spaltentypen
+
+Der häufigste Importfehler im deutschsprachigen Raum ist das Dezimalkomma.
+Werkzeuge gehen vom angelsächsischen Format aus, die Datei kommt aber mit
+Semikolon als Trennzeichen und Komma als Dezimalzeichen. Das Ergebnis sieht auf
+den ersten Blick brauchbar aus und ist es nicht.
+
+Die folgende Datei entsteht im Chunk selbst, damit das Beispiel ohne Fremddatei
+nachvollziehbar bleibt:
 
 ::: panel-tabset
 ## R
 
-```r
-library(tidyverse)
+```{r}
+#| label: import-r
+inhalt <- c("datum;typ;verbrauch",
+            "01.03.2026;A;12,4",
+            "02.03.2026;B;9,8",
+            "03.03.2026;A;14,1")
 
-roh <- read_csv2("messungen.csv")      # Semikolon und Dezimalkomma
+pfad <- tempfile(fileext = ".csv")
+writeLines(inhalt, pfad)
 
-auswertung <- roh |>
-  filter(!is.na(verbrauch)) |>
-  mutate(datum = lubridate::dmy(datum),
-         monat = lubridate::floor_date(datum, "month")) |>
-  group_by(monat, typ) |>
-  summarise(n = n(), mittel = mean(verbrauch), .groups = "drop")
+# Standardannahme: Komma trennt Spalten. Passt hier nicht.
+falsch <- read_csv(pfad, show_col_types = FALSE)
+ncol(falsch)          # alles in einer einzigen Spalte
 
-auswertung |>
-  pivot_wider(names_from = typ, values_from = mittel)
+# read_csv2 erwartet Semikolon als Trenn- und Komma als Dezimalzeichen
+richtig <- read_csv2(pfad, show_col_types = FALSE)
+str(richtig)
 ```
 
 ## Python
 
-```python
-import pandas as pd
+```{python}
+#| label: import-py
+import tempfile, pathlib
 
-roh = pd.read_csv("messungen.csv", sep=";", decimal=",")
+inhalt = "\n".join(["datum;typ;verbrauch",
+                    "01.03.2026;A;12,4",
+                    "02.03.2026;B;9,8",
+                    "03.03.2026;A;14,1"])
+pfad = pathlib.Path(tempfile.mkdtemp()) / "messung.csv"
+pfad.write_text(inhalt, encoding="utf-8")
 
-auswertung = (
-    roh.dropna(subset=["verbrauch"])
-       .assign(datum=lambda d: pd.to_datetime(d["datum"], format="%d.%m.%Y"),
-               monat=lambda d: d["datum"].dt.to_period("M").dt.to_timestamp())
-       .groupby(["monat", "typ"], as_index=False)
-       .agg(n=("verbrauch", "size"), mittel=("verbrauch", "mean"))
-)
+falsch = pd.read_csv(pfad)                          # Standardannahme
+print("Spalten:", falsch.shape[1])
 
-auswertung.pivot(index="monat", columns="typ", values="mittel")
+richtig = pd.read_csv(pfad, sep=";", decimal=",")   # passend eingestellt
+print(richtig.dtypes)
 ```
 :::
 
-## Offene Fragen
+Entscheidend ist, dass `verbrauch` erst mit der richtigen Einstellung numerisch
+wird. Ohne sie bliebe die Spalte Text, und jede spätere Rechnung würde entweder
+abbrechen oder, schlimmer, stillschweigend etwas Falsches liefern.
 
-::: {.open-question}
-Ab wann sollte eine Aufbereitungspipeline aus dem Analysedokument in ein eigenes Skript wandern, damit der Bericht lesbar bleibt?
+Die Spalte `datum` ist auch jetzt noch Text. Datumsangaben im europäischen
+Format erkennt kein Import von selbst:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: datum-r
+mit_datum <- richtig |>
+  mutate(datum = dmy(datum))        # Tag-Monat-Jahr
+str(mit_datum)
+```
+
+## Python
+
+```{python}
+#| label: datum-py
+richtig["datum"] = pd.to_datetime(richtig["datum"], format="%d.%m.%Y")
+print(richtig.dtypes)
+```
+:::
+
+Warum das wichtig ist, zeigt ein Sortierversuch. Als Text stünde der 1. März
+vor dem 2. Februar, weil verglichen wird, was vorne steht. Als Datum stimmt die
+Reihenfolge, und Differenzen zwischen zwei Zeitpunkten lassen sich überhaupt
+erst rechnen.
+
+**Verständnisfragen**
+
+1. Eine Spalte kommt als Text an, obwohl nur Zahlen darin stehen. Woran kann das ausser dem Dezimalzeichen noch liegen?
+2. Warum sollte das Datum beim Import umgewandelt werden und nicht erst kurz vor der Grafik?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. An einem Platzhalter für fehlende Werte, etwa einem Strich, dem Wort keine
+   Angabe oder einem Leerzeichen. Ein einziger solcher Eintrag genügt, weil der
+   Vektor nur einen Typ tragen kann. Auch eine Tausendertrennung oder ein
+   angehängtes Einheitenzeichen führt dazu.
+2. Weil jeder Schritt dazwischen sonst mit Text arbeitet und dabei falsch
+   sortiert oder falsch gruppiert. Wer nach Monat gruppiert, bevor das Datum
+   ein Datum ist, gruppiert nach Zeichenketten und merkt es erst am Ergebnis.
+:::
+
+### Die fünf Verben
+
+Die Aufbereitung besteht fast vollständig aus fünf Operationen. Jede tut genau
+eine Sache und gibt einen Data Frame zurück, was der Grund dafür ist, dass sie
+sich beliebig aneinanderreihen lassen.
+
+| Verb | Frage, die es beantwortet |
+|---|---|
+| `filter` | Welche Zeilen interessieren mich? |
+| `select` | Welche Spalten brauche ich? |
+| `mutate` | Welche Spalte fehlt noch? |
+| `arrange` | In welcher Reihenfolge? |
+| `summarise` | Wie fasse ich zusammen? |
+
+Als Arbeitsgrundlage dient ein erzeugter Datensatz, einer Maschinenablesung
+nachempfunden. Der Verbrauch hängt dabei vom Standort ab, damit die späteren
+Gruppenvergleiche etwas zu zeigen haben:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: daten-r
+standort <- rep(c("Bern", "Chur"), times = 12)
+
+messungen <- data.frame(
+  datum     = rep(seq(as.Date("2026-01-05"), by = "week", length.out = 12), each = 2),
+  standort  = standort,
+  verbrauch = round(rnorm(24, mean = ifelse(standort == "Bern", 120, 95), sd = 10), 1),
+  laufzeit  = round(runif(24, 4, 20), 1)
+)
+
+head(messungen, 4)
+nrow(messungen)
+```
+
+## Python
+
+```{python}
+#| label: daten-py
+standort = np.array(["Bern", "Chur"] * 12)
+basis = np.where(standort == "Bern", 120, 95)
+
+messungen = pd.DataFrame({
+    "datum": np.repeat(pd.date_range("2026-01-05", periods=12, freq="W"), 2),
+    "standort": standort,
+    "verbrauch": np.round(rng.normal(basis, 10), 1),
+    "laufzeit": np.round(rng.uniform(4, 20, 24), 1),
+})
+
+print(messungen.head(4))
+print(len(messungen))
+```
+:::
+
+Die Verben einzeln, jedes mit dem Zweck davor:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: verben-r
+# nur Bern, und dort nur die hohen Werte
+filter(messungen, standort == "Bern", verbrauch > 120) |> head(3)
+
+# nur die Spalten, die gezeigt werden sollen
+select(messungen, datum, verbrauch) |> head(3)
+
+# eine abgeleitete Groesse dazurechnen
+mutate(messungen, pro_stunde = verbrauch / laufzeit) |> head(3)
+
+# absteigend nach Verbrauch
+arrange(messungen, desc(verbrauch)) |> head(3)
+
+# alles auf eine Zeile eindampfen
+summarise(messungen, n = n(), mittel = mean(verbrauch))
+```
+
+## Python
+
+```{python}
+#| label: verben-py
+print(messungen.query("standort == 'Bern' and verbrauch > 120").head(3))
+print(messungen[["datum", "verbrauch"]].head(3))
+print(messungen.assign(pro_stunde=lambda d: d["verbrauch"] / d["laufzeit"]).head(3))
+print(messungen.sort_values("verbrauch", ascending=False).head(3))
+print(pd.DataFrame({"n": [messungen["verbrauch"].size],
+                    "mittel": [messungen["verbrauch"].mean()]}))
+```
+:::
+
+### Die Pipe: Reihenfolge im Code wie im Kopf
+
+Einzeln aufgerufen sind die Verben unhandlich, weil jedes Zwischenergebnis
+entweder benannt oder verschachtelt werden muss. Verschachtelt liest sich eine
+Kette von innen nach aussen, also rückwärts:
+
+```{r}
+#| label: verschachtelt-r
+arrange(summarise(group_by(messungen, standort), mittel = mean(verbrauch)),
+        desc(mittel))
+```
+
+Dieselbe Rechnung mit der Pipe steht in der Reihenfolge, in der man sie denkt.
+Das Zeichen `|>` reicht das Ergebnis links als erstes Argument nach rechts
+weiter:
+
+```{r}
+#| label: pipe-r
+messungen |>
+  group_by(standort) |>
+  summarise(mittel = mean(verbrauch)) |>
+  arrange(desc(mittel))
+```
+
+In Python entsteht dieselbe Lesbarkeit durch Verkettung von Methoden; die
+runden Klammern um den Ausdruck erlauben den Zeilenumbruch:
+
+```{python}
+#| label: pipe-py
+print(messungen
+      .groupby("standort", as_index=False)
+      .agg(mittel=("verbrauch", "mean"))
+      .sort_values("mittel", ascending=False))
+```
+
+### Gruppieren: aufteilen, rechnen, zusammensetzen
+
+`group_by` verändert die Daten nicht, es markiert sie nur. Erst die folgende
+Zusammenfassung wertet je Gruppe aus. Das Muster heisst split-apply-combine und
+ist dasselbe wie in [Pandas](../pyfr/lesson7.qmd).
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: gruppen-r
+je_standort <- messungen |>
+  mutate(monat = floor_date(datum, "month")) |>
+  group_by(standort, monat) |>
+  summarise(n      = n(),
+            mittel = round(mean(verbrauch), 1),
+            .groups = "drop")
+
+je_standort
+```
+
+## Python
+
+```{python}
+#| label: gruppen-py
+je_standort = (messungen
+    .assign(monat=lambda d: d["datum"].dt.to_period("M").dt.to_timestamp())
+    .groupby(["standort", "monat"], as_index=False)
+    .agg(n=("verbrauch", "size"), mittel=("verbrauch", "mean")))
+je_standort["mittel"] = je_standort["mittel"].round(1)
+print(je_standort)
+```
+:::
+
+Das Argument `.groups = "drop"` löst die Gruppierung nach der Zusammenfassung
+wieder auf. Ohne es bleibt der Data Frame gruppiert, und der nächste Schritt
+rechnet unbemerkt weiter je Gruppe statt über alles.
+
+Weil das Ergebnis im langen Format vorliegt, lässt es sich unmittelbar zeichnen:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-gruppen-r
+#| fig-cap: "Monatsmittel je Standort. Das lange Format erlaubt die Gruppierung über die Farbe."
+ggplot(je_standort, aes(monat, mittel, colour = standort)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  labs(x = NULL, y = "Verbrauch, Monatsmittel", colour = "Standort")
+```
+
+## Python
+
+```{python}
+#| label: fig-gruppen-py
+#| fig-cap: "Dieselbe Auswertung mit matplotlib."
+fig, ax = plt.subplots()
+for ort, teil in je_standort.groupby("standort"):
+    ax.plot(teil["monat"], teil["mittel"], marker="o", label=ort)
+ax.set_ylabel("Verbrauch, Monatsmittel")
+ax.legend(title="Standort")
+fig.autofmt_xdate()
+plt.show()
+```
+:::
+
+**Verständnisfragen**
+
+1. Warum liefert `summarise` ohne vorheriges `group_by` genau eine Zeile?
+2. Was passiert, wenn die Gruppierung nach `summarise` nicht aufgelöst wird und danach nochmals zusammengefasst wird?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil ohne Gruppierung die gesamte Tabelle eine einzige Gruppe ist. Die
+   Zusammenfassung dampft jede Gruppe auf eine Zeile ein, hier also alles auf
+   eine.
+2. In R bleibt nach `summarise` die äusserste Gruppierung bestehen, hier also
+   `standort`. Die zweite Zusammenfassung rechnet dann je Standort statt über
+   alle Standorte. Das Ergebnis ist plausibel aussehender Unsinn, weshalb
+   `.groups = "drop"` zur Gewohnheit gehört.
+:::
+
+### Zwischen lang und breit wechseln
+
+Für die Auswertung ist lang richtig, für eine Berichtstabelle breit. Der
+Wechsel geht in beide Richtungen und ist verlustfrei:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: pivot-r
+tabelle <- je_standort |>
+  select(standort, monat, mittel) |>
+  pivot_wider(names_from = standort, values_from = mittel)
+
+tabelle
+
+# und wieder zurueck
+tabelle |>
+  pivot_longer(-monat, names_to = "standort", values_to = "mittel") |>
+  head(4)
+```
+
+## Python
+
+```{python}
+#| label: pivot-py
+tabelle = je_standort.pivot(index="monat", columns="standort", values="mittel")
+print(tabelle)
+
+print(tabelle.reset_index()
+             .melt(id_vars="monat", var_name="standort", value_name="mittel")
+             .head(4))
+```
+:::
+
+### Fehlende Werte gehören angesehen, nicht weggeräumt
+
+`na.rm = TRUE` ist schnell getippt und überspringt eine inhaltliche Frage.
+Bevor fehlende Werte aus einer Rechnung fallen, gehört gezählt, wie viele es
+sind und wo sie sitzen. Fehlen sie zufällig, ist das Weglassen vertretbar;
+fehlen sie systematisch, etwa weil ein Sensor bei Frost ausfällt, verzerrt
+jedes Weglassen das Ergebnis.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: na-r
+mit_luecken <- messungen
+mit_luecken$verbrauch[c(3, 7, 8)] <- NA
+
+# je Spalte zaehlen
+mit_luecken |> summarise(across(everything(), \(x) sum(is.na(x))))
+
+mean(mit_luecken$verbrauch)                 # NA, und das ist gut so
+mean(mit_luecken$verbrauch, na.rm = TRUE)   # bewusste Entscheidung
+```
+
+## Python
+
+```{python}
+#| label: na-py
+mit_luecken = messungen.copy()
+mit_luecken.loc[[2, 6, 7], "verbrauch"] = np.nan
+
+print(mit_luecken.isna().sum())
+print(mit_luecken["verbrauch"].mean())      # pandas laesst NaN still weg
+```
+:::
+
+An dieser Stelle verhalten sich die Sprachen verschieden, und der Unterschied
+ist eine Falle. R liefert `NA` und erzwingt damit eine Entscheidung. Pandas
+lässt fehlende Werte bei `mean` stillschweigend weg. Wer zwischen den Sprachen
+wechselt, sollte sich das merken.
+
+::: {.note-box}
+Drei Prüfungen nach jedem Import, immer dieselben: Zeilenzahl plausibel,
+Spaltentypen korrekt, fehlende Werte gezählt. Das findet den grössten Teil der
+Importfehler, bevor sie in ein Ergebnis einfliessen.
+:::
+
+**Verständnisfragen**
+
+1. Warum ist es ein Vorteil, dass `mean` in R bei fehlenden Werten `NA` liefert?
+2. Eine Spalte hat 5 Prozent fehlende Werte, alle aus derselben Woche. Was folgt daraus?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil das Ergebnis sichtbar macht, dass etwas fehlt. Ein stillschweigend
+   berechneter Mittelwert über die vorhandenen Werte sieht aus wie ein
+   Mittelwert über alle und ist es nicht. Der Aufwand, `na.rm` zu schreiben,
+   ist genau der Moment, in dem die Entscheidung bewusst fällt.
+2. Dass sie nicht zufällig fehlen. Ein Ausfall über eine ganze Woche hat eine
+   Ursache, und wenn diese Woche sich von den übrigen unterscheidet, etwa durch
+   Betriebsferien oder Frost, verschiebt das Weglassen das Ergebnis
+   systematisch. Hier gehört die Ursache in den Bericht, nicht nur die Anzahl.
 :::
 
 ## Verlinkte Ressourcen
 
+- [R for Data Science, Kapitel zur Datentransformation](https://r4ds.hadley.nz/data-transform)
 - [dplyr-Referenz](https://dplyr.tidyverse.org/)
 - [tidyr-Referenz zu Pivot-Operationen](https://tidyr.tidyverse.org/)
 - [lubridate-Referenz](https://lubridate.tidyverse.org/)
