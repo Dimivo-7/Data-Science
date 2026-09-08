@@ -162,6 +162,18 @@ local function baueSpan(treffer)
   }))
 end
 
+-- Inline-Elemente, in deren Inhalt weitergesucht wird. Ohne das bliebe ein
+-- fett gesetzter Begriff unmarkiert - und in dieser Sammlung stehen etliche
+-- Fachbegriffe genau so im Text.
+local REKURSION = {
+  Emph = true, Strong = true, Underline = true, Strikeout = true,
+  SmallCaps = true, Superscript = true, Subscript = true,
+  Span = true, Quoted = true,
+}
+
+-- Bewusst NICHT rekursiv: Link, Code, Math, Note, Image, RawInline. Sie
+-- werden unveraendert durchgereicht, ihr Inhalt bleibt damit unberuehrt.
+
 local function markiere(inlines)
   local raus = pandoc.Inlines({})
   local i = 1
@@ -187,7 +199,11 @@ local function markiere(inlines)
       if treffer.hinten ~= "" then raus:insert(pandoc.Str(treffer.hinten)) end
       i = i + (laenge - 1) * 2 + 1
     else
-      raus:insert(inlines[i])
+      local el = inlines[i]
+      if REKURSION[el.t] and el.content then
+        el.content = markiere(el.content)
+      end
+      raus:insert(el)
       i = i + 1
     end
   end
@@ -256,14 +272,13 @@ return {
   {
     traverse = "topdown",
 
-    Header  = function(el) return el, false end,
-    Link    = function(el) return el, false end,
-    Code    = function(el) return el, false end,
-    Note    = function(el) return el, false end,
-
-    -- Bildunterschriften und Tabellenlegenden bleiben ebenfalls unberuehrt
-    Figure  = function(el) return el, false end,
-    Table   = function(el) return el, false end,
+    -- Diese Bloecke bleiben komplett aussen vor. Das zweite Rueckgabe-
+    -- argument false stoppt den Abstieg, sodass auch ihr Innenleben
+    -- unberuehrt bleibt - bei Table etwa die Zellen, bei Figure die
+    -- Bildunterschrift.
+    Header = function(el) return el, false end,
+    Table  = function(el) return el, false end,
+    Figure = function(el) return el, false end,
 
     Div = function(el)
       if el.identifier == "glossar-liste" then
@@ -272,9 +287,22 @@ return {
       return el
     end,
 
-    Inlines = function(inlines)
+    -- Bewusst Para und Plain statt eines generischen Inlines-Filters.
+    -- Mit Inlines wurden Aufzaehlungen nicht erreicht - und dort steht in
+    -- diesem Projekt unter "Kernideen" jeder Begriff zum ersten Mal.
+    -- Plain deckt die Listenpunkte ab, Para den Fliesstext; markiere()
+    -- steigt selbst in Emph, Strong und Span ab und laesst Links und Code
+    -- in Ruhe. Deshalb hier false: der Abstieg ist bereits erledigt.
+    Para = function(el)
       if not active then return nil end
-      return markiere(inlines)
+      el.content = markiere(el.content)
+      return el, false
+    end,
+
+    Plain = function(el)
+      if not active then return nil end
+      el.content = markiere(el.content)
+      return el, false
     end,
   },
 }
