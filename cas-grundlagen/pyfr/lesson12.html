@@ -1017,27 +1017,65 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </table>
 </div>
 </div>
-<p><strong>Verständnisfragen</strong></p>
-<ol type="1">
-<li>Warum lässt sich <code>WHERE SUM(betrag) &gt; 500</code> nicht schreiben?</li>
-<li>Ein <span class="glossary-term" tabindex="0" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses." data-topic="Daten">Join</span> liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?</li>
-</ol>
-<div class="callout callout-style-default callout-note callout-titled" title="Lösung">
-<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum lässt sich <code>WHERE SUM(betrag) &gt; 500</code> nicht schreiben?</p>
 </div>
-<div class="callout-title-container flex-fill">
-<span class="screen-reader-only">Hinweis</span>Lösung
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<code>WHERE</code> wird vor der Gruppierung ausgewertet, es gibt dort noch keine Summen
 </div>
-<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+<div class="quiz__erklaerung">
+Richtig. Bedingungen auf Aggregaten gehören in <code>HAVING</code>, das nach der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.
 </div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse">
-<div class="callout-body-container callout-body">
-<ol type="1">
-<li>Weil <code>WHERE</code> vor der Gruppierung ausgewertet wird und zu diesem Zeitpunkt noch keine Gruppen und damit keine Summen existieren. Bedingungen auf Aggregaten gehören in <code>HAVING</code>, das nach der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.</li>
-<li>Der Schlüssel war auf der rechten Seite nicht eindeutig. Jede linke Zeile wird dann mit jeder passenden rechten kombiniert. Genau dieselbe Falle wie beim <code>merge</code> in <a href="../../cas-grundlagen/pyfr/lesson7.html">Pandas</a>; die Prüfung ist dieselbe, nämlich vorher die Eindeutigkeit des Schlüssels sicherstellen.</li>
-</ol>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<code>SUM</code> ist in einer Bedingung generell nicht erlaubt
+</div>
+<div class="quiz__erklaerung">
+In <code>HAVING</code> ist es erlaubt, es hängt allein am Zeitpunkt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Es fehlt ein <code>GROUP BY</code>
+</div>
+<div class="quiz__erklaerung">
+Auch mit <code>GROUP BY</code> bliebe die Zeile falsch, denn <code>WHERE</code> läuft trotzdem vorher.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein <span class="glossary-term" tabindex="0" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses." data-topic="Daten">Join</span> liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Der Schlüssel war auf der rechten Seite nicht eindeutig
+</div>
+<div class="quiz__erklaerung">
+Richtig. Jede linke Zeile wird mit jeder passenden rechten kombiniert. Es ist dieselbe Falle wie beim <code>merge</code> in <a href="../../cas-grundlagen/pyfr/lesson7.html">Pandas</a>, und die Prüfung ist dieselbe: vorher die Eindeutigkeit des Schlüssels sicherstellen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Es wurde ein <code>LEFT JOIN</code> statt eines <code>INNER JOIN</code> verwendet
+</div>
+<div class="quiz__erklaerung">
+Ein <code>LEFT JOIN</code> behält alle linken Zeilen, vervielfacht sie aber nicht von sich aus.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Die Verknüpfungsbedingung fehlt
+</div>
+<div class="quiz__erklaerung">
+Dann entstünde das Kreuzprodukt, also ungleich mehr Zeilen. Der häufigere und unauffälligere Fall ist der mehrdeutige Schlüssel.
+</div>
 </div>
 </div>
 </div>
@@ -1581,9 +1619,42 @@ dtype: object</code></pre>
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">8. September 2026, 16:19</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">8. September 2026, 16:24</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 
