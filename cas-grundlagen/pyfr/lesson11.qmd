@@ -1,0 +1,68 @@
+---
+title: "L11 – Virtuelle Maschinen & Docker"
+description: "Unterschied zwischen Virtualisierung und Containern sowie Images, Container und Volumes."
+categories: ["Tooling", "Linux", "Deployment", "Reproduzierbarkeit", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Virtuelle Maschine mit eigenem Betriebssystemkern
+- Container teilen sich den Kern des Hosts
+- Image als Bauplan, Container als laufende Instanz
+- Dockerfile, Layer, Registry
+- Volumes und Portweiterleitung
+
+## Meine Zusammenfassung
+
+Der Unterschied zwischen virtueller Maschine und Container liegt in der Tiefe der Trennung. Eine VM bringt ein vollständiges Gastbetriebssystem samt eigenem Kern mit und ist entsprechend schwer — dafür ist die Isolation sehr weitgehend. Ein Container nutzt den Kern des Hosts und kapselt nur das Dateisystem und die Prozesse. Er startet in Sekunden und belegt einen Bruchteil des Platzes, ist aber an die Kernfamilie des Hosts gebunden.
+
+Zentral ist die Trennung von Image und Container. Ein Image ist unveränderlich und beschreibt, was drin ist; ein Container ist ein laufendes Exemplar davon. Aus demselben Image lassen sich beliebig viele Container starten, und jeder beginnt im selben definierten Zustand. Ein Dockerfile beschreibt, wie das Image gebaut wird, und jeder Schritt darin erzeugt eine Schicht, die zwischengespeichert wird — deshalb gehören selten wechselnde Schritte wie die Paketinstallation nach oben und der eigene Code nach unten.
+
+Weil der Container beim Beenden alles Geschriebene verliert, brauchen persistente Daten ein Volume: ein Bereich ausserhalb des Containers, der eingehängt wird. Ähnlich muss ein Netzwerkdienst ausdrücklich nach aussen freigegeben werden.
+
+Für die Datenarbeit ist der Nutzen vor allem, dass ein Analyseprojekt samt Systembibliotheken, Interpreter und Paketversionen als ein Artefakt weitergegeben werden kann. Das ist die Stufe über der [virtuellen Umgebung](lesson5.qmd): nicht nur die Python-Pakete sind festgeschrieben, sondern die ganze Umgebung.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# Fuer R gilt dasselbe Prinzip; die Rocker-Images liefern R und RStudio fertig.
+# Im Terminal:
+# docker run --rm -p 8787:8787 -e PASSWORD=geheim \
+#   -v "$PWD":/home/rstudio/projekt rocker/rstudio
+
+sessionInfo()   # dokumentiert die Umgebung, die im Image steckt
+```
+
+## Python
+
+```python
+# Dockerfile
+# FROM python:3.12-slim
+# WORKDIR /app
+# COPY requirements.txt .
+# RUN pip install --no-cache-dir -r requirements.txt
+# COPY . .
+# CMD ["python", "analyse.py"]
+
+# Im Terminal:
+# docker build -t analyse:1.0 .
+# docker run --rm -v "$PWD/data":/app/data analyse:1.0
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wann reicht eine virtuelle Umgebung und ab wann lohnt der Aufwand eines Containers — ist die Grenze der Bedarf an Systembibliotheken?
+:::
+
+## Verlinkte Ressourcen
+
+- [Docker-Dokumentation](https://docs.docker.com/)
+
+::: {.placeholder-notice}
+Die Kursunterlagen zu virtuellen Maschinen und Docker liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

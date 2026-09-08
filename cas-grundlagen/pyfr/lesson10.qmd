@@ -1,0 +1,75 @@
+---
+title: "L10 – Git & Versionsverwaltung"
+description: "Repository, Commit, Branch und Remote als Grundlage nachvollziehbarer Analysearbeit."
+categories: ["Tooling", "Reproduzierbarkeit", "Python", "R"]
+---
+
+## Kernideen aus dem Kurs
+
+- Verteiltes Repository statt zentralem Server
+- Arbeitsverzeichnis, Staging-Bereich, Commit
+- Branch und Merge
+- Remote, `push`, `pull`, `clone`
+- `.gitignore` und was nicht ins Repository gehört
+
+## Meine Zusammenfassung
+
+Git speichert nicht Unterschiede, sondern Zustände: jeder Commit hält den Stand des Projekts fest und verweist auf seinen Vorgänger. Daraus entsteht ein gerichteter Graph, in dem sich jeder frühere Zustand exakt wiederherstellen lässt. Für die Analysearbeit ist das der entscheidende Punkt — die Frage "mit welchem Code ist diese Zahl entstanden" wird beantwortbar.
+
+Der Zwischenschritt über den Staging-Bereich wirkt anfangs umständlich, ist aber der Grund, warum Commits inhaltlich sauber bleiben können: ich wähle aus, was in den nächsten Commit gehört, statt pauschal alles Geänderte einzupacken. Ein guter Commit ist eine abgeschlossene Änderung mit einer Nachricht, die das Warum benennt.
+
+Branches sind in Git billig, weil ein Branch nur ein Zeiger auf einen Commit ist. Deshalb lohnt es sich, für jeden grösseren Versuch einen eigenen Branch anzulegen: die Hauptlinie bleibt lauffähig, und ein missglückter Versuch wird einfach verworfen. Beim Zusammenführen entstehen Konflikte immer dann, wenn dieselbe Stelle zweimal geändert wurde — sie sind normal und müssen inhaltlich entschieden werden.
+
+Das Remote ist eine gleichwertige Kopie, nicht die Wahrheit; lokal steht die vollständige Historie. Ins Repository gehört, was den Zustand beschreibt: Code, Konfiguration, Abhängigkeitslisten. Nicht hinein gehören Zugangsdaten, [virtuelle Umgebungen](lesson5.qmd), grosse Rohdaten und generierte Ausgaben.
+
+::: {.note-box}
+[Notebooks](lesson1.qmd) sind für Git unhandlich, weil Ausgaben und Metadaten mit im Diff landen. Ausgaben vor dem Commit zu leeren macht die Historie deutlich lesbarer.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# RStudio bringt eine Git-Oberflaeche mit; per Konsole geht es genauso
+usethis::use_git()          # Repository im Projekt anlegen
+usethis::use_git_ignore(c(".Rhistory", ".RData", "renv/library/"))
+
+# Analyse und Versionierung greifen ineinander:
+# renv.lock + Commit ergeben einen reproduzierbaren Stand
+```
+
+## Python
+
+```python
+# Im Terminal, nicht im Interpreter:
+# git init
+# git status
+# git add analyse.py
+# git commit -m "Kennzahlen je Kategorie berechnet"
+# git switch -c experiment-log-transformation
+# git merge experiment-log-transformation
+# git remote add origin <url>
+# git push -u origin main
+
+# .gitignore
+# .venv/
+# __pycache__/
+# data/roh/
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie versioniere ich Datensätze sinnvoll mit, ohne das Repository aufzublähen — reicht ein Verweis auf die Quelle samt Prüfsumme?
+:::
+
+## Verlinkte Ressourcen
+
+- [Pro Git (deutsch, frei verfügbar)](https://git-scm.com/book/de/v2)
+
+::: {.placeholder-notice}
+Das Git-Cheat-Sheet aus dem Kurs liegt im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

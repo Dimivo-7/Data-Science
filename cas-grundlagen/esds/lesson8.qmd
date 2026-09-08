@@ -1,0 +1,76 @@
+---
+title: "L8 – Bedingte Wahrscheinlichkeit & Bayes"
+description: "Bedingung, Unabhängigkeit und der Satz von Bayes am Beispiel diagnostischer Tests."
+categories: ["Wahrscheinlichkeit", "Bayes", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Bedingte Wahrscheinlichkeit als Einschränkung des Grundraums
+- Multiplikationssatz
+- Stochastische Unabhängigkeit
+- Satz von der totalen Wahrscheinlichkeit
+- Satz von Bayes: von Sensitivität zu Vorhersagewert
+- Rolle der Prävalenz
+
+## Meine Zusammenfassung
+
+Eine bedingte Wahrscheinlichkeit verkleinert den Grundraum: statt nach dem Anteil an allen Fällen wird nach dem Anteil innerhalb der Fälle gefragt, in denen die Bedingung zutrifft. Formal ist das der Quotient aus der gemeinsamen Wahrscheinlichkeit und der Wahrscheinlichkeit der Bedingung. Unabhängigkeit bedeutet dann genau, dass diese Einschränkung nichts ändert — die bedingte Wahrscheinlichkeit gleicht der unbedingten.
+
+Der Satz von Bayes dreht die Bedingung um. Das ist der Schritt, der in der Anwendung am meisten Verwirrung stiftet, weil zwei ganz verschiedene Grössen ähnlich klingen: die Wahrscheinlichkeit, dass ein Test bei einer kranken Person anschlägt, und die Wahrscheinlichkeit, dass eine Person mit positivem Test tatsächlich krank ist. Die erste ist die Sensitivität und eine Eigenschaft des Tests, die zweite ist der positive Vorhersagewert und hängt zusätzlich davon ab, wie verbreitet die Krankheit überhaupt ist.
+
+Genau diese Prävalenz ist der Punkt, den ich mir merken will. Bei einer seltenen Krankheit gibt es sehr viele Gesunde, und selbst ein kleiner Anteil falsch positiver Ergebnisse unter ihnen erzeugt in absoluten Zahlen mehr Fälle als die richtig positiven unter den wenigen Kranken. Ein positives Resultat kann dann trotz sehr guter Testgütewerte überwiegend falsch sein. Der Nenner im Satz von Bayes ist dabei nichts anderes als die totale Wahrscheinlichkeit eines positiven Tests, zerlegt nach Kranken und Gesunden.
+
+::: {.note-box}
+Wer die Rechnung in [absoluten Häufigkeiten](lesson3.qmd) aufschreibt — hundert Kranke, zehntausend Gesunde — kommt schneller und mit weniger Fehlern zum Ziel als über die Formel.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+sens  <- 0.95     # P(Test+ | krank)
+spez  <- 0.98     # P(Test- | gesund)
+praev <- 0.01     # P(krank)
+
+p_pos <- sens * praev + (1 - spez) * (1 - praev)   # totale W.
+ppv   <- sens * praev / p_pos                       # Satz von Bayes
+ppv
+
+# Abhaengigkeit von der Praevalenz
+p <- seq(0.001, 0.2, length.out = 200)
+plot(p, sens * p / (sens * p + (1 - spez) * (1 - p)),
+     type = "l", xlab = "Prävalenz", ylab = "PPV")
+```
+
+## Python
+
+```python
+import numpy as np
+
+sens, spez, praev = 0.95, 0.98, 0.01
+
+p_pos = sens * praev + (1 - spez) * (1 - praev)
+ppv = sens * praev / p_pos
+print(ppv)
+
+p = np.linspace(0.001, 0.2, 200)
+ppv_kurve = sens * p / (sens * p + (1 - spez) * (1 - p))
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie argumentiere ich den Unterschied zwischen Sensitivität und Vorhersagewert gegenüber jemandem ohne statistischen Hintergrund überzeugend?
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur Wahrscheinlichkeit](https://www.openintro.org/book/os/)
+
+::: {.placeholder-notice}
+Die Aufgabenstellung zur Bayes-Analyse stammt aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

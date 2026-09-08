@@ -1,0 +1,75 @@
+---
+title: "L9 – Linux & Bash"
+description: "Dateisystem, die wichtigsten Shell-Befehle, Pipes und die Rechteverwaltung unter Unix."
+categories: ["Linux", "Tooling", "Python", "R"]
+---
+
+## Kernideen aus dem Kurs
+
+- Ein Wurzelverzeichnis, alles ist eine Datei
+- Navigation und Dateiarbeit: `ls`, `cd`, `mkdir`, `rm`, `cat`
+- Suchen: `grep`, `find`
+- Standardströme, Umlenkung und Pipes
+- Rechteverwaltung: Besitzer, Gruppe, andere
+- Editoren im Terminal
+
+## Meine Zusammenfassung
+
+Unter Unix gibt es keine Laufwerksbuchstaben: alles hängt an einem einzigen Wurzelverzeichnis, und auch Geräte und Prozesse erscheinen als Dateien. Das klingt akademisch, hat aber eine praktische Folge — dieselben Werkzeuge, die auf Textdateien arbeiten, lassen sich auf fast alles anwenden.
+
+Die eigentliche Stärke der Shell liegt nicht in den einzelnen Befehlen, sondern in ihrer Kombination. Jedes Programm liest von der Standardeingabe und schreibt auf die Standardausgabe; eine Pipe verbindet die Ausgabe des einen mit der Eingabe des nächsten. Damit entstehen aus kleinen, spezialisierten Werkzeugen Verarbeitungsketten, für die es sonst ein eigenes Skript bräuchte. Fehlermeldungen laufen über einen getrennten Kanal, was beim Umlenken in Dateien beachtet werden muss.
+
+`grep` durchsucht Inhalte, `find` durchsucht das Dateisystem nach Eigenschaften wie Name, Alter oder Grösse. Beide zusammen ersetzen einen erstaunlich grossen Teil dessen, wofür ich sonst zu Python greifen würde — und sind bei grossen Dateien meist schneller.
+
+Die Rechteverwaltung unterscheidet Lesen, Schreiben und Ausführen jeweils für Besitzer, Gruppe und alle übrigen. Bei Verzeichnissen bedeutet das Ausführungsrecht das Betreten. Für die Datenarbeit ist das vor allem dann relevant, wenn ein Skript auf einem Server läuft und plötzlich nicht mehr auf eine Datei zugreifen kann.
+
+::: {.note-box}
+Unter Windows steht mir dieselbe Umgebung über WSL zur Verfügung. Das ist praktischer, als jeden Befehl in ein PowerShell-Gegenstück zu übersetzen.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# Aus R heraus auf die Shell zugreifen
+system("ls -l data")
+dateien <- list.files("data", pattern = "\\.csv$", full.names = TRUE)
+
+# Pfade plattformunabhaengig zusammensetzen
+file.path("data", "roh", "messung.csv")
+```
+
+## Python
+
+```python
+# Typische Shell-Kette (im Terminal):
+# find data -name "*.csv" | head -5
+# grep -c "ERROR" logs/app.log
+# ls -l | wc -l
+
+import subprocess
+from pathlib import Path
+
+# Plattformunabhaengig ohne Shell
+list(Path("data").glob("*.csv"))
+
+# Falls es doch die Shell sein muss
+subprocess.run(["ls", "-l", "data"], check=True)
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Ab welcher Komplexität lohnt sich der Wechsel von einer Shell-Pipeline zu einem Python-Skript — Lesbarkeit gegen Geschwindigkeit?
+:::
+
+## Verlinkte Ressourcen
+
+- [Bash-Referenzhandbuch](https://www.gnu.org/software/bash/manual/)
+
+::: {.placeholder-notice}
+Die Linux-Unterlagen des Moduls liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

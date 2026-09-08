@@ -1,0 +1,74 @@
+---
+title: "L14 – Chi-Quadrat-Tests"
+description: "Anpassungstest auf eine Verteilung und Unabhängigkeitstest in der Kreuztabelle."
+categories: ["Hypothesentests", "Verteilungen", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Beobachtete gegenüber erwarteten Häufigkeiten
+- Chi-Quadrat-Statistik und Freiheitsgrade
+- Anpassungstest auf eine vorgegebene Verteilung
+- Unabhängigkeitstest in der Kreuztabelle
+- Voraussetzung an die erwarteten Häufigkeiten
+- Standardisierte [Residuen](lesson11.qmd) zur Deutung
+
+## Meine Zusammenfassung
+
+Die Chi-Quadrat-Tests arbeiten mit Häufigkeiten statt mit Mittelwerten und sind deshalb das Werkzeug für kategoriale Merkmale. Das Prinzip ist in beiden Varianten dasselbe: aus der [Nullhypothese](lesson13.qmd) werden erwartete Häufigkeiten abgeleitet, und die Teststatistik summiert die quadrierten Abweichungen von den beobachteten Werten, jeweils bezogen auf die erwartete Häufigkeit. Diese Normierung sorgt dafür, dass eine Abweichung von zehn Fällen bei erwarteten zwanzig stärker wiegt als bei erwarteten tausend.
+
+Beim Anpassungstest kommen die erwarteten Häufigkeiten aus einer vorgegebenen Verteilung — Gleichverteilung, ein bekanntes Mischungsverhältnis oder eine theoretische Verteilung. Beim Unabhängigkeitstest werden sie aus den Randsummen der Kreuztabelle berechnet, also aus der Annahme, dass die beiden Merkmale nichts miteinander zu tun haben.
+
+Die Freiheitsgrade unterscheiden sich entsprechend: beim Anpassungstest die Zahl der Kategorien vermindert um eins und um jeden aus den Daten geschätzten Parameter, beim Unabhängigkeitstest das Produkt der um eins verminderten Zeilen- und Spaltenzahlen. Wer hier falsch zählt, erhält einen p-Wert, der methodisch korrekt aussieht und trotzdem falsch ist.
+
+Zu beachten ist die Voraussetzung an die erwarteten Häufigkeiten: sind sie zu klein, ist die Näherung durch die Chi-Quadrat-Verteilung unzuverlässig. Übliche Auswege sind das Zusammenfassen dünn besetzter Kategorien oder ein exaktes Verfahren. Und weil ein signifikantes Ergebnis nur sagt, dass es irgendwo eine Abweichung gibt, lohnt der Blick auf die standardisierten Residuen — sie zeigen, welche Zellen den Ausschlag geben.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# Anpassungstest: erwartete Anteile vorgegeben
+beob <- c(38, 52, 60, 50)
+test <- chisq.test(beob, p = c(0.2, 0.25, 0.3, 0.25))
+test
+test$expected
+
+# Unabhaengigkeitstest in der Kreuztabelle
+tab <- table(df$kundengruppe, df$kategorie)
+u <- chisq.test(tab)
+u
+round(u$stdres, 2)        # welche Zellen tragen bei
+```
+
+## Python
+
+```python
+import pandas as pd
+from scipy import stats
+
+beob = [38, 52, 60, 50]
+erwartet = [sum(beob) * p for p in (0.2, 0.25, 0.3, 0.25)]
+stats.chisquare(f_obs=beob, f_exp=erwartet)
+
+tab = pd.crosstab(df["kundengruppe"], df["kategorie"])
+chi2, p, dof, erw = stats.chi2_contingency(tab)
+(tab - erw) / erw**0.5     # Pearson-Residuen
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Ab welcher Grenze für erwartete Häufigkeiten soll ich Kategorien zusammenfassen, und wie begründe ich diese Zusammenfassung nachvollziehbar?
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu kategorialen Daten](https://www.openintro.org/book/os/)
+- [Dokumentation zu `chisq.test` in R](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/chisq.test.html)
+
+::: {.placeholder-notice}
+Die Aufgabenstellung zum Chi-Quadrat-Anpassungstest stammt aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

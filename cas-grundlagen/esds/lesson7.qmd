@@ -1,0 +1,74 @@
+---
+title: "L7 – Kombinatorik & Wahrscheinlichkeit"
+description: "Abzählverfahren sowie der Laplacesche, statistische und axiomatische Wahrscheinlichkeitsbegriff."
+categories: ["Wahrscheinlichkeit", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Auswahl mit und ohne Zurücklegen, mit und ohne Anordnung
+- Permutation, Variation, Kombination
+- Laplace-Wahrscheinlichkeit als Abzählen
+- Statistischer Wahrscheinlichkeitsbegriff über [relative Häufigkeiten](lesson3.qmd)
+- Axiomatischer Zugang nach Kolmogorow
+- Additionssatz und Gegenereignis
+
+## Meine Zusammenfassung
+
+Die Kombinatorik beantwortet die Frage, wie viele Ergebnisse ein Zufallsvorgang haben kann — und weil die Laplace-Wahrscheinlichkeit nichts anderes ist als der Quotient aus günstigen und möglichen Fällen, ist sauberes Abzählen die Voraussetzung für alles Weitere. Der Schlüssel liegt in zwei Fragen, die vor jeder Formel zu beantworten sind: Wird ein gezogenes Element zurückgelegt? Und spielt die Reihenfolge eine Rolle? Aus den vier Kombinationen dieser Antworten ergeben sich die Standardfälle.
+
+Beim Wahrscheinlichkeitsbegriff selbst gibt es drei Zugänge, die einander nicht widersprechen, sondern verschiedene Fragen beantworten. Der Laplacesche Zugang setzt gleich wahrscheinliche Elementarereignisse voraus und rechnet dann rein kombinatorisch — er passt zu Würfel und Karten, versagt aber, sobald diese Symmetrie fehlt. Der statistische Zugang bestimmt Wahrscheinlichkeit als Grenzwert relativer Häufigkeiten bei vielen Wiederholungen und begründet, warum sich empirische Anteile überhaupt als Wahrscheinlichkeiten lesen lassen. Der axiomatische Zugang legt schliesslich nur noch Rechenregeln fest — Nichtnegativität, Gesamtwahrscheinlichkeit eins, Additivität disjunkter Ereignisse — und ist deshalb der allgemeinste.
+
+Praktisch nützlich sind vor allem zwei Konsequenzen. Erstens der Additionssatz: bei nicht disjunkten Ereignissen muss der Überschneidungsteil abgezogen werden, sonst wird er doppelt gezählt. Zweitens der Weg über das Gegenereignis — Aufgaben mit "mindestens ein" lassen sich fast immer leichter über "keiner" rechnen.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# Anzahl Moeglichkeiten
+factorial(5)            # Permutationen von 5 Elementen
+choose(49, 6)           # ohne Zurueckl., ohne Anordnung
+6^3                     # mit Zurueckl., mit Anordnung
+
+# Laplace: mindestens eine Sechs bei 3 Wuerfen
+1 - (5/6)^3
+
+# Statistischer Zugang: Simulation
+set.seed(42)
+wuerfe <- matrix(sample(1:6, 3 * 1e5, replace = TRUE), ncol = 3)
+mean(apply(wuerfe, 1, function(z) any(z == 6)))
+```
+
+## Python
+
+```python
+import math
+import numpy as np
+
+math.factorial(5)
+math.comb(49, 6)
+6**3
+
+1 - (5/6)**3
+
+rng = np.random.default_rng(42)
+wuerfe = rng.integers(1, 7, size=(100_000, 3))
+(wuerfe == 6).any(axis=1).mean()
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Bei welchen Aufgabentypen führt der Weg über das Gegenereignis nicht zum Ziel? Mir fehlt ein Gegenbeispiel, an dem ich die Grenze sehe.
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur Wahrscheinlichkeit](https://www.openintro.org/book/os/)
+
+::: {.placeholder-notice}
+Die Kursfolien zu Kombinatorik und Wahrscheinlichkeitsrechnung liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

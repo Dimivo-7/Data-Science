@@ -1,0 +1,76 @@
+---
+title: "L1 – R & RStudio – Grundlagen"
+description: "Vektoren, Data Frames, Projekte und reproduzierbare Berichte mit R Markdown und Quarto."
+categories: ["R", "Programmiergrundlagen", "Reproduzierbarkeit", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Vektor als Grundtyp, Recycling
+- Faktoren für kategoriale Merkmale
+- Matrix, Liste, Data Frame
+- Projekte und Arbeitsverzeichnis in RStudio
+- R Markdown und Quarto als Berichtsformat
+
+## Meine Zusammenfassung
+
+In R ist der Vektor nicht ein Spezialfall, sondern der Normalfall: auch eine einzelne Zahl ist ein Vektor der Länge eins. Daraus folgt, dass fast jede Funktion elementweise auf ganze Vektoren wirkt und explizite Schleifen selten nötig sind. Werden zwei Vektoren unterschiedlicher Länge verrechnet, wird der kürzere wiederholt — das ist bequem, aber auch die Ursache stiller Fehler, wenn die Längen unbeabsichtigt nicht passen.
+
+Ein Vektor hat genau einen Typ. Mischt man Zahlen und Text, wird stillschweigend zum allgemeineren Typ vereinheitlicht. Wer statt Zahlen plötzlich Zeichenketten in einer Spalte hat, findet die Ursache meist hier. Für kategoriale Merkmale gibt es den Faktor: er speichert intern Codes und führt die möglichen Ausprägungen als Attribut mit — wichtig, weil davon abhängt, welche Stufen in Modellen und Grafiken erscheinen, auch wenn sie in den Daten gar nicht vorkommen.
+
+Der Data Frame ist die Arbeitsstruktur für Daten: eine Liste gleich langer Spalten, die je eigenen Typ haben dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale.
+
+Organisatorisch halte ich mich an zwei Regeln, die viel Ärger ersparen. Erstens: pro Auswertung ein RStudio-Projekt, damit das Arbeitsverzeichnis feststeht und relative Pfade funktionieren. Zweitens: keine Rechenergebnisse im Workspace konservieren, sondern das Skript so schreiben, dass es von leerer Umgebung aus durchläuft. Quarto und R Markdown machen daraus einen Bericht, in dem Text, Code und Ausgabe zusammen entstehen — die Zahl im Fliesstext kann dann nicht mehr veralten.
+
+::: {.note-box}
+Nützliche Kürzel in RStudio: neuer Codechunk, Chunk ausführen, Dokument rendern. Wer sie kennt, arbeitet spürbar flüssiger als über die Menüs.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+werte <- c(3, 1, 4, 1, 5)
+mean(werte)
+werte * 2                      # elementweise, ohne Schleife
+
+gruppe <- factor(c("A", "B", "A"), levels = c("A", "B", "C"))
+table(gruppe)                  # Stufe C erscheint mit 0
+
+df <- data.frame(id = 1:3, wert = c(2.5, 3.1, 4.0), gruppe = gruppe)
+str(df)
+summary(df)
+```
+
+## Python
+
+```python
+import pandas as pd
+
+werte = pd.Series([3, 1, 4, 1, 5])
+werte.mean()
+werte * 2                       # ebenfalls vektorisiert
+
+gruppe = pd.Categorical(["A", "B", "A"], categories=["A", "B", "C"])
+df = pd.DataFrame({"id": [1, 2, 3], "wert": [2.5, 3.1, 4.0], "gruppe": gruppe})
+df.info()
+df.describe()
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wann lohnt sich ein Faktor gegenüber einer Zeichenkette wirklich — nur wegen der Stufenreihenfolge in Modellen und Grafiken?
+:::
+
+## Verlinkte Ressourcen
+
+- [Quarto-Dokumentation](https://quarto.org/docs/guide/)
+- [R for Data Science, 2. Auflage](https://r4ds.hadley.nz/)
+
+::: {.placeholder-notice}
+Die Handouts und Tutorials zur ersten Präsenzveranstaltung liegen im Moodle-Kurs des Moduls; die Kurs-URL trage ich nach.
+:::

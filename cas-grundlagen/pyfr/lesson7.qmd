@@ -1,0 +1,77 @@
+---
+title: "L7 – Pandas"
+description: "Series und DataFrame, Auswahl, Gruppierung, Verknüpfung und Umformen von Tabellen."
+categories: ["Python", "pandas", "NumPy", "R", "tidyverse"]
+---
+
+## Kernideen aus dem Kurs
+
+- `Series` und `DataFrame`, die Rolle des Index
+- Auswahl mit `loc` und `iloc`
+- Fehlende Werte: `NaN`, `dropna`, `fillna`
+- `groupby` nach dem Muster split–apply–combine
+- `merge` und `concat`, langes und breites Format
+
+## Meine Zusammenfassung
+
+Pandas legt über [NumPy](lesson6.qmd) eine beschriftete Ebene. Eine `Series` ist ein eindimensionaler Vektor mit Index, ein `DataFrame` eine Tabelle aus solchen Spalten mit gemeinsamem Zeilenindex. Dieser Index ist mehr als eine Zeilennummer — er wird bei Rechenoperationen ausgerichtet, sodass zwei Series nach Schlüssel und nicht nach Position verrechnet werden. Wer das übersieht, wundert sich über unerwartete `NaN`.
+
+Bei der Auswahl trenne ich konsequent: `loc` arbeitet mit Beschriftungen, `iloc` mit Positionen. Der Mischbetrieb über Kettenindizierung ist die häufigste Ursache für Warnungen beim Schreiben, weil dabei unklar bleibt, ob auf eine Kopie oder das Original zugegriffen wird.
+
+Fehlende Werte sind in Pandas ein eigenes Thema, weil sie sich je nach Spaltentyp unterschiedlich verhalten. Vor jeder Aggregation lohnt der Blick darauf, wie viele Werte fehlen und ob sie zufällig fehlen — Löschen und Ersetzen sind beides inhaltliche Entscheidungen, keine technischen.
+
+`groupby` ist das Herzstück: Daten nach einem Schlüssel aufteilen, je Gruppe eine Funktion anwenden, die Ergebnisse wieder zusammensetzen. Dazu kommen die beiden Umformungsrichtungen — Tabellen verknüpfen (`merge` entspricht dem [SQL](lesson12.qmd)-Join) und zwischen langem und breitem Format wechseln. Für die Analyse ist meist das lange Format richtig, für die Darstellung das breite.
+
+::: {.note-box}
+Die Denkweise entspricht weitgehend dplyr: `query` ist `filter`, `assign` ist `mutate`, `groupby().agg()` ist `group_by()` mit `summarise()`. Wer eines kann, überträgt das andere schnell.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+library(dplyr)
+
+df |>
+  filter(!is.na(preis)) |>
+  mutate(preis_netto = preis / 1.081) |>
+  group_by(kategorie) |>
+  summarise(n = n(), mittel = mean(preis_netto)) |>
+  arrange(desc(mittel))
+
+# Join
+left_join(bestellungen, kunden, by = "kunden_id")
+```
+
+## Python
+
+```python
+import pandas as pd
+
+(df.dropna(subset=["preis"])
+   .assign(preis_netto=lambda d: d["preis"] / 1.081)
+   .groupby("kategorie")
+   .agg(n=("preis_netto", "size"), mittel=("preis_netto", "mean"))
+   .sort_values("mittel", ascending=False))
+
+# Join
+bestellungen.merge(kunden, on="kunden_id", how="left")
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wann ist ein aussagekräftiger Index in Pandas ein echter Vorteil und wann bloss eine Fehlerquelle gegenüber einer gewöhnlichen Spalte?
+:::
+
+## Verlinkte Ressourcen
+
+- [Pandas-Benutzerhandbuch](https://pandas.pydata.org/docs/user_guide/index.html)
+- [dplyr-Referenz](https://dplyr.tidyverse.org/)
+
+::: {.placeholder-notice}
+Die Pandas-Übungen und der Anwendungsteil der Semesterarbeit stammen aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

@@ -1,0 +1,80 @@
+---
+title: "L11 – Korrelation & lineare Regression"
+description: "Zusammenhangsmasse, Kleinste-Quadrate-Schätzung, Bestimmtheitsmass und Residuendiagnostik."
+categories: ["Korrelation", "Regression", "Modelldiagnostik", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Streudiagramm als erster Schritt
+- Kovarianz und Korrelation nach Pearson
+- Rangkorrelation nach Spearman
+- Kleinste-Quadrate-Gerade und Interpretation der Koeffizienten
+- Bestimmtheitsmass
+- Residuenanalyse
+- Korrelation ist keine Kausalität
+
+## Meine Zusammenfassung
+
+Vor jeder Kennzahl steht das Streudiagramm. Der Korrelationskoeffizient nach Pearson misst ausschliesslich den linearen Zusammenhang, und ein deutlicher, aber gekrümmter Zusammenhang kann dabei einen Wert nahe null ergeben. Das Anscombe-Beispiel zeigt in aller Deutlichkeit, dass identische Kennzahlen zu völlig verschiedenen Punktwolken gehören können.
+
+Die Kovarianz beschreibt die gemeinsame Streuung zweier Merkmale, hängt aber an deren Einheiten. Die Korrelation normiert sie auf den Bereich zwischen minus eins und eins und wird dadurch vergleichbar. Sie ist empfindlich gegenüber [Ausreissern](lesson4.qmd) und setzt metrische Merkmale voraus; bei ordinalen Daten oder monotonen, aber nicht linearen Zusammenhängen ist die Rangkorrelation nach Spearman die richtige Wahl.
+
+Die lineare Einfachregression geht einen Schritt weiter und formuliert eine gerichtete Beziehung. Die Kleinste-Quadrate-Schätzung wählt die Gerade, welche die Summe der quadrierten senkrechten Abstände minimiert. Die Steigung liest sich als erwartete Änderung der Zielgrösse pro Einheit der erklärenden Grösse; der Achsenabschnitt ist nur dann inhaltlich deutbar, wenn der Wert null im Datenbereich vorkommt. Das Bestimmtheitsmass gibt den Anteil der erklärten Streuung an — es sagt etwas über die Enge des Zusammenhangs, aber nichts darüber, ob das Modell angemessen ist.
+
+Diese Frage beantwortet erst die Residuenanalyse. Die Residuen sollten ohne Muster um null streuen, mit gleichbleibender Streubreite über den Vorhersagebereich; ein Trichter deutet auf ungleiche Varianz, eine Krümmung auf einen fehlenden nichtlinearen Term. Und schliesslich bleibt der wichtigste Vorbehalt: ein statistischer Zusammenhang belegt keine Ursache. Eine dritte, nicht beobachtete Grösse kann beide Merkmale gemeinsam treiben.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+plot(verbrauch ~ laufzeit, data = df)
+
+cor(df$laufzeit, df$verbrauch)                       # Pearson
+cor(df$laufzeit, df$verbrauch, method = "spearman")  # Rangkorrelation
+
+modell <- lm(verbrauch ~ laufzeit, data = df)
+summary(modell)
+confint(modell)
+
+par(mfrow = c(2, 2))
+plot(modell)          # Residuendiagnostik
+```
+
+## Python
+
+```python
+import statsmodels.formula.api as smf
+from scipy import stats
+
+stats.pearsonr(df["laufzeit"], df["verbrauch"])
+stats.spearmanr(df["laufzeit"], df["verbrauch"])
+
+modell = smf.ols("verbrauch ~ laufzeit", data=df).fit()
+print(modell.summary())
+modell.conf_int()
+
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+ax.scatter(modell.fittedvalues, modell.resid)
+ax.axhline(0)
+ax.set_xlabel("Vorhersage"); ax.set_ylabel("Residuum")
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Ab welchem Bestimmtheitsmass ist ein Modell in einem technischen Kontext brauchbar? Der Wert allein scheint mir kein tragfähiges Kriterium zu sein.
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur linearen Regression](https://www.openintro.org/book/os/)
+- [Dokumentation zu `lm` in R](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/lm.html)
+
+::: {.placeholder-notice}
+Die Aufgabenstellung zur linearen Einfachregression stammt aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

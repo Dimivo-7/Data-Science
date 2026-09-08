@@ -1,0 +1,81 @@
+---
+title: "L6 – Explorative Datenanalyse"
+description: "Haltung und Vorgehen der EDA: Fragen an die Daten stellen, prüfen und weiterfragen."
+categories: ["EDA", "Deskriptive Statistik", "Visualisierung", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- EDA als Frage-Antwort-Schleife, nicht als Checkliste
+- Erwartung formulieren, bevor die Grafik entsteht
+- Variation innerhalb und Kovariation zwischen Merkmalen
+- Plausibilitätsprüfungen und fehlende Werte
+- Viele schnelle Grafiken statt weniger schöner
+
+## Meine Zusammenfassung
+
+Die explorative Datenanalyse ist weniger ein Verfahren als eine Arbeitsweise: eine Frage an die Daten stellen, sie mit einer Kennzahl oder Grafik beantworten, und aus der Antwort die nächste Frage ableiten. Die Grafiken dieser Phase sind Arbeitsmittel und dürfen hässlich sein — Sorgfalt in der Gestaltung kommt später, wenn feststeht, was gezeigt werden soll.
+
+Der Schritt, den ich mir angewöhnen will, ist die Erwartung vor dem Blick. Wer vorab notiert, welchen Wertebereich und welche Form er vermutet, merkt eine Abweichung sofort; wer erst die Grafik ansieht, findet für fast jedes Bild eine nachträgliche Erklärung.
+
+Inhaltlich gliedert sich die Exploration in zwei Fragen. Erstens die Variation eines einzelnen Merkmals: Wertebereich, Form der Verteilung, Gipfel, ungewöhnliche Werte. Zweitens die Kovariation zwischen Merkmalen — je nach Kombination der [Skalenniveaus](lesson3.qmd) mit [Boxplots](lesson4.qmd) über Gruppen, Streudiagrammen oder Kreuztabellen.
+
+Ein eigener Arbeitsschritt sind die Plausibilitätsprüfungen. Negative Mengen, Datumsangaben in der Zukunft, unmögliche Kombinationen, gehäufte Rundwerte: solche Auffälligkeiten sind meistens keine interessanten Entdeckungen, sondern Hinweise auf die Entstehung der Daten. Ebenso gehören fehlende Werte untersucht statt weggeworfen — die Frage, ob sie systematisch fehlen, ist inhaltlich oft aufschlussreicher als die vollständigen Fälle.
+
+::: {.note-box}
+Was in dieser Phase auffällt, ist eine Hypothese, kein Ergebnis. Ein an denselben Daten entdeckter Zusammenhang lässt sich an denselben Daten nicht bestätigen.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+library(tidyverse)
+
+glimpse(df)
+summary(df)
+
+# fehlende Werte je Spalte
+df |> summarise(across(everything(), ~ sum(is.na(.x))))
+
+# Variation
+ggplot(df, aes(verbrauch)) + geom_histogram(bins = 30)
+
+# Kovariation
+ggplot(df, aes(typ, verbrauch)) + geom_boxplot()
+
+# Plausibilitaet
+df |> filter(verbrauch < 0 | laufzeit > 24)
+```
+
+## Python
+
+```python
+df.info()
+df.describe(include="all")
+
+df.isna().sum()
+
+df["verbrauch"].plot.hist(bins=30)
+df.boxplot(column="verbrauch", by="typ")
+
+df.query("verbrauch < 0 or laufzeit > 24")
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie halte ich fest, welche Fragen ich in der Exploration schon gestellt habe, damit der spätere Bericht nicht wie eine nachträgliche Erzählung wirkt?
+:::
+
+## Verlinkte Ressourcen
+
+- [Exploratory Data Analysis with R (Peng)](https://bookdown.org/rdpeng/exdata/)
+- [Kapitel zur explorativen Datenanalyse in R for Data Science](https://r4ds.hadley.nz/eda)
+
+::: {.placeholder-notice}
+Die Handouts zur explorativen Datenanalyse liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

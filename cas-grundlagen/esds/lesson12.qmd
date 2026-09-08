@@ -1,0 +1,75 @@
+---
+title: "L12 – Schätzen & Konfidenzintervalle"
+description: "Punktschätzer, Standardfehler und Intervallschätzung für Erwartungswert und Anteilswert."
+categories: ["Schätzen", "Verteilungen", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Grundgesamtheit gegenüber Stichprobe
+- Punktschätzer, Erwartungstreue
+- Stichprobenverteilung und Standardfehler
+- Konfidenzintervall für den [Erwartungswert](lesson9.qmd)
+- t-Verteilung bei unbekannter [Varianz](lesson4.qmd)
+- Konfidenzintervall für einen Anteilswert
+- Einfluss von Stichprobengrösse und Niveau
+
+## Meine Zusammenfassung
+
+Die schliessende Statistik beginnt mit der Einsicht, dass eine Kennzahl aus einer Stichprobe selbst zufällig ist: eine zweite Stichprobe hätte einen anderen Wert ergeben. Die Verteilung dieser möglichen Werte ist die Stichprobenverteilung, und ihre Streuung heisst Standardfehler. Der Unterschied zur Standardabweichung ist zentral — die Standardabweichung beschreibt die Streuung der Einzelwerte, der Standardfehler die Streuung der Schätzung. Letzterer sinkt mit der Wurzel des Stichprobenumfangs, weshalb eine Vervierfachung der Stichprobe die Genauigkeit nur verdoppelt.
+
+Ein Punktschätzer liefert einen einzelnen Wert; erwartungstreu heisst, dass er im Mittel über viele Stichproben den wahren Wert trifft. Weil er allein nichts über seine Genauigkeit sagt, ist das Konfidenzintervall die ehrlichere Angabe: eine Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt.
+
+Genau diese Formulierung ist die häufigste Fehlerquelle. Die Aussage bezieht sich auf das Verfahren, nicht auf das konkrete Intervall — der wahre Parameter ist fest, das Intervall ist zufällig. Es ist deshalb falsch zu sagen, der Parameter liege mit fünfundneunzig Prozent Wahrscheinlichkeit in diesem einen berechneten Bereich.
+
+Praktisch wird bei unbekannter Varianz die t-Verteilung verwendet: sie hat schwerere Ränder als die [Normalverteilung](lesson10.qmd) und liefert dadurch etwas breitere, ehrlichere Intervalle, wobei der Unterschied mit wachsender Stichprobe verschwindet. Für Anteilswerte gilt dieselbe Logik mit dem Standardfehler eines Anteils; die einfache Näherung wird bei sehr kleinen oder sehr grossen Anteilen unbrauchbar. Breite entsteht immer aus drei Grössen: Streuung, Stichprobenumfang und gewähltes Niveau — ein höheres Niveau kauft Sicherheit mit Unschärfe.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+x <- c(12.1, 11.8, 12.6, 12.0, 11.5, 12.3, 12.9)
+
+mean(x)
+se <- sd(x) / sqrt(length(x))       # Standardfehler
+se
+
+t.test(x, conf.level = 0.95)$conf.int
+
+# Anteilswert: 42 Treffer bei 200 Versuchen
+prop.test(42, 200, conf.level = 0.95)$conf.int
+binom.test(42, 200)$conf.int        # exakt
+```
+
+## Python
+
+```python
+import numpy as np
+from scipy import stats
+from statsmodels.stats.proportion import proportion_confint
+
+x = np.array([12.1, 11.8, 12.6, 12.0, 11.5, 12.3, 12.9])
+
+se = x.std(ddof=1) / np.sqrt(len(x))
+
+stats.t.interval(0.95, df=len(x) - 1, loc=x.mean(), scale=se)
+
+proportion_confint(42, 200, alpha=0.05, method="wilson")
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Welche Methode für das Konfidenzintervall eines Anteils soll ich standardmässig verwenden, wenn die einfache Näherung an ihre Grenzen kommt?
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur Inferenz](https://www.openintro.org/book/os/)
+
+::: {.placeholder-notice}
+Die Kursfolien zu Punktschätzung und Konfidenzintervallen liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

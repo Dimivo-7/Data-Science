@@ -1,0 +1,73 @@
+---
+title: "L9 – Diskrete Verteilungen"
+description: "Zufallsvariablen, Erwartungswert und Varianz sowie Gleich-, Binomial- und Poissonverteilung."
+categories: ["Wahrscheinlichkeit", "Verteilungen", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Zufallsvariable als Abbildung des Ergebnisraums
+- Wahrscheinlichkeitsfunktion und [Verteilungsfunktion](lesson3.qmd)
+- Erwartungswert und [Varianz](lesson4.qmd)
+- Diskrete Gleichverteilung
+- Binomialverteilung
+- Poissonverteilung als Verteilung seltener Ereignisse
+
+## Meine Zusammenfassung
+
+Eine Zufallsvariable ordnet jedem Ergebnis eines Zufallsvorgangs eine Zahl zu. Damit wird aus einem Ereignisraum, über den man reden muss, etwas, mit dem man rechnen kann. Bei diskreten Zufallsvariablen gibt die Wahrscheinlichkeitsfunktion jedem einzelnen Wert seine Wahrscheinlichkeit, die Verteilungsfunktion summiert sie bis zu einer Schranke auf.
+
+Der Erwartungswert ist das mit Wahrscheinlichkeiten gewichtete Mittel der möglichen Werte — der Wert, gegen den das arithmetische Mittel bei sehr vielen Wiederholungen strebt. Wichtig ist die begriffliche Trennung zur beschreibenden Statistik: Erwartungswert und Varianz sind Eigenschaften des Modells, Mittelwert und empirische Varianz sind aus Daten berechnet. Sie fallen nicht zusammen, sondern das eine schätzt das andere.
+
+Die Binomialverteilung beschreibt die Anzahl der Erfolge in einer festen Zahl unabhängiger Versuche mit jeweils gleicher Erfolgswahrscheinlichkeit. Ihre drei Voraussetzungen — feste Versuchszahl, [Unabhängigkeit](lesson8.qmd), konstante Wahrscheinlichkeit — sind zugleich die Stellen, an denen sie in der Praxis scheitert; Ziehen ohne Zurücklegen aus einer kleinen [Grundgesamtheit](lesson12.qmd) verletzt die zweite.
+
+Die Poissonverteilung zählt Ereignisse in einem festen Intervall, wenn diese unabhängig und mit konstanter Rate auftreten. Sie hat nur einen Parameter, und Erwartungswert und Varianz sind beide gleich diesem Parameter. Das ist ein brauchbarer Prüfstein: liegt die beobachtete Streuung deutlich über dem Mittel, spricht das gegen das Modell. Zugleich lässt sich die Binomialverteilung bei vielen Versuchen mit kleiner Erfolgswahrscheinlichkeit durch die Poissonverteilung annähern.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# Binomial: 10 Versuche, p = 0.3
+dbinom(3, size = 10, prob = 0.3)      # genau 3 Erfolge
+pbinom(3, size = 10, prob = 0.3)      # hoechstens 3
+qbinom(0.95, size = 10, prob = 0.3)
+rbinom(5, size = 10, prob = 0.3)
+
+# Poisson mit Rate 2.5
+dpois(0:5, lambda = 2.5)
+1 - ppois(4, lambda = 2.5)            # mehr als 4 Ereignisse
+
+barplot(dbinom(0:10, 10, 0.3), names.arg = 0:10)
+```
+
+## Python
+
+```python
+from scipy import stats
+
+stats.binom.pmf(3, n=10, p=0.3)
+stats.binom.cdf(3, n=10, p=0.3)
+stats.binom.ppf(0.95, n=10, p=0.3)
+stats.binom.rvs(n=10, p=0.3, size=5, random_state=42)
+
+stats.poisson.pmf(range(6), mu=2.5)
+stats.poisson.sf(4, mu=2.5)           # P(X > 4)
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie prüfe ich in der Praxis, ob die Unabhängigkeitsannahme der Binomialverteilung haltbar ist, wenn ich die Datenentstehung nur teilweise kenne?
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu Verteilungen](https://www.openintro.org/book/os/)
+- [Verteilungen in der R-Dokumentation](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/Distributions.html)
+
+::: {.placeholder-notice}
+Die Aufgabenstellung zu Wahrscheinlichkeitsverteilungen stammt aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

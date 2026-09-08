@@ -1,0 +1,76 @@
+---
+title: "L8 – Matplotlib"
+description: "Figure und Axes, das objektorientierte Interface und der Weg zur publikationsfähigen Grafik."
+categories: ["Python", "matplotlib", "Visualisierung", "R", "ggplot2"]
+---
+
+## Kernideen aus dem Kurs
+
+- `Figure` als Leinwand, `Axes` als Koordinatensystem
+- Objektorientiertes Interface gegenüber `pyplot`
+- Grundtypen: Linie, Streuung, Balken, [Histogramm](../esds/lesson3.qmd)
+- Mehrere Teilgrafiken mit `subplots`
+- Beschriftung, Achsen, Legende, Export
+
+## Meine Zusammenfassung
+
+Matplotlib verwirrt anfangs, weil es zwei Bedienweisen gibt. Der `pyplot`-Weg arbeitet auf einer impliziten "aktuellen" Grafik und ist für schnelle Zwischenblicke bequem. Der objektorientierte Weg erzeugt Figure und Axes ausdrücklich und ruft alles darauf auf. Ich halte mich an den zweiten, sobald mehr als ein Diagramm im Spiel ist — nur so bleibt eindeutig, in welches Koordinatensystem gerade gezeichnet wird.
+
+Die Begriffe sind dabei zentral: die `Figure` ist das ganze Bild samt Grösse und Auflösung, ein `Axes` ist ein einzelnes Koordinatensystem darin. Eine Figure kann mehrere Axes enthalten, und `subplots` liefert beides in einem Schritt.
+
+Konzeptionell ist Matplotlib deutlich tiefer angesiedelt als [ggplot2](../esds/lesson5.qmd). Es gibt keine Grammatik, die aus Daten und Zuordnungen eine Grafik ableitet; jedes Element wird einzeln angeordnet. Das bedeutet mehr Zeilen für den Standardfall, aber volle Kontrolle, wenn eine Abbildung genau so aussehen muss wie verlangt.
+
+Der letzte Schritt entscheidet über die Brauchbarkeit: Achsenbeschriftung mit Einheit, ein Titel, der die Aussage benennt, eine Legende nur dort, wo sie gebraucht wird. Für den Export gilt Vektorformat, wo es geht, und eine ausreichend hohe Auflösung, wo es Raster sein muss.
+
+::: {.note-box}
+[Pandas](lesson7.qmd) bringt eine eigene `plot`-Methode mit, die intern Matplotlib nutzt. Für den schnellen Blick reicht sie; für die endgültige Abbildung nehme ich das Axes-Objekt in die Hand.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+library(ggplot2)
+
+ggplot(df, aes(x = laufzeit, y = verbrauch, colour = typ)) +
+  geom_point(alpha = 0.6) +
+  labs(x = "Laufzeit (h)", y = "Verbrauch (l)", colour = "Typ",
+       title = "Verbrauch steigt mit der Laufzeit") +
+  theme_minimal()
+
+ggsave("verbrauch.pdf", width = 6, height = 4)
+```
+
+## Python
+
+```python
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(6, 4))
+for typ, teil in df.groupby("typ"):
+    ax.scatter(teil["laufzeit"], teil["verbrauch"], alpha=0.6, label=typ)
+
+ax.set_xlabel("Laufzeit (h)")
+ax.set_ylabel("Verbrauch (l)")
+ax.set_title("Verbrauch steigt mit der Laufzeit")
+ax.legend(title="Typ")
+fig.savefig("verbrauch.pdf", bbox_inches="tight")
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Lohnt es sich, für wiederkehrende Abbildungen einen eigenen Matplotlib-Style zu definieren, statt jede Grafik einzeln zu formatieren?
+:::
+
+## Verlinkte Ressourcen
+
+- [Matplotlib-Dokumentation](https://matplotlib.org/stable/)
+- [ggplot2-Referenz](https://ggplot2.tidyverse.org/)
+
+::: {.placeholder-notice}
+Das Matplotlib-Übungsnotebook stammt aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

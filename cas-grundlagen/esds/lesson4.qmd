@@ -1,0 +1,77 @@
+---
+title: "L4 – Lage- und Streuungsmasse"
+description: "Mittelwert, Median, Quantile, Varianz und Boxplot samt ihrer Robustheit gegenüber Ausreissern."
+categories: ["Deskriptive Statistik", "R", "Python", "Visualisierung"]
+---
+
+## Kernideen aus dem Kurs
+
+- Lagemasse: Modus, Median, arithmetisches Mittel
+- Quantile und Quartile
+- Streuung: Spannweite, Interquartilsabstand, Varianz, Standardabweichung
+- Variationskoeffizient
+- Boxplot und die Ausreisserregel
+- Schiefe und ihre Wirkung auf Mittelwert und Median
+
+## Meine Zusammenfassung
+
+Lage und Streuung beantworten zwei verschiedene Fragen: wo liegt die Verteilung, und wie weit ist sie auseinandergezogen. Beide Angaben gehören zusammen — ein Mittelwert ohne Streuungsmass sagt fast nichts.
+
+Bei den Lagemassen entscheidet einerseits das [Skalenniveau](lesson3.qmd), andererseits die Robustheit. Der Modus ist für nominale Daten das einzig Sinnvolle, der Median verlangt eine Ordnung, das arithmetische Mittel setzt metrische Daten voraus. Der entscheidende praktische Unterschied ist die Empfindlichkeit gegenüber Ausreissern: ein einziger extremer Wert verschiebt das Mittel beliebig weit, während der Median davon fast unberührt bleibt. Bei schiefen Verteilungen — Einkommen, Wartezeiten, Schadenshöhen — liegt das Mittel deshalb regelmässig oberhalb des Medians, und der Median beschreibt den typischen Fall besser.
+
+Bei der Streuung gilt dieselbe Aufteilung. Die Spannweite hängt allein von den beiden Extremwerten ab und ist entsprechend instabil. Der Interquartilsabstand umfasst die mittleren fünfzig Prozent und ist robust. Varianz und Standardabweichung nutzen alle Werte, gewichten Abweichungen aber quadratisch und reagieren deshalb ebenfalls stark auf Ausreisser; die Standardabweichung hat gegenüber der Varianz den Vorteil, in der Einheit der Daten zu stehen. Der Variationskoeffizient setzt sie ins Verhältnis zum Mittelwert und macht damit Streuungen unterschiedlicher Grössenordnung vergleichbar — sinnvoll nur bei positiven Verhältnisskalen.
+
+Der Boxplot bündelt diese Information: Box vom unteren zum oberen Quartil, Strich am Median, Antennen bis zum letzten Wert innerhalb des Anderthalbfachen des Interquartilsabstands, alles darüber hinaus als Punkt. Er ist damit das Werkzeug für den Gruppenvergleich, verdeckt aber Mehrgipfligkeit — dafür braucht es zusätzlich ein Histogramm.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+x <- c(12, 14, 15, 15, 18, 21, 47)
+
+mean(x); median(x)
+quantile(x, c(0.25, 0.5, 0.75))
+IQR(x)
+sd(x); var(x)
+sd(x) / mean(x)                    # Variationskoeffizient
+
+boxplot(verbrauch ~ typ, data = df)
+
+# Wirkung des Ausreissers
+mean(x[x < 40]); median(x[x < 40])
+```
+
+## Python
+
+```python
+import pandas as pd
+
+x = pd.Series([12, 14, 15, 15, 18, 21, 47])
+
+x.mean(), x.median()
+x.quantile([0.25, 0.5, 0.75])
+x.quantile(0.75) - x.quantile(0.25)          # IQR
+x.std(), x.var()
+x.std() / x.mean()                            # Variationskoeffizient
+
+df.boxplot(column="verbrauch", by="typ")
+
+x[x < 40].mean(), x[x < 40].median()
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wann darf ein Ausreisser ausgeschlossen werden? Mir fehlt eine klare Regel, die über "sieht falsch aus" hinausgeht.
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
+
+::: {.placeholder-notice}
+Die Kursfolien zu Lage- und Streuungsparametern liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

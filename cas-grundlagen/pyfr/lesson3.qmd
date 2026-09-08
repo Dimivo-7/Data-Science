@@ -1,0 +1,80 @@
+---
+title: "L3 – Objektorientierung"
+description: "Klassen, Instanzen, Vererbung und die Frage, wann objektorientierter Code sich lohnt."
+categories: ["Python", "Programmiergrundlagen", "R"]
+---
+
+## Kernideen aus dem Kurs
+
+- Klasse als Bauplan, Instanz als Exemplar
+- `__init__`, Instanz- und Klassenattribute
+- Methoden und die Rolle von `self`
+- Vererbung und Überschreiben
+- Dunder-Methoden wie `__str__` und `__len__`
+
+## Meine Zusammenfassung
+
+Eine Klasse bündelt Daten und die Operationen darauf. Statt einen Datensatz und ein Dutzend Funktionen, die ihn erwarten, nebeneinanderzulegen, gehören beide zusammen in ein Objekt. `__init__` legt beim Erzeugen die Instanzattribute an; `self` ist der Verweis auf das Exemplar, auf dem eine Methode gerade arbeitet, und steht deshalb als erster Parameter jeder Methode.
+
+Der Unterschied zwischen Instanz- und Klassenattribut wird gerne übersehen: ein Klassenattribut existiert genau einmal für alle Exemplare, ein Instanzattribut je Exemplar. Für Konstanten ist das erste richtig, für alles Zustandsbehaftete das zweite.
+
+Vererbung erlaubt es, eine Klasse als Spezialisierung einer anderen zu schreiben und nur die Unterschiede zu formulieren. Sie ist mächtig, aber schnell überstrapaziert — eine tiefe Hierarchie ist meist schwerer zu verstehen als eine flache Struktur, in der Objekte einander enthalten statt beerben.
+
+Die Dunder-Methoden sind der Weg, eigene Klassen in die Sprache einzupassen: wer `__str__` definiert, bestimmt, was `print` ausgibt; wer `__len__` definiert, macht `len()` anwendbar. So verhält sich ein eigener Typ wie ein eingebauter.
+
+Für die Datenarbeit ziehe ich daraus die Konsequenz, dass der Analyseteil meist funktional und tabellenorientiert bleibt. Objektorientiert wird es dort, wo etwas wiederverwendbar gekapselt werden soll — ein Datenzugriff, ein Modellwrapper, eine Stufe in einer Verarbeitungskette.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# S4-Klassen: Definition und Methode sind getrennt
+setClass("Messreihe",
+         representation(name = "character", werte = "numeric"))
+
+setGeneric("mittel", function(obj) standardGeneric("mittel"))
+setMethod("mittel", "Messreihe", function(obj) mean(obj@werte))
+
+m <- new("Messreihe", name = "Drossel", werte = c(2, 4, 6))
+mittel(m)
+```
+
+## Python
+
+```python
+class Messreihe:
+    einheit = "mm"                       # Klassenattribut, einmal fuer alle
+
+    def __init__(self, name, werte):
+        self.name = name                 # Instanzattribute, je Exemplar
+        self.werte = werte
+
+    def mittel(self):
+        return sum(self.werte) / len(self.werte)
+
+    def __len__(self):
+        return len(self.werte)
+
+    def __str__(self):
+        return f"{self.name}: {self.mittel():.2f} {self.einheit}"
+
+m = Messreihe("Drossel", [2, 4, 6])
+print(m, len(m))
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wo verläuft in einem Analyseprojekt die Grenze, ab der sich eine eigene Klasse gegenüber einem [Dictionary](lesson1.qmd) oder einem [DataFrame](lesson7.qmd) lohnt?
+:::
+
+## Verlinkte Ressourcen
+
+- [Klassen im Python-Tutorial](https://docs.python.org/3/tutorial/classes.html)
+
+::: {.placeholder-notice}
+Die OOP-Aufgaben und -Lösungen stammen aus dem Moodle-Kurs des Moduls; die Kurs-URL trage ich nach.
+:::

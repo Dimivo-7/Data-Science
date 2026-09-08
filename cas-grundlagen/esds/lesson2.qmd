@@ -1,0 +1,84 @@
+---
+title: "L2 – Data Wrangling mit dem Tidyverse"
+description: "Datenimport, tidy data und die dplyr-Verben als Grundlage jeder späteren Auswertung."
+categories: ["R", "tidyverse", "EDA", "Python", "pandas"]
+---
+
+## Kernideen aus dem Kurs
+
+- Tidy data: eine Zeile je Beobachtung, eine Spalte je Merkmal
+- Import mit readr, Typerkennung prüfen
+- dplyr-Verben: `filter`, `select`, `mutate`, `arrange`, `summarise`
+- Gruppieren mit `group_by`
+- Umformen mit `pivot_longer` und `pivot_wider`
+- Datum und Zeit mit lubridate
+
+## Meine Zusammenfassung
+
+Data Wrangling ist der Teil der Arbeit, der in der Zeitplanung immer unterschätzt wird. Der Ausgangspunkt ist das Prinzip der tidy data: jede Zeile eine Beobachtung, jede Spalte ein Merkmal, jede Tabelle eine Beobachtungseinheit. Liegt eine Tabelle in dieser Form vor, passen alle weiteren Werkzeuge ohne Umbau — liegt sie es nicht, kostet jeder Schritt Sonderbehandlung.
+
+Die dplyr-Verben decken den Alltag fast vollständig ab, weil jedes von ihnen genau eine Sache tut und einen [Data Frame](lesson1.qmd) zurückgibt. Dadurch lassen sie sich zu einer Pipeline aneinanderreihen, die von oben nach unten gelesen werden kann. Das ist der eigentliche Gewinn gegenüber verschachtelten Aufrufen: die Reihenfolge im Code entspricht der Reihenfolge im Kopf.
+
+Beim Import lohnt der zweite Blick auf die erkannten Spaltentypen. Ein Dezimalkomma, eine Tausendertrennung oder ein Platzhalter für fehlende Werte reichen, damit eine numerische Spalte als Text ankommt — und dann rechnet nichts mehr richtig. Ebenso wichtig ist, fehlende Werte bewusst zu behandeln statt sie durch stillschweigendes `na.rm` verschwinden zu lassen.
+
+Das Umformen zwischen langem und breitem Format ist der Schritt, den ich am häufigsten brauche. Auswertung und Grafik wollen in der Regel das lange Format, Berichtstabellen das breite. Datum und Zeit behandle ich separat, weil ein Datum als Text gespeichert weder sortierbar noch differenzierbar ist.
+
+::: {.note-box}
+Vor jeder Analyse dieselben drei Prüfungen: Zeilenzahl plausibel, Spaltentypen korrekt, fehlende Werte gezählt. Das findet die meisten Importfehler, bevor sie in ein Ergebnis einfliessen.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+library(tidyverse)
+
+roh <- read_csv2("messungen.csv")      # Semikolon und Dezimalkomma
+
+auswertung <- roh |>
+  filter(!is.na(verbrauch)) |>
+  mutate(datum = lubridate::dmy(datum),
+         monat = lubridate::floor_date(datum, "month")) |>
+  group_by(monat, typ) |>
+  summarise(n = n(), mittel = mean(verbrauch), .groups = "drop")
+
+auswertung |>
+  pivot_wider(names_from = typ, values_from = mittel)
+```
+
+## Python
+
+```python
+import pandas as pd
+
+roh = pd.read_csv("messungen.csv", sep=";", decimal=",")
+
+auswertung = (
+    roh.dropna(subset=["verbrauch"])
+       .assign(datum=lambda d: pd.to_datetime(d["datum"], format="%d.%m.%Y"),
+               monat=lambda d: d["datum"].dt.to_period("M").dt.to_timestamp())
+       .groupby(["monat", "typ"], as_index=False)
+       .agg(n=("verbrauch", "size"), mittel=("verbrauch", "mean"))
+)
+
+auswertung.pivot(index="monat", columns="typ", values="mittel")
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Ab wann sollte eine Aufbereitungspipeline aus dem Analysedokument in ein eigenes Skript wandern, damit der Bericht lesbar bleibt?
+:::
+
+## Verlinkte Ressourcen
+
+- [dplyr-Referenz](https://dplyr.tidyverse.org/)
+- [tidyr-Referenz zu Pivot-Operationen](https://tidyr.tidyverse.org/)
+- [lubridate-Referenz](https://lubridate.tidyverse.org/)
+
+::: {.placeholder-notice}
+Die Übungsdatensätze des Moduls liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

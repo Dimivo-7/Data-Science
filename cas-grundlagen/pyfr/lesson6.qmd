@@ -1,0 +1,77 @@
+---
+title: "L6 – NumPy & SciPy"
+description: "Arrays, Broadcasting und Vektorisierung als numerisches Fundament, ergänzt um SciPy."
+categories: ["Python", "NumPy", "Programmiergrundlagen", "R"]
+---
+
+## Kernideen aus dem Kurs
+
+- `ndarray`: homogener Typ, feste Form
+- Vektorisierung statt Schleifen
+- Broadcasting bei unterschiedlichen Formen
+- Slicing liefert Views, keine Kopien
+- SciPy für Statistik, Optimierung, Integration
+
+## Meine Zusammenfassung
+
+Ein NumPy-Array unterscheidet sich in zwei Punkten grundlegend von einer [Python-Liste](lesson1.qmd): alle Elemente haben denselben Typ, und die Daten liegen zusammenhängend im Speicher. Genau daraus entsteht der Geschwindigkeitsvorteil — Rechenoperationen laufen in kompiliertem Code über den ganzen Block, statt in Python elementweise durchlaufen zu werden. Der praktische Merksatz lautet deshalb: sobald ich eine `for`-Schleife über Zahlen schreibe, gibt es vermutlich eine vektorisierte Alternative.
+
+Broadcasting ist die Regel, nach der Arrays unterschiedlicher Form miteinander verrechnet werden. Vereinfacht: Dimensionen werden von hinten verglichen und passen, wenn sie gleich sind oder eine davon 1 ist; die Länge 1 wird dann virtuell wiederholt. Das erspart explizites Aufblähen von Arrays, führt aber auch dazu, dass ein Formfehler nicht als Fehler auffällt, sondern als stillschweigend falsches Ergebnis.
+
+Die dritte Eigenheit ist, dass Slicing eine View auf dieselben Daten liefert und keine Kopie. Wer den Ausschnitt verändert, verändert das Original mit. Das ist speichereffizient und eine häufige Fehlerquelle zugleich; wo eine unabhängige Kopie gewollt ist, muss sie ausdrücklich angefordert werden.
+
+SciPy baut darauf auf und liefert die numerischen Verfahren: Verteilungen und Tests, Optimierung, Integration, Interpolation, lineare Algebra. Die Arbeitsteilung ist klar — NumPy stellt die Datenstruktur, SciPy die Mathematik darauf.
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# R ist von Haus aus vektorisiert, Matrizen sind ein Basistyp
+a <- matrix(1:6, nrow = 2)
+a * 2
+colMeans(a)
+
+# Recycling ist das R-Gegenstueck zum Broadcasting
+a + c(10, 20)
+
+# Verteilungen wie in scipy.stats
+pnorm(1.96)
+```
+
+## Python
+
+```python
+import numpy as np
+from scipy import stats
+
+a = np.arange(1, 7).reshape(2, 3)
+a * 2                      # vektorisiert, keine Schleife
+a.mean(axis=0)             # spaltenweise
+
+# Broadcasting: (2,3) mit (3,)
+a + np.array([10, 20, 30])
+
+# Slicing liefert eine View
+teil = a[:, 0]
+teil[0] = 99               # veraendert auch a
+
+stats.norm.cdf(1.96)
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie erkenne ich zuverlässig, ob ein Ausdruck eine View oder eine Kopie zurückgibt, bevor ich versehentlich das Original überschreibe?
+:::
+
+## Verlinkte Ressourcen
+
+- [NumPy-Dokumentation](https://numpy.org/doc/stable/)
+- [SciPy-Dokumentation](https://docs.scipy.org/doc/scipy/)
+
+::: {.placeholder-notice}
+Die Übungen und Beispielskripte zu NumPy stammen aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

@@ -1,0 +1,71 @@
+---
+title: "L5 – Pakete & virtuelle Umgebungen"
+description: "Bibliothekskonzept, pip und conda sowie isolierte Umgebungen für reproduzierbare Projekte."
+categories: ["Python", "Tooling", "Reproduzierbarkeit", "R"]
+---
+
+## Kernideen aus dem Kurs
+
+- [Modul](lesson2.qmd), Paket, Distribution
+- Paketquellen: PyPI, conda-Kanäle
+- Virtuelle Umgebung als Projektisolation
+- `pip`, `venv`, Anaconda
+- Abhängigkeiten festhalten und wiederherstellen
+
+## Meine Zusammenfassung
+
+Python liefert eine grosse Standardbibliothek mit, aber die eigentliche Stärke für Data Science liegt in den Fremdpaketen. Begrifflich lohnt sich die Trennung: ein Modul ist eine Datei, ein Paket ein Verzeichnis von Modulen, eine Distribution das, was installiert wird — und der Distributionsname muss nicht dem Importnamen entsprechen.
+
+Der Grund für virtuelle Umgebungen ist immer derselbe: zwei Projekte brauchen unterschiedliche Versionen desselben Pakets. Wird alles global installiert, bricht früher oder später eines der beiden. Eine virtuelle Umgebung ist ein eigenes Verzeichnis mit eigenem Interpreter und eigenen Paketen, das aktiviert und wieder verworfen werden kann. Pro Projekt eine Umgebung ist die Regel, an die ich mich halte.
+
+`pip` installiert aus PyPI und ist der Standardweg. Anaconda beziehungsweise conda geht weiter und verwaltet auch nicht-pythonische Abhängigkeiten wie kompilierte Bibliotheken, was bei numerischen Paketen den Installationsaufwand deutlich senkt. Die beiden zu mischen ist möglich, aber eine bekannte Quelle für kaputte Umgebungen — ich entscheide mich lieber je Projekt für einen Weg.
+
+Der eigentliche Zweck ist Reproduzierbarkeit: Die Umgebung selbst gehört nicht ins [Repository](lesson10.qmd), wohl aber die Liste der Abhängigkeiten. Aus ihr lässt sich die Umgebung auf einem anderen Rechner neu aufbauen. Ohne festgehaltene Versionen ist eine Analyse nur so lange nachvollziehbar, bis eine Bibliothek ihr Verhalten ändert.
+
+::: {.note-box}
+Das Verzeichnis der virtuellen Umgebung gehört in `.gitignore`. Versioniert wird die Abhängigkeitsliste, nicht der installierte Inhalt.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# renv erfuellt in R denselben Zweck: Isolation je Projekt
+renv::init()               # Projektbibliothek anlegen
+install.packages("dplyr")
+renv::snapshot()           # Versionen in renv.lock festhalten
+renv::restore()            # Umgebung anderswo wiederherstellen
+```
+
+## Python
+
+```python
+# In der Shell, nicht im Interpreter:
+# python -m venv .venv
+# .venv\Scripts\activate        (Windows)
+# source .venv/bin/activate     (Linux, macOS)
+# pip install numpy pandas
+# pip freeze > requirements.txt
+# pip install -r requirements.txt
+
+import sys
+print(sys.executable)   # zeigt, welcher Interpreter aktiv ist
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wann ist conda gegenüber venv und pip wirklich im Vorteil — reicht die Begründung "kompilierte Abhängigkeiten" in der Praxis aus?
+:::
+
+## Verlinkte Ressourcen
+
+- [venv in der Python-Dokumentation](https://docs.python.org/3/library/venv.html)
+- [Anaconda-Dokumentation](https://docs.anaconda.com/)
+
+::: {.placeholder-notice}
+Die Installationsanleitung zu Anaconda und den Kurspaketen stammt aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

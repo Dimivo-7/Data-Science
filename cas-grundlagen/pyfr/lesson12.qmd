@@ -1,0 +1,84 @@
+---
+title: "L12 – Datenmodellierung & SQL"
+description: "Relationales Modell, Normalisierung und SQL-Abfragen sowie der Zugriff aus Python und R."
+categories: ["SQL", "Datenbanken", "Python", "R", "pandas"]
+---
+
+## Kernideen aus dem Kurs
+
+- Relation, Attribut, Primär- und Fremdschlüssel
+- Entity-Relationship-Modell und Kardinalitäten
+- Normalformen und wozu sie dienen
+- SQL: `SELECT`, `WHERE`, `JOIN`, `GROUP BY`
+- Zugriff aus Python und R, MySQL gegenüber SQLite
+
+## Meine Zusammenfassung
+
+Eine relationale Datenbank speichert Daten in Tabellen, deren Zeilen über Schlüssel aufeinander verweisen. Der Primärschlüssel identifiziert eine Zeile eindeutig, der Fremdschlüssel verweist auf eine Zeile in einer anderen Tabelle — und erzwingt zugleich, dass es das Ziel überhaupt gibt. Diese referentielle Integrität ist der Hauptunterschied zu einer Sammlung von CSV-Dateien: die Datenbank verhindert widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme sich benehmen.
+
+Die Modellierung beginnt beim ER-Modell: welche Gegenstände gibt es, welche Beziehungen bestehen zwischen ihnen, und mit welcher Kardinalität. Eine Beziehung mit Vielfachheit auf beiden Seiten wird dabei zu einer eigenen Tabelle. Die Normalisierung räumt anschliessend Redundanz aus, damit dieselbe Information nur an einer Stelle steht. Der Zweck sind die Anomalien: wo eine Angabe mehrfach gespeichert ist, kann sie beim Ändern auseinanderlaufen.
+
+SQL ist deklarativ — ich beschreibe das gewünschte Ergebnis, nicht den Weg dorthin. Nach der ersten Gewöhnung ist die Reihenfolge der Auswertung hilfreich zu kennen: erst wird gefiltert, dann gruppiert, dann werden Gruppen gefiltert, erst danach wird ausgewählt und sortiert. Das erklärt, warum sich ein Aggregat nicht in `WHERE`, sondern nur in `HAVING` prüfen lässt.
+
+In der Praxis stellt sich die Frage, wie viel Arbeit in der Datenbank und wie viel in [Pandas](lesson7.qmd) geschieht. Meine Regel: Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte Datenmenge über die Leitung geht; die Modellierung und Darstellung danach in Python oder R.
+
+::: {.note-box}
+SQLite braucht keinen Server und liegt als einzelne Datei vor — ideal zum Üben und für kleine Projekte. MySQL ist der Serverfall mit Nutzerverwaltung und Mehrbenutzerbetrieb.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+library(DBI)
+
+con <- dbConnect(RSQLite::SQLite(), "verkauf.sqlite")
+
+dbGetQuery(con, "
+  SELECT k.kategorie, COUNT(*) AS n, AVG(b.betrag) AS mittel
+  FROM bestellung b
+  JOIN artikel k ON k.artikel_id = b.artikel_id
+  WHERE b.datum >= '2026-01-01'
+  GROUP BY k.kategorie
+  HAVING COUNT(*) > 10
+  ORDER BY mittel DESC
+")
+
+dbDisconnect(con)
+```
+
+## Python
+
+```python
+import sqlite3
+import pandas as pd
+
+with sqlite3.connect("verkauf.sqlite") as con:
+    df = pd.read_sql_query("""
+        SELECT k.kategorie, COUNT(*) AS n, AVG(b.betrag) AS mittel
+        FROM bestellung b
+        JOIN artikel k ON k.artikel_id = b.artikel_id
+        WHERE b.datum >= '2026-01-01'
+        GROUP BY k.kategorie
+        HAVING COUNT(*) > 10
+        ORDER BY mittel DESC
+    """, con)
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie weit soll für Auswertungszwecke normalisiert werden — ab wann ist bewusste Redundanz in einer Analysetabelle die bessere Wahl?
+:::
+
+## Verlinkte Ressourcen
+
+- [SQLite-Dokumentation zur SQL-Syntax](https://sqlite.org/lang.html)
+- [MySQL-Referenzhandbuch](https://dev.mysql.com/doc/refman/8.0/en/)
+
+::: {.placeholder-notice}
+Die Aufgabenstellung zur Datenmodellierung und das Übungsschema stammen aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

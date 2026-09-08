@@ -1,0 +1,79 @@
+---
+title: "L13 – Hypothesentests & t-Test"
+description: "Aufbau eines Tests, Fehlerarten und p-Wert sowie die drei Varianten des t-Tests."
+categories: ["Hypothesentests", "Verteilungen", "R", "Python"]
+---
+
+## Kernideen aus dem Kurs
+
+- Null- und Alternativhypothese
+- Fehler erster und zweiter Art
+- Signifikanzniveau, Teststatistik, p-Wert
+- Ein- und zweiseitige Fragestellung
+- Einstichproben-, Zweistichproben- und gepaarter t-Test
+- Voraussetzungen und nichtparametrische Ausweichverfahren
+
+## Meine Zusammenfassung
+
+Ein Hypothesentest ist ein Widerspruchsbeweis unter Unsicherheit. Angenommen wird zunächst die Nullhypothese — meist "kein Unterschied", "kein Effekt". Dann wird gefragt, wie ungewöhnlich die beobachteten Daten wären, wenn sie zuträfe. Ist das Ergebnis unter dieser Annahme sehr unwahrscheinlich, wird die Nullhypothese verworfen. Wichtig ist die Asymmetrie: verworfen oder nicht verworfen sind die beiden möglichen Ausgänge, bestätigt wird die Nullhypothese nie.
+
+Der p-Wert ist die Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Er ist nicht die Wahrscheinlichkeit, dass die Nullhypothese stimmt, und er misst auch nicht die Grösse des Effekts. Bei sehr grossen [Stichproben](lesson12.qmd) wird jede noch so kleine Abweichung signifikant — deshalb gehört zu jedem Testergebnis eine Effektgrösse oder ein Konfidenzintervall, sonst bleibt die praktische Bedeutung offen.
+
+Die beiden Fehlerarten stehen im Zielkonflikt. Der Fehler erster Art verwirft eine zutreffende Nullhypothese und wird über das Signifikanzniveau direkt begrenzt. Der Fehler zweiter Art übersieht einen vorhandenen Effekt; sein Gegenstück ist die Teststärke, die mit Stichprobenumfang und Effektgrösse wächst. Ein strengeres Niveau senkt den einen Fehler und erhöht den anderen.
+
+Der t-Test kommt in drei Varianten: eine Stichprobe gegen einen festen Wert, zwei unabhängige Gruppen, und der gepaarte Fall bei verbundenen Messungen — etwa vorher und nachher am selben Objekt. Der gepaarte Test rechnet auf den Differenzen und ist deutlich trennschärfer; ihn durch den Zweistichprobentest zu ersetzen verschenkt Information. Vorausgesetzt werden unabhängige Beobachtungen und annähernd normalverteilte Werte beziehungsweise Differenzen, wobei die Anforderung mit wachsender Stichprobe dank des [zentralen Grenzwertsatzes](lesson10.qmd) nachlässt. Bei kleinen, deutlich schiefen Stichproben ist ein rangbasiertes Verfahren die sichere Alternative.
+
+::: {.note-box}
+Ein- oder zweiseitig wird vor dem Blick in die Daten festgelegt. Die Richtung nachträglich nach dem beobachteten Ergebnis zu wählen, halbiert den p-Wert unzulässig.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+# Einstichproben-t-Test gegen Sollwert 12
+t.test(x, mu = 12)
+
+# Zwei unabhaengige Gruppen (Welch als Standard)
+t.test(verbrauch ~ typ, data = df)
+
+# Gepaart: dieselbe Maschine vorher und nachher
+t.test(nachher, vorher, paired = TRUE)
+
+# Nichtparametrische Alternative
+wilcox.test(verbrauch ~ typ, data = df)
+```
+
+## Python
+
+```python
+from scipy import stats
+
+stats.ttest_1samp(x, popmean=12)
+
+a = df.loc[df["typ"] == "A", "verbrauch"]
+b = df.loc[df["typ"] == "B", "verbrauch"]
+stats.ttest_ind(a, b, equal_var=False)      # Welch
+
+stats.ttest_rel(nachher, vorher)
+
+stats.mannwhitneyu(a, b)
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie berichte ich ein nicht signifikantes Ergebnis korrekt, ohne es als Beleg für die Abwesenheit eines Effekts erscheinen zu lassen?
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur Inferenz](https://www.openintro.org/book/os/)
+- [Dokumentation zu `t.test` in R](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/t.test.html)
+
+::: {.placeholder-notice}
+Die Kursfolien zu Hypothesentests liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

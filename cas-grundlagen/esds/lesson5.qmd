@@ -1,0 +1,72 @@
+---
+title: "L5 – Grafiken mit ggplot2"
+description: "Die Grammatik der Grafik: Daten, Aesthetics, Geome, Facetten und Beschriftung."
+categories: ["ggplot2", "Visualisierung", "R", "tidyverse", "seaborn"]
+---
+
+## Kernideen aus dem Kurs
+
+- Grammatik: Daten, Aesthetics, Geome, Skalen, Facetten
+- Zuordnung im `aes()` gegenüber festem Wert
+- Geome für Verteilung, Zusammenhang und Vergleich
+- Facetten statt vieler Einzelgrafiken
+- Beschriftung und Theme
+
+## Meine Zusammenfassung
+
+ggplot2 baut eine Grafik nicht aus einem Diagrammtyp, sondern aus Bausteinen. Ausgangspunkt ist ein Datensatz, dann wird festgelegt, welche Variable auf welche visuelle Eigenschaft abgebildet wird — x, y, Farbe, Form, Grösse — und schliesslich, mit welchen geometrischen Objekten das dargestellt wird. Weil diese Schichten unabhängig sind, entsteht ein neuer Diagrammtyp durch Austausch eines Bausteins statt durch eine neue Funktion.
+
+Der Punkt, der anfangs am meisten Fehler verursacht, ist die Unterscheidung zwischen Zuordnung und Festlegung. Steht eine Angabe innerhalb von `aes()`, wird sie aus den Daten abgeleitet und erhält eine Legende. Steht sie ausserhalb, ist sie ein fester Wert für alle Punkte. Eine Farbe, die konstant sein soll, gehört deshalb nach aussen.
+
+Facetten sind das Mittel, um eine Grafik nach einer kategorialen Variable aufzuteilen. Der Vorteil gegenüber mehreren separaten Abbildungen liegt in den gemeinsamen Achsen: nur so sind die Teilbilder direkt vergleichbar. Skalen steuern die Übersetzung von Daten in Achsen und Farben — dort wird auch entschieden, ob eine Achse logarithmisch ist oder wo sie beginnt. Ein abgeschnittener Nullpunkt bei Balken übertreibt Unterschiede und ist deshalb kein Darstellungsdetail, sondern eine inhaltliche Aussage.
+
+Am Ende steht immer die Beschriftung. Achsentitel mit Einheit, ein Titel, der die Kernaussage benennt statt den Diagrammtyp zu wiederholen, und eine Legende nur dort, wo mehr als eine Gruppe dargestellt ist.
+
+::: {.note-box}
+Der Vergleich zu [Matplotlib](../pyfr/lesson8.qmd) fällt hier deutlich aus: ggplot2 leitet die Grafik aus der Zuordnung ab, Matplotlib zeichnet Elemente. Für Standardfälle ist ggplot2 kürzer, für vollständig eigene Layouts ist Matplotlib direkter.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+library(ggplot2)
+
+ggplot(df, aes(x = laufzeit, y = verbrauch)) +
+  geom_point(aes(colour = typ), alpha = 0.6) +   # aus Daten abgeleitet
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ standort) +
+  labs(x = "Laufzeit (h)", y = "Verbrauch (l)", colour = "Typ",
+       title = "Verbrauch steigt an allen Standorten mit der Laufzeit") +
+  theme_minimal()
+```
+
+## Python
+
+```python
+import seaborn as sns
+
+g = sns.lmplot(data=df, x="laufzeit", y="verbrauch",
+               hue="typ", col="standort", ci=95,
+               scatter_kws={"alpha": 0.6})
+g.set_axis_labels("Laufzeit (h)", "Verbrauch (l)")
+g.figure.suptitle("Verbrauch steigt an allen Standorten mit der Laufzeit")
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wann ist eine Facettierung der bessere Weg als eine zusätzliche Farbzuordnung — gibt es eine Faustregel für die Zahl der Gruppen?
+:::
+
+## Verlinkte Ressourcen
+
+- [ggplot2-Referenz](https://ggplot2.tidyverse.org/)
+- [Kapitel zur Datenvisualisierung in R for Data Science](https://r4ds.hadley.nz/data-visualize)
+
+::: {.placeholder-notice}
+Die Grafikaufgaben des Moduls liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
+:::

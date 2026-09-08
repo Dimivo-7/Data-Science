@@ -36,7 +36,14 @@ mas-data-science-notizen/
 ├── _quarto.yml                     Navigation, Rendern, Theme
 ├── styles.scss                     gesamtes Design
 ├── lastupdate.lua                  setzt den Zeitstempel oben auf jeder Seite
-├── cas-grundlagen/index.qmd
+├── cas-grundlagen/
+│   ├── index.qmd                   Modulübersicht
+│   ├── pyfr/
+│   │   ├── index.qmd               Teilbereichsübersicht
+│   │   └── lesson1.qmd … lesson12.qmd
+│   └── esds/
+│       ├── index.qmd
+│       └── lesson1.qmd … lesson14.qmd
 └── cas-statda-davi/
     ├── index.qmd                   Modulübersicht
     ├── statda/
@@ -164,8 +171,12 @@ Suchwerkzeug über Modulgrenzen hinweg, keine Zusammenfassung. Deshalb:
 | Gruppe | Tags |
 |---|---|
 | Sprache | `R`, `Python` |
-| Bibliotheken | `ggplot2`, `matplotlib`, `seaborn`, `plotly` |
-| Statistische Verfahren | `Regression`, `Hypothesentests`, `Versuchsplanung`, `A/B-Testing`, `Dimensionsreduktion`, `Faktorenanalyse`, `Clustering`, `Distanzmasse`, `Zeitreihen`, `Prognose`, `Survival-Analyse` |
+| Bibliotheken | `ggplot2`, `tidyverse`, `matplotlib`, `seaborn`, `plotly`, `pandas`, `NumPy` |
+| Programmierung | `Programmiergrundlagen`, `Tooling`, `Reproduzierbarkeit` |
+| Daten & Infrastruktur | `SQL`, `Datenbanken`, `Linux` |
+| Beschreibende Statistik | `Deskriptive Statistik`, `EDA`, `Korrelation` |
+| Wahrscheinlichkeit | `Wahrscheinlichkeit`, `Verteilungen`, `Bayes` |
+| Statistische Verfahren | `Schätzen`, `Regression`, `Hypothesentests`, `Versuchsplanung`, `A/B-Testing`, `Dimensionsreduktion`, `Faktorenanalyse`, `Clustering`, `Distanzmasse`, `Zeitreihen`, `Prognose`, `Survival-Analyse` |
 | Modellgüte | `Modelldiagnostik`, `Modellvalidierung` |
 | Visualisierung | `Visualisierung`, `Wahrnehmung`, `Farbe`, `Dashboards`, `Interaktivität`, `Storytelling`, `Kommunikation`, `Visualisierungsethik` |
 | Betrieb | `Deployment` |
@@ -217,6 +228,31 @@ Ein Satz Beschreibung.
 
 ::::
 ```
+
+### Querverweise zwischen Seiten
+
+Taucht ein Fachbegriff auf, für den es eine eigene Lektionsseite gibt, wird er
+verlinkt — wie in einem Wiki. Ein normaler Markdown-Link auf die `.qmd`-Datei,
+Quarto macht daraus beim Rendern den richtigen Pfad:
+
+```markdown
+Die Standardabweichung hat gegenüber der [Varianz](lesson4.qmd) den Vorteil …
+Der Vergleich zu [Matplotlib](../pyfr/lesson8.qmd) fällt deutlich aus …
+```
+
+Damit die Seiten lesbar bleiben, gelten vier Regeln:
+
+- **Nur das erste Vorkommen** eines Begriffs pro Seite verlinken, nicht jedes.
+- **Höchstens ein Link je Zielseite** und Seite.
+- **Nie auf die eigene Seite** verlinken — auf der Seite über die Varianz wird
+  das Wort Varianz nicht verlinkt.
+- **Nur im Fliesstext und in den Kernideen.** Nicht in Überschriften, nicht in
+  Codeblöcken, nicht in Inline-Code.
+
+Vorsicht bei mehrdeutigen Wörtern: „Klassen" sind in ESDS die Klassen eines
+Histogramms und in PYFR Python-Klassen, „Container" meint einmal Liste und
+Dictionary, einmal Docker. Solche Begriffe nur verlinken, wenn die Bedeutung
+im Satz eindeutig ist.
 
 **Codeblöcke** immer mit Sprachangabe (```` ```r ````, ```` ```python ````) —
 davon hängen Syntaxhervorhebung und die farbige Kante links ab.
@@ -280,7 +316,10 @@ categories: [<3 bis 5 Tags>]
 
 TAGS
 Verwende ausschliesslich Tags aus dieser Liste, Schreibweise exakt:
-R, Python, ggplot2, matplotlib, seaborn, plotly, Regression,
+R, Python, ggplot2, tidyverse, matplotlib, seaborn, plotly, pandas,
+NumPy, Programmiergrundlagen, Tooling, Reproduzierbarkeit, SQL,
+Datenbanken, Linux, Deskriptive Statistik, EDA, Korrelation,
+Wahrscheinlichkeit, Verteilungen, Bayes, Schätzen, Regression,
 Hypothesentests, Versuchsplanung, A/B-Testing, Dimensionsreduktion,
 Faktorenanalyse, Clustering, Distanzmasse, Zeitreihen, Prognose,
 Survival-Analyse, Modelldiagnostik, Modellvalidierung, Visualisierung,
@@ -345,6 +384,7 @@ Dazu am Schluss eine Zeile: der vorgeschlagene Dateiname.
 - [ ] Karten liegen in einem `.card-grid`
 - [ ] Nichts wörtlich aus den Kursunterlagen übernommen
 - [ ] Keine erfundenen Links
+- [ ] Fachbegriffe mit eigener Seite verlinkt (erstes Vorkommen, nicht auf sich selbst)
 - [ ] Seite in `_quarto.yml` eingetragen (Sidebar, ggf. `project.render`)
 - [ ] Nichts in `docs/` von Hand geändert
 

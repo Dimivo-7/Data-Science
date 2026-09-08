@@ -1,0 +1,80 @@
+---
+title: "L2 – Funktionen & Module"
+description: "Funktionsdefinition, Parameterarten, Namensräume und die Aufteilung von Code in Module."
+categories: ["Python", "Programmiergrundlagen", "R"]
+---
+
+## Kernideen aus dem Kurs
+
+- Positions-, Schlüsselwort- und Defaultparameter
+- `*args` und `**kwargs`
+- Gültigkeitsbereiche und Namensräume
+- Funktionen als Objekte, `lambda`, `map`/`filter`
+- Modul, Import, `if __name__ == "__main__"`
+
+## Meine Zusammenfassung
+
+Eine Funktion ist in Python selbst ein Objekt: sie kann einer Variablen zugewiesen, an eine andere Funktion übergeben und aus einer Funktion zurückgegeben werden. Das ist die Grundlage des funktionalen Stils, den `map`, `filter` und die Sortierung mit `key=` nutzen. `lambda` ist dabei nur eine Kurzschreibweise für eine namenlose Funktion mit einem einzigen Ausdruck — für alles Längere ist eine benannte Funktion lesbarer.
+
+Bei den Parametern lohnt sich Sorgfalt. Positionsparameter werden über die Reihenfolge zugeordnet, Schlüsselwortparameter über den Namen; Defaultwerte machen Parameter optional. Die klassische Falle ist ein veränderliches Objekt als Defaultwert: es wird genau einmal bei der Definition angelegt und dann über alle Aufrufe hinweg geteilt. `*args` und `**kwargs` sammeln beliebig viele weitere Positions- beziehungsweise Schlüsselwortargumente ein und sind vor allem beim Durchreichen an eine andere Funktion nützlich.
+
+Namensräume regeln, welcher Name wo sichtbar ist. Innerhalb einer Funktion angelegte Namen sind lokal und verschwinden mit dem Aufruf; gelesen wird von innen nach aussen. Schreiben auf einen äusseren Namen verlangt eine ausdrückliche Erklärung — was gut so ist, weil versteckte Seiteneffekte die häufigste Ursache schwer auffindbarer Fehler sind.
+
+Sobald das Skript wächst, wird es zum Modul: eine `.py`-Datei, die andere importieren können. Der Block `if __name__ == "__main__":` trennt dabei den ausführbaren Teil vom importierbaren — beim Import wird er übersprungen, beim direkten Aufruf ausgeführt.
+
+::: {.note-box}
+Ein Modul mit Funktionen und ein [Notebook](lesson1.qmd), das diese Funktionen aufruft, ist eine saubere Arbeitsteilung: die Logik ist testbar und versionierbar, das Notebook bleibt die Erzählung.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+kennzahlen <- function(x, na_entfernen = TRUE) {
+  list(mittel = mean(x, na.rm = na_entfernen),
+       sd     = sd(x,   na.rm = na_entfernen))
+}
+
+kennzahlen(c(1, 2, NA, 4))
+
+# Funktion als Argument
+sapply(list(1:5, 6:10), mean)
+
+# Gegenstueck zum Modul-Import
+# source("hilfsfunktionen.R")
+```
+
+## Python
+
+```python
+def kennzahlen(x, na_entfernen=True):
+    werte = [w for w in x if w is not None] if na_entfernen else x
+    return {"mittel": sum(werte) / len(werte), "n": len(werte)}
+
+kennzahlen([1, 2, None, 4])
+
+# Funktion als Argument
+list(map(len, ["ab", "cde"]))
+
+# Nur beim direkten Aufruf ausfuehren, nicht beim Import
+if __name__ == "__main__":
+    print(kennzahlen([1, 2, 3]))
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wie weit soll ich Funktionen aus einem Notebook in ein eigenes Modul auslagern, bevor die Nachvollziehbarkeit der Analyse darunter leidet?
+:::
+
+## Verlinkte Ressourcen
+
+- [Funktionen im Python-Tutorial](https://docs.python.org/3/tutorial/controlflow.html)
+- [Module im Python-Tutorial](https://docs.python.org/3/tutorial/modules.html)
+
+::: {.placeholder-notice}
+Die zugehörigen Übungsnotebooks stammen aus dem Moodle-Kurs des Moduls; die Kurs-URL trage ich nach.
+:::

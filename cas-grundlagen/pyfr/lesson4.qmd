@@ -1,0 +1,75 @@
+---
+title: "L4 – Exceptions, IO & Serialisierung"
+description: "Fehlerbehandlung mit try/except, Dateizugriff mit Encoding und das Speichern von Objekten."
+categories: ["Python", "Programmiergrundlagen", "Reproduzierbarkeit", "R"]
+---
+
+## Kernideen aus dem Kurs
+
+- `try` / `except` / `else` / `finally`
+- Exception-Typen und eigene Exceptions
+- Dateizugriff mit `open` und `with`
+- Text- versus Binärmodus, Encoding
+- Serialisierung: JSON, CSV, Pickle
+
+## Meine Zusammenfassung
+
+Python behandelt Fehler als Ausnahmen, nicht als Rückgabewerte. Der Aufrufer darf davon ausgehen, dass eine Funktion entweder ein sinnvolles Ergebnis liefert oder abbricht — Prüfcode für jeden denkbaren Fehlerfall entfällt damit. Wichtig ist, im `except` möglichst genau zu bleiben: ein pauschales Abfangen aller Ausnahmen verdeckt Programmierfehler und macht die Fehlersuche mühsam. `else` läuft nur, wenn nichts geworfen wurde, `finally` in jedem Fall — dort gehören Aufräumarbeiten hin.
+
+Beim Dateizugriff ist der `with`-Block der Normalfall, weil er die Datei auch dann schliesst, wenn im Block eine Ausnahme fliegt. Zwei Details werden dabei gerne vergessen: der Unterschied zwischen Text- und Binärmodus, und das Encoding. Letzteres sollte im Textmodus immer ausdrücklich gesetzt werden, weil der Standard vom Betriebssystem abhängt — genau daher stammen die typischen Umlautprobleme beim Wechsel zwischen Windows und Linux.
+
+Serialisierung heisst, ein Objekt in eine Zeichen- oder Bytefolge zu überführen, die sich speichern und wieder einlesen lässt. JSON ist dafür der Austauschstandard: lesbar, sprachunabhängig, aber auf einfache Typen beschränkt. Pickle kann fast beliebige Python-Objekte speichern, ist dafür an Python gebunden und darf nie aus fremder Quelle geladen werden, weil beim Laden Code ausgeführt werden kann. CSV bleibt für Tabellen die pragmatische Wahl, verliert aber jede Typinformation.
+
+::: {.note-box}
+Faustregel: JSON für Konfiguration und Austausch, CSV oder Parquet für Tabellen, Pickle nur für kurzlebige eigene Zwischenstände.
+:::
+
+## Eigene Beispiele / Code
+
+::: panel-tabset
+## R
+
+```r
+ergebnis <- tryCatch({
+  as.numeric(readLines("zahl.txt", warn = FALSE))
+}, warning = function(w) NA_real_,
+   error   = function(e) NA_real_,
+   finally = message("Lesen abgeschlossen"))
+
+# Serialisierung
+jsonlite::write_json(list(a = 1, b = 2), "konfig.json")
+saveRDS(ergebnis, "zwischenstand.rds")
+```
+
+## Python
+
+```python
+import json
+
+try:
+    with open("zahl.txt", encoding="utf-8") as f:
+        wert = int(f.read().strip())
+except (FileNotFoundError, ValueError):
+    wert = None
+finally:
+    print("Lesen abgeschlossen")
+
+with open("konfig.json", "w", encoding="utf-8") as f:
+    json.dump({"a": 1, "b": 2}, f, ensure_ascii=False, indent=2)
+```
+:::
+
+## Offene Fragen
+
+::: {.open-question}
+Wann lohnt sich eine eigene [Exception-Klasse](lesson3.qmd), statt eine passende eingebaute wiederzuverwenden?
+:::
+
+## Verlinkte Ressourcen
+
+- [Fehler und Ausnahmen im Python-Tutorial](https://docs.python.org/3/tutorial/errors.html)
+- [Ein- und Ausgabe im Python-Tutorial](https://docs.python.org/3/tutorial/inputoutput.html)
+
+::: {.placeholder-notice}
+Das Übungsnotebook zu Exceptions, IO und Serialisierung stammt aus dem Moodle-Kurs; die Kurs-URL trage ich nach.
+:::
