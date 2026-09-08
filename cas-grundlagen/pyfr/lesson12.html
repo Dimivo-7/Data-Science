@@ -643,9 +643,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#kernideen-aus-dem-kurs" id="toc-kernideen-aus-dem-kurs" class="nav-link active" data-scroll-target="#kernideen-aus-dem-kurs">Kernideen aus dem Kurs</a></li>
-  <li><a href="#meine-zusammenfassung" id="toc-meine-zusammenfassung" class="nav-link" data-scroll-target="#meine-zusammenfassung">Meine Zusammenfassung</a></li>
-  <li><a href="#eigene-beispiele-code" id="toc-eigene-beispiele-code" class="nav-link" data-scroll-target="#eigene-beispiele-code">Eigene Beispiele / Code</a></li>
-  <li><a href="#offene-fragen" id="toc-offene-fragen" class="nav-link" data-scroll-target="#offene-fragen">Offene Fragen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#warum-nicht-einfach-eine-grosse-tabelle" id="toc-warum-nicht-einfach-eine-grosse-tabelle" class="nav-link" data-scroll-target="#warum-nicht-einfach-eine-grosse-tabelle">Warum nicht einfach eine grosse Tabelle</a></li>
+  <li><a href="#schlüssel" id="toc-schlüssel" class="nav-link" data-scroll-target="#schlüssel">Schlüssel</a></li>
+  <li><a href="#vom-er-modell-zu-tabellen" id="toc-vom-er-modell-zu-tabellen" class="nav-link" data-scroll-target="#vom-er-modell-zu-tabellen">Vom ER-Modell zu Tabellen</a></li>
+  <li><a href="#abfragen" id="toc-abfragen" class="nav-link" data-scroll-target="#abfragen">Abfragen</a></li>
+  <li><a href="#die-auswertungsreihenfolge" id="toc-die-auswertungsreihenfolge" class="nav-link" data-scroll-target="#die-auswertungsreihenfolge">Die Auswertungsreihenfolge</a></li>
+  <li><a href="#zugriff-aus-beiden-sprachen" id="toc-zugriff-aus-beiden-sprachen" class="nav-link" data-scroll-target="#zugriff-aus-beiden-sprachen">Zugriff aus beiden Sprachen</a></li>
+  <li><a href="#parameter-statt-zeichenkettenbau" id="toc-parameter-statt-zeichenkettenbau" class="nav-link" data-scroll-target="#parameter-statt-zeichenkettenbau">Parameter statt Zeichenkettenbau</a></li>
+  <li><a href="#sqlite-oder-mysql" id="toc-sqlite-oder-mysql" class="nav-link" data-scroll-target="#sqlite-oder-mysql">SQLite oder MySQL</a></li>
+  </ul></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -688,74 +696,434 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="kernideen-aus-dem-kurs" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen-aus-dem-kurs">Kernideen aus dem Kurs</h2>
 <ul>
-<li>Relation, Attribut, Primär- und Fremdschlüssel</li>
+<li>Relation, Attribut, Primär- und <span class="glossary-term" data-def="Verweis auf den Primärschlüssel einer anderen Tabelle. Die Datenbank erzwingt dabei, dass das Ziel existiert, und verhindert so widersprüchliche Zustände." tabindex="0" data-topic="Daten">Fremdschlüssel</span></li>
 <li>Entity-Relationship-Modell und Kardinalitäten</li>
-<li>Normalformen und wozu sie dienen</li>
-<li>SQL: <code>SELECT</code>, <code>WHERE</code>, <code>JOIN</code>, <code>GROUP BY</code></li>
-<li>Zugriff aus Python und R, MySQL gegenüber SQLite</li>
+<li>Normalformen und die Anomalien, die sie verhindern</li>
+<li>SQL: <code>SELECT</code>, <code>WHERE</code>, <code>JOIN</code>, <code>GROUP BY</code>, <code>HAVING</code></li>
+<li>Zugriff aus Python und R, SQLite gegenüber MySQL</li>
 </ul>
 </section>
-<section id="meine-zusammenfassung" class="level2">
-<h2 class="anchored" data-anchor-id="meine-zusammenfassung">Meine Zusammenfassung</h2>
-<p>Eine relationale Datenbank speichert Daten in Tabellen, deren Zeilen über Schlüssel aufeinander verweisen. Der Primärschlüssel identifiziert eine Zeile eindeutig, der Fremdschlüssel verweist auf eine Zeile in einer anderen Tabelle — und erzwingt zugleich, dass es das Ziel überhaupt gibt. Diese referentielle Integrität ist der Hauptunterschied zu einer Sammlung von CSV-Dateien: die Datenbank verhindert widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme sich benehmen.</p>
-<p>Die Modellierung beginnt beim ER-Modell: welche Gegenstände gibt es, welche Beziehungen bestehen zwischen ihnen, und mit welcher Kardinalität. Eine Beziehung mit Vielfachheit auf beiden Seiten wird dabei zu einer eigenen Tabelle. Die Normalisierung räumt anschliessend Redundanz aus, damit dieselbe Information nur an einer Stelle steht. Der Zweck sind die Anomalien: wo eine Angabe mehrfach gespeichert ist, kann sie beim Ändern auseinanderlaufen.</p>
-<p>SQL ist deklarativ — ich beschreibe das gewünschte Ergebnis, nicht den Weg dorthin. Nach der ersten Gewöhnung ist die Reihenfolge der Auswertung hilfreich zu kennen: erst wird gefiltert, dann gruppiert, dann werden Gruppen gefiltert, erst danach wird ausgewählt und sortiert. Das erklärt, warum sich ein Aggregat nicht in <code>WHERE</code>, sondern nur in <code>HAVING</code> prüfen lässt.</p>
-<p>In der Praxis stellt sich die Frage, wie viel Arbeit in der Datenbank und wie viel in <a href="../../cas-grundlagen/pyfr/lesson7.html">Pandas</a> geschieht. Meine Regel: Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte Datenmenge über die Leitung geht; die Modellierung und Darstellung danach in Python oder R.</p>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
 <div class="note-box">
-<p>SQLite braucht keinen Server und liegt als einzelne Datei vor — ideal zum Üben und für kleine Projekte. MySQL ist der Serverfall mit Nutzerverwaltung und Mehrbenutzerbetrieb.</p>
+<p><strong>Vorwissen:</strong> <a href="../../cas-grundlagen/pyfr/lesson7.html">L7 – Pandas</a> hilft, weil <code>groupby</code> und <code>merge</code> genau den SQL-Operationen entsprechen, die hier vorkommen. Die Abfragen dieser Seite laufen beim Bauen der Website gegen eine echte SQLite-Datenbank mit zehn Bestellungen und fünf Artikeln.</p>
+</div>
+<section id="warum-nicht-einfach-eine-grosse-tabelle" class="level3">
+<h3 class="anchored" data-anchor-id="warum-nicht-einfach-eine-grosse-tabelle">Warum nicht einfach eine grosse Tabelle</h3>
+<p>Eine Tabelle, die alles enthält, sieht bequem aus:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>bestell_id</th>
+<th>artikel</th>
+<th>kategorie</th>
+<th>datum</th>
+<th>betrag</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Ventil 3/8</td>
+<td>Pneumatik</td>
+<td>2026-01-14</td>
+<td>240.00</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Ventil 3/8</td>
+<td>Pneumatik</td>
+<td>2026-02-03</td>
+<td>600.00</td>
+</tr>
+</tbody>
+</table>
+<p>Die Bezeichnung und die Kategorie stehen bei jeder Bestellung erneut. Daraus folgen drei Probleme, die zusammen Anomalien heissen:</p>
+<ul>
+<li><strong>Änderung:</strong> Wird der Artikel umbenannt, muss das an jeder Stelle geschehen. Wird eine übersehen, widersprechen sich die Daten.</li>
+<li><strong>Einfügen:</strong> Ein neuer Artikel ohne Bestellung lässt sich gar nicht erfassen, weil es keine Zeile gäbe.</li>
+<li><strong>Löschen:</strong> Wird die letzte Bestellung eines Artikels gelöscht, verschwindet der Artikel mit.</li>
+</ul>
+<p>Die Aufteilung auf zwei Tabellen, verbunden über einen Schlüssel, löst alle drei. Genau das ist die Idee des relationalen Modells.</p>
+</section>
+<section id="schlüssel" class="level3">
+<h3 class="anchored" data-anchor-id="schlüssel">Schlüssel</h3>
+<p>Der <strong><span class="glossary-term" data-def="Attribut oder Attributkombination, die eine Zeile eindeutig identifiziert. Grundlage jeder Verknüpfung zwischen Tabellen." tabindex="0" data-topic="Daten">Primärschlüssel</span></strong> identifiziert eine Zeile eindeutig. Der <strong><span class="glossary-term" data-def="Verweis auf den Primärschlüssel einer anderen Tabelle. Die Datenbank erzwingt dabei, dass das Ziel existiert, und verhindert so widersprüchliche Zustände." tabindex="0" data-topic="Daten">Fremdschlüssel</span></strong> verweist auf eine Zeile einer anderen Tabelle und erzwingt dabei, dass das Ziel existiert. Diese <span class="glossary-term" data-def="Zusicherung der Datenbank, dass jeder Fremdschlüssel auf eine tatsächlich vorhandene Zeile zeigt. Der Hauptunterschied zu einer Sammlung einzelner Dateien." tabindex="0" data-topic="Daten">referentielle Integrität</span> ist der Hauptunterschied zu einer Sammlung von CSV-Dateien: Die Datenbank verhindert widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme sich benehmen.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Verweis auf einen nicht existierenden Artikel</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">dbExecute</span>(con, <span class="st">"PRAGMA foreign_keys = ON"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>versuch <span class="ot">&lt;-</span> <span class="fu">try</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">dbExecute</span>(con, <span class="st">"INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 1, 10.0)"</span>),</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="cf">if</span> (<span class="fu">inherits</span>(versuch, <span class="st">"try-error"</span>)) <span class="st">"abgelehnt, Artikel 999 existiert nicht"</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span> <span class="st">"durchgelassen"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>abgelehnt, Artikel 999 existiert nicht</code></pre>
+</div>
+</div>
+<p>Die Datenbank weist den Datensatz zurück. In einer CSV-Datei stünde er kommentarlos drin und würde beim nächsten <span class="glossary-term" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses." tabindex="0" data-topic="Daten">Join</span> stillschweigend verschwinden.</p>
+</section>
+<section id="vom-er-modell-zu-tabellen" class="level3">
+<h3 class="anchored" data-anchor-id="vom-er-modell-zu-tabellen">Vom ER-Modell zu Tabellen</h3>
+<p>Die Modellierung beginnt bei der Frage, welche Gegenstände es gibt und wie sie zusammenhängen. Die Kardinalität entscheidet über die Umsetzung:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Beziehung</th>
+<th>Beispiel</th>
+<th>Umsetzung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>eins zu viele</td>
+<td>ein Artikel hat viele Bestellungen</td>
+<td>Fremdschlüssel auf der Viele-Seite</td>
+</tr>
+<tr class="even">
+<td>viele zu viele</td>
+<td>Artikel gehören zu mehreren Lieferanten und umgekehrt</td>
+<td>eigene Verbindungstabelle</td>
+</tr>
+<tr class="odd">
+<td>eins zu eins</td>
+<td>selten, meist Auslagerung optionaler Felder</td>
+<td>Fremdschlüssel mit Eindeutigkeit</td>
+</tr>
+</tbody>
+</table>
+<p>Hier liegt der erste Fall vor: Der <span class="glossary-term" data-def="Verweis auf den Primärschlüssel einer anderen Tabelle. Die Datenbank erzwingt dabei, dass das Ziel existiert, und verhindert so widersprüchliche Zustände." tabindex="0" data-topic="Daten">Fremdschlüssel</span> steht in <code>bestellung</code>, weil dort die viele-Seite ist.</p>
+</section>
+<section id="abfragen" class="level3">
+<h3 class="anchored" data-anchor-id="abfragen">Abfragen</h3>
+<p>SQL ist deklarativ. Man beschreibt das gewünschte Ergebnis, nicht den Weg dorthin.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zeige</span>(<span class="st">"SELECT bezeichnung, kategorie FROM artikel WHERE kategorie = 'Pneumatik'"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">bezeichnung</th>
+<th style="text-align: left;">kategorie</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Ventil 3/8</td>
+<td style="text-align: left;">Pneumatik</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Zylinder 40</td>
+<td style="text-align: left;">Pneumatik</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Verbinden zweier Tabellen über den Schlüssel:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zeige</span>(<span class="st">"</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT b.datum, a.bezeichnung, b.menge, b.betrag</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="st">  JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="st">  ORDER BY b.datum</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="st">  LIMIT 5"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">datum</th>
+<th style="text-align: left;">bezeichnung</th>
+<th style="text-align: right;">menge</th>
+<th style="text-align: right;">betrag</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2026-01-14</td>
+<td style="text-align: left;">Ventil 3/8</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">240</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2026-01-22</td>
+<td style="text-align: left;">Zylinder 40</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">512</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2026-01-30</td>
+<td style="text-align: left;">Dichtring</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">180</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2026-02-03</td>
+<td style="text-align: left;">Ventil 3/8</td>
+<td style="text-align: right;">25</td>
+<td style="text-align: right;">600</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2026-02-11</td>
+<td style="text-align: left;">Kugellager 608</td>
+<td style="text-align: right;">100</td>
+<td style="text-align: right;">350</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Gruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zeige</span>(<span class="st">"</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT a.kategorie,</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="st">         COUNT(*)         AS anzahl,</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="st">         SUM(b.betrag)    AS umsatz,</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="st">         ROUND(AVG(b.betrag), 2) AS mittel</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="st">  JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY a.kategorie</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="st">  HAVING COUNT(*) &gt;= 2</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="st">  ORDER BY umsatz DESC"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">kategorie</th>
+<th style="text-align: right;">anzahl</th>
+<th style="text-align: right;">umsatz</th>
+<th style="text-align: right;">mittel</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Elektronik</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">2400</td>
+<td style="text-align: right;">1200.00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pneumatik</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">1968</td>
+<td style="text-align: right;">393.60</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Mechanik</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">740</td>
+<td style="text-align: right;">246.67</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 </section>
-<section id="eigene-beispiele-code" class="level2">
-<h2 class="anchored" data-anchor-id="eigene-beispiele-code">Eigene Beispiele / Code</h2>
+<section id="die-auswertungsreihenfolge" class="level3">
+<h3 class="anchored" data-anchor-id="die-auswertungsreihenfolge">Die Auswertungsreihenfolge</h3>
+<p>Sie erklärt die häufigste Verwirrung von Einsteigern, nämlich warum sich ein Aggregat nicht in <code>WHERE</code> prüfen lässt:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Reihenfolge</th>
+<th>Klausel</th>
+<th>was passiert</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td><code>FROM</code>, <code>JOIN</code></td>
+<td>Tabellen zusammenstellen</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td><code>WHERE</code></td>
+<td>einzelne Zeilen filtern</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td><code>GROUP BY</code></td>
+<td>Zeilen zu Gruppen zusammenfassen</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td><code>HAVING</code></td>
+<td>Gruppen filtern</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td><code>SELECT</code></td>
+<td>Spalten auswählen und berechnen</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td><code>ORDER BY</code></td>
+<td>sortieren</td>
+</tr>
+</tbody>
+</table>
+<p><code>WHERE</code> läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht. <code>HAVING</code> läuft danach.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># WHERE filtert Zeilen VOR der Gruppierung</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">zeige</span>(<span class="st">"</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT a.kategorie, SUM(b.betrag) AS umsatz</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="st">  WHERE b.datum &gt;= '2026-02-01'</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY a.kategorie</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="st">  ORDER BY umsatz DESC"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">kategorie</th>
+<th style="text-align: right;">umsatz</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Elektronik</td>
+<td style="text-align: right;">2400</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pneumatik</td>
+<td style="text-align: right;">1216</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Mechanik</td>
+<td style="text-align: right;">560</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Verständnisfragen</strong></p>
+<ol type="1">
+<li>Warum lässt sich <code>WHERE SUM(betrag) &gt; 500</code> nicht schreiben?</li>
+<li>Ein <span class="glossary-term" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses." tabindex="0" data-topic="Daten">Join</span> liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Lösung">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Lösung
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Weil <code>WHERE</code> vor der Gruppierung ausgewertet wird und zu diesem Zeitpunkt noch keine Gruppen und damit keine Summen existieren. Bedingungen auf Aggregaten gehören in <code>HAVING</code>, das nach der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.</li>
+<li>Der Schlüssel war auf der rechten Seite nicht eindeutig. Jede linke Zeile wird dann mit jeder passenden rechten kombiniert. Genau dieselbe Falle wie beim <code>merge</code> in <a href="../../cas-grundlagen/pyfr/lesson7.html">Pandas</a>; die Prüfung ist dieselbe, nämlich vorher die Eindeutigkeit des Schlüssels sicherstellen.</li>
+</ol>
+</div>
+</div>
+</div>
+</section>
+<section id="zugriff-aus-beiden-sprachen" class="level3">
+<h3 class="anchored" data-anchor-id="zugriff-aus-beiden-sprachen">Zugriff aus beiden Sprachen</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DBI)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(RSQLite<span class="sc">::</span><span class="fu">SQLite</span>(), <span class="st">"verkauf.sqlite"</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">dbGetQuery</span>(con, <span class="st">"</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT k.kategorie, COUNT(*) AS n, AVG(b.betrag) AS mittel</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="st">  JOIN artikel k ON k.artikel_id = b.artikel_id</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="st">  WHERE b.datum &gt;= '2026-01-01'</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY k.kategorie</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="st">  HAVING COUNT(*) &gt; 10</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="st">  ORDER BY mittel DESC</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="st">"</span>)</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">dbDisconnect</span>(con)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ergebnis <span class="ot">&lt;-</span> <span class="fu">dbGetQuery</span>(con, <span class="st">"</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT a.kategorie, SUM(b.betrag) AS umsatz</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY a.kategorie"</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(ergebnis)      <span class="co"># ein gewoehnlicher Data Frame</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'data.frame':   3 obs. of  2 variables:
+ $ kategorie: chr  "Elektronik" "Mechanik" "Pneumatik"
+ $ umsatz   : num  2400 740 1968</code></pre>
+</div>
+</div>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sqlite3</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> sqlite3.<span class="ex">connect</span>(<span class="st">"verkauf.sqlite"</span>) <span class="im">as</span> con:</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> pd.read_sql_query(<span class="st">"""</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="st">        SELECT k.kategorie, COUNT(*) AS n, AVG(b.betrag) AS mittel</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="st">        FROM bestellung b</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="st">        JOIN artikel k ON k.artikel_id = b.artikel_id</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="st">        WHERE b.datum &gt;= '2026-01-01'</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="st">        GROUP BY k.kategorie</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="st">        HAVING COUNT(*) &gt; 10</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="st">        ORDER BY mittel DESC</span></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="st">    """</span>, con)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_sql_query(<span class="st">"""</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT a.kategorie, SUM(b.betrag) AS umsatz</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY a.kategorie</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>, verbindung)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    kategorie  umsatz
+0  Elektronik  2400.0
+1    Mechanik   740.0
+2   Pneumatik  1968.0</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df.dtypes)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>kategorie        str
+umsatz       float64
+dtype: object</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Das Ergebnis ist in beiden Fällen die vertraute Tabelle, mit der weitergearbeitet wird wie mit jedem anderen <span class="glossary-term" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale." tabindex="0" data-topic="Programmierung">Data Frame</span>.</p>
+<div class="note-box">
+<p>Wieviel gehört in die Datenbank, wieviel in die Auswertung? Meine Regel: Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte Datenmenge über die Leitung geht. Modellierung, Grafik und alles Iterative danach in R oder Python. Eine Million Zeilen zu laden, um daraus fünf Gruppensummen zu bilden, ist die häufigste vermeidbare Wartezeit.</p>
+</div>
+</section>
+<section id="parameter-statt-zeichenkettenbau" class="level3">
+<h3 class="anchored" data-anchor-id="parameter-statt-zeichenkettenbau">Parameter statt Zeichenkettenbau</h3>
+<p>Eine Abfrage aus Nutzereingaben zusammenzukleben ist die klassische Sicherheitslücke und erzeugt ausserdem Fehler bei Anführungszeichen. Beide Sprachen bieten Platzhalter:</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dbGetQuery</span>(con,</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SELECT bezeichnung FROM artikel WHERE kategorie = ?"</span>,</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">params =</span> <span class="fu">list</span>(<span class="st">"Mechanik"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     bezeichnung
+1 Kugellager 608
+2      Dichtring</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.read_sql_query(</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SELECT bezeichnung FROM artikel WHERE kategorie = ?"</span>,</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    verbindung, params<span class="op">=</span>(<span class="st">"Mechanik"</span>,)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      bezeichnung
+0  Kugellager 608
+1       Dichtring</code></pre>
+</div>
+</div>
 </div>
 </div>
 </div>
 </section>
-<section id="offene-fragen" class="level2">
-<h2 class="anchored" data-anchor-id="offene-fragen">Offene Fragen</h2>
-<div class="open-question">
-<p>Wie weit soll für Auswertungszwecke normalisiert werden — ab wann ist bewusste Redundanz in einer Analysetabelle die bessere Wahl?</p>
-</div>
+<section id="sqlite-oder-mysql" class="level3">
+<h3 class="anchored" data-anchor-id="sqlite-oder-mysql">SQLite oder MySQL</h3>
+<p>SQLite braucht keinen Server und liegt als einzelne Datei vor, oder wie hier nur im Arbeitsspeicher. Zum Üben, für Zwischenstände und für kleine Projekte ist es ideal. MySQL und PostgreSQL sind der Serverfall mit Nutzerverwaltung, gleichzeitigen Zugriffen und Rechtevergabe. Die SQL-Grundlagen sind dieselben, die Unterschiede liegen in Datentypen und Erweiterungen.</p>
+</section>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
 <ul>
 <li><a href="https://sqlite.org/lang.html">SQLite-Dokumentation zur SQL-Syntax</a></li>
 <li><a href="https://dev.mysql.com/doc/refman/8.0/en/">MySQL-Referenzhandbuch</a></li>
+<li><a href="https://dbi.r-dbi.org/">DBI für R</a></li>
 </ul>
 
 
@@ -1201,7 +1569,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">8. September 2026, 14:52</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">8. September 2026, 15:00</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
