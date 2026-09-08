@@ -73,12 +73,6 @@ function Meta(meta)
     return meta
   end
 
-  -- Seiten koennen sich ausnehmen: glossary-skip: true
-  if meta["glossary-skip"] then
-    active = false
-    return meta
-  end
-
   if not meta.glossary then
     return meta
   end
@@ -111,7 +105,10 @@ function Meta(meta)
     end
   end
 
-  active = next(terms) ~= nil
+  -- glossary-skip schaltet nur das Markieren im Text ab, nicht das Einlesen:
+  -- die Glossarseite selbst traegt dieses Flag und braucht die Eintraege
+  -- trotzdem, um die Liste zu bauen.
+  active = (next(terms) ~= nil) and not meta["glossary-skip"]
   return meta
 end
 
