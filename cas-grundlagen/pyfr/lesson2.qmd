@@ -119,20 +119,30 @@ protokolliert(kennzahlen, [1.0, 2.0, 3.0], einheit="kg")
 Der Stern erfüllt hier zwei Rollen: In der Definition sammelt er ein, im Aufruf
 packt er wieder aus.
 
-**Verständnisfragen**
+::: {.quiz}
+Eine Funktion ist als `def sammeln(wert, bisher=[])` definiert. Der erste
+Aufruf liefert `[1]`, der zweite `[1, 2]`. Warum?
 
-1. Warum liefert `sammeln_falsch(2)` die Liste `[1, 2]` statt `[2]`?
-2. Wann ist `*args` gerechtfertigt und wann eher ein Zeichen für unklares Design?
+- [x] Der Defaultwert wurde einmal bei der Definition erzeugt und wird geteilt ~
+      Richtig. Die leere Liste hängt seither an der Funktion, und jeder Aufruf
+      ohne zweites Argument hängt daran weiter an.
+- [ ] Python merkt sich die vorherigen Aufrufe ~ Einen solchen Mechanismus gibt
+      es nicht. Es liegt allein am geteilten Objekt.
+- [ ] Die Funktion ruft sich selbst auf ~ Jeder Aufruf ist unabhängig, nur das
+      Defaultobjekt ist es nicht.
+:::
 
-::: {.callout-note collapse="true" title="Lösung"}
-1. Weil die leere Liste beim Definieren der Funktion genau einmal erzeugt wurde
-   und seither als Defaultwert an der Funktion hängt. Jeder Aufruf ohne
-   zweites Argument arbeitet auf demselben Objekt und hängt weiter an. Sichtbar
-   wird das erst ab dem zweiten Aufruf.
-2. Gerechtfertigt beim Durchreichen an eine andere Funktion, deren Signatur man
-   nicht wiederholen will, und bei Funktionen, die tatsächlich beliebig viele
-   gleichartige Werte verarbeiten. Ein Zeichen für unklares Design ist es, wenn
-   damit verdeckt wird, dass eine Funktion zu viele verschiedene Dinge tut.
+::: {.quiz}
+Wann ist `*args` gerechtfertigt und wann ein Zeichen für unklares Design?
+
+- [x] Gerechtfertigt beim Durchreichen an eine andere Funktion ~ Richtig, etwa
+      wenn man deren Signatur nicht wiederholen will, oder bei beliebig vielen
+      gleichartigen Werten. Verdächtig wird es, wenn damit verdeckt wird, dass
+      eine Funktion zu viele verschiedene Dinge tut.
+- [ ] Immer gerechtfertigt, es macht Funktionen flexibel ~ Flexibilität ohne
+      erkennbare Signatur macht den Aufruf unlesbar.
+- [ ] Nie, benannte Parameter sind immer besser ~ Beim Weiterreichen wären sie
+      eine Verdopplung, die bei jeder Änderung nachgezogen werden müsste.
 :::
 
 ### Namensräume
@@ -265,19 +275,29 @@ aufruft und die Erzählung liefert. So bleibt die Logik prüfbar und das
 Dokument lesbar.
 :::
 
-**Verständnisfragen**
+::: {.quiz}
+Ein Skript enthält Testaufrufe am Dateiende und wird von einer anderen Datei
+importiert. Was passiert ohne `if __name__ == "__main__"`?
 
-1. Was passiert ohne `if __name__ == "__main__"`, wenn ein Skript mit Testaufrufen importiert wird?
-2. Warum ist `sorted(leute, key=lambda p: p["jahr"])` besser als eine eigene Sortierschleife?
+- [x] Die Testaufrufe laufen beim Import mit ~ Richtig. Beim Import wird der
+      gesamte Dateiinhalt ausgeführt. Das kostet Zeit, erzeugt unerwünschte
+      Ausgaben und kann im schlimmsten Fall Dateien überschreiben.
+- [ ] Nichts, Funktionen werden beim Import nur definiert ~ Definitionen ja,
+      aber Aufrufe auf oberster Ebene werden ausgeführt.
+- [ ] Der Import schlägt fehl ~ Er gelingt, nur eben mit Nebenwirkungen.
+:::
 
-::: {.callout-note collapse="true" title="Lösung"}
-1. Der gesamte Dateiinhalt wird beim Import ausgeführt, also auch die
-   Testaufrufe. Das kostet Zeit, gibt unerwünschte Ausgaben und kann im
-   schlimmsten Fall Dateien schreiben oder überschreiben. Der Block macht die
-   Datei gleichzeitig ausführbar und importierbar.
-2. Weil die Absicht in einer Zeile steht und die Sortierung selbst geprüfter
-   Code der Standardbibliothek ist. Eine eigene Schleife müsste Stabilität,
-   Sonderfälle und Effizienz nachbilden, ohne dass daraus etwas gewonnen wäre.
+::: {.quiz}
+Warum ist `sorted(leute, key=lambda p: p["jahr"])` einer eigenen Sortierschleife
+vorzuziehen?
+
+- [ ] Weil Lambda-Ausdrücke schneller sind ~ Der Gewinn liegt nicht am Lambda,
+      sondern an der geprüften Sortierfunktion dahinter.
+- [x] Weil die Absicht in einer Zeile steht und der Sortiercode geprüft ist ~
+      Richtig. Eine eigene Schleife müsste Stabilität, Sonderfälle und
+      Effizienz nachbilden, ohne dass daraus etwas gewonnen wäre.
+- [ ] Weil eigene Schleifen in Python verboten sind ~ Sie sind erlaubt, nur
+      hier unnötig.
 :::
 
 ## Verlinkte Ressourcen

@@ -136,19 +136,31 @@ print(len(m))
 Ohne `__str__` gäbe `print` nur die Speicheradresse aus. Mit ihr verhält sich
 das eigene Objekt wie ein eingebauter Typ, und genau das ist der Zweck.
 
-**Verständnisfragen**
+::: {.quiz}
+Warum steht `self` in der Definition einer Methode, aber nicht im Aufruf
+`m.mittel()`?
 
-1. Warum steht `self` in der Definition, aber nicht im Aufruf `m.mittel()`?
-2. Was wäre die Folge, wenn `werte = []` als Klassenattribut statt in `__init__` stünde?
+- [x] Python setzt beim Aufruf das Objekt automatisch als erstes Argument ein ~
+      Richtig. `m.mittel()` wird intern zu `Messreihe.mittel(m)`. Sichtbar wird
+      der Mechanismus, wenn man die Methode über die Klasse aufruft.
+- [ ] `self` ist ein Schlüsselwort und wird ignoriert ~ Es ist ein gewöhnlicher
+      Parametername; die Bezeichnung ist nur Konvention.
+- [ ] Der Aufruf ist unvollständig und funktioniert nur zufällig ~ Er ist die
+      übliche und vorgesehene Schreibweise.
+:::
 
-::: {.callout-note collapse="true" title="Lösung"}
-1. Weil Python es beim Aufruf automatisch einsetzt. `m.mittel()` wird intern zu
-   `Messreihe.mittel(m)`. Sichtbar ist der Mechanismus, wenn man die Methode
-   über die Klasse aufruft; dann muss die Instanz von Hand übergeben werden.
-2. Alle Instanzen teilten sich dieselbe Liste. Ein `append` in einem Objekt
-   wäre in allen anderen sichtbar, und neue Objekte kämen bereits gefüllt zur
-   Welt. Es ist derselbe Fehler wie der veränderliche Defaultwert bei
-   Funktionen, nur an anderer Stelle.
+::: {.quiz}
+Was wäre die Folge, wenn `werte = []` als Klassenattribut statt in `__init__`
+stünde?
+
+- [ ] Nichts, es ist dieselbe Zuweisung an anderer Stelle ~ Der Ort entscheidet,
+      ob das Objekt einmal für alle oder je Exemplar entsteht.
+- [x] Alle Instanzen teilten sich dieselbe Liste ~ Richtig. Ein `append` in
+      einem Objekt wäre in allen anderen sichtbar, und neue Objekte kämen
+      bereits gefüllt zur Welt. Es ist derselbe Fehler wie der veränderliche
+      Defaultwert bei Funktionen.
+- [ ] Die Klasse liesse sich nicht mehr instanziieren ~ Sie liesse sich
+      problemlos instanziieren, und genau das macht den Fehler unauffällig.
 :::
 
 ### Vererbung, sparsam eingesetzt
@@ -235,20 +247,30 @@ nacheinander genau einmal aufgerufen werden, hat eine Funktion umständlich
 verpackt. Das ist das häufigste Muster für unnötige Objektorientierung.
 :::
 
-**Verständnisfragen**
+::: {.quiz}
+Wozu dient `super().__init__(...)` in einer abgeleiteten Klasse?
 
-1. Wozu dient `super().__init__(...)` in der abgeleiteten Klasse?
-2. Warum gibt `print(g)` den gewichteten Mittelwert aus, obwohl `__str__` nur in der Basisklasse steht?
+- [x] Es ruft die Initialisierung der Basisklasse auf, damit deren Attribute
+      gesetzt werden ~ Richtig. Ohne diesen Aufruf hätte das Objekt weder
+      `name` noch `werte`, und jede geerbte Methode liefe ins Leere.
+- [ ] Es macht die Klasse überhaupt erst ableitbar ~ Ableitbar ist sie durch
+      die Angabe in der Klammer der Klassendefinition.
+- [ ] Es kopiert die Methoden der Basisklasse ~ Kopiert wird nichts, die
+      Methoden werden bei Bedarf dort gesucht.
+:::
 
-::: {.callout-note collapse="true" title="Lösung"}
-1. Es ruft die Initialisierung der Basisklasse auf, damit deren Attribute
-   gesetzt werden, ohne dass man den Code wiederholt. Ohne diesen Aufruf hätte
-   das Objekt weder `name` noch `werte`, und jede geerbte Methode liefe ins
-   Leere.
-2. Weil `__str__` intern `self.mittel()` aufruft und `self` das abgeleitete
-   Objekt ist. Python sucht die Methode dort zuerst und findet die
-   überschriebene Version. Dieses Verhalten heisst dynamische Bindung und ist
-   der eigentliche Nutzen der Vererbung.
+::: {.quiz}
+`__str__` steht nur in der Basisklasse, gibt bei einem abgeleiteten Objekt aber
+den gewichteten Mittelwert aus. Wie kommt das?
+
+- [x] `__str__` ruft `self.mittel()` auf, und `self` ist das abgeleitete Objekt ~
+      Richtig. Python sucht die Methode dort zuerst und findet die
+      überschriebene Version. Dieses Verhalten heisst dynamische Bindung und ist
+      der eigentliche Nutzen der Vererbung.
+- [ ] Die abgeleitete Klasse hat `__str__` stillschweigend überschrieben ~ Sie
+      definiert es gar nicht, sondern erbt es unverändert.
+- [ ] Es ist ein Zufall der Reihenfolge ~ Das Verhalten ist festgelegt und
+      verlässlich.
 :::
 
 ## Verlinkte Ressourcen
