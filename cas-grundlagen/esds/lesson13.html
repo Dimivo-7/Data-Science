@@ -86,6 +86,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../site_libs/bootstrap/bootstrap-fc8bda2560e8bf96d8ab58ae635941a1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-c09331f84773683b7b9c09a45bd4d593.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-fc8bda2560e8bf96d8ab58ae635941a1.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -115,6 +118,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -532,7 +564,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../cas-grundlagen/esds/lesson14.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">L14 – Chi-Quadrat-Tests</span></a>
+ <span class="menu-text">L14 – <span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik" tabindex="0">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
       </ul>
@@ -643,9 +675,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#kernideen-aus-dem-kurs" id="toc-kernideen-aus-dem-kurs" class="nav-link active" data-scroll-target="#kernideen-aus-dem-kurs">Kernideen aus dem Kurs</a></li>
-  <li><a href="#meine-zusammenfassung" id="toc-meine-zusammenfassung" class="nav-link" data-scroll-target="#meine-zusammenfassung">Meine Zusammenfassung</a></li>
-  <li><a href="#eigene-beispiele-code" id="toc-eigene-beispiele-code" class="nav-link" data-scroll-target="#eigene-beispiele-code">Eigene Beispiele / Code</a></li>
-  <li><a href="#offene-fragen" id="toc-offene-fragen" class="nav-link" data-scroll-target="#offene-fragen">Offene Fragen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#die-frage-hinter-jedem-test" id="toc-die-frage-hinter-jedem-test" class="nav-link" data-scroll-target="#die-frage-hinter-jedem-test">Die Frage hinter jedem Test</a></li>
+  <li><a href="#der-aufbau" id="toc-der-aufbau" class="nav-link" data-scroll-target="#der-aufbau">Der Aufbau</a></li>
+  <li><a href="#was-der-p-wert-ist" id="toc-was-der-p-wert-ist" class="nav-link" data-scroll-target="#was-der-p-wert-ist">Was der p-Wert ist</a></li>
+  <li><a href="#signifikant-heisst-nicht-bedeutsam" id="toc-signifikant-heisst-nicht-bedeutsam" class="nav-link" data-scroll-target="#signifikant-heisst-nicht-bedeutsam">Signifikant heisst nicht bedeutsam</a></li>
+  <li><a href="#die-drei-t-tests" id="toc-die-drei-t-tests" class="nav-link" data-scroll-target="#die-drei-t-tests">Die drei t-Tests</a></li>
+  <li><a href="#warum-gepaart-deutlich-stärker-ist" id="toc-warum-gepaart-deutlich-stärker-ist" class="nav-link" data-scroll-target="#warum-gepaart-deutlich-stärker-ist">Warum gepaart deutlich stärker ist</a></li>
+  <li><a href="#voraussetzungen-und-ausweg" id="toc-voraussetzungen-und-ausweg" class="nav-link" data-scroll-target="#voraussetzungen-und-ausweg">Voraussetzungen und Ausweg</a></li>
+  </ul></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -689,61 +728,302 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li>Null- und Alternativhypothese</li>
 <li>Fehler erster und zweiter Art</li>
-<li>Signifikanzniveau, Teststatistik, p-Wert</li>
+<li><span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">Signifikanzniveau</span>, Teststatistik, <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span></li>
 <li>Ein- und zweiseitige Fragestellung</li>
-<li>Einstichproben-, Zweistichproben- und gepaarter t-Test</li>
+<li>Einstichproben-, Zweistichproben- und gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span></li>
 <li>Voraussetzungen und nichtparametrische Ausweichverfahren</li>
 </ul>
 </section>
-<section id="meine-zusammenfassung" class="level2">
-<h2 class="anchored" data-anchor-id="meine-zusammenfassung">Meine Zusammenfassung</h2>
-<p>Ein Hypothesentest ist ein Widerspruchsbeweis unter Unsicherheit. Angenommen wird zunächst die Nullhypothese — meist “kein Unterschied”, “kein Effekt”. Dann wird gefragt, wie ungewöhnlich die beobachteten Daten wären, wenn sie zuträfe. Ist das Ergebnis unter dieser Annahme sehr unwahrscheinlich, wird die Nullhypothese verworfen. Wichtig ist die Asymmetrie: verworfen oder nicht verworfen sind die beiden möglichen Ausgänge, bestätigt wird die Nullhypothese nie.</p>
-<p>Der p-Wert ist die Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Er ist nicht die Wahrscheinlichkeit, dass die Nullhypothese stimmt, und er misst auch nicht die Grösse des Effekts. Bei sehr grossen <a href="../../cas-grundlagen/esds/lesson12.html">Stichproben</a> wird jede noch so kleine Abweichung signifikant — deshalb gehört zu jedem Testergebnis eine Effektgrösse oder ein Konfidenzintervall, sonst bleibt die praktische Bedeutung offen.</p>
-<p>Die beiden Fehlerarten stehen im Zielkonflikt. Der Fehler erster Art verwirft eine zutreffende Nullhypothese und wird über das Signifikanzniveau direkt begrenzt. Der Fehler zweiter Art übersieht einen vorhandenen Effekt; sein Gegenstück ist die Teststärke, die mit Stichprobenumfang und Effektgrösse wächst. Ein strengeres Niveau senkt den einen Fehler und erhöht den anderen.</p>
-<p>Der t-Test kommt in drei Varianten: eine Stichprobe gegen einen festen Wert, zwei unabhängige Gruppen, und der gepaarte Fall bei verbundenen Messungen — etwa vorher und nachher am selben Objekt. Der gepaarte Test rechnet auf den Differenzen und ist deutlich trennschärfer; ihn durch den Zweistichprobentest zu ersetzen verschenkt Information. Vorausgesetzt werden unabhängige Beobachtungen und annähernd <span class="glossary-term" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0">normalverteilte</span> Werte beziehungsweise Differenzen, wobei die Anforderung mit wachsender Stichprobe dank des <a href="../../cas-grundlagen/esds/lesson10.html">zentralen Grenzwertsatzes</a> nachlässt. Bei kleinen, deutlich schiefen Stichproben ist ein rangbasiertes Verfahren die sichere Alternative.</p>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
 <div class="note-box">
-<p>Ein- oder zweiseitig wird vor dem Blick in die Daten festgelegt. Die Richtung nachträglich nach dem beobachteten Ergebnis zu wählen, halbiert den p-Wert unzulässig.</p>
+<p><strong>Vorwissen:</strong> <a href="../../cas-grundlagen/esds/lesson12.html">L12 – Schätzen &amp; Konfidenzintervalle</a> für <span class="glossary-term" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik" tabindex="0">Standardfehler</span> und t-Verteilung, die hier unverändert wiederkehren, und <a href="../../cas-grundlagen/esds/lesson10.html">L10</a> für den zentralen <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik" tabindex="0">Grenzwertsatz</span>. Der Test für kategoriale Daten folgt in <a href="../../cas-grundlagen/esds/lesson14.html">L14</a>.</p>
 </div>
+<section id="die-frage-hinter-jedem-test" class="level3">
+<h3 class="anchored" data-anchor-id="die-frage-hinter-jedem-test">Die Frage hinter jedem Test</h3>
+<p>Zwei Maschinen liefern Werkstücke, die eine im Mittel 0.4 Millimeter dicker als die andere. Ist das ein Unterschied oder Zufall? Aus zwei Stichproben allein lässt sich das nicht ablesen, denn zwei Stichproben aus derselben Quelle unterscheiden sich immer.</p>
+<p>Der Hypothesentest beantwortet diese Frage über einen Umweg. Er nimmt zunächst an, es gebe keinen Unterschied, und fragt dann, wie ungewöhnlich die beobachteten Daten unter dieser Annahme wären.</p>
 </section>
-<section id="eigene-beispiele-code" class="level2">
-<h2 class="anchored" data-anchor-id="eigene-beispiele-code">Eigene Beispiele / Code</h2>
+<section id="der-aufbau" class="level3">
+<h3 class="anchored" data-anchor-id="der-aufbau">Der Aufbau</h3>
+<p>Die <span class="glossary-term" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik" tabindex="0">Nullhypothese</span> ist die Annahme, die widerlegt werden soll, üblicherweise kein Unterschied oder kein Effekt. Die Alternativhypothese ist das, was man zeigen möchte.</p>
+<p>Diese Asymmetrie ist wichtig: Ein Test kann die <span class="glossary-term" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik" tabindex="0">Nullhypothese</span> verwerfen oder nicht verwerfen. <strong>Bestätigt wird sie nie.</strong> Fehlender Nachweis eines Unterschieds ist etwas anderes als der Nachweis, dass keiner besteht.</p>
+<p>Was passieren kann, lässt sich in vier Feldern darstellen:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Nullhypothese ist wahr</th>
+<th>Nullhypothese ist falsch</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>verworfen</strong></td>
+<td>Fehler erster Art, Wahrscheinlichkeit <span class="math inline">\(\alpha\)</span></td>
+<td>richtige Entscheidung, Teststärke</td>
+</tr>
+<tr class="even">
+<td><strong>nicht verworfen</strong></td>
+<td>richtige Entscheidung</td>
+<td>Fehler zweiter Art, Wahrscheinlichkeit <span class="math inline">\(\beta\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>Der <span class="glossary-term" data-def="Eine zutreffende Nullhypothese wird verworfen, es wird also ein Effekt behauptet, den es nicht gibt. Seine Wahrscheinlichkeit ist das Signifikanzniveau." data-topic="Statistik" tabindex="0">Fehler erster Art</span> wird durch das <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">Signifikanzniveau</span> direkt begrenzt, üblicherweise auf fünf Prozent. Der <span class="glossary-term" data-def="Ein tatsächlich vorhandener Effekt wird übersehen. Seine Wahrscheinlichkeit hängt von Stichprobenumfang und Effektgrösse ab und wird selten berichtet." data-topic="Statistik" tabindex="0">Fehler zweiter Art</span> ergibt sich aus Stichprobenumfang und <span class="glossary-term" data-def="Mass für die Stärke eines Effekts, unabhängig vom Stichprobenumfang. Gehört zu jedem Testergebnis, weil bei grossen Stichproben auch bedeutungslose Unterschiede signifikant werden." data-topic="Statistik" tabindex="0">Effektgrösse</span> und wird selten berichtet, obwohl er in der Praxis oft der bedeutsamere ist.</p>
+</section>
+<section id="was-der-p-wert-ist" class="level3">
+<h3 class="anchored" data-anchor-id="was-der-p-wert-ist">Was der p-Wert ist</h3>
+<p>Der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> ist die Wahrscheinlichkeit, unter der <span class="glossary-term" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik" tabindex="0">Nullhypothese</span> ein mindestens so extremes Ergebnis zu erhalten wie das beobachtete. Er ist <strong>nicht</strong> die Wahrscheinlichkeit, dass die <span class="glossary-term" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik" tabindex="0">Nullhypothese</span> stimmt.</p>
+<p>Das lässt sich zeigen, indem man tausendmal aus derselben Quelle zieht, wo also tatsächlich kein Unterschied besteht:</p>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Einstichproben-t-Test gegen Sollwert 12</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(x, <span class="at">mu =</span> <span class="dv">12</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Zwei unabhaengige Gruppen (Welch als Standard)</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(verbrauch <span class="sc">~</span> typ, <span class="at">data =</span> df)</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Gepaart: dieselbe Maschine vorher und nachher</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(nachher, vorher, <span class="at">paired =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Nichtparametrische Alternative</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">wilcox.test</span>(verbrauch <span class="sc">~</span> typ, <span class="at">data =</span> df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>p_werte <span class="ot">&lt;-</span> <span class="fu">replicate</span>(<span class="dv">1000</span>, <span class="fu">t.test</span>(<span class="fu">rnorm</span>(<span class="dv">20</span>), <span class="fu">rnorm</span>(<span class="dv">20</span>))<span class="sc">$</span>p.value)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="fu">data.frame</span>(p_werte), <span class="fu">aes</span>(p_werte)) <span class="sc">+</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="fl">0.05</span>, <span class="at">boundary =</span> <span class="dv">0</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill =</span> <span class="st">"grey75"</span>, <span class="at">colour =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fl">0.05</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"p-Wert"</span>, <span class="at">y =</span> <span class="st">"Anzahl"</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(p_werte <span class="sc">&lt;</span> <span class="fl">0.05</span>)      <span class="co"># Anteil faelschlich signifikanter Tests</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.044</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-pwert-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pwert-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="lesson13_files/figure-html/fig-pwert-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Figure&nbsp;1: 1000 Tests auf Daten ohne echten Unterschied. Unter der Nullhypothese ist der p-Wert gleichverteilt."><img src="lesson13_files/figure-html/fig-pwert-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pwert-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: 1000 Tests auf Daten ohne echten Unterschied. Unter der Nullhypothese ist der p-Wert gleichverteilt.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> scipy <span class="im">import</span> stats</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>stats.ttest_1samp(x, popmean<span class="op">=</span><span class="dv">12</span>)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>a <span class="op">=</span> df.loc[df[<span class="st">"typ"</span>] <span class="op">==</span> <span class="st">"A"</span>, <span class="st">"verbrauch"</span>]</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>b <span class="op">=</span> df.loc[df[<span class="st">"typ"</span>] <span class="op">==</span> <span class="st">"B"</span>, <span class="st">"verbrauch"</span>]</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>stats.ttest_ind(a, b, equal_var<span class="op">=</span><span class="va">False</span>)      <span class="co"># Welch</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>stats.ttest_rel(nachher, vorher)</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>stats.mannwhitneyu(a, b)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>p_werte <span class="op">=</span> np.array([stats.ttest_ind(rng.normal(size<span class="op">=</span><span class="dv">20</span>),</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>                                    rng.normal(size<span class="op">=</span><span class="dv">20</span>)).pvalue</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">1000</span>)])</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.2</span>))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>ax.hist(p_werte, bins<span class="op">=</span><span class="dv">20</span>, <span class="bu">range</span><span class="op">=</span>(<span class="dv">0</span>, <span class="dv">1</span>), color<span class="op">=</span><span class="st">"0.75"</span>, edgecolor<span class="op">=</span><span class="st">"white"</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>ax.axvline(<span class="fl">0.05</span>, linestyle<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"black"</span>)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"p-Wert"</span>)<span class="op">;</span> ax.set_ylabel(<span class="st">"Anzahl"</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-pwert-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pwert-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="lesson13_files/figure-html/fig-pwert-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Figure&nbsp;2: Dieselbe Simulation mit scipy."><img src="lesson13_files/figure-html/fig-pwert-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pwert-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Dieselbe Simulation mit scipy.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>((p_werte <span class="op">&lt;</span> <span class="fl">0.05</span>).mean())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>0.039</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Zwei Dinge sind daran abzulesen. Erstens ist der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> unter der <span class="glossary-term" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik" tabindex="0">Nullhypothese</span> gleichverteilt, jeder Wert also gleich häufig. Zweitens landen rund fünf Prozent unter 0.05, obwohl kein Unterschied besteht. Genau das ist der <span class="glossary-term" data-def="Eine zutreffende Nullhypothese wird verworfen, es wird also ein Effekt behauptet, den es nicht gibt. Seine Wahrscheinlichkeit ist das Signifikanzniveau." data-topic="Statistik" tabindex="0">Fehler erster Art</span>, und er ist keine Panne, sondern der eingebaute Preis des Verfahrens.</p>
+<div class="note-box">
+<p>Daraus folgt unmittelbar das Problem des mehrfachen Testens. Wer zwanzig Zusammenhänge prüft, findet im Schnitt einen signifikanten, auch wenn keiner besteht. Wer nur diesen berichtet, berichtet Rauschen.</p>
+</div>
+</section>
+<section id="signifikant-heisst-nicht-bedeutsam" class="level3">
+<h3 class="anchored" data-anchor-id="signifikant-heisst-nicht-bedeutsam">Signifikant heisst nicht bedeutsam</h3>
+<p>Bei grossen Stichproben wird jede noch so kleine Abweichung <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">signifikant</span>. Der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> misst nicht die Grösse eines Effekts, sondern nur, wie gut er vom Zufall zu unterscheiden ist.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ein winziger, praktisch bedeutungsloser Unterschied</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>gross_a <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">50000</span>, <span class="at">mean =</span> <span class="fl">100.0</span>, <span class="at">sd =</span> <span class="dv">15</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>gross_b <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">50000</span>, <span class="at">mean =</span> <span class="fl">100.3</span>, <span class="at">sd =</span> <span class="dv">15</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>test <span class="ot">&lt;-</span> <span class="fu">t.test</span>(gross_a, gross_b)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">differenz =</span> <span class="fu">round</span>(<span class="fu">mean</span>(gross_b) <span class="sc">-</span> <span class="fu">mean</span>(gross_a), <span class="dv">3</span>),</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">p_wert    =</span> <span class="fu">signif</span>(test<span class="sc">$</span>p.value, <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>differenz    p_wert 
+  0.26200   0.00568 </code></pre>
+</div>
+</div>
+<p>Der Unterschied beträgt Bruchteile eines Punktes auf einer Skala mit einer Standardabweichung von 15, ist also praktisch bedeutungslos, und trotzdem hochsignifikant. Deshalb gehört zu jedem Testergebnis eine <span class="glossary-term" data-def="Mass für die Stärke eines Effekts, unabhängig vom Stichprobenumfang. Gehört zu jedem Testergebnis, weil bei grossen Stichproben auch bedeutungslose Unterschiede signifikant werden." data-topic="Statistik" tabindex="0">Effektgrösse</span> oder ein <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervall</span>.</p>
+</section>
+<section id="die-drei-t-tests" class="level3">
+<h3 class="anchored" data-anchor-id="die-drei-t-tests">Die drei t-Tests</h3>
+<p>Alle drei prüfen Mittelwerte, unterscheiden sich aber in der Datenstruktur.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variante</th>
+<th>Frage</th>
+<th>Datenlage</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Einstichproben</td>
+<td>Weicht der Mittelwert von einem Sollwert ab?</td>
+<td>eine Gruppe, ein Referenzwert</td>
+</tr>
+<tr class="even">
+<td>Zweistichproben</td>
+<td>Unterscheiden sich zwei Gruppen?</td>
+<td>zwei unabhängige Gruppen</td>
+</tr>
+<tr class="odd">
+<td>Gepaart</td>
+<td>Hat sich etwas verändert?</td>
+<td>zwei Messungen am selben Objekt</td>
+</tr>
+</tbody>
+</table>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>dicke <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">30</span>, <span class="at">mean =</span> <span class="fl">12.1</span>, <span class="at">sd =</span> <span class="fl">0.4</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. gegen den Sollwert 12</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(dicke, <span class="at">mu =</span> <span class="dv">12</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    One Sample t-test
+
+data:  dicke
+t = 2.9677, df = 29, p-value = 0.00596
+alternative hypothesis: true mean is not equal to 12
+95 percent confidence interval:
+ 12.05811 12.31578
+sample estimates:
+mean of x 
+ 12.18694 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. zwei unabhaengige Maschinen</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>maschine_a <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">25</span>, <span class="at">mean =</span> <span class="fl">12.1</span>, <span class="at">sd =</span> <span class="fl">0.4</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>maschine_b <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">25</span>, <span class="at">mean =</span> <span class="fl">12.4</span>, <span class="at">sd =</span> <span class="fl">0.5</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="fu">t.test</span>(maschine_a, maschine_b)      <span class="co"># Welch, ungleiche Varianzen erlaubt</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Welch Two Sample t-test
+
+data:  maschine_a and maschine_b
+t = -1.6666, df = 45.64, p-value = 0.1024
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -0.50594801  0.04766479
+sample estimates:
+mean of x mean of y 
+ 12.23045  12.45960 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>dicke <span class="op">=</span> rng.normal(<span class="fl">12.1</span>, <span class="fl">0.4</span>, <span class="dv">30</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(stats.ttest_1samp(dicke, popmean<span class="op">=</span><span class="dv">12</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>TtestResult(statistic=np.float64(-1.8718060502936094), pvalue=np.float64(0.07135114609993536), df=np.int64(29))</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>maschine_a <span class="op">=</span> rng.normal(<span class="fl">12.1</span>, <span class="fl">0.4</span>, <span class="dv">25</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>maschine_b <span class="op">=</span> rng.normal(<span class="fl">12.4</span>, <span class="fl">0.5</span>, <span class="dv">25</span>)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(stats.ttest_ind(maschine_a, maschine_b, equal_var<span class="op">=</span><span class="va">False</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>TtestResult(statistic=np.float64(-2.1439812212151277), pvalue=np.float64(0.03773854933681647), df=np.float64(42.940519453480924))</code></pre>
+</div>
+</div>
 </div>
 </div>
 </div>
 </section>
-<section id="offene-fragen" class="level2">
-<h2 class="anchored" data-anchor-id="offene-fragen">Offene Fragen</h2>
-<div class="open-question">
-<p>Wie berichte ich ein nicht signifikantes Ergebnis korrekt, ohne es als Beleg für die Abwesenheit eines Effekts erscheinen zu lassen?</p>
+<section id="warum-gepaart-deutlich-stärker-ist" class="level3">
+<h3 class="anchored" data-anchor-id="warum-gepaart-deutlich-stärker-ist">Warum gepaart deutlich stärker ist</h3>
+<p>Wird dasselbe Objekt zweimal gemessen, etwa vor und nach einer Wartung, gehören die Werte paarweise zusammen. Der gepaarte Test rechnet auf den Differenzen und entfernt damit die Unterschiede zwischen den Objekten aus der Rechnung.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 20 Maschinen, jede mit eigenem Niveau, alle gewinnen 0.6 durch die Wartung</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>niveau  <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">20</span>, <span class="at">mean =</span> <span class="dv">100</span>, <span class="at">sd =</span> <span class="dv">12</span>)     <span class="co"># grosse Unterschiede zwischen Maschinen</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>vorher  <span class="ot">&lt;-</span> niveau <span class="sc">+</span> <span class="fu">rnorm</span>(<span class="dv">20</span>, <span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>nachher <span class="ot">&lt;-</span> niveau <span class="sc">+</span> <span class="fl">0.6</span> <span class="sc">+</span> <span class="fu">rnorm</span>(<span class="dv">20</span>, <span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="fu">signif</span>(<span class="fu">t.test</span>(nachher, vorher, <span class="at">paired =</span> <span class="cn">TRUE</span>)<span class="sc">$</span>p.value, <span class="dv">3</span>)   <span class="co"># gepaart</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.105</code></pre>
 </div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">signif</span>(<span class="fu">t.test</span>(nachher, vorher)<span class="sc">$</span>p.value, <span class="dv">3</span>)                  <span class="co"># faelschlich ungepaart</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.904</code></pre>
+</div>
+</div>
+<p>Der gepaarte Test findet den Effekt deutlich, der ungepaarte nicht. Die Streuung zwischen den Maschinen ist so gross, dass sie den kleinen, aber systematischen Gewinn überdeckt. Wer die Paarung ignoriert, verschenkt genau diese Information.</p>
+</section>
+<section id="voraussetzungen-und-ausweg" class="level3">
+<h3 class="anchored" data-anchor-id="voraussetzungen-und-ausweg">Voraussetzungen und Ausweg</h3>
+<p>Vorausgesetzt werden unabhängige Beobachtungen und annähernd <span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">normalverteilte</span> Werte, beim gepaarten Test die <span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">Normalverteilung</span> der Differenzen. Dank des zentralen Grenzwertsatzes wird die zweite Anforderung mit wachsendem Umfang unkritisch.</p>
+<p>Kritisch bleibt sie bei kleinen, deutlich schiefen Stichproben. Dort ist ein rangbasiertes Verfahren die sichere Wahl:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>schief_a <span class="ot">&lt;-</span> <span class="fu">rexp</span>(<span class="dv">12</span>, <span class="at">rate =</span> <span class="dv">1</span>)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>schief_b <span class="ot">&lt;-</span> <span class="fu">rexp</span>(<span class="dv">12</span>, <span class="at">rate =</span> <span class="fl">0.5</span>)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="fu">signif</span>(<span class="fu">t.test</span>(schief_a, schief_b)<span class="sc">$</span>p.value, <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.659</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">signif</span>(<span class="fu">wilcox.test</span>(schief_a, schief_b)<span class="sc">$</span>p.value, <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1</code></pre>
+</div>
+</div>
+<div class="note-box">
+<p>Ein- oder zweiseitig wird <strong>vor</strong> dem Blick in die Daten festgelegt. Die Richtung nachträglich nach dem beobachteten Ergebnis zu wählen, halbiert den <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> unzulässig und verdoppelt damit den <span class="glossary-term" data-def="Eine zutreffende Nullhypothese wird verworfen, es wird also ein Effekt behauptet, den es nicht gibt. Seine Wahrscheinlichkeit ist das Signifikanzniveau." data-topic="Statistik" tabindex="0">Fehler erster Art</span>.</p>
+</div>
+<p><strong>Verständnisfragen</strong></p>
+<ol type="1">
+<li>Ein Test ergibt p = 0.31. Was darf man daraus schliessen?</li>
+<li>Warum ist es unzulässig, nach einem <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> von 0.06 die Stichprobe zu vergrössern und erneut zu testen?</li>
+</ol>
+<div class="callout callout-style-default callout-note callout-titled" title="Lösung">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Lösung
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Nur, dass die Daten mit der <span class="glossary-term" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik" tabindex="0">Nullhypothese</span> vereinbar sind. Nicht, dass kein Unterschied besteht. Möglicherweise ist die Stichprobe zu klein, um einen vorhandenen Effekt zu erkennen. Korrekt formuliert wird die <span class="glossary-term" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik" tabindex="0">Nullhypothese</span> nicht verworfen; zusätzlich gehört das <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervall</span> berichtet, denn es zeigt, welche Effektgrössen die Daten noch zulassen.</li>
+<li>Weil dadurch der <span class="glossary-term" data-def="Eine zutreffende Nullhypothese wird verworfen, es wird also ein Effekt behauptet, den es nicht gibt. Seine Wahrscheinlichkeit ist das Signifikanzniveau." data-topic="Statistik" tabindex="0">Fehler erster Art</span> unkontrolliert steigt. Wer so lange nachlegt, bis das Ergebnis <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">signifikant</span> wird, findet irgendwann immer etwas, da der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> bei jeder Zwischenauswertung erneut die Chance hat, unter die Schwelle zu rutschen. Der Stichprobenumfang gehört vorher festgelegt.</li>
+</ol>
+</div>
+</div>
+</div>
+</section>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
@@ -1195,11 +1475,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">8. September 2026, 14:22</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">8. September 2026, 14:31</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
