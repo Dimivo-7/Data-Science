@@ -214,20 +214,31 @@ zeige("
   ORDER BY umsatz DESC")
 ```
 
-**Verständnisfragen**
+::: {.quiz}
+Warum lässt sich `WHERE SUM(betrag) > 500` nicht schreiben?
 
-1. Warum lässt sich `WHERE SUM(betrag) > 500` nicht schreiben?
-2. Ein Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?
+- [x] `WHERE` wird vor der Gruppierung ausgewertet, es gibt dort noch keine
+      Summen ~ Richtig. Bedingungen auf Aggregaten gehören in `HAVING`, das nach
+      der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.
+- [ ] `SUM` ist in einer Bedingung generell nicht erlaubt ~ In `HAVING` ist es
+      erlaubt, es hängt allein am Zeitpunkt.
+- [ ] Es fehlt ein `GROUP BY` ~ Auch mit `GROUP BY` bliebe die Zeile falsch, denn
+      `WHERE` läuft trotzdem vorher.
+:::
 
-::: {.callout-note collapse="true" title="Lösung"}
-1. Weil `WHERE` vor der Gruppierung ausgewertet wird und zu diesem Zeitpunkt
-   noch keine Gruppen und damit keine Summen existieren. Bedingungen auf
-   Aggregaten gehören in `HAVING`, das nach der Gruppierung läuft. Beides in
-   einer Abfrage ist möglich und üblich.
-2. Der Schlüssel war auf der rechten Seite nicht eindeutig. Jede linke Zeile
-   wird dann mit jeder passenden rechten kombiniert. Genau dieselbe Falle wie
-   beim `merge` in [Pandas](lesson7.qmd); die Prüfung ist dieselbe, nämlich
-   vorher die Eindeutigkeit des Schlüssels sicherstellen.
+::: {.quiz}
+Ein Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?
+
+- [x] Der Schlüssel war auf der rechten Seite nicht eindeutig ~ Richtig. Jede
+      linke Zeile wird mit jeder passenden rechten kombiniert. Es ist dieselbe
+      Falle wie beim `merge` in [Pandas](lesson7.qmd), und die Prüfung ist
+      dieselbe: vorher die Eindeutigkeit des Schlüssels sicherstellen.
+- [ ] Es wurde ein `LEFT JOIN` statt eines `INNER JOIN` verwendet ~ Ein
+      `LEFT JOIN` behält alle linken Zeilen, vervielfacht sie aber nicht von
+      sich aus.
+- [ ] Die Verknüpfungsbedingung fehlt ~ Dann entstünde das Kreuzprodukt, also
+      ungleich mehr Zeilen. Der häufigere und unauffälligere Fall ist der
+      mehrdeutige Schlüssel.
 :::
 
 ### Zugriff aus beiden Sprachen
