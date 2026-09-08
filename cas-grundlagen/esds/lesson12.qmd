@@ -4,68 +4,267 @@ description: "Punktschätzer, Standardfehler und Intervallschätzung für Erwart
 categories: ["Schätzen", "Verteilungen", "R", "Python"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+from statsmodels.stats.proportion import proportion_confint
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
 - Grundgesamtheit gegenüber Stichprobe
-- Punktschätzer, Erwartungstreue
+- Punktschätzer und Erwartungstreue
 - Stichprobenverteilung und Standardfehler
-- Konfidenzintervall für den [Erwartungswert](lesson9.qmd)
-- t-Verteilung bei unbekannter [Varianz](lesson4.qmd)
+- Konfidenzintervall für den Erwartungswert
+- t-Verteilung bei unbekannter Varianz
 - Konfidenzintervall für einen Anteilswert
 - Einfluss von Stichprobengrösse und Niveau
 
-## Meine Zusammenfassung
+## Erklärung
 
-Die schliessende Statistik beginnt mit der Einsicht, dass eine Kennzahl aus einer Stichprobe selbst zufällig ist: eine zweite Stichprobe hätte einen anderen Wert ergeben. Die Verteilung dieser möglichen Werte ist die Stichprobenverteilung, und ihre Streuung heisst Standardfehler. Der Unterschied zur Standardabweichung ist zentral — die Standardabweichung beschreibt die Streuung der Einzelwerte, der Standardfehler die Streuung der Schätzung. Letzterer sinkt mit der Wurzel des Stichprobenumfangs, weshalb eine Vervierfachung der Stichprobe die Genauigkeit nur verdoppelt.
+::: {.note-box}
+**Vorwissen:** [L10 – Stetige Verteilungen](lesson10.qmd), insbesondere der
+zentrale Grenzwertsatz, auf dem dieses ganze Kapitel ruht, und
+[L4](lesson4.qmd) für Mittelwert und Standardabweichung. Hier beginnt die
+schliessende Statistik, die in [L13](lesson13.qmd) fortgesetzt wird.
+:::
 
-Ein Punktschätzer liefert einen einzelnen Wert; erwartungstreu heisst, dass er im Mittel über viele Stichproben den wahren Wert trifft. Weil er allein nichts über seine Genauigkeit sagt, ist das Konfidenzintervall die ehrlichere Angabe: eine Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt.
+### Die Kennzahl ist selbst zufällig
 
-Genau diese Formulierung ist die häufigste Fehlerquelle. Die Aussage bezieht sich auf das Verfahren, nicht auf das konkrete Intervall — der wahre Parameter ist fest, das Intervall ist zufällig. Es ist deshalb falsch zu sagen, der Parameter liege mit fünfundneunzig Prozent Wahrscheinlichkeit in diesem einen berechneten Bereich.
+Bisher beschrieben Kennzahlen die vorliegenden Daten. Interessant ist aber
+selten die Stichprobe, sondern das, woraus sie stammt. Aus dreissig gemessenen
+Werkstücken soll etwas über die gesamte Produktion folgen.
 
-Praktisch wird bei unbekannter Varianz die t-Verteilung verwendet: sie hat schwerere Ränder als die [Normalverteilung](lesson10.qmd) und liefert dadurch etwas breitere, ehrlichere Intervalle, wobei der Unterschied mit wachsender Stichprobe verschwindet. Für Anteilswerte gilt dieselbe Logik mit dem Standardfehler eines Anteils; die einfache Näherung wird bei sehr kleinen oder sehr grossen Anteilen unbrauchbar. Breite entsteht immer aus drei Grössen: Streuung, Stichprobenumfang und gewähltes Niveau — ein höheres Niveau kauft Sicherheit mit Unschärfe.
+Der entscheidende Gedankenschritt: Eine zweite Stichprobe hätte einen anderen
+Mittelwert ergeben. Der berechnete Wert ist damit selbst eine Zufallsgrösse,
+und die Frage lautet, wie stark er von Stichprobe zu Stichprobe schwankt.
 
-## Eigene Beispiele / Code
+Das lässt sich simulieren, weil wir die Grundgesamtheit hier kennen:
 
 ::: panel-tabset
 ## R
 
-```r
-x <- c(12.1, 11.8, 12.6, 12.0, 11.5, 12.3, 12.9)
+```{r}
+#| label: fig-stichprobenverteilung-r
+#| fig-cap: "2000 Stichproben aus derselben Grundgesamtheit. Jeder Punkt der Verteilung ist ein Stichprobenmittelwert."
+#| fig-height: 3.2
+# Grundgesamtheit: Erwartungswert 500, Standardabweichung 40
+mittelwerte <- replicate(2000, mean(rnorm(30, mean = 500, sd = 40)))
 
-mean(x)
-se <- sd(x) / sqrt(length(x))       # Standardfehler
-se
-
-t.test(x, conf.level = 0.95)$conf.int
-
-# Anteilswert: 42 Treffer bei 200 Versuchen
-prop.test(42, 200, conf.level = 0.95)$conf.int
-binom.test(42, 200)$conf.int        # exakt
+ggplot(data.frame(mittelwerte), aes(mittelwerte)) +
+  geom_histogram(bins = 40, fill = "grey75", colour = "white") +
+  geom_vline(xintercept = 500, linewidth = 0.8) +
+  labs(x = "Mittelwert einer Stichprobe (n = 30)", y = "Anzahl")
 ```
 
 ## Python
 
-```python
-import numpy as np
-from scipy import stats
-from statsmodels.stats.proportion import proportion_confint
+```{python}
+#| label: fig-stichprobenverteilung-py
+#| fig-cap: "Dieselbe Stichprobenverteilung mit matplotlib."
+mittelwerte = rng.normal(500, 40, size=(2000, 30)).mean(axis=1)
 
-x = np.array([12.1, 11.8, 12.6, 12.0, 11.5, 12.3, 12.9])
-
-se = x.std(ddof=1) / np.sqrt(len(x))
-
-stats.t.interval(0.95, df=len(x) - 1, loc=x.mean(), scale=se)
-
-proportion_confint(42, 200, alpha=0.05, method="wilson")
+fig, ax = plt.subplots(figsize=(7, 3.2))
+ax.hist(mittelwerte, bins=40, color="0.75", edgecolor="white")
+ax.axvline(500, color="black")
+ax.set_xlabel("Mittelwert einer Stichprobe (n = 30)")
+ax.set_ylabel("Anzahl")
+plt.show()
 ```
 :::
 
-## Offene Fragen
+Diese Verteilung heisst Stichprobenverteilung. Sie liegt um den wahren Wert
+herum, und ihre Streuung ist die Grösse, um die es geht.
 
-::: {.open-question}
-Welche Methode für das Konfidenzintervall eines Anteils soll ich standardmässig verwenden, wenn die einfache Näherung an ihre Grenzen kommt?
+### Standardfehler ist nicht Standardabweichung
+
+Der Unterschied wird ständig verwechselt und ist zentral.
+
+| Grösse | beschreibt die Streuung von | hängt ab von |
+|---|---|---|
+| Standardabweichung $s$ | den Einzelwerten | der Grundgesamtheit |
+| Standardfehler $s/\sqrt{n}$ | dem geschätzten Mittelwert | zusätzlich vom Stichprobenumfang |
+
+```{r}
+#| label: standardfehler-r
+stichprobe <- rnorm(30, mean = 500, sd = 40)
+
+c(streuung_einzelwerte = sd(stichprobe),
+  standardfehler       = sd(stichprobe) / sqrt(length(stichprobe)),
+  simuliert            = sd(mittelwerte)) |> round(2)
+```
+
+Der berechnete Standardfehler und die tatsächlich simulierte Streuung der
+Mittelwerte stimmen überein. Das ist der Beleg dafür, dass die Formel das
+Richtige tut.
+
+Die Wurzel im Nenner hat eine unangenehme Folge: Genauigkeit wird teuer. Wer
+den Standardfehler halbieren will, braucht die vierfache Stichprobe.
+
+```{r}
+#| label: wurzel-n-r
+n <- c(10, 40, 160, 640)
+data.frame(n, standardfehler = round(40 / sqrt(n), 2))
+```
+
+### Vom Punkt zum Intervall
+
+Ein einzelner Wert sagt nichts über seine Genauigkeit. Das Konfidenzintervall
+gibt stattdessen eine Spanne an, gebildet als Schätzwert plus minus ein
+Vielfaches des Standardfehlers.
+
+Bei unbekannter Varianz, also praktisch immer, wird nicht mit der
+Normalverteilung gerechnet, sondern mit der t-Verteilung. Sie hat schwerere
+Ränder und liefert dadurch etwas breitere und damit ehrlichere Intervalle. Mit
+wachsendem Umfang verschwindet der Unterschied:
+
+```{r}
+#| label: t-vs-normal-r
+n <- c(5, 10, 30, 100, 1000)
+data.frame(
+  n,
+  t_quantil      = round(qt(0.975, df = n - 1), 3),
+  normal_quantil = round(qnorm(0.975), 3)
+)
+```
+
+Der bekannte Faktor 1.96 ist der Grenzwert. Bei fünf Beobachtungen liegt der
+richtige Faktor bei 2.78, also deutlich darüber.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: ki-r
+x <- round(rnorm(25, mean = 12.2, sd = 0.8), 2)
+
+t.test(x, conf.level = 0.95)$conf.int
+
+# von Hand, damit sichtbar ist, was passiert
+se <- sd(x) / sqrt(length(x))
+mean(x) + c(-1, 1) * qt(0.975, df = length(x) - 1) * se
+```
+
+## Python
+
+```{python}
+#| label: ki-py
+x = np.round(rng.normal(12.2, 0.8, 25), 2)
+se = x.std(ddof=1) / np.sqrt(len(x))
+
+print(stats.t.interval(0.95, df=len(x) - 1, loc=x.mean(), scale=se))
+```
+:::
+
+### Was das Intervall bedeutet, und was nicht
+
+Hier liegt die häufigste Fehlinterpretation der ganzen Statistik. Die Aussage
+bezieht sich auf das **Verfahren**, nicht auf das einzelne berechnete
+Intervall. Der wahre Parameter ist fest, das Intervall ist zufällig.
+
+Richtig ist: Wendet man das Verfahren immer wieder an, überdecken 95 Prozent der
+so erzeugten Intervalle den wahren Wert. Falsch ist die Aussage, der Parameter
+liege mit 95 Prozent Wahrscheinlichkeit in diesem einen Bereich.
+
+Das lässt sich zeigen:
+
+```{r}
+#| label: fig-ueberdeckung-r
+#| fig-cap: "100 Konfidenzintervalle aus je 25 Beobachtungen. Die hervorgehobenen verfehlen den wahren Wert."
+#| fig-height: 3.6
+wahr <- 500
+proben <- replicate(100, rnorm(25, mean = wahr, sd = 40), simplify = FALSE)
+
+intervalle <- do.call(rbind, lapply(seq_along(proben), function(i) {
+  ki <- t.test(proben[[i]])$conf.int
+  data.frame(lauf = i, unten = ki[1], oben = ki[2])
+}))
+intervalle$trifft <- intervalle$unten <= wahr & intervalle$oben >= wahr
+
+ggplot(intervalle, aes(lauf, ymin = unten, ymax = oben, colour = trifft)) +
+  geom_linerange(linewidth = 0.5) +
+  geom_hline(yintercept = wahr, linewidth = 0.7) +
+  scale_colour_manual(values = c("TRUE" = "grey70", "FALSE" = "black")) +
+  labs(x = "Wiederholung", y = "Konfidenzintervall", colour = "überdeckt") +
+  theme(legend.position = "bottom")
+
+sum(!intervalle$trifft)     # wie viele verfehlen den wahren Wert
+```
+
+Von hundert Intervallen verfehlen einige den wahren Wert, und zwar
+ungefähr fünf. Welches davon betroffen ist, weiss man in der Praxis nie, weil
+der wahre Wert unbekannt ist. Genau deshalb ist die Aussage über das Verfahren
+und nicht über das Einzelintervall formuliert.
+
+### Anteilswerte
+
+Für Anteile gilt dieselbe Logik mit einem eigenen Standardfehler. Die einfache
+Näherung wird bei sehr kleinen oder sehr grossen Anteilen unbrauchbar, weil das
+Intervall dann über null oder eins hinausragen kann.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: anteil-r
+treffer <- 42; versuche <- 200
+
+prop.test(treffer, versuche)$conf.int    # mit Stetigkeitskorrektur
+binom.test(treffer, versuche)$conf.int   # exakt
+
+# der problematische Fall: sehr kleiner Anteil
+prop.test(1, 40)$conf.int
+```
+
+## Python
+
+```{python}
+#| label: anteil-py
+print(proportion_confint(42, 200, alpha=0.05, method="wilson"))
+print(proportion_confint(42, 200, alpha=0.05, method="beta"))    # exakt
+print(proportion_confint(1, 40, alpha=0.05, method="normal"))    # laeuft ins Negative
+```
+:::
+
+Die letzte Zeile zeigt das Problem. Ein Intervall, dessen untere Grenze
+negativ ist, kann für einen Anteil nicht stimmen. Verfahren wie Wilson oder das
+exakte nach Clopper-Pearson vermeiden das.
+
+**Verständnisfragen**
+
+1. Warum wird ein Konfidenzintervall bei höherem Niveau breiter?
+2. Eine Umfrage berichtet 52 Prozent Zustimmung mit einem Intervall von 49 bis 55 Prozent. Was folgt für die Frage, ob die Mehrheit zustimmt?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil Sicherheit mit Unschärfe bezahlt wird. Ein höheres Niveau verlangt,
+   dass das Verfahren in einem grösseren Anteil der Fälle den wahren Wert
+   einschliesst. Das lässt sich nur erreichen, indem man mehr Werte zulässt,
+   also das Intervall verbreitert. Bei hundert Prozent Sicherheit wäre es
+   unendlich breit und wertlos.
+2. Dass die Frage offen bleibt. Das Intervall enthält Werte unter fünfzig
+   Prozent, also ist eine Minderheit mit den Daten vereinbar. Der Punktwert von
+   52 Prozent allein zu berichten wäre irreführend, und genau dafür ist die
+   Intervallangabe da.
 :::
 
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics, Kapitel zur Inferenz](https://www.openintro.org/book/os/)
+- [Dokumentation zu `t.test` in R](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/t.test.html)
