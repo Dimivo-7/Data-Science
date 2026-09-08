@@ -183,6 +183,11 @@ Für ausführbare Chunks gilt:
   `#| fig-cap:`. Labels von Abbildungen beginnen mit `fig-`.
 - Der Setup-Chunk oben auf der Seite trägt `#| include: false` und lädt die
   Pakete.
+- **Zur Breite ist nichts einzustellen.** Abbildungen füllen automatisch die
+  Content-Spalte und lassen sich per Klick vergrössert anzeigen; beides steht
+  zentral in `_quarto.yml` (`knitr: opts_chunk: out.width` und
+  `lightbox: auto`). Kein `out-width` pro Chunk und kein `width=` pro Bild.
+  Soll ein Bild ausnahmsweise klein bleiben: `![](datei.png){.img-natural}`.
 - Verwendet werden dürfen nur Pakete, die in
   `.github/workflows/publish.yml` installiert sind. Neues Paket gebraucht?
   Erst dort eintragen.
