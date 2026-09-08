@@ -4,6 +4,28 @@ description: "Dichte und Verteilungsfunktion, Gleich-, Exponential- und Normalve
 categories: ["Verteilungen", "Wahrscheinlichkeit", "Visualisierung", "R", "Python"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
 - Dichtefunktion: Fläche statt Punktwahrscheinlichkeit
@@ -13,64 +35,225 @@ categories: ["Verteilungen", "Wahrscheinlichkeit", "Visualisierung", "R", "Pytho
 - Zentraler Grenzwertsatz
 - QQ-Plot als Prüfinstrument
 
-## Meine Zusammenfassung
-
-Bei stetigen [Zufallsvariablen](lesson9.qmd) hat jeder einzelne Wert die Wahrscheinlichkeit null; sinnvoll sind nur Aussagen über Intervalle. Die Dichtefunktion gibt deshalb keine Wahrscheinlichkeit an, sondern eine Dichte, und die Wahrscheinlichkeit ist die Fläche darunter. Die [Verteilungsfunktion](lesson3.qmd) ist die aufsummierte Fläche bis zu einer Schranke und damit das, was in der Praxis abgelesen wird.
-
-Die Exponentialverteilung beschreibt Wartezeiten zwischen Ereignissen, die mit konstanter Rate auftreten — das stetige Gegenstück zur Poissonverteilung. Ihre auffälligste Eigenschaft ist die Gedächtnislosigkeit: die verbleibende Wartezeit hängt nicht davon ab, wie lange schon gewartet wurde. Das ist für Ausfallzeiten oft gerade die falsche Annahme, weil Verschleiss ein Gedächtnis hat.
-
-Die Normalverteilung ist nicht deshalb zentral, weil so vieles normalverteilt wäre, sondern wegen des zentralen Grenzwertsatzes: Summen und Mittelwerte vieler unabhängiger Einflüsse nähern sich unabhängig von deren eigener Verteilung einer Normalverteilung an. Das ist der Grund, warum später Mittelwertvergleiche auch ohne normalverteilte Ausgangsdaten funktionieren, sofern die Stichprobe gross genug ist. Die Standardisierung übersetzt jeden Wert in einen z-Wert, der angibt, wie viele [Standardabweichungen](lesson4.qmd) er vom Mittel entfernt liegt, und macht Werte verschiedener Skalen vergleichbar.
-
-Zur Prüfung ist der QQ-Plot dem Histogramm überlegen: er trägt die beobachteten Quantile gegen die theoretisch erwarteten auf. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme. Abweichungen sind zudem lesbar — Abknicken an den Enden zeigt schwerere oder leichtere Ränder, eine durchgehende Krümmung zeigt Schiefe.
+## Erklärung
 
 ::: {.note-box}
-Bei kleinen [Stichproben](lesson12.qmd) streuen die Punkte im QQ-Plot an den Rändern immer stärker. Leichte Abweichungen dort sind normal und kein Beleg gegen die Annahme.
+**Vorwissen:** [L9 – Diskrete Verteilungen](lesson9.qmd) für Zufallsvariable,
+Erwartungswert und das dpqr-Schema, das hier unverändert weitergilt. Aus
+[L4](lesson4.qmd) werden Quantile gebraucht, denn der QQ-Plot besteht aus
+nichts anderem.
 :::
 
-## Eigene Beispiele / Code
+### Warum bei stetigen Grössen jede Punktwahrscheinlichkeit null ist
+
+Bei einem Würfel lässt sich fragen, wie wahrscheinlich eine Drei ist. Bei einer
+Körpergrösse lässt sich nicht sinnvoll fragen, wie wahrscheinlich exakt
+1.80000... Meter sind. Zwischen zwei beliebigen Werten liegen unendlich viele
+weitere, und die Wahrscheinlichkeit jedes einzelnen ist null.
+
+Sinnvoll sind nur Aussagen über Intervalle. Deshalb tritt an die Stelle der
+Wahrscheinlichkeitsfunktion die **Dichtefunktion**. Ihre Werte sind keine
+Wahrscheinlichkeiten, sondern Dichten; die Wahrscheinlichkeit ist die Fläche
+unter der Kurve.
+
+```{r}
+#| label: fig-dichte-r
+#| fig-cap: "Die Fläche unter der Dichte zwischen 90 und 110 ist die Wahrscheinlichkeit, in diesem Bereich zu liegen."
+#| fig-height: 3.2
+x <- seq(60, 140, length.out = 400)
+d <- dnorm(x, mean = 100, sd = 15)
+flaeche <- data.frame(x = x[x >= 90 & x <= 110], y = d[x >= 90 & x <= 110])
+
+ggplot(data.frame(x, d), aes(x, d)) +
+  geom_area(data = flaeche, aes(x, y), fill = "grey75") +
+  geom_line(linewidth = 0.8) +
+  labs(x = "Wert", y = "Dichte")
+```
+
+```{r}
+#| label: flaeche-r
+# Die Flaeche laesst sich ueber die Verteilungsfunktion ablesen
+pnorm(110, mean = 100, sd = 15) - pnorm(90, mean = 100, sd = 15)
+```
+
+Die Verteilungsfunktion `pnorm` gibt die aufsummierte Fläche bis zu einer
+Schranke. Die Differenz zweier solcher Werte ist die Fläche dazwischen. Das ist
+dasselbe Prinzip wie bei der empirischen Verteilungsfunktion in
+[L3](lesson3.qmd), nur mit einer glatten Kurve statt einer Treppe.
+
+### Drei Verteilungen und wofür sie stehen
+
+**Stetige Gleichverteilung.** Jeder Wert im Intervall ist gleich dicht.
+Modelliert Rundungsfehler und dient als Ausgangspunkt für Simulationen.
+
+**Exponentialverteilung.** Beschreibt Wartezeiten zwischen Ereignissen, die mit
+konstanter Rate auftreten, und ist damit das stetige Gegenstück zur
+Poissonverteilung aus [L9](lesson9.qmd). Ihre auffälligste Eigenschaft ist die
+Gedächtnislosigkeit: Die verbleibende Wartezeit hängt nicht davon ab, wie lange
+schon gewartet wurde.
+
+```{r}
+#| label: gedaechtnislos-r
+rate <- 0.5
+
+# P(mehr als 3 warten)
+p_ueber_3 <- 1 - pexp(3, rate)
+# P(mehr als 8 warten, gegeben es sind schon 5 vergangen)
+p_bedingt <- (1 - pexp(8, rate)) / (1 - pexp(5, rate))
+
+round(c(ohne_vorgeschichte = p_ueber_3, mit_vorgeschichte = p_bedingt), 4)
+```
+
+Beide Werte stimmen überein. Für technische Ausfälle ist das oft gerade die
+falsche Annahme, weil Verschleiss sehr wohl ein Gedächtnis hat.
+
+**Normalverteilung.** Sie ist nicht deshalb zentral, weil in der Natur so
+vieles normalverteilt wäre, sondern wegen des zentralen Grenzwertsatzes.
+
+### Der zentrale Grenzwertsatz
+
+Summen und Mittelwerte vieler unabhängiger Einflüsse nähern sich einer
+Normalverteilung an, unabhängig davon, wie die einzelnen Grössen selbst
+verteilt sind. Das lässt sich zeigen, und zwar mit einer Ausgangsverteilung,
+die alles andere als normal aussieht:
 
 ::: panel-tabset
 ## R
 
-```r
-pnorm(1.96)                       # P(Z <= 1.96)
-qnorm(0.975)                      # Quantil
-dnorm(0, mean = 0, sd = 1)
+```{r}
+#| label: fig-clt-r
+#| fig-cap: "Links die stark schiefe Ausgangsverteilung, rechts die Mittelwerte aus je 30 solchen Werten."
+#| fig-height: 3.2
+einzeln <- rexp(4000, rate = 1)
+mittel  <- replicate(4000, mean(rexp(30, rate = 1)))
 
-pexp(3, rate = 0.5)               # Wartezeit hoechstens 3
-punif(0.3, min = 0, max = 1)
-
-x <- rnorm(100, mean = 10, sd = 2)
-qqnorm(x); qqline(x)
-
-# Zentraler Grenzwertsatz
-mittel <- replicate(2000, mean(rexp(30, rate = 1)))
-hist(mittel, breaks = 30)
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+hist(einzeln, breaks = 40, col = "grey75", border = "white",
+     main = "einzelne Werte", xlab = "Wert")
+hist(mittel, breaks = 40, col = "grey75", border = "white",
+     main = "Mittelwerte aus je 30", xlab = "Mittelwert")
 ```
 
 ## Python
 
-```python
-import numpy as np
-from scipy import stats
-import statsmodels.api as sm
+```{python}
+#| label: fig-clt-py
+#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
+einzeln = rng.exponential(1.0, 4000)
+mittel = rng.exponential(1.0, size=(4000, 30)).mean(axis=1)
 
-stats.norm.cdf(1.96)
-stats.norm.ppf(0.975)
-stats.expon.cdf(3, scale=1/0.5)
-
-rng = np.random.default_rng(42)
-x = rng.normal(10, 2, 100)
-sm.qqplot(x, line="q")
-
-mittel = rng.exponential(1.0, size=(2000, 30)).mean(axis=1)
+fig, (a, b) = plt.subplots(1, 2, figsize=(7, 3.2))
+a.hist(einzeln, bins=40, color="0.75", edgecolor="white")
+a.set_title("einzelne Werte"); a.set_xlabel("Wert")
+b.hist(mittel, bins=40, color="0.75", edgecolor="white")
+b.set_title("Mittelwerte aus je 30"); b.set_xlabel("Mittelwert")
+fig.tight_layout()
+plt.show()
 ```
 :::
 
-## Offene Fragen
+Die Ausgangswerte sind exponentialverteilt, also stark rechtsschief. Schon
+Mittelwerte aus dreissig Beobachtungen sind erkennbar glockenförmig. Das ist
+der Grund, warum Mittelwertvergleiche in [L13](lesson13.qmd) auch dann
+funktionieren, wenn die Einzelwerte nicht normalverteilt sind, sofern die
+Stichprobe gross genug ist.
 
-::: {.open-question}
-Wie stark darf ein QQ-Plot abweichen, bevor ich auf ein nichtparametrisches Verfahren wechsle — und ist ein formaler Normalitätstest dafür überhaupt der bessere Weg?
+::: {.note-box}
+Ein häufiges Missverständnis: Der Satz sagt nichts darüber, dass die
+**Ausgangsdaten** normalverteilt würden. Normal wird die Verteilung der
+**Mittelwerte**, und zwar über gedachte Wiederholungen der Stichprobenziehung.
+:::
+
+### Standardisierung und z-Werte
+
+Verschiedene Merkmale haben verschiedene Einheiten und Grössenordnungen. Die
+Standardisierung übersetzt jeden Wert in die Anzahl Standardabweichungen, um
+die er vom Mittel abweicht:
+
+$$z = \frac{x - \mu}{\sigma}$$
+
+```{r}
+#| label: zwert-r
+# Ein IQ von 130 und eine Koerpergroesse von 1.92 m
+z_iq    <- (130 - 100) / 15
+z_groesse <- (1.92 - 1.78) / 0.07
+
+c(iq = z_iq, groesse = z_groesse)
+# gleicher z-Wert bedeutet gleicher Rang in der jeweiligen Verteilung
+round(pnorm(c(z_iq, z_groesse)), 4)
+```
+
+Beide Werte liegen zwei Standardabweichungen über dem Mittel und damit an
+derselben relativen Position, obwohl die Einheiten nichts miteinander zu tun
+haben. Das ist der Zweck der Standardisierung.
+
+### Der QQ-Plot
+
+Ob eine Verteilungsannahme passt, lässt sich am Histogramm nur grob beurteilen,
+weil dessen Aussehen von der Klassenzahl abhängt. Der QQ-Plot ist präziser: Er
+trägt die beobachteten Quantile gegen die theoretisch erwarteten auf. Liegen
+die Punkte auf einer Geraden, passt die Annahme.
+
+Der eigentliche Nutzen liegt darin, dass Abweichungen lesbar sind:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-qq-r
+#| fig-cap: "Drei Stichproben im QQ-Plot: normal, rechtsschief, schwere Ränder."
+#| fig-height: 3.2
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+
+qqnorm(rnorm(200), main = "normalverteilt"); qqline(rnorm(200))
+qqnorm(rexp(200), main = "rechtsschief"); qqline(rexp(200))
+qqnorm(rt(200, df = 3), main = "schwere Ränder"); qqline(rt(200, df = 3))
+```
+
+## Python
+
+```{python}
+#| label: fig-qq-py
+#| fig-cap: "Dieselben drei Muster mit scipy."
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2))
+proben = [("normalverteilt", rng.normal(size=200)),
+          ("rechtsschief", rng.exponential(size=200)),
+          ("schwere Ränder", rng.standard_t(df=3, size=200))]
+
+for ax, (titel, daten) in zip(achsen, proben):
+    stats.probplot(daten, dist="norm", plot=ax)
+    ax.set_title(titel)
+    ax.get_lines()[0].set_markersize(3)
+fig.tight_layout()
+plt.show()
+```
+:::
+
+Die Muster lassen sich merken. Eine durchgehende Krümmung zeigt Schiefe. Ein
+Abknicken an beiden Enden nach oben und unten zeigt schwerere Ränder als die
+Normalverteilung, also mehr extreme Werte als erwartet. Ein Abflachen an den
+Enden zeigt das Gegenteil.
+
+::: {.note-box}
+Bei kleinen Stichproben streuen die Punkte an den Rändern immer stärker, weil
+dort die wenigsten Beobachtungen liegen. Leichte Abweichungen an den Enden sind
+normal und kein Beleg gegen die Annahme.
+:::
+
+**Verständnisfragen**
+
+1. Warum kann der Wert einer Dichtefunktion grösser als eins sein, eine Wahrscheinlichkeit aber nicht?
+2. Ein QQ-Plot zeigt Punkte, die links unterhalb und rechts oberhalb der Geraden liegen. Was heisst das?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil die Dichte keine Wahrscheinlichkeit ist, sondern Wahrscheinlichkeit pro
+   Einheit. Ist das Intervall sehr schmal, etwa eine Gleichverteilung zwischen
+   0 und 0.1, muss die Dichte hoch sein, damit die Fläche eins ergibt. Hier
+   beträgt sie 10. Beschränkt ist nicht die Höhe, sondern die Gesamtfläche.
+2. Dass die Stichprobe an beiden Enden extremere Werte enthält als die
+   Normalverteilung erwarten lässt, also schwerere Ränder hat. Praktisch
+   bedeutet das mehr Ausreisser, als das Modell vorsieht, was Verfahren
+   beeinträchtigt, die auf dem Mittelwert beruhen.
 :::
 
 ## Verlinkte Ressourcen
