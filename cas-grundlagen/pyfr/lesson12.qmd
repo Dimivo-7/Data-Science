@@ -4,77 +4,321 @@ description: "Relationales Modell, Normalisierung und SQL-Abfragen sowie der Zug
 categories: ["SQL", "Datenbanken", "Python", "R", "pandas"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(DBI)
+library(RSQLite)
+
+# Eine echte Datenbank im Arbeitsspeicher. Alle Abfragen dieser Seite laufen
+# wirklich; die Ausgaben sind keine abgeschriebenen Beispiele.
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbExecute(con, "
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL
+  )")
+
+dbExecute(con, "
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum      TEXT NOT NULL,
+    menge      INTEGER NOT NULL,
+    betrag     REAL NOT NULL
+  )")
+
+dbExecute(con, "INSERT INTO artikel VALUES
+  (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+  (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+  (5,'Sensor induktiv','Elektronik')")
+
+dbExecute(con, "INSERT INTO bestellung VALUES
+  (1,1,'2026-01-14',10, 240.0), (2,1,'2026-02-03',25, 600.0),
+  (3,2,'2026-01-22', 4, 512.0), (4,3,'2026-02-11',100, 350.0),
+  (5,3,'2026-03-02', 60, 210.0), (6,4,'2026-01-30',200, 180.0),
+  (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
+  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
+
+zeige <- function(sql) knitr::kable(dbGetQuery(con, sql))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import sqlite3
+import pandas as pd
+
+verbindung = sqlite3.connect(":memory:")
+verbindung.executescript("""
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL);
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
+  INSERT INTO artikel VALUES
+    (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+    (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+    (5,'Sensor induktiv','Elektronik');
+  INSERT INTO bestellung VALUES
+    (1,1,'2026-01-14',10,240.0), (2,1,'2026-02-03',25,600.0),
+    (3,2,'2026-01-22',4,512.0), (4,3,'2026-02-11',100,350.0),
+    (5,3,'2026-03-02',60,210.0), (6,4,'2026-01-30',200,180.0),
+    (7,5,'2026-02-19',8,960.0), (8,5,'2026-03-08',12,1440.0),
+    (9,2,'2026-03-15',2,256.0), (10,1,'2026-03-20',15,360.0);
+""")
+verbindung.commit()
+```
+
 ## Kernideen aus dem Kurs
 
 - Relation, Attribut, Primär- und Fremdschlüssel
 - Entity-Relationship-Modell und Kardinalitäten
-- Normalformen und wozu sie dienen
-- SQL: `SELECT`, `WHERE`, `JOIN`, `GROUP BY`
-- Zugriff aus Python und R, MySQL gegenüber SQLite
+- Normalformen und die Anomalien, die sie verhindern
+- SQL: `SELECT`, `WHERE`, `JOIN`, `GROUP BY`, `HAVING`
+- Zugriff aus Python und R, SQLite gegenüber MySQL
 
-## Meine Zusammenfassung
-
-Eine relationale Datenbank speichert Daten in Tabellen, deren Zeilen über Schlüssel aufeinander verweisen. Der Primärschlüssel identifiziert eine Zeile eindeutig, der Fremdschlüssel verweist auf eine Zeile in einer anderen Tabelle — und erzwingt zugleich, dass es das Ziel überhaupt gibt. Diese referentielle Integrität ist der Hauptunterschied zu einer Sammlung von CSV-Dateien: die Datenbank verhindert widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme sich benehmen.
-
-Die Modellierung beginnt beim ER-Modell: welche Gegenstände gibt es, welche Beziehungen bestehen zwischen ihnen, und mit welcher Kardinalität. Eine Beziehung mit Vielfachheit auf beiden Seiten wird dabei zu einer eigenen Tabelle. Die Normalisierung räumt anschliessend Redundanz aus, damit dieselbe Information nur an einer Stelle steht. Der Zweck sind die Anomalien: wo eine Angabe mehrfach gespeichert ist, kann sie beim Ändern auseinanderlaufen.
-
-SQL ist deklarativ — ich beschreibe das gewünschte Ergebnis, nicht den Weg dorthin. Nach der ersten Gewöhnung ist die Reihenfolge der Auswertung hilfreich zu kennen: erst wird gefiltert, dann gruppiert, dann werden Gruppen gefiltert, erst danach wird ausgewählt und sortiert. Das erklärt, warum sich ein Aggregat nicht in `WHERE`, sondern nur in `HAVING` prüfen lässt.
-
-In der Praxis stellt sich die Frage, wie viel Arbeit in der Datenbank und wie viel in [Pandas](lesson7.qmd) geschieht. Meine Regel: Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte Datenmenge über die Leitung geht; die Modellierung und Darstellung danach in Python oder R.
+## Erklärung
 
 ::: {.note-box}
-SQLite braucht keinen Server und liegt als einzelne Datei vor — ideal zum Üben und für kleine Projekte. MySQL ist der Serverfall mit Nutzerverwaltung und Mehrbenutzerbetrieb.
+**Vorwissen:** [L7 – Pandas](lesson7.qmd) hilft, weil `groupby` und `merge`
+genau den SQL-Operationen entsprechen, die hier vorkommen. Die Abfragen dieser
+Seite laufen beim Bauen der Website gegen eine echte SQLite-Datenbank mit zehn
+Bestellungen und fünf Artikeln.
 :::
 
-## Eigene Beispiele / Code
+### Warum nicht einfach eine grosse Tabelle
+
+Eine Tabelle, die alles enthält, sieht bequem aus:
+
+| bestell_id | artikel | kategorie | datum | betrag |
+|---|---|---|---|---|
+| 1 | Ventil 3/8 | Pneumatik | 2026-01-14 | 240.00 |
+| 2 | Ventil 3/8 | Pneumatik | 2026-02-03 | 600.00 |
+
+Die Bezeichnung und die Kategorie stehen bei jeder Bestellung erneut. Daraus
+folgen drei Probleme, die zusammen Anomalien heissen:
+
+- **Änderung:** Wird der Artikel umbenannt, muss das an jeder Stelle geschehen. Wird eine übersehen, widersprechen sich die Daten.
+- **Einfügen:** Ein neuer Artikel ohne Bestellung lässt sich gar nicht erfassen, weil es keine Zeile gäbe.
+- **Löschen:** Wird die letzte Bestellung eines Artikels gelöscht, verschwindet der Artikel mit.
+
+Die Aufteilung auf zwei Tabellen, verbunden über einen Schlüssel, löst alle
+drei. Genau das ist die Idee des relationalen Modells.
+
+### Schlüssel
+
+Der **Primärschlüssel** identifiziert eine Zeile eindeutig. Der
+**Fremdschlüssel** verweist auf eine Zeile einer anderen Tabelle und erzwingt
+dabei, dass das Ziel existiert. Diese referentielle Integrität ist der
+Hauptunterschied zu einer Sammlung von CSV-Dateien: Die Datenbank verhindert
+widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme
+sich benehmen.
+
+```{r}
+#| label: schluessel-r
+# Verweis auf einen nicht existierenden Artikel
+dbExecute(con, "PRAGMA foreign_keys = ON")
+versuch <- try(
+  dbExecute(con, "INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 1, 10.0)"),
+  silent = TRUE)
+cat(if (inherits(versuch, "try-error")) "abgelehnt, Artikel 999 existiert nicht"
+    else "durchgelassen")
+```
+
+Die Datenbank weist den Datensatz zurück. In einer CSV-Datei stünde er
+kommentarlos drin und würde beim nächsten Join stillschweigend verschwinden.
+
+### Vom ER-Modell zu Tabellen
+
+Die Modellierung beginnt bei der Frage, welche Gegenstände es gibt und wie sie
+zusammenhängen. Die Kardinalität entscheidet über die Umsetzung:
+
+| Beziehung | Beispiel | Umsetzung |
+|---|---|---|
+| eins zu viele | ein Artikel hat viele Bestellungen | Fremdschlüssel auf der Viele-Seite |
+| viele zu viele | Artikel gehören zu mehreren Lieferanten und umgekehrt | eigene Verbindungstabelle |
+| eins zu eins | selten, meist Auslagerung optionaler Felder | Fremdschlüssel mit Eindeutigkeit |
+
+Hier liegt der erste Fall vor: Der Fremdschlüssel steht in `bestellung`, weil
+dort die viele-Seite ist.
+
+### Abfragen
+
+SQL ist deklarativ. Man beschreibt das gewünschte Ergebnis, nicht den Weg
+dorthin.
+
+```{r}
+#| label: select-r
+zeige("SELECT bezeichnung, kategorie FROM artikel WHERE kategorie = 'Pneumatik'")
+```
+
+Verbinden zweier Tabellen über den Schlüssel:
+
+```{r}
+#| label: join-r
+zeige("
+  SELECT b.datum, a.bezeichnung, b.menge, b.betrag
+  FROM bestellung b
+  JOIN artikel a ON a.artikel_id = b.artikel_id
+  ORDER BY b.datum
+  LIMIT 5")
+```
+
+Gruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:
+
+```{r}
+#| label: groupby-r
+zeige("
+  SELECT a.kategorie,
+         COUNT(*)         AS anzahl,
+         SUM(b.betrag)    AS umsatz,
+         ROUND(AVG(b.betrag), 2) AS mittel
+  FROM bestellung b
+  JOIN artikel a ON a.artikel_id = b.artikel_id
+  GROUP BY a.kategorie
+  HAVING COUNT(*) >= 2
+  ORDER BY umsatz DESC")
+```
+
+### Die Auswertungsreihenfolge
+
+Sie erklärt die häufigste Verwirrung von Einsteigern, nämlich warum sich ein
+Aggregat nicht in `WHERE` prüfen lässt:
+
+| Reihenfolge | Klausel | was passiert |
+|---|---|---|
+| 1 | `FROM`, `JOIN` | Tabellen zusammenstellen |
+| 2 | `WHERE` | einzelne Zeilen filtern |
+| 3 | `GROUP BY` | Zeilen zu Gruppen zusammenfassen |
+| 4 | `HAVING` | Gruppen filtern |
+| 5 | `SELECT` | Spalten auswählen und berechnen |
+| 6 | `ORDER BY` | sortieren |
+
+`WHERE` läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht.
+`HAVING` läuft danach.
+
+```{r}
+#| label: reihenfolge-r
+# WHERE filtert Zeilen VOR der Gruppierung
+zeige("
+  SELECT a.kategorie, SUM(b.betrag) AS umsatz
+  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+  WHERE b.datum >= '2026-02-01'
+  GROUP BY a.kategorie
+  ORDER BY umsatz DESC")
+```
+
+**Verständnisfragen**
+
+1. Warum lässt sich `WHERE SUM(betrag) > 500` nicht schreiben?
+2. Ein Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil `WHERE` vor der Gruppierung ausgewertet wird und zu diesem Zeitpunkt
+   noch keine Gruppen und damit keine Summen existieren. Bedingungen auf
+   Aggregaten gehören in `HAVING`, das nach der Gruppierung läuft. Beides in
+   einer Abfrage ist möglich und üblich.
+2. Der Schlüssel war auf der rechten Seite nicht eindeutig. Jede linke Zeile
+   wird dann mit jeder passenden rechten kombiniert. Genau dieselbe Falle wie
+   beim `merge` in [Pandas](lesson7.qmd); die Prüfung ist dieselbe, nämlich
+   vorher die Eindeutigkeit des Schlüssels sicherstellen.
+:::
+
+### Zugriff aus beiden Sprachen
 
 ::: panel-tabset
 ## R
 
-```r
-library(DBI)
+```{r}
+#| label: zugriff-r
+ergebnis <- dbGetQuery(con, "
+  SELECT a.kategorie, SUM(b.betrag) AS umsatz
+  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+  GROUP BY a.kategorie")
 
-con <- dbConnect(RSQLite::SQLite(), "verkauf.sqlite")
-
-dbGetQuery(con, "
-  SELECT k.kategorie, COUNT(*) AS n, AVG(b.betrag) AS mittel
-  FROM bestellung b
-  JOIN artikel k ON k.artikel_id = b.artikel_id
-  WHERE b.datum >= '2026-01-01'
-  GROUP BY k.kategorie
-  HAVING COUNT(*) > 10
-  ORDER BY mittel DESC
-")
-
-dbDisconnect(con)
+str(ergebnis)      # ein gewoehnlicher Data Frame
 ```
 
 ## Python
 
-```python
-import sqlite3
-import pandas as pd
+```{python}
+#| label: zugriff-py
+df = pd.read_sql_query("""
+  SELECT a.kategorie, SUM(b.betrag) AS umsatz
+  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+  GROUP BY a.kategorie
+""", verbindung)
 
-with sqlite3.connect("verkauf.sqlite") as con:
-    df = pd.read_sql_query("""
-        SELECT k.kategorie, COUNT(*) AS n, AVG(b.betrag) AS mittel
-        FROM bestellung b
-        JOIN artikel k ON k.artikel_id = b.artikel_id
-        WHERE b.datum >= '2026-01-01'
-        GROUP BY k.kategorie
-        HAVING COUNT(*) > 10
-        ORDER BY mittel DESC
-    """, con)
+print(df)
+print(df.dtypes)
 ```
 :::
 
-## Offene Fragen
+Das Ergebnis ist in beiden Fällen die vertraute Tabelle, mit der weitergearbeitet
+wird wie mit jedem anderen Data Frame.
 
-::: {.open-question}
-Wie weit soll für Auswertungszwecke normalisiert werden — ab wann ist bewusste Redundanz in einer Analysetabelle die bessere Wahl?
+::: {.note-box}
+Wieviel gehört in die Datenbank, wieviel in die Auswertung? Meine Regel:
+Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte
+Datenmenge über die Leitung geht. Modellierung, Grafik und alles Iterative
+danach in R oder Python. Eine Million Zeilen zu laden, um daraus fünf
+Gruppensummen zu bilden, ist die häufigste vermeidbare Wartezeit.
 :::
+
+### Parameter statt Zeichenkettenbau
+
+Eine Abfrage aus Nutzereingaben zusammenzukleben ist die klassische
+Sicherheitslücke und erzeugt ausserdem Fehler bei Anführungszeichen. Beide
+Sprachen bieten Platzhalter:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: parameter-r
+dbGetQuery(con,
+  "SELECT bezeichnung FROM artikel WHERE kategorie = ?",
+  params = list("Mechanik"))
+```
+
+## Python
+
+```{python}
+#| label: parameter-py
+print(pd.read_sql_query(
+    "SELECT bezeichnung FROM artikel WHERE kategorie = ?",
+    verbindung, params=("Mechanik",)))
+```
+:::
+
+### SQLite oder MySQL
+
+SQLite braucht keinen Server und liegt als einzelne Datei vor, oder wie hier
+nur im Arbeitsspeicher. Zum Üben, für Zwischenstände und für kleine Projekte
+ist es ideal. MySQL und PostgreSQL sind der Serverfall mit Nutzerverwaltung,
+gleichzeitigen Zugriffen und Rechtevergabe. Die SQL-Grundlagen sind dieselben,
+die Unterschiede liegen in Datentypen und Erweiterungen.
+
+```{r}
+#| label: aufraeumen-r
+#| include: false
+dbDisconnect(con)
+```
+
+```{python}
+#| label: aufraeumen-py
+#| include: false
+verbindung.close()
+```
 
 ## Verlinkte Ressourcen
 
 - [SQLite-Dokumentation zur SQL-Syntax](https://sqlite.org/lang.html)
 - [MySQL-Referenzhandbuch](https://dev.mysql.com/doc/refman/8.0/en/)
+- [DBI für R](https://dbi.r-dbi.org/)

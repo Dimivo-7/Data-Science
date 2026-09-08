@@ -4,68 +4,249 @@ description: "Dateisystem, die wichtigsten Shell-Befehle, Pipes und die Rechteve
 categories: ["Linux", "Tooling", "Python", "R"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+# Ein kleiner Beispielordner, auf dem die Befehle dieser Seite arbeiten.
+# Er entsteht beim Build und wird danach verworfen.
+demo <- file.path(tempdir(), "demo")
+dir.create(file.path(demo, "logs"), recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path(demo, "daten"), recursive = TRUE, showWarnings = FALSE)
+
+writeLines(c("2026-03-01 INFO Start",
+             "2026-03-01 ERROR Sensor 3 antwortet nicht",
+             "2026-03-01 INFO Weiter",
+             "2026-03-02 ERROR Zeitüberschreitung"),
+           file.path(demo, "logs", "anlage.log"))
+writeLines(c("id;wert", "1;12.4", "2;9.8"), file.path(demo, "daten", "messung.csv"))
+writeLines("nur ein Beispiel", file.path(demo, "notiz.txt"))
+
+lauf <- function(befehl) {
+  cat(system(paste("cd", shQuote(demo), "&&", befehl), intern = TRUE), sep = "\n")
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import subprocess, pathlib, os
+```
+
 ## Kernideen aus dem Kurs
 
 - Ein Wurzelverzeichnis, alles ist eine Datei
 - Navigation und Dateiarbeit: `ls`, `cd`, `mkdir`, `rm`, `cat`
-- Suchen: `grep`, `find`
+- Suchen mit `grep` und `find`
 - Standardströme, Umlenkung und Pipes
 - Rechteverwaltung: Besitzer, Gruppe, andere
 - Editoren im Terminal
 
-## Meine Zusammenfassung
-
-Unter Unix gibt es keine Laufwerksbuchstaben: alles hängt an einem einzigen Wurzelverzeichnis, und auch Geräte und Prozesse erscheinen als Dateien. Das klingt akademisch, hat aber eine praktische Folge — dieselben Werkzeuge, die auf Textdateien arbeiten, lassen sich auf fast alles anwenden.
-
-Die eigentliche Stärke der Shell liegt nicht in den einzelnen Befehlen, sondern in ihrer Kombination. Jedes Programm liest von der Standardeingabe und schreibt auf die Standardausgabe; eine Pipe verbindet die Ausgabe des einen mit der Eingabe des nächsten. Damit entstehen aus kleinen, spezialisierten Werkzeugen Verarbeitungsketten, für die es sonst ein eigenes Skript bräuchte. Fehlermeldungen laufen über einen getrennten Kanal, was beim Umlenken in Dateien beachtet werden muss.
-
-`grep` durchsucht Inhalte, `find` durchsucht das Dateisystem nach Eigenschaften wie Name, Alter oder Grösse. Beide zusammen ersetzen einen erstaunlich grossen Teil dessen, wofür ich sonst zu Python greifen würde — und sind bei grossen Dateien meist schneller.
-
-Die Rechteverwaltung unterscheidet Lesen, Schreiben und Ausführen jeweils für Besitzer, Gruppe und alle übrigen. Bei Verzeichnissen bedeutet das Ausführungsrecht das Betreten. Für die Datenarbeit ist das vor allem dann relevant, wenn ein Skript auf einem Server läuft und plötzlich nicht mehr auf eine Datei zugreifen kann.
+## Erklärung
 
 ::: {.note-box}
-Unter Windows steht mir dieselbe Umgebung über WSL zur Verfügung. Das ist praktischer, als jeden Befehl in ein PowerShell-Gegenstück zu übersetzen.
+**Vorwissen:** keines. Die Beispiele dieser Seite laufen beim Bauen der
+Website auf einem Linux-Rechner; die Ausgaben sind also echt. Angelegt wird
+dafür ein kleiner Beispielordner mit Logdateien und einer CSV-Datei.
 :::
 
-## Eigene Beispiele / Code
+### Warum sich die Shell lohnt
+
+Die Frage ist berechtigt: Warum Befehle tippen, wenn es Fenster gibt? Drei
+Gründe, die sich in der Datenarbeit zeigen.
+
+Erstens laufen Auswertungen irgendwann auf einem Server, und der hat keine
+Oberfläche. Zweitens ist ein Befehl wiederholbar und dokumentierbar, ein
+Mausklick nicht. Drittens sind manche Aufgaben in der Shell schlicht schneller:
+Wer wissen will, wie viele Zeilen einer Logdatei einen Fehler enthalten, tippt
+das in fünf Sekunden.
+
+### Ein Baum, keine Laufwerke
+
+Unter Windows hat jedes Laufwerk seinen eigenen Buchstaben. Unter Unix gibt es
+genau einen Baum, der bei `/` beginnt; weitere Datenträger werden an einer
+Stelle darin eingehängt. Auch Geräte und laufende Prozesse erscheinen als
+Dateien.
+
+Das klingt akademisch und hat eine praktische Folge: Dieselben Werkzeuge, die
+auf Textdateien arbeiten, lassen sich auf fast alles anwenden.
+
+```{r}
+#| label: struktur-r
+lauf("ls -R")
+```
+
+Die Ausgabe zeigt den Beispielordner, den diese Seite verwendet: zwei
+Unterordner und drei Dateien.
+
+### Die Grundbefehle
+
+| Befehl | tut | häufig gebraucht mit |
+|---|---|---|
+| `ls` | Inhalt auflisten | `-l` ausführlich, `-a` auch versteckte |
+| `cd` | Verzeichnis wechseln | `..` eine Ebene hoch |
+| `pwd` | wo bin ich | |
+| `mkdir` | Ordner anlegen | `-p` samt Zwischenebenen |
+| `cp`, `mv` | kopieren, verschieben oder umbenennen | `-r` rekursiv |
+| `rm` | löschen | `-r` rekursiv, **kein Papierkorb** |
+| `cat`, `head`, `tail` | Inhalt anzeigen, Anfang, Ende | `-n` Zeilenzahl |
+
+```{r}
+#| label: grundbefehle-r
+lauf("ls -l logs")
+lauf("head -n 2 logs/anlage.log")
+```
+
+Die erste Ausgabe zeigt links die Rechte, dann Besitzer, Gruppe, Grösse und
+Änderungszeitpunkt. Auf die Rechte kommen wir gleich zurück.
+
+::: {.note-box}
+`rm` löscht sofort und endgültig, es gibt keinen Papierkorb. `rm -rf` auf ein
+falsches Verzeichnis ist einer der teuersten Tippfehler überhaupt. Vor dem
+Löschen mit Platzhaltern lohnt es sich, denselben Ausdruck zuerst mit `ls`
+auszuprobieren.
+:::
+
+### Suchen: grep und find
+
+Die beiden werden ständig verwechselt. `grep` sucht **in** Dateien nach
+Inhalten, `find` sucht **nach** Dateien anhand ihrer Eigenschaften.
+
+```{r}
+#| label: grep-r
+lauf("grep ERROR logs/anlage.log")
+lauf("grep -c ERROR logs/anlage.log")     # nur zaehlen
+```
+
+```{r}
+#| label: find-r
+lauf("find . -name '*.csv'")
+lauf("find . -type d")                    # nur Verzeichnisse
+```
+
+### Ströme und Pipes
+
+Hier liegt die eigentliche Stärke. Jedes Programm liest von der
+Standardeingabe und schreibt auf die Standardausgabe. Eine Pipe verbindet die
+Ausgabe des einen mit der Eingabe des nächsten, und daraus entstehen aus
+kleinen Werkzeugen Verarbeitungsketten.
+
+```{r}
+#| label: pipe-r
+# Wie viele verschiedene Meldungsarten kommen vor, und wie oft?
+lauf("cat logs/anlage.log | awk '{print $2}' | sort | uniq -c")
+```
+
+Die Kette liest die Datei, schneidet die zweite Spalte heraus, sortiert sie und
+zählt gleiche Nachbarn. Vier kleine Programme, keines davon weiss etwas von den
+anderen.
+
+Drei Ströme gibt es, und der Unterschied wird beim Umlenken wichtig:
+
+| Strom | Nummer | wofür |
+|---|---|---|
+| stdin | 0 | Eingabe |
+| stdout | 1 | normale Ausgabe |
+| stderr | 2 | Fehlermeldungen |
+
+```{r}
+#| label: umlenkung-r
+lauf("grep ERROR logs/anlage.log > fehler.txt && wc -l < fehler.txt")
+```
+
+Fehlermeldungen laufen bewusst über einen eigenen Kanal. Deshalb erscheinen sie
+weiterhin am Bildschirm, wenn die normale Ausgabe in eine Datei umgelenkt wird,
+und deshalb landen sie nicht versehentlich mitten in den Daten.
+
+**Verständnisfragen**
+
+1. Was ist der Unterschied zwischen `grep muster datei` und `find . -name muster`?
+2. Warum ist `>` gefährlicher als `>>`?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. `grep` durchsucht den Inhalt der angegebenen Datei nach Zeilen, die zum
+   Muster passen, und gibt diese Zeilen aus. `find` durchsucht das Dateisystem
+   nach Dateien, deren Name zum Muster passt, und gibt Pfade aus. Das eine
+   sucht in Dateien, das andere nach Dateien.
+2. Weil `>` die Zieldatei überschreibt, und zwar ohne Rückfrage und bevor der
+   Befehl links überhaupt läuft. Ein vertippter Dateiname löscht damit deren
+   Inhalt. `>>` hängt an und lässt Bestehendes stehen.
+:::
+
+### Rechte
+
+Die Ausgabe von `ls -l` beginnt mit zehn Zeichen, etwa `-rw-r--r--`. Das erste
+gibt die Art an, danach folgen drei Dreiergruppen für Besitzer, Gruppe und alle
+übrigen, jeweils mit Lesen, Schreiben und Ausführen.
+
+```{r}
+#| label: rechte-r
+lauf("ls -l notiz.txt")
+lauf("chmod 600 notiz.txt && ls -l notiz.txt")
+```
+
+Die Zahlenschreibweise ergibt sich aus der Summe je Gruppe: Lesen zählt 4,
+Schreiben 2, Ausführen 1. Aus 600 wird damit Lesen und Schreiben für den
+Besitzer, nichts für alle anderen.
+
+Bei Verzeichnissen bedeutet das Ausführungsrecht das Betreten. Ein Verzeichnis
+ohne dieses Recht lässt sich auflisten, aber nicht durchqueren, was zu
+Fehlermeldungen führt, die zunächst rätselhaft wirken.
+
+::: {.note-box}
+Für die Datenarbeit wird das relevant, sobald ein Skript auf einem Server läuft.
+Ein Prozess unter einer anderen Benutzerkennung kann eine Datei nicht lesen,
+obwohl sie sichtbar ist. Der erste Blick gilt dann `ls -l` und der Frage, unter
+welcher Kennung der Prozess läuft.
+:::
+
+### Wann Shell, wann Python
+
+Beide können dasselbe, und die Grenze verläuft entlang der Lesbarkeit.
 
 ::: panel-tabset
 ## R
 
-```r
-# Aus R heraus auf die Shell zugreifen
-system("ls -l data")
-dateien <- list.files("data", pattern = "\\.csv$", full.names = TRUE)
-
-# Pfade plattformunabhaengig zusammensetzen
-file.path("data", "roh", "messung.csv")
+```{r}
+#| label: dateien-r
+# Aus R heraus, plattformunabhaengig
+alt <- getwd(); setwd(demo)
+list.files(pattern = "\\.txt$", recursive = TRUE)
+length(readLines("logs/anlage.log"))
+setwd(alt)
 ```
 
 ## Python
 
-```python
-# Typische Shell-Kette (im Terminal):
-# find data -name "*.csv" | head -5
-# grep -c "ERROR" logs/app.log
-# ls -l | wc -l
+```{python}
+#| label: dateien-py
+import pathlib, tempfile, os
 
-import subprocess
-from pathlib import Path
+# eigener Beispielordner fuer den Python-Teil
+demo = pathlib.Path(tempfile.mkdtemp())
+(demo / "logs").mkdir()
+(demo / "logs" / "anlage.log").write_text(
+    "INFO Start\nERROR Sensor 3\nINFO Weiter\n", encoding="utf-8")
 
-# Plattformunabhaengig ohne Shell
-list(Path("data").glob("*.csv"))
+print(list(demo.rglob("*.log")))
 
-# Falls es doch die Shell sein muss
-subprocess.run(["ls", "-l", "data"], check=True)
+text = (demo / "logs" / "anlage.log").read_text(encoding="utf-8")
+print("Zeilen mit ERROR:", sum("ERROR" in z for z in text.splitlines()))
 ```
 :::
 
-## Offene Fragen
+Faustregel: Für einmalige Erkundung und für Ketten aus zwei bis drei Schritten
+ist die Shell schneller. Sobald Bedingungen, Fehlerbehandlung oder Rechnungen
+dazukommen, ist ein Skript in Python oder R besser lesbar und leichter zu
+prüfen. Wer eine Shell-Zeile schreibt, die er selbst nicht mehr vorlesen kann,
+hat die Grenze überschritten.
 
-::: {.open-question}
-Ab welcher Komplexität lohnt sich der Wechsel von einer Shell-Pipeline zu einem Python-Skript — Lesbarkeit gegen Geschwindigkeit?
+::: {.note-box}
+Unter Windows steht dieselbe Umgebung über WSL zur Verfügung. Das ist
+praktischer, als jeden Befehl in ein PowerShell-Gegenstück zu übersetzen, und
+entspricht ausserdem dem, was später auf dem Server läuft.
 :::
 
 ## Verlinkte Ressourcen
 
 - [Bash-Referenzhandbuch](https://www.gnu.org/software/bash/manual/)
+- [Windows Subsystem for Linux](https://learn.microsoft.com/de-de/windows/wsl/)
