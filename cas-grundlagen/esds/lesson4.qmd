@@ -5,13 +5,24 @@ categories: ["Deskriptive Statistik", "R", "Python", "Visualisierung"]
 ---
 
 ```{r}
-#| label: setup
+#| label: setup-r
 #| include: false
 library(ggplot2)
 library(dplyr)
 
 theme_set(theme_minimal(base_size = 12))
 set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11})
+rng = np.random.default_rng(42)
 ```
 
 ## Kernideen aus dem Kurs
@@ -23,12 +34,15 @@ set.seed(42)
 - Boxplot und die Ausreisserregel
 - Schiefe und ihre Wirkung auf Mittelwert und Median
 
-## Meine Zusammenfassung
+## Erklärung
 
 Lage und Streuung beantworten zwei verschiedene Fragen: **wo** liegt die Verteilung, und **wie breit** ist sie. Beide Angaben gehören zusammen. Ein Mittelwert ohne Streuungsmass ist keine Zusammenfassung, sondern eine halbe Information — die beiden folgenden Datensätze haben denselben Mittelwert und beschreiben trotzdem völlig verschiedene Sachverhalte.
 
+::: panel-tabset
+## R
+
 ```{r}
-#| label: fig-gleiches-mittel
+#| label: fig-gleiches-mittel-r
 #| fig-cap: "Zwei Verteilungen mit identischem Mittelwert (gestrichelt) und sehr unterschiedlicher Streuung."
 vergleich <- data.frame(
   wert   = c(rnorm(500, mean = 50, sd = 2), rnorm(500, mean = 50, sd = 12)),
@@ -41,6 +55,25 @@ ggplot(vergleich, aes(wert)) +
   facet_wrap(~ gruppe) +
   labs(x = "Messwert", y = "Anzahl")
 ```
+
+## Python
+
+```{python}
+#| label: fig-gleiches-mittel-py
+#| fig-cap: "Dieselbe Aussage mit matplotlib: gleicher Mittelwert, verschiedene Streuung."
+eng   = rng.normal(50, 2, 500)
+breit = rng.normal(50, 12, 500)
+
+fig, achsen = plt.subplots(1, 2, sharey=True)
+for ax, daten, titel in zip(achsen, [breit, eng], ["breit: s = 12", "eng: s = 2"]):
+    ax.hist(daten, bins=40, color="0.75", edgecolor="white")
+    ax.axvline(50, linestyle="--", color="black")
+    ax.set_title(titel)
+    ax.set_xlabel("Messwert")
+achsen[0].set_ylabel("Anzahl")
+plt.show()
+```
+:::
 
 ### Die Lagemasse und das Skalenniveau
 
@@ -62,8 +95,11 @@ ist dagegen der Schwerpunkt: die Summe der Abweichungen vom Mittel ist immer nul
 
 Das ist kein akademischer Vorbehalt, sondern der wichtigste praktische Unterschied. Ein einziger Ausreisser verschiebt das Mittel beliebig weit, während der Median fast unberührt bleibt:
 
+::: panel-tabset
+## R
+
 ```{r}
-#| label: robustheit
+#| label: robustheit-r
 x <- c(12, 14, 15, 15, 18, 21)
 
 rbind(
@@ -72,10 +108,28 @@ rbind(
 ) |> round(1)
 ```
 
+## Python
+
+```{python}
+#| label: robustheit-py
+x = np.array([12, 14, 15, 15, 18, 21])
+x_gross = np.append(x, 470)
+
+pd.DataFrame(
+    {"mittel": [x.mean(), x_gross.mean()],
+     "median": [np.median(x), np.median(x_gross)]},
+    index=["ohne Ausreisser", "mit Ausreisser"]
+).round(1)
+```
+:::
+
 Das Mittel springt um mehr als das Doppelte, der Median rückt um einen halben Punkt. Deshalb gilt: sobald eine Verteilung schief ist oder Ausreisser enthält, beschreibt der Median den typischen Fall besser — und genau darum werden Löhne und Immobilienpreise als Median berichtet.
 
+::: panel-tabset
+## R
+
 ```{r}
-#| label: fig-schief
+#| label: fig-schief-r
 #| fig-cap: "Rechtsschiefe Verteilung: der lange rechte Rand zieht das Mittel über den Median."
 loehne <- round(rlnorm(800, meanlog = 8.85, sdlog = 0.42))
 
@@ -90,28 +144,52 @@ ggplot(data.frame(lohn = loehne), aes(lohn)) +
   labs(x = "Monatslohn (CHF)", y = "Anzahl")
 ```
 
+## Python
+
+```{python}
+#| label: fig-schief-py
+#| fig-cap: "Dieselbe rechtsschiefe Verteilung, gezeichnet mit matplotlib."
+loehne = np.round(rng.lognormal(mean=8.85, sigma=0.42, size=800))
+
+fig, ax = plt.subplots()
+ax.hist(loehne, bins=45, color="0.75", edgecolor="white")
+ax.axvline(np.median(loehne), color="black")
+ax.axvline(loehne.mean(), color="black", linestyle="--")
+ax.annotate("Median", (np.median(loehne), ax.get_ylim()[1]),
+            ha="right", va="top", fontsize=9)
+ax.annotate("Mittel", (loehne.mean(), ax.get_ylim()[1]),
+            ha="left", va="top", fontsize=9)
+ax.set_xlabel("Monatslohn (CHF)")
+ax.set_ylabel("Anzahl")
+plt.show()
+```
+:::
+
 ::: {.note-box}
 Merkregel für die Schiefe: das Mittel wandert in Richtung des längeren Randes. Liegt es **über** dem Median, ist die Verteilung rechtsschief; liegt es darunter, linksschief. Bei symmetrischen Verteilungen fallen beide zusammen.
 :::
 
 ### Quantile
 
-Das $p$-Quantil ist der Wert, unterhalb dessen ein Anteil $p$ der Beobachtungen liegt. Der Median ist damit das 0.5-Quantil. Die Quartile teilen die Daten in vier Viertel:
-
-```{r}
-#| label: quantile
-quantile(loehne, probs = c(0, 0.25, 0.5, 0.75, 1))
-```
+Das $p$-Quantil ist der Wert, unterhalb dessen ein Anteil $p$ der Beobachtungen liegt. Der Median ist damit das 0.5-Quantil. Die Quartile teilen die Daten in vier Viertel.
 
 Ein Detail, über das ich sonst stolpern würde: es gibt neun verschiedene Definitionen, wie zwischen zwei Beobachtungen interpoliert wird. R verwendet standardmässig Typ 7 — und NumPy und Pandas rechnen mit derselben linearen Interpolation, sodass beide Sprachen ohne Zutun dasselbe Ergebnis liefern:
 
-```{python}
-#| label: quantile-python
-import numpy as np
+::: panel-tabset
+## R
 
-werte = np.array([12, 14, 15, 15, 18, 21])
-print(np.quantile(werte, [0.25, 0.5, 0.75]))
+```{r}
+#| label: quantile-r
+quantile(c(12, 14, 15, 15, 18, 21), probs = c(0.25, 0.5, 0.75))
 ```
+
+## Python
+
+```{python}
+#| label: quantile-py
+np.quantile([12, 14, 15, 15, 18, 21], [0.25, 0.5, 0.75])
+```
+:::
 
 ### Die Streuungsmasse
 
@@ -125,26 +203,47 @@ Der **Interquartilsabstand** umfasst die mittleren fünfzig Prozent, $\text{IQR}
 
 $$s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2 \qquad s = \sqrt{s^2}$$
 
-Der Nenner $n-1$ statt $n$ ist die Bessel-Korrektur. Der Grund: die Abweichungen werden vom geschätzten Mittel gemessen, nicht vom wahren. Um das eigene Mittel streuen die Daten minimal, wodurch die Streuung systematisch unterschätzt würde — $n-1$ gleicht das aus. R rechnet mit `var()` und `sd()` immer so; in Python ist das nicht der Fall, dort steht `ddof` standardmässig auf 0 und muss auf 1 gesetzt werden.
+Der Nenner $n-1$ statt $n$ ist die Bessel-Korrektur. Der Grund: die Abweichungen werden vom geschätzten Mittel gemessen, nicht vom wahren. Um das eigene Mittel streuen die Daten minimal, wodurch die Streuung systematisch unterschätzt würde — $n-1$ gleicht das aus.
 
-Weil die Varianz quadriert, steht sie in quadrierten Einheiten und ist nicht direkt lesbar. Die Standardabweichung führt zurück in die Einheit der Daten und ist deshalb das Mass, das berichtet wird. Beide gewichten Abweichungen quadratisch und reagieren damit noch stärker auf Ausreisser als das Mittel.
+Hier lauert der wichtigste Sprachunterschied dieser Lektion: **R rechnet immer mit $n-1$, NumPy standardmässig mit $n$.** Pandas wiederum verhält sich wie R. Wer die Sprachen mischt, bekommt sonst zwei verschiedene Standardabweichungen für dieselben Daten.
 
-Der **Variationskoeffizient** $v = s / \bar{x}$ setzt die Streuung ins Verhältnis zur Lage und macht Grössenordnungen vergleichbar — sinnvoll nur bei positiven Verhältnisskalen, denn bei einem Mittel nahe null explodiert er:
+Weil die Varianz quadriert, steht sie in quadrierten Einheiten und ist nicht direkt lesbar. Die Standardabweichung führt zurück in die Einheit der Daten und ist deshalb das Mass, das berichtet wird. Der **Variationskoeffizient** $v = s / \bar{x}$ setzt die Streuung ins Verhältnis zur Lage und macht Grössenordnungen vergleichbar — sinnvoll nur bei positiven Verhältnisskalen, denn bei einem Mittel nahe null explodiert er.
+
+::: panel-tabset
+## R
 
 ```{r}
-#| label: streuung
+#| label: streuung-r
 c(spannweite = diff(range(loehne)),
   iqr        = IQR(loehne),
   sd         = sd(loehne),
   vk         = sd(loehne) / mean(loehne)) |> round(3)
 ```
 
+## Python
+
+```{python}
+#| label: streuung-py
+q1, q3 = np.quantile(loehne, [0.25, 0.75])
+
+pd.Series({
+    "spannweite": loehne.max() - loehne.min(),
+    "iqr":        q3 - q1,
+    "sd":         loehne.std(ddof=1),      # ddof=1 entspricht sd() in R
+    "vk":         loehne.std(ddof=1) / loehne.mean(),
+}).round(3)
+```
+:::
+
 ### Der Boxplot und seine Anatomie
 
 Der Boxplot bündelt die robuste Familie in einem Bild. Die Box reicht von $Q_1$ bis $Q_3$, der Strich darin ist der Median. Die Antennen gehen bis zum am weitesten entfernten Wert, der noch innerhalb von $1.5 \times \text{IQR}$ ab dem jeweiligen Quartil liegt — alles darüber hinaus wird als Punkt gezeichnet.
 
+::: panel-tabset
+## R
+
 ```{r}
-#| label: fig-boxplot-anatomie
+#| label: fig-boxplot-anatomie-r
 #| fig-cap: "Anatomie des Boxplots. Die Antennen enden am letzten Wert innerhalb der 1.5-IQR-Grenze, nicht an der Grenze selbst."
 werte <- c(rnorm(120, 50, 8), 88, 91, 12)
 kennz <- quantile(werte, c(0.25, 0.5, 0.75))
@@ -159,16 +258,40 @@ ggplot(data.frame(werte), aes(y = werte, x = 1)) +
   labs(y = "Messwert")
 ```
 
+## Python
+
+```{python}
+#| label: fig-boxplot-anatomie-py
+#| fig-cap: "Derselbe Aufbau mit matplotlib. whis=1.5 ist auch hier die Vorgabe."
+werte = np.append(rng.normal(50, 8, 120), [88, 91, 12])
+q1, med, q3 = np.quantile(werte, [0.25, 0.5, 0.75])
+
+fig, ax = plt.subplots()
+ax.boxplot(werte, whis=1.5, widths=0.35, patch_artist=True,
+           boxprops={"facecolor": "0.9"}, medianprops={"color": "black"})
+for y, text in [(q1, "Q1 (25 %)"), (med, "Median"),
+                (q3, "Q3 (75 %)"), (werte.max(), "Ausreisser")]:
+    ax.annotate(text, (1.25, y), fontsize=9, va="center")
+ax.set_xlim(0.6, 2.4)
+ax.set_xticks([])
+ax.set_ylabel("Messwert")
+plt.show()
+```
+:::
+
 Die 1.5-Regel ist eine Konvention, kein Test. Sie markiert Werte, die einen zweiten Blick verdienen — sie beweist nicht, dass ein Wert falsch ist. Bei normalverteilten Daten fallen rund 0.7 Prozent der Beobachtungen darunter, in grossen Stichproben also regelmässig einige, ohne dass irgendetwas schiefgelaufen wäre.
 
 ### Was der Boxplot verschweigt
 
-Seine Stärke ist der Gruppenvergleich, seine Schwäche die Form. Weil er nur fünf Kennzahlen zeigt, sieht eine zweigipflige Verteilung aus wie eine gleichmässige — hier sind beide Boxplots nahezu identisch, die [Histogramme](lesson3.qmd) darunter zeigen etwas völlig anderes:
+Seine Stärke ist der Gruppenvergleich, seine Schwäche die Form. Weil er nur fünf Kennzahlen zeigt, sieht eine zweigipflige Verteilung aus wie eine gleichmässige — die Boxplots sind kaum zu unterscheiden, die [Histogramme](lesson3.qmd) darunter zeigen etwas völlig anderes:
+
+::: panel-tabset
+## R
 
 ```{r}
-#| label: fig-boxplot-blind
-#| fig-cap: "Zwei Verteilungen, deren Boxplots kaum zu unterscheiden sind."
-#| fig-height: 3.4
+#| label: fig-blind-r
+#| fig-cap: "Oben zwei fast identische Boxplots, unten dieselben Daten als Histogramm."
+#| fig-height: 3
 dat <- data.frame(
   wert = c(c(rnorm(400, 35, 5), rnorm(400, 65, 5)),
            runif(800, min = 25, max = 75)),
@@ -181,15 +304,76 @@ ggplot(dat, aes(x = form, y = wert)) +
 ```
 
 ```{r}
-#| label: fig-hist-blind
-#| fig-cap: "Dieselben Daten als Histogramm: erst hier wird der Unterschied sichtbar."
+#| label: fig-blind-hist-r
+#| fig-cap: "Erst das Histogramm macht die zwei Gipfel sichtbar."
 ggplot(dat, aes(wert)) +
   geom_histogram(bins = 40, fill = "grey75", colour = "white") +
   facet_wrap(~ form) +
   labs(x = "Wert", y = "Anzahl")
 ```
 
+## Python
+
+```{python}
+#| label: fig-blind-py
+#| fig-cap: "Boxplot und Histogramm derselben Daten, gezeichnet mit matplotlib."
+zweigipflig = np.concatenate([rng.normal(35, 5, 400), rng.normal(65, 5, 400)])
+gleichmaessig = rng.uniform(25, 75, 800)
+
+fig, (oben, unten) = plt.subplots(2, 1, figsize=(7, 6))
+
+oben.boxplot([zweigipflig, gleichmaessig], widths=0.4, patch_artist=True,
+             boxprops={"facecolor": "0.9"}, medianprops={"color": "black"})
+oben.set_xticklabels(["zweigipflig", "gleichmässig"])
+oben.set_ylabel("Wert")
+
+unten.hist([zweigipflig, gleichmaessig], bins=40, histtype="step",
+           label=["zweigipflig", "gleichmässig"])
+unten.legend()
+unten.set_xlabel("Wert")
+unten.set_ylabel("Anzahl")
+
+fig.tight_layout()
+plt.show()
+```
+:::
+
 Deshalb gehört zum Boxplot immer ein zweiter Blick auf die Verteilung — Histogramm, Dichtekurve oder bei kleinen Stichproben schlicht die einzelnen Punkte.
+
+### Kennzahlen je Gruppe
+
+Der Alltagsfall: nicht eine Verteilung beschreiben, sondern mehrere vergleichen.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: gruppen-r
+dat |>
+  group_by(form) |>
+  summarise(n      = n(),
+            median = median(wert),
+            iqr    = IQR(wert),
+            sd     = sd(wert)) |>
+  mutate(across(where(is.double), \(x) round(x, 2)))
+```
+
+## Python
+
+```{python}
+#| label: gruppen-py
+dat = pd.DataFrame({
+    "wert": np.concatenate([zweigipflig, gleichmaessig]),
+    "form": ["zweigipflig"] * 800 + ["gleichmässig"] * 800,
+})
+
+(dat.groupby("form")["wert"]
+    .agg(n="size", median="median",
+         iqr=lambda s: s.quantile(.75) - s.quantile(.25),
+         sd="std")                      # pandas: ddof=1, wie in R
+    .round(2))
+```
+:::
 
 ### Was ich beim Berichten festhalte
 
@@ -197,57 +381,10 @@ Deshalb gehört zum Boxplot immer ein zweiter Blick auf die Verteilung — Histo
 - Bei schiefen Daten Median und IQR, bei symmetrischen Mittel und Standardabweichung.
 - Die Stichprobengrösse dazu, denn ohne $n$ ist keine Streuungsangabe einzuordnen.
 - Ausreisser nicht stillschweigend entfernen, sondern benennen.
-
-## Eigene Beispiele / Code
-
-::: panel-tabset
-## R
-
-```r
-x <- c(12, 14, 15, 15, 18, 21, 47)
-
-mean(x); median(x)
-quantile(x, c(0.25, 0.5, 0.75))
-IQR(x)
-var(x); sd(x)                      # immer mit n - 1
-sd(x) / mean(x)                    # Variationskoeffizient
-
-# Kennzahlen je Gruppe
-df |>
-  group_by(typ) |>
-  summarise(n = n(), median = median(wert), iqr = IQR(wert))
-
-boxplot(wert ~ typ, data = df)
-```
-
-## Python
-
-```python
-import pandas as pd
-
-x = pd.Series([12, 14, 15, 15, 18, 21, 47])
-
-x.mean(), x.median()
-x.quantile([0.25, 0.5, 0.75])
-x.quantile(0.75) - x.quantile(0.25)          # IQR
-x.var(), x.std()                              # pandas: ddof=1, wie in R
-x.std() / x.mean()
-
-# Achtung bei NumPy: dort ist ddof=0 die Vorgabe
-# np.std(x, ddof=1) entspricht sd() in R
-
-df.groupby("typ")["wert"].agg(["size", "median",
-                               lambda s: s.quantile(.75) - s.quantile(.25)])
-
-df.boxplot(column="wert", by="typ")
-```
-:::
+- Beim Sprachwechsel an `ddof` denken.
 
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
 - [Dokumentation zu `quantile` in R (die neun Typen)](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html)
-
-::: {.placeholder-notice}
-Die Kursfolien zu Lage- und Streuungsparametern liegen im Moodle-Kurs; die Kurs-URL trage ich nach.
-:::
+- [`numpy.std` — Vorgabe `ddof=0`](https://numpy.org/doc/stable/reference/generated/numpy.std.html)

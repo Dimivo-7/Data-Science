@@ -82,18 +82,26 @@ categories: ["Dimensionsreduktion", "Faktorenanalyse", "R", "Python"]
 | `description` | **Ein** vollständiger Satz, max. ~120 Zeichen. Erscheint in der Tag-Übersicht. Beschreibt den Inhalt, nicht die Lernziele. |
 | `categories` | Die Tags. Regeln siehe Abschnitt 5. |
 
-Übersichtsseiten (`index.qmd`) bekommen zusätzlich `comments: false` und **keine**
-`categories`.
+Übersichtsseiten (`index.qmd`) bekommen **keine** `categories`.
 
 ---
 
 ## 4. Aufbau einer Lektionsseite
 
-Alle Lektionsseiten haben **dieselben vier Abschnitte in dieser Reihenfolge**.
-Keine weggelassenen, keine zusätzlichen `##`-Abschnitte — die Einheitlichkeit
-ist der Punkt der ganzen Seite. Innerhalb von „Meine Zusammenfassung" sind
-`###`-Zwischentitel erwünscht; sie erscheinen im Inhaltsverzeichnis rechts und
-machen lange Seiten navigierbar.
+Alle Lektionsseiten haben **dieselben drei Abschnitte in dieser Reihenfolge**.
+Keine weggelassenen, keine zusätzlichen `##`-Abschnitte. Innerhalb von
+„Erklärung" gliedern `###`-Zwischentitel den Text; sie erscheinen im
+Inhaltsverzeichnis rechts und machen lange Seiten navigierbar.
+
+| Abschnitt | Inhalt |
+|---|---|
+| `## Kernideen aus dem Kurs` | 4 bis 6 Stichpunkte, Begriffe statt Sätze — das Inhaltsverzeichnis der Lektion |
+| `## Erklärung` | Das Herzstück: das Thema ausführlich erklärt, mit Formeln, gerechneten Beispielen und Abbildungen im Fluss |
+| `## Verlinkte Ressourcen` | Links zum Nachschlagen |
+
+Der Abschnitt heisst **Erklärung**, nicht „Meine Zusammenfassung": erklärt wird
+das Thema, nicht eine Vorlesung nacherzählt. Die Seite soll auch dann tragen,
+wenn ich den Kurs längst hinter mir habe.
 
 ````markdown
 ---
@@ -106,57 +114,54 @@ categories: ["…"]
 
 - 4 bis 6 Stichpunkte
 - jeweils ein Begriff oder Konzept, keine ganzen Sätze
-- das ist das Inhaltsverzeichnis der Lektion
 
-## Meine Zusammenfassung
+## Erklärung
 
-Das Herzstück der Seite: ein ausführlicher Erklärtext in eigenen Worten,
-gegliedert mit `###`-Zwischentiteln. Hierhin gehören Formeln, gerechnete
-Beispiele und Abbildungen direkt im Fluss — die Seite soll als Nachschlagewerk
-tragen und mit der Zeit wachsen.
+Einleitender Fliesstext, der das Thema aufspannt.
 
 ### Ein Zwischentitel je Gedanke
 
-Fliesstext, dazu ein gerechnetes Beispiel:
+Erklärung, dazu die Formel:
 
-```{r}
-#| label: robustheit
-x <- c(12, 14, 15, 15, 18, 21)
-c(mittel = mean(x), median = median(x))
-```
+$$s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2$$
 
-Und eine Abbildung mit Beschriftung:
-
-```{r}
-#| label: fig-verteilung
-#| fig-cap: "Was die Abbildung zeigt, in einem Satz."
-ggplot(data.frame(x), aes(x)) + geom_histogram(bins = 20)
-```
-
-## Eigene Beispiele / Code
-
-Die kompakte R/Python-Gegenüberstellung zum Nachschlagen. Bleibt auch dann
-bestehen, wenn im Text schon Code steht — dort wird erklärt, hier verglichen.
+Und das Beispiel — immer in beiden Sprachen, R zuerst:
 
 ::: panel-tabset
 ## R
 
-```r
-prcomp(df, scale. = TRUE)
+```{r}
+#| label: fig-verteilung-r
+#| fig-cap: "Was die Abbildung zeigt, in einem Satz."
+ggplot(data.frame(x = rnorm(100)), aes(x)) + geom_histogram(bins = 20)
 ```
 
 ## Python
 
-```python
-from sklearn.decomposition import PCA
-PCA(n_components=2).fit(X)
+```{python}
+#| label: fig-verteilung-py
+#| fig-cap: "Dieselbe Aussage mit matplotlib."
+plt.hist(rng.normal(size=100), bins=20)
+plt.show()
 ```
 :::
 
 ## Verlinkte Ressourcen
 
-- [Original-Kursseite](https://…) *(zum Nachschlagen)*
+- [Titel der Quelle](https://…)
 ````
+
+### Beide Sprachen, im Text
+
+Jedes Beispiel steht in R **und** in Python, direkt dort, wo es erklärt wird,
+in einem `::: panel-tabset`. Einen eigenen Sammelabschnitt für Code gibt es
+nicht mehr — er stand am Seitenende und wiederholte nur, was im Text schon
+erklärt war.
+
+Gibt es für eine Seite in einer Sprache nichts Sinnvolles zu zeigen — bei Git,
+Linux oder Docker etwa —, dann steht dort das, was der Sprache am nächsten
+kommt (`renv` gegenüber `venv`, `DBI` gegenüber `sqlite3`), oder der Tab
+benennt kurz, warum er leer bleibt.
 
 ### Ausführbare Chunks und reine Listings
 
@@ -188,15 +193,14 @@ Deshalb: einfache, offensichtliche Idiome, keine exotischen Konstruktionen.
 
 ### Zwingend: R vor Python
 
-Im `panel-tabset` steht **immer `## R` zuerst, `## Python` als zweites.**
+In **jedem** `panel-tabset` steht `## R` zuerst, `## Python` als zweites.
 
 Das ist keine Stilfrage. Die Tab-Einfärbung in `styles.scss` erkennt die Sprache
 an der Position (`:nth-child(1)` = R-Blau `#276DC3`, `:nth-child(2)` =
 Python-Blau), weil Quarto den Tab-Buttons keine Sprachinformation mitgibt. Wird
 die Reihenfolge in einer Datei gedreht, sind dort die Farben vertauscht.
 
-Gibt es nur eine Sprache, trotzdem beide Tabs anlegen und im leeren notieren,
-warum er leer ist.
+Das gilt für jedes einzelne Tabset auf der Seite, nicht nur für das erste.
 
 ---
 
@@ -336,8 +340,8 @@ Pro Lektion **eine vollständige `.qmd`-Datei**, fertig zum Speichern:
 - vollständiges Front Matter nach Abschnitt 3
 - die sechs Abschnitte aus Abschnitt 4, in dieser Reihenfolge
 - Codebeispiele lauffähig und minimal — die Idee zeigen, kein Komplettskript
-- keine erfundenen Quellenangaben; ist die Original-URL unbekannt, dann
-  stattdessen ein `.placeholder-notice` mit Hinweis darauf
+- keine erfundenen Quellenangaben; ist die Original-URL unbekannt, wird sie
+  schlicht weggelassen — kein Platzhalter, der auf Moodle verweist
 - keine erfundenen Inhalte: was nicht in den Unterlagen steht, wird nicht
   ergänzt. Lücken werden als offene Frage markiert, nicht gefüllt.
 
@@ -377,21 +381,26 @@ Kommunikation, Visualisierungsethik, Deployment
 Passt nichts, schlage am Ende einen neuen Tag vor und begründe ihn –
 setze ihn aber nicht selbst ein.
 
-AUFBAU – genau diese vier Abschnitte, genau in dieser Reihenfolge:
+AUFBAU – genau diese drei Abschnitte, genau in dieser Reihenfolge:
 ## Kernideen aus dem Kurs      4-6 Stichpunkte, Begriffe statt Sätze
-## Meine Zusammenfassung       ausführlicher Erklärtext, mit ###-Zwischentiteln
-                               gegliedert, Formeln, gerechnete Beispiele und
-                               Abbildungen direkt im Text
-## Eigene Beispiele / Code     ::: panel-tabset mit ## R zuerst, dann ## Python
-## Verlinkte Ressourcen        Links, sonst ::: {.placeholder-notice}
+## Erklärung                   das Thema ausführlich erklärt, mit ###-Zwischen-
+                               titeln gegliedert, Formeln, gerechnete Beispiele
+                               und Abbildungen direkt im Text
+## Verlinkte Ressourcen        Links, sonst weglassen
+
+BEISPIELE
+Jedes Beispiel in R UND Python, direkt an der erklärten Stelle, in einem
+::: panel-tabset mit ## R zuerst und ## Python als zweitem. Keinen eigenen
+Sammelabschnitt für Code am Seitenende anlegen.
 
 AUSFÜHRBARE CHUNKS
 Abbildungen und gerechnete Beispiele als ```{r} bzw. ```{python} – sie laufen
 beim Build. Jeder Chunk muss ohne Vorbedingung laufen: Daten im Chunk selbst
 erzeugen, nie ein df voraussetzen. Jeder Chunk mit #| label:, Abbildungen
-zusätzlich mit #| fig-cap: und dem Präfix fig- im Label. set.seed() in einen
-Setup-Chunk mit #| include: false. Nur Pakete aus publish.yml verwenden.
-Die Listings im Tabset bleiben reine Anzeige (```r bzw. ```python).
+zusätzlich mit #| fig-cap: und dem Präfix fig- im Label; Labels sind
+seitenweit eindeutig, deshalb -r und -py als Endung. set.seed() bzw.
+default_rng() in Setup-Chunks mit #| include: false. Nur Pakete aus
+publish.yml verwenden.
 
 HARTE REGELN
 - Im panel-tabset steht IMMER R zuerst, Python als zweites.
@@ -400,8 +409,8 @@ HARTE REGELN
   Kein eigenes HTML, keine Inline-Styles, keine Farben.
 - Formuliere alles in eigenen Worten um. Übernimm keine Formulierungen
   aus den Unterlagen, auch nicht leicht abgewandelt.
-- Erfinde nichts. Was in den Unterlagen fehlt, wird nicht ergänzt; wo eine
-  Frage offen bleibt, ein ::: {.open-question} setzen. Keine erfundenen URLs.
+- Erfinde nichts und erfinde keine URLs. Ist die Originalquelle unbekannt,
+  wird sie weggelassen - kein Platzhalter, der auf Moodle verweist.
 - Sprache: Deutsch. Fachbegriffe dürfen englisch bleiben.
 
 AUSGABE
@@ -436,8 +445,9 @@ Dazu am Schluss eine Zeile: der vorgeschlagene Dateiname.
 
 - [ ] Front Matter vollständig: `title`, `description`, `categories`
 - [ ] 3–5 Tags, alle aus dem Vokabular in Abschnitt 5
-- [ ] Die vier Abschnitte vollständig und in der richtigen Reihenfolge
-- [ ] Im Tabset: R zuerst, Python zweitens
+- [ ] Die drei Abschnitte vollständig und in der richtigen Reihenfolge
+- [ ] In jedem Tabset: R zuerst, Python zweitens
+- [ ] Jedes Beispiel liegt in beiden Sprachen vor
 - [ ] Alle Codeblöcke mit Sprachangabe
 - [ ] Ausführbare Chunks laufen ohne Vorbedingung, mit Label und `fig-cap`
 - [ ] Nur Pakete verwendet, die in `publish.yml` installiert werden
