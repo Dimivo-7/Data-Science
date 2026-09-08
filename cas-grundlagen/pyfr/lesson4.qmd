@@ -4,68 +4,282 @@ description: "Fehlerbehandlung mit try/except, Dateizugriff mit Encoding und das
 categories: ["Python", "Programmiergrundlagen", "Reproduzierbarkeit", "R"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import tempfile, pathlib, json
+arbeitsordner = pathlib.Path(tempfile.mkdtemp())
+```
+
 ## Kernideen aus dem Kurs
 
 - `try` / `except` / `else` / `finally`
 - Exception-Typen und eigene Exceptions
 - Dateizugriff mit `open` und `with`
-- Text- versus Binärmodus, Encoding
+- Text- gegenüber Binärmodus, Encoding
 - Serialisierung: JSON, CSV, Pickle
 
-## Meine Zusammenfassung
-
-Python behandelt Fehler als Ausnahmen, nicht als Rückgabewerte. Der Aufrufer darf davon ausgehen, dass eine Funktion entweder ein sinnvolles Ergebnis liefert oder abbricht — Prüfcode für jeden denkbaren Fehlerfall entfällt damit. Wichtig ist, im `except` möglichst genau zu bleiben: ein pauschales Abfangen aller Ausnahmen verdeckt Programmierfehler und macht die Fehlersuche mühsam. `else` läuft nur, wenn nichts geworfen wurde, `finally` in jedem Fall — dort gehören Aufräumarbeiten hin.
-
-Beim Dateizugriff ist der `with`-Block der Normalfall, weil er die Datei auch dann schliesst, wenn im Block eine Ausnahme fliegt. Zwei Details werden dabei gerne vergessen: der Unterschied zwischen Text- und Binärmodus, und das Encoding. Letzteres sollte im Textmodus immer ausdrücklich gesetzt werden, weil der Standard vom Betriebssystem abhängt — genau daher stammen die typischen Umlautprobleme beim Wechsel zwischen Windows und Linux.
-
-Serialisierung heisst, ein Objekt in eine Zeichen- oder Bytefolge zu überführen, die sich speichern und wieder einlesen lässt. JSON ist dafür der Austauschstandard: lesbar, sprachunabhängig, aber auf einfache Typen beschränkt. Pickle kann fast beliebige Python-Objekte speichern, ist dafür an Python gebunden und darf nie aus fremder Quelle geladen werden, weil beim Laden Code ausgeführt werden kann. CSV bleibt für Tabellen die pragmatische Wahl, verliert aber jede Typinformation.
+## Erklärung
 
 ::: {.note-box}
-Faustregel: JSON für Konfiguration und Austausch, CSV oder Parquet für Tabellen, Pickle nur für kurzlebige eigene Zwischenstände.
+**Vorwissen:** [L2 – Funktionen & Module](lesson2.qmd) für Funktionen, deren
+Fehlerverhalten hier zum Thema wird, und [L3](lesson3.qmd), falls eigene
+Exception-Klassen definiert werden sollen; sie sind gewöhnliche Klassen.
 :::
 
-## Eigene Beispiele / Code
+### Fehler als Ausnahme statt als Rückgabewert
+
+Manche Sprachen melden Fehler über einen besonderen Rückgabewert. Das führt
+dazu, dass nach jedem Aufruf geprüft werden muss, und dass eine vergessene
+Prüfung stillschweigend mit falschen Werten weiterrechnet.
+
+Python geht den anderen Weg. Eine Funktion liefert entweder ein sinnvolles
+Ergebnis oder bricht ab. Der Aufrufer darf sich auf das Ergebnis verlassen,
+und wer den Fehler behandeln will, tut es an einer Stelle:
+
+```{python}
+#| label: exception-py
+def zu_zahl(text):
+    return int(text)
+
+for eingabe in ["42", "keine Angabe"]:
+    try:
+        print(zu_zahl(eingabe))
+    except ValueError as fehler:
+        print(f"nicht verwertbar: {fehler}")
+```
+
+Die Fehlermeldung kommt vom Interpreter und ist genauer als alles, was man
+selbst formulieren würde. Sie mitzugeben, statt sie durch eigenen Text zu
+ersetzen, spart später Zeit bei der Suche.
+
+### Nicht zu breit fangen
+
+Ein `except` ohne Typangabe fängt alles, auch Tippfehler im eigenen Code. Der
+Fehler verschwindet dann in einer harmlos aussehenden Meldung, statt sich zu
+zeigen.
+
+```{python}
+#| label: zu-breit-py
+def riskant(wert):
+    try:
+        return 100 / wert
+    except Exception:
+        return None          # verdeckt jeden Fehler, auch den eigenen
+
+def genau(wert):
+    try:
+        return 100 / wert
+    except ZeroDivisionError:
+        return float("inf")  # nur der eine erwartete Fall
+
+print(riskant(0), genau(0))
+print(riskant("text"))       # gibt None, obwohl hier ein Typfehler vorliegt
+```
+
+Der letzte Aufruf ist das Problem: Ein Typfehler, der auf einen Fehler weiter
+oben hinweist, wird zu einem harmlosen `None`. Die genaue Variante hätte ihn
+durchgelassen und damit sichtbar gemacht.
+
+Vier Bestandteile stehen zur Verfügung, jeder mit einem klaren Zweck:
+
+| Teil | wann er läuft | wofür |
+|---|---|---|
+| `try` | immer | der Code, der scheitern kann |
+| `except` | nur bei passendem Fehler | Behandlung |
+| `else` | nur wenn nichts geworfen wurde | was vom Gelingen abhängt |
+| `finally` | in jedem Fall | Aufräumen |
+
+```{python}
+#| label: try-voll-py
+def lies_zahl(text):
+    try:
+        wert = int(text)
+    except ValueError:
+        return None
+    else:
+        return wert * 2          # nur bei Erfolg
+    finally:
+        pass                     # hier stuende das Aufraeumen
+
+print(lies_zahl("21"), lies_zahl("x"))
+```
+
+**Verständnisfragen**
+
+1. Warum ist `except Exception` fast immer zu breit?
+2. Wozu `else`, wenn der Code auch am Ende des `try` stehen könnte?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil es auch Fehler abfängt, mit denen man nicht gerechnet hat, etwa
+   Tippfehler in Namen oder falsche Typen. Diese Fehler zeigen einen Defekt im
+   eigenen Code an und sollen laut scheitern statt still behandelt zu werden.
+   Gefangen gehört nur, was man erwartet und sinnvoll behandeln kann.
+2. Weil im `try` möglichst wenig stehen soll. Alles darin ist Kandidat für den
+   `except`-Zweig; steht dort auch Folgecode, könnte dessen Fehler
+   versehentlich als der erwartete behandelt werden. `else` trennt sauber
+   zwischen dem, was schiefgehen darf, und dem, was daraufhin passiert.
+:::
+
+### Dateien lesen und schreiben
+
+Der `with`-Block ist der Normalfall, weil er die Datei auch dann schliesst,
+wenn im Block ein Fehler auftritt. Ohne ihn bleibt bei einem Abbruch ein
+offener Dateizeiger zurück.
+
+```{python}
+#| label: datei-py
+pfad = arbeitsordner / "messung.txt"
+
+with open(pfad, "w", encoding="utf-8") as f:
+    f.write("Drossel;12.4\nVentil;9.8\n")
+
+with open(pfad, encoding="utf-8") as f:
+    for zeile in f:
+        name, wert = zeile.strip().split(";")
+        print(f"{name:10s} {float(wert):6.1f}")
+```
+
+### Encoding ist keine Nebensache
+
+Der zweite Punkt kostet in gemischten Umgebungen regelmässig Zeit. Ohne Angabe
+verwendet Python die Voreinstellung des Betriebssystems, und die ist unter
+Windows eine andere als unter Linux. Umlaute werden dann beim Lesen zu
+Kauderwelsch oder lösen einen Fehler aus.
+
+```{python}
+#| label: encoding-py
+pfad = arbeitsordner / "umlaute.txt"
+pfad.write_text("Grösse: 12 µm", encoding="utf-8")
+
+# richtig gelesen
+print(pfad.read_text(encoding="utf-8"))
+
+# mit falscher Annahme
+try:
+    print(pfad.read_text(encoding="ascii"))
+except UnicodeDecodeError as fehler:
+    print("falsches Encoding:", fehler)
+```
+
+::: {.note-box}
+Regel ohne Ausnahme: `encoding="utf-8"` immer ausdrücklich angeben, beim
+Schreiben wie beim Lesen. Das kostet zwölf Zeichen und verhindert eine ganze
+Fehlerklasse, die typischerweise erst auffällt, wenn jemand anders die Datei
+öffnet.
+:::
+
+### Serialisierung: drei Formate, drei Zwecke
+
+Serialisierung heisst, ein Objekt in eine Form zu bringen, die sich speichern
+und wieder einlesen lässt.
+
+| Format | speichert | lesbar für | Grenze |
+|---|---|---|---|
+| JSON | einfache Typen | Mensch und andere Sprachen | keine eigenen Objekte, keine Datumstypen |
+| CSV | Tabellen | Mensch und Tabellenkalkulation | verliert jede Typinformation |
+| Pickle | fast beliebige Python-Objekte | nur Python | unsicher aus fremder Quelle |
+
+```{python}
+#| label: json-py
+konfig = {"schwelle": 12.5, "aktiv": True, "orte": ["Bern", "Chur"]}
+
+pfad = arbeitsordner / "konfig.json"
+with open(pfad, "w", encoding="utf-8") as f:
+    json.dump(konfig, f, ensure_ascii=False, indent=2)
+
+print(pfad.read_text(encoding="utf-8"))
+
+with open(pfad, encoding="utf-8") as f:
+    zurueck = json.load(f)
+print(zurueck == konfig)
+```
+
+Das Argument `ensure_ascii=False` sorgt dafür, dass Umlaute als Zeichen
+gespeichert werden statt als Fluchtsequenzen. Lesbarkeit ist bei
+Konfigurationsdateien der halbe Zweck.
+
+Was JSON **nicht** kann, zeigt sich bei Typen, die es nicht kennt:
+
+```{python}
+#| label: json-grenze-py
+import datetime
+
+try:
+    json.dumps({"zeitpunkt": datetime.date(2026, 3, 1)})
+except TypeError as fehler:
+    print("JSON kennt keine Datumstypen:", fehler)
+
+# ueblicher Ausweg: als Zeichenkette speichern
+print(json.dumps({"zeitpunkt": datetime.date(2026, 3, 1).isoformat()}))
+```
+
+::: {.note-box}
+Pickle darf **niemals** aus unbekannter Quelle geladen werden. Beim Laden wird
+Code ausgeführt, eine präparierte Datei kann also beliebige Befehle absetzen.
+Für eigene Zwischenstände ist es in Ordnung, für Austausch nicht.
+:::
 
 ::: panel-tabset
 ## R
 
-```r
+```{r}
+#| label: serialisierung-r
 ergebnis <- tryCatch({
-  as.numeric(readLines("zahl.txt", warn = FALSE))
-}, warning = function(w) NA_real_,
-   error   = function(e) NA_real_,
-   finally = message("Lesen abgeschlossen"))
+  as.numeric("nicht-zahl")
+}, warning = function(w) NA_real_)
 
-# Serialisierung
-jsonlite::write_json(list(a = 1, b = 2), "konfig.json")
-saveRDS(ergebnis, "zwischenstand.rds")
+pfad <- tempfile(fileext = ".rds")
+saveRDS(list(a = 1, b = "text"), pfad)     # R-eigenes Format, wie Pickle
+str(readRDS(pfad))
+
+# JSON braucht ein Paket, ist dafuer sprachuebergreifend
+# jsonlite::write_json(list(a = 1), "konfig.json")
 ```
 
 ## Python
 
-```python
-import json
+```{python}
+#| label: serialisierung-py
+import pickle
 
-try:
-    with open("zahl.txt", encoding="utf-8") as f:
-        wert = int(f.read().strip())
-except (FileNotFoundError, ValueError):
-    wert = None
-finally:
-    print("Lesen abgeschlossen")
+pfad = arbeitsordner / "zwischenstand.pkl"
+with open(pfad, "wb") as f:                 # Binaermodus!
+    pickle.dump({"a": 1, "b": "text"}, f)
 
-with open("konfig.json", "w", encoding="utf-8") as f:
-    json.dump({"a": 1, "b": 2}, f, ensure_ascii=False, indent=2)
+with open(pfad, "rb") as f:
+    print(pickle.load(f))
 ```
 :::
 
-## Offene Fragen
+Die Entsprechung ist genau: `saveRDS` in R und Pickle in Python speichern
+sprachspezifisch und vollständig, JSON und CSV speichern sprachneutral und
+eingeschränkt. Das `b` im Modus steht für binär und ist bei Pickle Pflicht.
 
-::: {.open-question}
-Wann lohnt sich eine eigene [Exception-Klasse](lesson3.qmd), statt eine passende eingebaute wiederzuverwenden?
+**Verständnisfragen**
+
+1. Wann ist Pickle gegenüber JSON gerechtfertigt?
+2. Eine CSV-Datei enthält die Spalte `id` mit Werten wie `007`. Was passiert beim Einlesen und Zurückschreiben?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Für kurzlebige eigene Zwischenstände, etwa ein zwischengespeichertes
+   Modellobjekt oder einen Rechenschritt, der lange dauert. Sobald die Datei
+   weitergegeben, langfristig aufbewahrt oder von einer anderen Sprache gelesen
+   werden soll, ist JSON oder ein Tabellenformat richtig.
+2. Die führenden Nullen gehen verloren, sobald die Spalte als Zahl erkannt
+   wird; aus `007` wird `7`. Beim Zurückschreiben steht dann ein anderer Wert
+   in der Datei als vorher. CSV trägt keine Typinformation, deshalb muss der
+   Typ beim Einlesen vorgegeben werden.
 :::
 
 ## Verlinkte Ressourcen
 
 - [Fehler und Ausnahmen im Python-Tutorial](https://docs.python.org/3/tutorial/errors.html)
 - [Ein- und Ausgabe im Python-Tutorial](https://docs.python.org/3/tutorial/inputoutput.html)
+- [json in der Standardbibliothek](https://docs.python.org/3/library/json.html)

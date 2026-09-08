@@ -4,69 +4,291 @@ description: "Datentypen, Kontrollfluss, Sequenzen und die Arbeitsumgebungen Kon
 categories: ["Python", "Programmiergrundlagen", "Tooling", "R"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
-- Dynamische Typisierung, Referenzsemantik
-- Eingebaute Typen: `int`, `float`, `str`, `bool`, `None`
+- Dynamische Typisierung, Namen als Referenzen
+- Eingebaute Typen und ihre Unveränderlichkeit
 - Sequenzen und Container: Liste, Tupel, Dictionary, Set
-- Kontrollfluss: `if`, `for`, `while`, Comprehensions
-- Einrückung als Blockstruktur
+- Kontrollfluss und Einrückung als Blockstruktur
+- Comprehensions statt Füllschleifen
 - Arbeitsumgebungen: Konsole, Jupyter, Spyder, PyCharm
 
-## Meine Zusammenfassung
-
-Python verzichtet auf Typdeklarationen: ein Name ist nur eine Referenz auf ein Objekt, und derselbe Name kann nacheinander auf Objekte ganz verschiedener Typen zeigen. Das macht den Einstieg schnell, verschiebt aber Fehler von der Übersetzungs- in die Laufzeit — was in der Praxis heisst, dass ich früh testen muss statt auf einen Compiler zu hoffen.
-
-Zentral für die tägliche Arbeit sind die vier Container. Die Liste ist veränderlich und geordnet und damit der Normalfall. Das Tupel ist die unveränderliche Variante und eignet sich als zusammengesetzter Schlüssel oder als Rückgabewert mehrerer Werte. Das Dictionary bildet Schlüssel auf Werte ab und ist das Arbeitspferd, sobald Daten benannt statt nummeriert werden. Das Set kennt jedes Element nur einmal und beantwortet Mengenfragen (Schnitt, Differenz) in einem Schritt.
-
-Der zweite Unterschied zu vielen anderen Sprachen ist die Einrückung: Blöcke werden nicht durch Klammern, sondern durch Einzug gebildet. Das erzwingt lesbaren Code und bestraft gemischte Tabs und Leerzeichen sofort.
-
-Bei den Umgebungen gibt es keine richtige Wahl, sondern verschiedene Zwecke. Die Konsole ist zum Ausprobieren einzelner Ausdrücke da. Jupyter-Notebooks verbinden Code, Ausgabe und Erklärung in einem Dokument und passen deshalb zu explorativer Analyse — mit der bekannten Falle, dass die Ausführungsreihenfolge von der Lesereihenfolge abweichen kann. Spyder und PyCharm sind vollwertige Entwicklungsumgebungen und die richtige Wahl, sobald aus dem Skript ein Programm mit mehreren Dateien wird.
+## Erklärung
 
 ::: {.note-box}
-Comprehensions sind kein Stilmittel, sondern der idiomatische Ersatz für die Schleife, die nur eine Liste füllt. Sie sind kürzer und in der Regel schneller.
+**Vorwissen:** keines. Diese Seite ist der Einstieg in PYFR. Wer aus ESDS
+kommt, findet R-Vergleiche in jedem Tabset; wer hier anfängt, braucht sie
+nicht. Weiter geht es mit [L2 – Funktionen & Module](lesson2.qmd).
 :::
 
-## Eigene Beispiele / Code
+### Ein Name ist kein Behälter
+
+In vielen Sprachen deklariert man eine Variable mit einem Typ, und dieser Typ
+gilt. Python macht es anders: Ein Name ist nur ein Verweis auf ein Objekt, und
+derselbe Name kann nacheinander auf Objekte ganz verschiedener Art zeigen.
+
+```{python}
+#| label: referenz-py
+x = 42
+print(type(x))
+
+x = "jetzt Text"
+print(type(x))
+```
+
+Das macht den Einstieg schnell und verschiebt Fehler von der Übersetzungs- in
+die Laufzeit. Ein Tippfehler in einem Namen fällt erst auf, wenn die Zeile
+ausgeführt wird, und das kann in einem selten betretenen Zweig lange dauern.
+
+Die Konsequenz für die Praxis: früh und oft ausführen, statt lange zu schreiben
+und dann zu starten.
+
+### Die vier Container
+
+Für die tägliche Arbeit genügen vier Sammlungstypen. Die Wahl zwischen ihnen
+ist keine Geschmacksfrage, sondern hängt daran, was gebraucht wird.
+
+| Typ | geordnet | veränderlich | Zugriff über | wofür |
+|---|---|---|---|---|
+| Liste | ja | ja | Position | der Normalfall |
+| Tupel | ja | nein | Position | feste Wertegruppen, Rückgabe mehrerer Werte |
+| Dictionary | ja (Einfügung) | ja | Schlüssel | benannte Daten |
+| Set | nein | ja | nur Mitgliedschaft | Eindeutigkeit, Mengenoperationen |
 
 ::: panel-tabset
 ## R
 
-```r
-# Gegenstueck zu Liste und Dictionary: Vektor und benannte Liste
+```{r}
+#| label: container-r
+# Vektor als Gegenstueck zur Liste, benannte Liste zum Dictionary
 werte <- c(3, 1, 4, 1, 5)
-sortiert <- sort(werte)
+werte[2]                       # R zaehlt ab 1
 
 person <- list(name = "Ada", jahr = 1815)
 person$name
 
-# Vektorisierung statt Comprehension
-quadrate <- werte^2
+unique(werte)                  # Gegenstueck zum Set
 ```
 
 ## Python
 
-```python
+```{python}
+#| label: container-py
 werte = [3, 1, 4, 1, 5]
-sortiert = sorted(werte)
+print(werte[1])                # Python zaehlt ab 0
 
 person = {"name": "Ada", "jahr": 1815}
-person["name"]
+print(person["name"])
 
-# Comprehension statt Schleife
-quadrate = [w**2 for w in werte]
-
-# Set beantwortet Mengenfragen direkt
-eindeutig = set(werte)          # {1, 3, 4, 5}
+print(set(werte))              # Duplikate fallen weg
 ```
 :::
 
-## Offene Fragen
+::: {.note-box}
+Der Indexunterschied ist die häufigste Stolperstelle beim Wechsel zwischen den
+Sprachen. R beginnt bei eins, Python bei null. Beim Slicing kommt hinzu, dass
+in Python die obere Grenze **nicht** enthalten ist: `werte[0:2]` liefert zwei
+Elemente, nicht drei.
+:::
 
-::: {.open-question}
-Wann lohnt sich ein Tupel gegenüber einer Liste wirklich — nur wegen der Unveränderlichkeit oder auch aus Performancegründen?
+```{python}
+#| label: slicing-py
+werte = [3, 1, 4, 1, 5]
+print(werte[0:2])      # Position 0 und 1
+print(werte[:3])       # von vorne
+print(werte[-1])       # das letzte
+print(werte[::-1])     # rueckwaerts
+```
+
+### Veränderlich oder nicht
+
+Der Unterschied zwischen Liste und Tupel wirkt nebensächlich und hat handfeste
+Folgen. Eine Liste lässt sich nach dem Anlegen ändern, ein Tupel nicht. Weil ein
+Dictionary-Schlüssel unveränderlich sein muss, kann ein Tupel als Schlüssel
+dienen, eine Liste nicht.
+
+```{python}
+#| label: veraenderlich-py
+liste = [1, 2, 3]
+liste[0] = 99
+print(liste)
+
+tupel = (1, 2, 3)
+try:
+    tupel[0] = 99
+except TypeError as fehler:
+    print("Tupel:", fehler)
+
+# deshalb funktioniert das hier
+koordinaten = {(47.3, 8.5): "Zürich", (46.9, 7.4): "Bern"}
+print(koordinaten[(46.9, 7.4)])
+```
+
+Daraus folgt eine der bekanntesten Fallen. Weil ein Name nur ein Verweis ist,
+zeigen zwei Namen nach einer Zuweisung auf dasselbe Objekt:
+
+```{python}
+#| label: alias-py
+a = [1, 2, 3]
+b = a               # kein neues Objekt, nur ein zweiter Verweis
+b.append(4)
+print("a:", a)      # a hat sich mitveraendert
+
+c = a.copy()        # jetzt eine echte Kopie
+c.append(5)
+print("a:", a, " c:", c)
+```
+
+**Verständnisfragen**
+
+1. Warum liefert `werte[0:2]` zwei und nicht drei Elemente?
+2. Wann ist ein Tupel der Liste vorzuziehen?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil Python die obere Grenze ausschliesst. Der Vorteil dieser Konvention
+   ist, dass die Länge des Ausschnitts direkt die Differenz der beiden Zahlen
+   ist und dass `werte[:k]` und `werte[k:]` zusammen genau die ganze Liste
+   ergeben, ohne Überlappung.
+2. Wenn die Werte inhaltlich zusammengehören und sich nicht ändern sollen, etwa
+   ein Koordinatenpaar oder die Rückgabe mehrerer Werte aus einer Funktion.
+   Ausserdem immer dann, wenn die Gruppe als Dictionary-Schlüssel dienen soll,
+   denn dafür wird Unveränderlichkeit verlangt.
+:::
+
+### Kontrollfluss und Einrückung
+
+Python bildet Blöcke nicht mit Klammern, sondern mit Einzug. Das erzwingt
+lesbaren Code und bestraft gemischte Tabulatoren und Leerzeichen sofort.
+
+```{python}
+#| label: kontrollfluss-py
+werte = [12, 45, 7, 31, 88]
+
+for w in werte:
+    if w > 40:
+        art = "hoch"
+    elif w > 10:
+        art = "mittel"
+    else:
+        art = "tief"
+    print(f"{w:>3} -> {art}")
+```
+
+Das `f` vor der Zeichenkette markiert eine f-String-Formatierung: Ausdrücke in
+geschweiften Klammern werden ausgewertet und eingesetzt, `:>3` richtet
+rechtsbündig auf drei Stellen aus.
+
+### Comprehensions
+
+Eine Schleife, die nichts tut, als eine Liste zu füllen, lässt sich kürzer und
+schneller schreiben. Das ist kein Stilmittel, sondern die idiomatische Form:
+
+```{python}
+#| label: comprehension-py
+werte = [12, 45, 7, 31, 88]
+
+# umstaendlich
+quadrate = []
+for w in werte:
+    quadrate.append(w ** 2)
+
+# idiomatisch
+quadrate_kurz = [w ** 2 for w in werte]
+print(quadrate == quadrate_kurz)
+
+# mit Bedingung
+print([w for w in werte if w > 30])
+
+# auch fuer Dictionaries
+print({w: w ** 2 for w in werte if w < 20})
+```
+
+Der Vergleich zu R liegt nahe. Dort erledigt die Vektorisierung dasselbe, ohne
+dass überhaupt eine Schleifenkonstruktion sichtbar wird:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: vektorisiert-r
+werte <- c(12, 45, 7, 31, 88)
+
+werte^2                # elementweise, ohne Schleife
+werte[werte > 30]      # Filtern ueber einen logischen Vektor
+```
+
+## Python
+
+```{python}
+#| label: comprehension2-py
+werte = [12, 45, 7, 31, 88]
+
+print([w ** 2 for w in werte])
+print([w for w in werte if w > 30])
+```
+:::
+
+Ohne NumPy braucht Python die Comprehension, weil eine Liste keine
+Rechenoperationen elementweise unterstützt. Mit NumPy, siehe
+[L6](lesson6.qmd), verhält sich Python dann wie R.
+
+```{python}
+#| label: liste-mal-zwei-py
+werte = [1, 2, 3]
+print(werte * 2)        # verdoppelt die Liste, multipliziert nicht!
+```
+
+Diese Zeile ist ein klassischer Stolperstein: Der Stern wiederholt die Liste,
+statt ihre Elemente zu multiplizieren.
+
+**Verständnisfragen**
+
+1. Was ergibt `[0] * 3` und was `[w * 3 for w in [0]]`?
+2. Warum ist eine Comprehension der gefüllten Schleife vorzuziehen?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Das erste ergibt `[0, 0, 0]`, also eine dreimal wiederholte Liste. Das
+   zweite ergibt `[0]`, weil das eine Element mit drei multipliziert wird. Der
+   Stern bedeutet bei Listen Wiederholung, nicht Rechnung.
+2. Weil die Absicht direkt lesbar ist und der Interpreter die Schleife intern
+   ausführt, was schneller ist als wiederholtes `append`. Ausserdem entfällt
+   die leere Liste als Zwischenschritt, die man vergessen oder falsch benennen
+   kann.
+:::
+
+### Wo man arbeitet
+
+Vier Umgebungen, die verschiedene Zwecke bedienen und keine Rangfolge bilden.
+
+| Umgebung | wofür sie taugt | Grenze |
+|---|---|---|
+| Konsole | einzelne Ausdrücke ausprobieren | nichts bleibt erhalten |
+| Jupyter | Analyse mit Text, Code und Ausgabe in einem Dokument | Ausführungsreihenfolge kann von der Lesereihenfolge abweichen |
+| Spyder | Skripte mit Variablenübersicht, nahe an RStudio | weniger für grosse Projekte |
+| PyCharm | mehrere Dateien, Tests, Refactoring | schwergewichtig für eine kurze Auswertung |
+
+::: {.note-box}
+Die Falle bei Notebooks ist real. Wer Zellen in beliebiger Reihenfolge
+ausführt, erzeugt einen Zustand, der sich beim Durchlauf von oben nicht
+reproduzieren lässt. Die Probe ist derselbe Reflex wie in RStudio: Kernel neu
+starten und alles von oben ausführen. Läuft es dann nicht durch, war das
+Ergebnis nie reproduzierbar.
 :::
 
 ## Verlinkte Ressourcen
 
 - [Python-Tutorial der offiziellen Dokumentation](https://docs.python.org/3/tutorial/)
+- [Datenstrukturen im Python-Tutorial](https://docs.python.org/3/tutorial/datastructures.html)

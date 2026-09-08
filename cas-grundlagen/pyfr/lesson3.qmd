@@ -4,6 +4,19 @@ description: "Klassen, Instanzen, Vererbung und die Frage, wann objektorientiert
 categories: ["Python", "Programmiergrundlagen", "R"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
 - Klasse als Bauplan, Instanz als Exemplar
@@ -11,26 +24,172 @@ categories: ["Python", "Programmiergrundlagen", "R"]
 - Methoden und die Rolle von `self`
 - Vererbung und Überschreiben
 - Dunder-Methoden wie `__str__` und `__len__`
+- Wann sich der Aufwand lohnt und wann nicht
 
-## Meine Zusammenfassung
+## Erklärung
 
-Eine Klasse bündelt Daten und die Operationen darauf. Statt einen Datensatz und ein Dutzend Funktionen, die ihn erwarten, nebeneinanderzulegen, gehören beide zusammen in ein Objekt. `__init__` legt beim Erzeugen die Instanzattribute an; `self` ist der Verweis auf das Exemplar, auf dem eine Methode gerade arbeitet, und steht deshalb als erster Parameter jeder Methode.
+::: {.note-box}
+**Vorwissen:** [L1](lesson1.qmd) für Dictionaries, die hier als Vergleich
+dienen, und [L2](lesson2.qmd) für Funktionen und Namensräume. Eine Methode ist
+nichts anderes als eine Funktion, die zu einem Objekt gehört.
+:::
 
-Der Unterschied zwischen Instanz- und Klassenattribut wird gerne übersehen: ein Klassenattribut existiert genau einmal für alle Exemplare, ein Instanzattribut je Exemplar. Für Konstanten ist das erste richtig, für alles Zustandsbehaftete das zweite.
+### Das Problem, bevor die Lösung kommt
 
-Vererbung erlaubt es, eine Klasse als Spezialisierung einer anderen zu schreiben und nur die Unterschiede zu formulieren. Sie ist mächtig, aber schnell überstrapaziert — eine tiefe Hierarchie ist meist schwerer zu verstehen als eine flache Struktur, in der Objekte einander enthalten statt beerben.
+Angenommen, mehrere Messreihen sind zu verwalten. Mit den bisherigen Mitteln
+entstehen ein Dictionary je Reihe und ein Satz Funktionen daneben:
 
-Die Dunder-Methoden sind der Weg, eigene Klassen in die Sprache einzupassen: wer `__str__` definiert, bestimmt, was `print` ausgibt; wer `__len__` definiert, macht `len()` anwendbar. So verhält sich ein eigener Typ wie ein eingebauter.
+```{python}
+#| label: ohne-klasse-py
+reihe = {"name": "Drossel", "werte": [2.0, 4.0, 6.0], "einheit": "mm"}
 
-Für die Datenarbeit ziehe ich daraus die Konsequenz, dass der Analyseteil meist funktional und tabellenorientiert bleibt. Objektorientiert wird es dort, wo etwas wiederverwendbar gekapselt werden soll — ein Datenzugriff, ein Modellwrapper, eine Stufe in einer Verarbeitungskette.
+def mittel(r):
+    return sum(r["werte"]) / len(r["werte"])
 
-## Eigene Beispiele / Code
+print(mittel(reihe))
+```
+
+Das funktioniert und hat drei Schwächen. Nichts hindert daran, ein Dictionary
+ohne den Schlüssel `werte` an `mittel` zu übergeben; der Fehler fällt erst
+beim Aufruf auf. Die Funktionen liegen irgendwo im Modul und sind nicht als
+zusammengehörig erkennbar. Und wer eine Reihe von Hand baut, kann Schlüssel
+vergessen oder vertippen.
+
+Eine Klasse bündelt die Daten und die Operationen darauf zu einer Einheit und
+legt beim Erzeugen fest, was vorhanden sein muss.
+
+### Klasse, Instanz, self
+
+```{python}
+#| label: klasse-py
+class Messreihe:
+    einheit = "mm"                       # Klassenattribut, einmal fuer alle
+
+    def __init__(self, name, werte):
+        self.name = name                 # Instanzattribute, je Exemplar
+        self.werte = werte
+
+    def mittel(self):
+        return sum(self.werte) / len(self.werte)
+
+    def spannweite(self):
+        return max(self.werte) - min(self.werte)
+
+drossel = Messreihe("Drossel", [2.0, 4.0, 6.0])
+ventil  = Messreihe("Ventil",  [1.5, 1.7, 9.0])
+
+print(drossel.mittel(), ventil.spannweite())
+```
+
+Die Klasse ist der Bauplan, jedes erzeugte Objekt eine Instanz. `__init__`
+läuft beim Erzeugen und legt die Instanzattribute an. `self` ist der Verweis
+auf das Exemplar, auf dem eine Methode gerade arbeitet, und steht deshalb als
+erster Parameter jeder Methode.
+
+Der Unterschied zwischen Klassen- und Instanzattribut wird gerne übersehen und
+lässt sich zeigen:
+
+```{python}
+#| label: attribute-py
+print(drossel.einheit, ventil.einheit)     # beide teilen sich den Wert
+
+Messreihe.einheit = "cm"                    # Aenderung an der Klasse
+print(drossel.einheit, ventil.einheit)     # wirkt auf alle
+
+drossel.einheit = "µm"                      # nur fuer dieses Exemplar
+print(drossel.einheit, ventil.einheit)
+```
+
+Für Konstanten ist das Klassenattribut richtig, für alles Zustandsbehaftete das
+Instanzattribut. Ein veränderliches Klassenattribut, etwa eine Liste, ist
+dieselbe Falle wie der veränderliche Defaultwert aus [L2](lesson2.qmd).
+
+### Dunder-Methoden
+
+Mit besonderen Methodennamen fügt sich eine eigene Klasse in die Sprache ein.
+Wer `__str__` definiert, bestimmt, was `print` ausgibt; wer `__len__` definiert,
+macht `len()` anwendbar.
+
+```{python}
+#| label: dunder-py
+class Messreihe:
+    einheit = "mm"
+
+    def __init__(self, name, werte):
+        self.name = name
+        self.werte = werte
+
+    def mittel(self):
+        return sum(self.werte) / len(self.werte)
+
+    def __len__(self):
+        return len(self.werte)
+
+    def __str__(self):
+        return f"{self.name}: {self.mittel():.2f} {self.einheit} (n={len(self)})"
+
+m = Messreihe("Drossel", [2.0, 4.0, 6.0])
+print(m)
+print(len(m))
+```
+
+Ohne `__str__` gäbe `print` nur die Speicheradresse aus. Mit ihr verhält sich
+das eigene Objekt wie ein eingebauter Typ, und genau das ist der Zweck.
+
+**Verständnisfragen**
+
+1. Warum steht `self` in der Definition, aber nicht im Aufruf `m.mittel()`?
+2. Was wäre die Folge, wenn `werte = []` als Klassenattribut statt in `__init__` stünde?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil Python es beim Aufruf automatisch einsetzt. `m.mittel()` wird intern zu
+   `Messreihe.mittel(m)`. Sichtbar ist der Mechanismus, wenn man die Methode
+   über die Klasse aufruft; dann muss die Instanz von Hand übergeben werden.
+2. Alle Instanzen teilten sich dieselbe Liste. Ein `append` in einem Objekt
+   wäre in allen anderen sichtbar, und neue Objekte kämen bereits gefüllt zur
+   Welt. Es ist derselbe Fehler wie der veränderliche Defaultwert bei
+   Funktionen, nur an anderer Stelle.
+:::
+
+### Vererbung, sparsam eingesetzt
+
+Vererbung erlaubt es, eine Klasse als Spezialisierung einer anderen zu
+schreiben und nur die Unterschiede zu formulieren:
+
+```{python}
+#| label: vererbung-py
+class GewichteteMessreihe(Messreihe):
+    def __init__(self, name, werte, gewichte):
+        super().__init__(name, werte)      # der Teil, den die Basis erledigt
+        self.gewichte = gewichte
+
+    def mittel(self):                       # ueberschreibt die Basisversion
+        return sum(w * g for w, g in zip(self.werte, self.gewichte)) / sum(self.gewichte)
+
+g = GewichteteMessreihe("Drossel", [2.0, 4.0, 6.0], [1, 1, 3])
+print(g)            # __str__ und __len__ stammen aus der Basisklasse
+print(g.mittel())   # mittel kommt aus der abgeleiteten
+```
+
+Die Ausgabe zeigt beides: Die geerbten Methoden funktionieren unverändert, und
+`__str__` verwendet automatisch die überschriebene Berechnung, weil es
+`self.mittel()` aufruft.
+
+So elegant das ist, so schnell wird es überstrapaziert. Eine tiefe Hierarchie
+ist meist schwerer zu verstehen als eine flache Struktur, in der Objekte
+einander enthalten statt beerben. Die Prüffrage lautet, ob wirklich eine
+ist-ein-Beziehung vorliegt.
+
+### Der Vergleich zu R
+
+R kennt mehrere Objektsysteme. S4 kommt der Sichtweise aus Python am nächsten,
+trennt aber Klassendefinition und Methode:
 
 ::: panel-tabset
 ## R
 
-```r
-# S4-Klassen: Definition und Methode sind getrennt
+```{r}
+#| label: s4-r
 setClass("Messreihe",
          representation(name = "character", werte = "numeric"))
 
@@ -43,34 +202,56 @@ mittel(m)
 
 ## Python
 
-```python
-class Messreihe:
-    einheit = "mm"                       # Klassenattribut, einmal fuer alle
-
+```{python}
+#| label: klasse2-py
+class Kurz:
     def __init__(self, name, werte):
-        self.name = name                 # Instanzattribute, je Exemplar
-        self.werte = werte
+        self.name, self.werte = name, werte
 
     def mittel(self):
         return sum(self.werte) / len(self.werte)
 
-    def __len__(self):
-        return len(self.werte)
-
-    def __str__(self):
-        return f"{self.name}: {self.mittel():.2f} {self.einheit}"
-
-m = Messreihe("Drossel", [2, 4, 6])
-print(m, len(m))
+print(Kurz("Drossel", [2, 4, 6]).mittel())
 ```
 :::
 
-## Offene Fragen
+Der Unterschied ist mehr als Syntax. In Python gehört die Methode zum Objekt
+und wird darauf aufgerufen. In R gehört sie zur generischen Funktion, die
+anhand der Klasse ihres Arguments entscheidet, welche Umsetzung greift. Deshalb
+heisst es dort `mittel(m)` und nicht `m.mittel()`.
 
-::: {.open-question}
-Wo verläuft in einem Analyseprojekt die Grenze, ab der sich eine eigene Klasse gegenüber einem [Dictionary](lesson1.qmd) oder einem [DataFrame](lesson7.qmd) lohnt?
+### Wann sich der Aufwand lohnt
+
+Für die Datenarbeit gilt eine einfache Leitlinie. Der Analyseteil bleibt
+funktional und tabellenorientiert: Ein DataFrame plus Funktionen darauf ist
+klarer als eine eigene Klasse. Objektorientiert wird es dort, wo etwas
+wiederverwendbar gekapselt werden soll und einen Zustand mitführt, etwa ein
+Datenbankzugriff, ein Modellwrapper oder eine Stufe in einer
+Verarbeitungskette.
+
+::: {.note-box}
+Wer eine Klasse schreibt, deren Objekte nur einmal erzeugt und deren Methoden
+nacheinander genau einmal aufgerufen werden, hat eine Funktion umständlich
+verpackt. Das ist das häufigste Muster für unnötige Objektorientierung.
+:::
+
+**Verständnisfragen**
+
+1. Wozu dient `super().__init__(...)` in der abgeleiteten Klasse?
+2. Warum gibt `print(g)` den gewichteten Mittelwert aus, obwohl `__str__` nur in der Basisklasse steht?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Es ruft die Initialisierung der Basisklasse auf, damit deren Attribute
+   gesetzt werden, ohne dass man den Code wiederholt. Ohne diesen Aufruf hätte
+   das Objekt weder `name` noch `werte`, und jede geerbte Methode liefe ins
+   Leere.
+2. Weil `__str__` intern `self.mittel()` aufruft und `self` das abgeleitete
+   Objekt ist. Python sucht die Methode dort zuerst und findet die
+   überschriebene Version. Dieses Verhalten heisst dynamische Bindung und ist
+   der eigentliche Nutzen der Vererbung.
 :::
 
 ## Verlinkte Ressourcen
 
 - [Klassen im Python-Tutorial](https://docs.python.org/3/tutorial/classes.html)
+- [Übersicht der Dunder-Methoden](https://docs.python.org/3/reference/datamodel.html)
