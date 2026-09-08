@@ -1,23 +1,31 @@
 /*-- scss:defaults --*/
 
 //
-// Design-System - eine Quelle der Wahrheit fuer Light und Dark.
-// Typografie und Form leben hier als SCSS-Variablen (Bootstrap braucht sie zur
-// Compile-Zeit), Farben als CSS-Custom-Properties weiter unten in :root und
-// .quarto-dark, damit beide Modi dieselben Komponenten teilen.
+// Design-System - eine gemeinsame Datei fuer beide Modi.
+// Eingebunden als  light: [cosmo, styles.scss] / dark: [darkly, styles.scss].
+//
+// WICHTIG - Modus-Selektor:
+// Quarto schaltet den Farbmodus ueber die Body-Klassen .quarto-light /
+// .quarto-dark. Das Attribut [data-bs-theme] steht im generierten HTML nur
+// statisch auf dem <nav class="navbar">-Element und beschreibt dessen eigene
+// Helligkeit, nicht den Seitenmodus. Ein Selektor [data-bs-theme="light"]
+// wuerde deshalb nie greifen und [data-bs-theme="dark"] nur innerhalb der
+// Navbar. Die Palette haengt daher an .quarto-light / .quarto-dark.
 //
 
 // --- Typografie -------------------------------------------------------------
 
 $font-family-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
   "Helvetica Neue", Arial, sans-serif !default;
-$font-family-monospace: ui-monospace, "SFMono-Regular", "Cascadia Mono",
-  "Segoe UI Mono", Menlo, Consolas, monospace !default;
+
+// JetBrains Mono wird unten per @font-face geladen, Fira Code und Cascadia
+// dienen als lokale Fallbacks, falls der CDN-Request scheitert.
+$font-family-monospace: "JetBrains Mono", "Fira Code", "Cascadia Mono",
+  ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace !default;
 
 $font-size-root: 16px !default;
 $line-height-base: 1.6 !default;
 
-// Eine einzige Skala - gilt ueberall gleich, auch in Karten.
 $h1-font-size: 2rem !default;
 $h2-font-size: 1.5rem !default;
 $h3-font-size: 1.175rem !default;
@@ -29,24 +37,29 @@ $headings-line-height: 1.3 !default;
 
 $code-font-size: 0.86em !default;
 
-// --- Markenpalette (Python) ------------------------------------------------
+// --- Markenpalette (Python) -------------------------------------------------
 //
-//   #ffde57  Gelb   – nur flaechig, als Text auf Weiss unbrauchbar (1.33:1)
-//   #4584b6  Blau   – Marken-Blau, Traeger der Interaktion
-//   #646464  Grau   – Sekundaertext im Light Mode
+// Kontrast geprueft (WCAG, Light auf #ffffff, Dark auf Darkly-Grund #222222):
 //
-$py-yellow: #ffde57 !default;
-$py-blue:   #4584b6 !default;
-$py-grey:   #646464 !default;
+//   #306998  Python Blue        light  5.83:1   ok
+//   #5DADE2  Python Blue hell   dark   6.47:1   ok
+//   #FFD43B  Python Yellow      light  1.43:1   nur als Flaeche, nie als Text
+//   #FFE873  Python Yellow hell dark  12.91:1
+//   #276DC3  R Blue             light  5.17:1   ok
+//   #6BA6E8  R Blue hell        dark   6.25:1   (#276DC3 haette dort nur 3.08:1)
+//
+$py-blue: #306998 !default;
+$py-yellow: #ffd43b !default;
+$r-blue: #276dc3 !default;
 
-$primary:   $py-blue !default;
-$secondary: $py-grey !default;
+$primary: $py-blue !default;
+$secondary: #646464 !default;
 
 // --- Form -------------------------------------------------------------------
 
-$border-radius: 0.5rem !default;
+$border-radius: 0.55rem !default;
 $border-radius-sm: 0.3rem !default;
-$border-radius-lg: 0.7rem !default;
+$border-radius-lg: 0.8rem !default;
 
 $link-decoration: none !default;
 $link-hover-decoration: underline !default;
@@ -54,70 +67,101 @@ $link-hover-decoration: underline !default;
 /*-- scss:rules --*/
 
 // ============================================================================
+// 0. Schrift
+// ============================================================================
+//
+// Bewusst @font-face statt @import url(): Quarto verkettet die Theme-Layer,
+// ein @import landet dabei nicht zwingend am Dateianfang und wuerde vom
+// Browser verworfen. @font-face ist positionsunabhaengig.
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5/files/jetbrains-mono-latin-400-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5/files/jetbrains-mono-latin-500-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5/files/jetbrains-mono-latin-700-normal.woff2")
+    format("woff2");
+}
+
+// ============================================================================
 // 1. Farb-Tokens
 // ============================================================================
 
-:root {
-  --nb-surface: #ffffff;
-  --nb-surface-alt: #f5f6f7;
-  --nb-surface-sunken: #edeef0;
+// Basis = Light. Gilt auch, falls die Body-Klasse einmal fehlen sollte.
+:root,
+.quarto-light {
+  --py-blue: #306998;
+  --py-yellow: #ffd43b;
+  --r-blue: #276dc3;
 
-  --nb-border: #d9dbde;
-  --nb-border-strong: #b4b7bb;
+  --py-blue-hover: #24506f;
+  --py-blue-soft: rgba(48, 105, 152, 0.09);
+  --py-blue-edge: rgba(48, 105, 152, 0.45);
+  --py-yellow-soft: #fff6d4;
+  --py-yellow-ink: #1c2126;
+  --r-blue-soft: rgba(39, 109, 195, 0.09);
+
+  --nb-surface: #ffffff;
+  --nb-surface-alt: #f5f6f8;
+  --nb-surface-sunken: #f0f2f4;
+
+  --nb-border: #dcdfe3;
+  --nb-border-strong: #b4b8bd;
 
   --nb-text: #1c2126;
-  --nb-text-muted: #646464;    /* Marken-Grau, 5.92:1 */
+  --nb-text-muted: #646464;
 
-  --nb-accent: #4584b6;        /* Marken-Blau, flaechig */
-  --nb-accent-text: #3d78a6;   /* leicht abgedunkelt fuer Linktext, 4.73:1 */
-  --nb-accent-hover: #2f5d82;
-  --nb-accent-soft: rgba(69, 132, 182, 0.1);
+  --nb-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05),
+    0 2px 6px rgba(16, 24, 40, 0.05);
+  --nb-shadow-hover: 0 2px 4px rgba(16, 24, 40, 0.08),
+    0 14px 32px rgba(16, 24, 40, 0.13);
 
-  --nb-highlight: #ffde57;     /* Marken-Gelb, nur als Flaeche */
-  --nb-highlight-soft: #fff8dd;
-  --nb-highlight-ink: #1c2126; /* Text auf Gelb, 12.2:1 */
-
-  --nb-warn: #8a6d10;
-  --nb-warn-soft: #fff8dd;
-  --nb-info: #4584b6;
-  --nb-info-soft: #eef4f9;
-
-  --nb-shadow: 0 1px 2px rgba(16, 24, 40, 0.05),
-    0 3px 10px rgba(16, 24, 40, 0.06);
-  --nb-shadow-hover: 0 2px 4px rgba(16, 24, 40, 0.07),
-    0 12px 28px rgba(16, 24, 40, 0.12);
-
-  --nb-radius: 0.5rem;
+  --nb-radius: 0.55rem;
   --nb-radius-sm: 0.3rem;
 }
 
 .quarto-dark {
-  --nb-surface: #1e2228;
-  --nb-surface-alt: #262b32;
-  --nb-surface-sunken: #171a1f;
+  --py-blue: #5dade2;
+  --py-yellow: #ffe873;
+  --r-blue: #6ba6e8;
 
-  --nb-border: #39404a;
-  --nb-border-strong: #4d5661;
+  --py-blue-hover: #8ec8ee;
+  --py-blue-soft: rgba(93, 173, 226, 0.14);
+  --py-blue-edge: rgba(93, 173, 226, 0.5);
+  --py-yellow-soft: #37311b;
+  --py-yellow-ink: #1c2126;
+  --r-blue-soft: rgba(107, 166, 232, 0.14);
+
+  --nb-surface: #2b2b2b;
+  --nb-surface-alt: #323232;
+  --nb-surface-sunken: #1b1b1b;
+
+  --nb-border: #414141;
+  --nb-border-strong: #5a5a5a;
 
   --nb-text: #e6e6e6;
-  --nb-text-muted: #a8a8a8;    /* aufgehelltes Marken-Grau, 6.72:1 */
+  --nb-text-muted: #a8a8a8;
 
-  --nb-accent: #7ab3e0;        /* aufgehelltes Marken-Blau, 7.11:1 */
-  --nb-accent-text: #7ab3e0;
-  --nb-accent-hover: #9ccbef;
-  --nb-accent-soft: rgba(122, 179, 224, 0.14);
-
-  --nb-highlight: #ffde57;     /* Gelb traegt im Dark Mode direkt, 12.05:1 */
-  --nb-highlight-soft: #35301c;
-  --nb-highlight-ink: #1c2126;
-
-  --nb-warn: #ffde57;
-  --nb-warn-soft: #35301c;
-  --nb-info: #7ab3e0;
-  --nb-info-soft: #222a31;
-
-  --nb-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --nb-shadow-hover: 0 10px 26px rgba(0, 0, 0, 0.5);
+  --nb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --nb-shadow-hover: 0 12px 30px rgba(0, 0, 0, 0.6);
 }
 
 // ============================================================================
@@ -132,7 +176,6 @@ main.content {
   padding-top: 0.5rem;
 }
 
-// Vertikaler Rhythmus: identisch ueber alle Seitentypen hinweg.
 main.content > h2 {
   margin-top: 2.75rem;
   margin-bottom: 1rem;
@@ -161,11 +204,11 @@ main.content li + li {
 }
 
 a {
-  color: var(--nb-accent-text);
+  color: var(--py-blue);
 }
 
 a:hover {
-  color: var(--nb-accent-hover);
+  color: var(--py-blue-hover);
 }
 
 .quarto-title-block .quarto-title .title {
@@ -186,11 +229,12 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  margin: 0 0 1.5rem;
-  padding: 0.28rem 0.75rem 0.28rem 0.6rem;
+  margin: 0 0 1.6rem;
+  padding: 0.3rem 0.8rem 0.3rem 0.62rem;
   border: 1px solid var(--nb-border);
   border-radius: 999px;
   background: var(--nb-surface-alt);
+  box-shadow: var(--nb-shadow-sm);
   font-size: 0.76rem;
   line-height: 1.4;
   color: var(--nb-text-muted);
@@ -200,8 +244,8 @@ a:hover {
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 50%;
-  background: var(--nb-highlight);
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: var(--py-yellow);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
 }
 
@@ -217,41 +261,57 @@ a:hover {
 }
 
 // ============================================================================
-// 4. Karten-Raster - identisch auf Start- und allen Modulseiten
+// 4. Karten-Raster
 // ============================================================================
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 0.9rem;
-  margin: 1.5rem 0 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
+  gap: 1.1rem;
+  margin: 1.75rem 0 2.25rem;
 }
 
-// Schmalere Variante fuer Lektionslisten (kuerzere Titel)
 .card-grid.card-grid--compact {
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
 }
 
 .lesson-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 1.05rem 1.2rem;
+  gap: 0.45rem;
+  padding: 1.3rem 1.4rem;
+  overflow: hidden;
   border: 1px solid var(--nb-border);
   border-radius: var(--nb-radius);
   background: var(--nb-surface);
-  box-shadow: var(--nb-shadow);
-  transition: transform 0.15s ease, box-shadow 0.15s ease,
-    border-color 0.15s ease;
+  box-shadow: var(--nb-shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+// Akzentkante, die beim Hover einlaeuft
+.lesson-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--py-blue);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.18s ease;
 }
 
 .lesson-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--nb-accent);
+  transform: translateY(-3px);
+  border-color: var(--py-blue);
   box-shadow: var(--nb-shadow-hover);
 }
 
-// Ueberschriften in Karten folgen derselben Skala wie im Fliesstext.
+.lesson-card:hover::before {
+  transform: scaleY(1);
+}
+
 .lesson-card h3,
 .lesson-card h4 {
   margin: 0;
@@ -266,31 +326,36 @@ a:hover {
 
 .lesson-card:hover h3 a,
 .lesson-card:hover h4 a {
-  color: var(--nb-accent);
+  color: var(--py-blue);
 }
 
 .lesson-card p {
   margin: 0;
   font-size: 0.85rem;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--nb-text-muted);
 }
 
+// Laufendes Modul: Gelb als Statusmarkierung
 .lesson-card.is-active {
-  border-color: var(--nb-highlight);
-  box-shadow: var(--nb-shadow), inset 3px 0 0 var(--nb-highlight);
+  border-color: var(--py-yellow);
   background: linear-gradient(
     to right,
-    var(--nb-highlight-soft),
-    var(--nb-surface) 60%
+    var(--py-yellow-soft),
+    var(--nb-surface) 62%
   );
+}
+
+.lesson-card.is-active::before {
+  background: var(--py-yellow);
+  transform: scaleY(1);
 }
 
 .badge-active,
 .badge-soon {
   align-self: flex-start;
-  margin-top: 0.15rem;
-  padding: 0.12rem 0.55rem;
+  margin-top: 0.25rem;
+  padding: 0.14rem 0.6rem;
   border-radius: 999px;
   font-size: 0.66rem;
   font-weight: 700;
@@ -299,30 +364,42 @@ a:hover {
 }
 
 .badge-active {
-  background: var(--nb-highlight);
-  color: var(--nb-highlight-ink);
+  background: var(--py-yellow);
+  color: var(--py-yellow-ink);
 }
 
 .badge-soon {
-  background: var(--nb-surface-sunken);
-  color: var(--nb-text-muted);
-  border: 1px solid var(--nb-border);
+  background: var(--py-blue-soft);
+  color: var(--py-blue);
+  border: 1px solid var(--py-blue-edge);
 }
 
 // ============================================================================
-// 5. Hinweisboxen
+// 5. Callouts - Flaeche und Schatten statt nur linker Kante
 // ============================================================================
 
 .note-box,
 .open-question,
 .placeholder-notice {
-  padding: 0.85rem 1.1rem;
-  margin: 1.25rem 0;
+  position: relative;
+  padding: 1.15rem 1.3rem 1.15rem 1.45rem;
+  margin: 1.6rem 0;
   border: 1px solid var(--nb-border);
-  border-left-width: 3px;
   border-radius: var(--nb-radius);
-  font-size: 0.92rem;
-  line-height: 1.55;
+  background: var(--nb-surface-alt);
+  box-shadow: var(--nb-shadow-sm);
+  font-size: 0.93rem;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+.note-box::before,
+.open-question::before,
+.placeholder-notice::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
 }
 
 .note-box > :last-child,
@@ -332,82 +409,163 @@ a:hover {
 }
 
 .note-box {
-  background: var(--nb-surface-alt);
-  border-left-color: var(--nb-border-strong);
+  background: var(--py-blue-soft);
+  border-color: var(--py-blue-edge);
+}
+
+.note-box::before {
+  background: var(--py-blue);
 }
 
 .open-question {
-  background: var(--nb-warn-soft);
-  border-left-color: var(--nb-highlight);
+  background: var(--py-yellow-soft);
+  border-color: var(--py-yellow);
+}
+
+.open-question::before {
+  background: var(--py-yellow);
 }
 
 .placeholder-notice {
-  background: var(--nb-info-soft);
-  border-left-color: var(--nb-info);
+  background: var(--nb-surface-alt);
   color: var(--nb-text-muted);
   font-style: italic;
 }
 
+.placeholder-notice::before {
+  background: var(--nb-border-strong);
+}
+
 // ============================================================================
-// 6. Code, Tabsets, Tabellen
+// 6. Codebloecke - Sprachfarbe als linke Kante
 // ============================================================================
 
 div.sourceCode {
+  position: relative;
+  margin: 1.1rem 0;
   border: 1px solid var(--nb-border);
+  border-left: 3px solid var(--nb-border-strong);
   border-radius: var(--nb-radius);
   background: var(--nb-surface-sunken);
+  overflow: hidden;
 }
 
 pre.sourceCode {
-  padding: 0.85rem 1rem;
-  font-size: 0.86rem;
-  line-height: 1.5;
+  padding: 0.95rem 1.1rem;
+  font-family: $font-family-monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+// Sprachzuordnung ueber die Klasse auf <pre>, die Quarto zuverlaessig setzt:
+//   <div class="sourceCode"><pre class="sourceCode r ...">
+div.sourceCode:has(pre.r) {
+  border-left-color: var(--r-blue);
+}
+
+div.sourceCode:has(pre.python) {
+  border-left-color: var(--py-blue);
+}
+
+// Fallback fuer Browser ohne :has() - Kante direkt auf dem <pre>
+@supports not (selector(:has(*))) {
+  pre.sourceCode.r {
+    border-left: 3px solid var(--r-blue);
+  }
+
+  pre.sourceCode.python {
+    border-left: 3px solid var(--py-blue);
+  }
 }
 
 code:not(.sourceCode) {
-  padding: 0.12em 0.36em;
+  padding: 0.12em 0.38em;
   border-radius: var(--nb-radius-sm);
-  background: var(--nb-surface-alt);
+  background: var(--py-blue-soft);
   border: 1px solid var(--nb-border);
-  font-size: 0.86em;
+  font-family: $font-family-monospace;
+  font-size: 0.85em;
 }
 
+// ============================================================================
+// 7. Tabsets - R und Python auf einen Blick unterscheidbar
+// ============================================================================
+//
+// Die Tab-Buttons tragen keine Sprachinformation; Quarto rendert sie als
+//   <a id="tabset-N-1">R</a> / <a id="tabset-N-2">Python</a>.
+// Die Zuordnung laeuft deshalb ueber die Position. In allen Lektionsseiten
+// steht "## R" vor "## Python". Wird diese Reihenfolge in einer Datei
+// geaendert, muessen die beiden nth-child-Regeln mitgezogen werden.
+
 .panel-tabset > .nav-tabs {
+  gap: 0.25rem;
   border-bottom: 1px solid var(--nb-border);
-  gap: 0.15rem;
 }
 
 .panel-tabset > .nav-tabs > .nav-item > .nav-link {
-  padding: 0.4rem 0.85rem;
-  border: none;
+  padding: 0.42rem 0.95rem;
+  border: 1px solid transparent;
   border-bottom: 2px solid transparent;
-  border-radius: 0;
-  font-size: 0.88rem;
+  border-radius: var(--nb-radius-sm) var(--nb-radius-sm) 0 0;
+  font-size: 0.86rem;
   font-weight: 600;
-  color: var(--nb-text-muted);
+  letter-spacing: 0.01em;
+  opacity: 0.58;
   background: transparent;
+  transition: color 0.15s ease, background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.panel-tabset > .nav-tabs > .nav-item > .nav-link.active {
-  color: var(--nb-accent);
-  border-bottom-color: var(--nb-accent);
-  background: transparent;
+// Sprachfarbe: haengt NUR an der Position, nie zusaetzlich an .active.
+// Grund: Chrome invalidiert die Kombination ":nth-child(n) ... .nav-link.active"
+// beim Tabwechsel nicht zuverlaessig - die Farbe bliebe am zuvor offenen Tab
+// haengen. Position und Zustand werden deshalb in getrennten Regeln gesetzt.
+.panel-tabset > .nav-tabs > .nav-item:nth-child(1) > .nav-link {
+  color: var(--r-blue);
 }
+
+.panel-tabset > .nav-tabs > .nav-item:nth-child(2) > .nav-link {
+  color: var(--py-blue);
+}
+
+// Zustand: haengt NUR an .active, nie zusaetzlich an :nth-child.
+// currentColor uebernimmt dabei die Sprachfarbe aus der Regel oben.
+.panel-tabset > .nav-tabs > .nav-item > .nav-link.active {
+  opacity: 1;
+  font-weight: 700;
+  border-bottom-color: currentColor;
+  background: var(--nb-surface-alt);
+  box-shadow: inset 0 3px 0 var(--py-yellow);
+}
+
+// Hover ebenfalls ohne :nth-child - currentColor traegt die Sprachfarbe.
+.panel-tabset > .nav-tabs > .nav-item > .nav-link:hover {
+  opacity: 0.85;
+  background: var(--nb-surface-alt);
+}
+
+.panel-tabset > .tab-content {
+  padding-top: 0.9rem;
+}
+
+// ============================================================================
+// 8. Tabellen
+// ============================================================================
 
 #quarto-content table {
   font-size: 0.9rem;
 }
 
 #quarto-content table thead th {
-  border-bottom: 2px solid var(--nb-border-strong);
+  border-bottom: 2px solid var(--py-blue);
 }
 
 // ============================================================================
-// 7. Navigation
+// 9. Navigation
 // ============================================================================
 
 .navbar {
-  border-bottom: 2px solid var(--nb-highlight);
+  border-bottom: 2px solid var(--py-yellow);
 }
 
 .navbar .quarto-color-scheme-toggle {
@@ -417,12 +575,12 @@ code:not(.sourceCode) {
   width: 2rem;
   height: 2rem;
   margin-left: 0.35rem;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 999px;
 }
 
 .navbar .quarto-color-scheme-toggle:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .navbar .quarto-color-scheme-toggle .bi {
@@ -438,13 +596,32 @@ code:not(.sourceCode) {
 }
 
 .sidebar-navigation .sidebar-item-container .sidebar-item-text {
-  padding-top: 0.18rem;
-  padding-bottom: 0.18rem;
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
+  border-radius: var(--nb-radius-sm);
 }
 
+// Hover: dezent abgestuft
+.sidebar-navigation .sidebar-item-container a:hover,
+.sidebar-navigation .sidebar-item-container a:hover > .menu-text {
+  color: var(--py-blue);
+}
+
+.sidebar-navigation .sidebar-item-container a:hover > .menu-text {
+  background: var(--py-blue-soft);
+}
+
+// Aktiver Eintrag: Markenblau mit linker Kante
 .sidebar-navigation .sidebar-item-container a.active,
-.sidebar-navigation .sidebar-item-container a:hover {
-  color: var(--nb-accent);
+.sidebar-navigation .sidebar-item-container a.active > .menu-text {
+  color: var(--py-blue);
+  font-weight: 650;
+}
+
+.sidebar-navigation .sidebar-item-container a.active > .menu-text {
+  border-left: 2px solid var(--py-blue);
+  padding-left: 0.4rem;
+  background: var(--py-blue-soft);
 }
 
 .sidebar-navigation .sidebar-item-section > .sidebar-item-container {
@@ -458,13 +635,34 @@ nav[role="doc-toc"] > ul li a {
   border-left: 2px solid transparent;
 }
 
-nav[role="doc-toc"] > ul li a.active {
-  border-left-color: var(--nb-accent);
-  color: var(--nb-accent);
+nav[role="doc-toc"] > ul li a:hover {
+  color: var(--py-blue);
 }
 
-.nav-footer {
-  border-top: 1px solid var(--nb-border);
+// Quarto/Darkly setzen selbst
+//   .sidebar nav[role="doc-toc"] ul > li > a.active { color: <theme-primary> }
+// - im Dark Mode waere das Darklys Gruen #00bc8c. Der Selektor hier muss diese
+// Spezifitaet erreichen, sonst gewinnt das Theme.
+.sidebar nav[role="doc-toc"] ul > li > a.active,
+.sidebar nav[role="doc-toc"] ul > li > ul > li > a.active,
+nav[role="doc-toc"] > ul li a.active {
+  // Quarto setzt hier selbst "color: <theme-primary> !important" - im Dark Mode
+  // waere das Darklys Gruen #00bc8c. Gegen !important hilft keine Spezifitaet,
+  // deshalb ausnahmsweise ebenfalls !important.
+  border-left-color: var(--py-blue);
+  color: var(--py-blue) !important;
+  font-weight: 600;
+}
+
+// ============================================================================
+// 10. Footer
+// ============================================================================
+
+// Quarto setzt selbst "body .nav-footer { border-top: 1px solid #dee2e6 }".
+// Der Selektor hier muss diese Spezifitaet erreichen, sonst gewinnt Quarto.
+body .nav-footer {
+  border-top: 2px solid var(--py-blue);
+  margin-top: 2.5rem;
   font-size: 0.83rem;
   color: var(--nb-text-muted);
 }
