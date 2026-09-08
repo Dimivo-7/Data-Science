@@ -19,6 +19,7 @@ Abschnitt 9 enthält einen fertigen Prompt zum Kopieren.
 | Hosting | GitHub Pages, Branch `gh-pages` |
 | Build | GitHub Actions (`.github/workflows/publish.yml`) bei jedem Push auf `main` |
 | Rechenumgebung | Die Action richtet R und Python samt Paketen ein und führt die Chunks aus |
+| Zeitstempel | „Letztes Update“ steht in der Navigationsleiste und kommt aus `lastupdate.lua`. Abschalten: die Zeile `- lastupdate.lua` unter `format.html.filters` in `_quarto.yml` löschen — keine Seite ist davon betroffen. |
 
 **Wichtig:** Quarto ist auf meinem Rechner nicht installiert. Ich schreibe nur
 `.qmd`-Dateien und pushe sie; das Rendern übernimmt die GitHub Action. Der
@@ -39,7 +40,7 @@ mas-data-science-notizen/
 ├── glossar.qmd                     Glossaruebersicht mit Fundstellen
 ├── _quarto.yml                     Navigation, Rendern, Theme
 ├── styles.scss                     gesamtes Design
-├── lastupdate.lua                  setzt den Zeitstempel oben auf jeder Seite
+├── lastupdate.lua                  Zeitstempel in der Navigationsleiste
 ├── cas-grundlagen/
 │   ├── index.qmd                   Modulübersicht
 │   ├── pyfr/
