@@ -282,6 +282,42 @@ hell und dunkel:
 | `::: {.lesson-card}` in `:::: {.card-grid}` | Kartenraster auf Übersichtsseiten |
 | `::: panel-tabset` | R/Python nebeneinander |
 | `::: {.callout-note collapse="true" title="Lösung"}` | Lösung zu einer Mini-Übung, zugeklappt |
+| `::: {.quiz}` | Quizfrage mit anklickbaren Antworten, siehe unten |
+
+### Quizfragen
+
+Erzeugt von `quiz.lua`. Autorenformat in reinem Markdown, eine Zeile je
+Antwort:
+
+```markdown
+::: {.quiz}
+Der Median liegt bei 15, das Mittel bei 68. Was folgt daraus?
+
+- [ ] Ein Rechenfehler ~ Beide Masse dürfen weit auseinanderliegen.
+- [x] Die Verteilung ist rechtsschief ~ Genau, der lange rechte Rand
+      zieht das Mittel nach oben.
+- [ ] Die Stichprobe ist zu klein ~ Der Umfang sagt über die Schiefe nichts.
+:::
+```
+
+Regeln:
+
+- Alles vor der Aufzählung ist die Frage und darf Markdown enthalten,
+  auch Formeln, Inline-Code und Verweise wie `@fig-name`.
+- `[x]` markiert die richtige Antwort, `[ ]` eine falsche. Mehrere richtige
+  sind erlaubt.
+- Nach der Tilde folgt die Erklärung, die beim Anklicken erscheint. Sie
+  gehört an **jede** Antwort, auch an die richtige.
+- Fragen sollen Interpretation prüfen, nicht Definitionen abfragen. Eine
+  gute Frage nennt Zahlen oder eine Situation und fragt, was daraus folgt.
+- Fehlt die Markierung `[x]`, erscheint auf der Seite ein sichtbarer Hinweis
+  statt einer stillschweigend unlösbaren Frage.
+
+**Zwei Ebenen.** Auf Lektionsseiten stehen zwei bis drei Fragen je
+inhaltlichem Abschnitt, direkt dort, wo der Stoff behandelt wird. Dazu kommt
+je Teilbereich eine eigene Seite `quiz.qmd` mit lektionsübergreifenden
+Fragen. Sie wiederholt die Abschnittsfragen nicht, sondern prüft
+Verbindungen zwischen den Lektionen und typische Verwechslungen.
 
 **Karten immer im Raster.** Eine `.lesson-card` ohne umschließendes
 `.card-grid` läuft über die volle Breite und sieht anders aus als überall sonst.

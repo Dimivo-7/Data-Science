@@ -168,8 +168,52 @@ plt.show()
 ```
 :::
 
+In @fig-schief-r ist zu sehen, woran das liegt. Die Masse der Löhne liegt links,
+aber einzelne sehr hohe Werte ziehen sich weit nach rechts. Der Median zählt
+nur ab, wie viele Werte links und rechts von ihm liegen; ob ein Wert knapp
+oder weit rechts liegt, ist ihm gleich. Das Mittel dagegen ist ein
+Schwerpunkt, und ein weit entfernter Wert wirkt darin wie ein langer Hebel.
+Deshalb rutscht das Mittel dorthin, wo der Rand länger ausläuft, während der
+Median stehen bleibt.
+
 ::: {.note-box}
-Merkregel für die Schiefe: das Mittel wandert in Richtung des längeren Randes. Liegt es **über** dem Median, ist die Verteilung rechtsschief; liegt es darunter, linksschief. Bei symmetrischen Verteilungen fallen beide zusammen.
+Daraus wird eine Merkregel, die sich rückwärts anwenden lässt. Wer nur zwei
+Zahlen hat und die Form nicht sieht, kann sie vergleichen:
+
+| Beobachtung | Form der Verteilung | typisches Beispiel |
+|---|---|---|
+| Mittel **grösser** als Median | rechtsschief, langer Rand nach rechts | Löhne, Wartezeiten, Schadenshöhen |
+| Mittel **kleiner** als Median | linksschief, langer Rand nach links | Prüfungsergebnisse bei leichter Prüfung |
+| Mittel **gleich** Median | symmetrisch | Messfehler um einen Sollwert |
+:::
+
+::: {.quiz}
+Eine Auswertung von 200 Wohnungsmieten meldet ein Mittel von 2140 Franken und
+einen Median von 1680 Franken. Was folgt daraus?
+
+- [ ] Es liegt ein Rechenfehler vor ~ Nein, beide Masse dürfen weit
+      auseinanderliegen. Genau dieser Abstand ist die Information.
+- [x] Die Verteilung ist rechtsschief ~ Richtig. Das Mittel liegt über dem
+      Median, also zieht ein langer rechter Rand mit wenigen sehr teuren
+      Wohnungen den Schwerpunkt nach oben.
+- [ ] Die Hälfte der Mieten liegt über 2140 Franken ~ Das gilt für den Median,
+      nicht für das Mittel. Über 1680 Franken liegt die Hälfte, über 2140
+      deutlich weniger.
+- [ ] Die Stichprobe ist zu klein ~ Der Umfang sagt über die Schiefe nichts
+      aus. 200 Beobachtungen sind für diese Aussage reichlich.
+:::
+
+::: {.quiz}
+Für einen Bericht über diese Mieten soll eine einzige Zahl als typische Miete
+genannt werden. Welche ist die ehrlichere Wahl?
+
+- [x] Der Median ~ Er beschreibt den typischen Fall, weil ihn einzelne
+      Luxuswohnungen nicht verschieben. Deshalb werden Mieten und Löhne fast
+      immer als Median berichtet.
+- [ ] Das arithmetische Mittel ~ Es liegt hier über dem, was die meisten
+      tatsächlich zahlen, weil wenige sehr hohe Werte es hochziehen.
+- [ ] Der Modus ~ Bei stetigen Grössen wie Mieten kommt fast jeder Wert nur
+      einmal vor; der Modus wäre zufällig und nicht aussagekräftig.
 :::
 
 ### Quantile
@@ -194,6 +238,21 @@ np.quantile([12, 14, 15, 15, 18, 21], [0.25, 0.5, 0.75])
 ```
 :::
 
+::: {.quiz}
+Ein Hersteller garantiert, dass 90 Prozent der Bauteile eine Toleranz von
+höchstens 0.4 mm haben. Welche Kennzahl prüft diese Zusage direkt?
+
+- [x] Das 0.9-Quantil der gemessenen Abweichungen ~ Richtig. Es ist genau der
+      Wert, unter dem 90 Prozent der Beobachtungen liegen, und lässt sich
+      unmittelbar mit 0.4 mm vergleichen.
+- [ ] Der Mittelwert der Abweichungen ~ Er sagt nichts darüber, wie viele
+      Teile unter einer bestimmten Schranke liegen. Ein kleines Mittel ist mit
+      vielen Ausreissern vereinbar.
+- [ ] Die Standardabweichung ~ Sie beschreibt die Streubreite insgesamt.
+      Auf einen Anteil lässt sich daraus nur schliessen, wenn man zusätzlich
+      eine Verteilungsform unterstellt.
+:::
+
 ### Die Streuungsmasse
 
 Auch hier gibt es die robuste und die empfindliche Familie.
@@ -206,9 +265,64 @@ Der **Interquartilsabstand** umfasst die mittleren fünfzig Prozent, $\text{IQR}
 
 $$s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2 \qquad s = \sqrt{s^2}$$
 
-Der Nenner $n-1$ statt $n$ ist die Bessel-Korrektur. Der Grund: die Abweichungen werden vom geschätzten Mittel gemessen, nicht vom wahren. Um das eigene Mittel streuen die Daten minimal, wodurch die Streuung systematisch unterschätzt würde — $n-1$ gleicht das aus.
+#### Warum im Nenner $n-1$ steht
 
-Hier lauert der wichtigste Sprachunterschied dieser Lektion: **R rechnet immer mit $n-1$, NumPy standardmässig mit $n$.** Pandas wiederum verhält sich wie R. Wer die Sprachen mischt, bekommt sonst zwei verschiedene Standardabweichungen für dieselben Daten.
+Die Formel teilt nicht durch die Anzahl der Werte, sondern durch eins weniger.
+Das wirkt wie ein Schreibfehler und hat einen Grund.
+
+Gemessen werden die Abweichungen vom **geschätzten** Mittel, also von dem
+Mittel, das aus genau diesen Daten stammt. Dieses Mittel liegt aber
+zwangsläufig mitten in den Daten drin. Es gibt keine Zahl, um die die Werte
+enger streuen als um ihren eigenen Mittelwert; jeder andere Bezugspunkt,
+auch der wahre Mittelwert der Grundgesamtheit, ergäbe eine grössere
+Abweichungssumme.
+
+Wer also durch $n$ teilt, misst die Streuung um den günstigsten aller
+möglichen Bezugspunkte und erhält deshalb systematisch einen zu kleinen Wert.
+Die Korrektur um eins gleicht das aus. Sie heisst Bessel-Korrektur und lässt
+sich nachrechnen: Wenn die Formel stimmt, muss die Variante mit $n-1$ im
+Mittel über viele Stichproben den wahren Wert treffen und die Variante mit $n$
+darunterliegen.
+
+```{r}
+#| label: bessel-r
+# Grundgesamtheit mit bekannter Varianz: sigma = 5, also sigma^2 = 25
+stichproben <- replicate(20000, rnorm(5, mean = 100, sd = 5), simplify = FALSE)
+
+durch_n   <- mean(sapply(stichproben, function(x) mean((x - mean(x))^2)))
+durch_n_1 <- mean(sapply(stichproben, var))     # var() teilt durch n - 1
+
+round(c(wahr = 25, geteilt_durch_n = durch_n, geteilt_durch_n_1 = durch_n_1), 2)
+```
+
+Die mittlere Variante liegt deutlich unter 25, die rechte trifft ihn. Bei
+$n = 5$ ist der Unterschied gross, weil eins von fünf viel ausmacht. Bei
+$n = 500$ wäre er kaum noch zu sehen, und genau deshalb spielt die Frage bei
+grossen Stichproben praktisch keine Rolle mehr.
+
+#### Der Sprachunterschied, der daraus folgt
+
+**R rechnet immer mit $n-1$, NumPy standardmässig mit $n$.** Pandas verhält
+sich wie R. Wer die Sprachen mischt, bekommt für dieselben Daten zwei
+verschiedene Standardabweichungen.
+
+Gesteuert wird das in Python über den Parameter `ddof`. Er steht für delta
+degrees of freedom und gibt an, wie viel im Nenner von $n$ abgezogen wird:
+`ddof=0` teilt durch $n$, `ddof=1` durch $n-1$. Der Name nennt also nicht das
+Ergebnis, sondern die Grösse des Abzugs, und das ist der Grund, warum er beim
+ersten Lesen nichts sagt.
+
+```{python}
+#| label: ddof-py
+werte = np.array([12, 14, 15, 15, 18, 21])
+
+print("ddof=0, teilt durch n     :", round(werte.std(ddof=0), 4))
+print("ddof=1, teilt durch n - 1 :", round(werte.std(ddof=1), 4))
+print("pandas ohne Angabe        :", round(pd.Series(werte).std(), 4))
+```
+
+Die dritte Zeile zeigt, dass pandas von sich aus `ddof=1` verwendet und damit
+mit R übereinstimmt. Abweichend verhält sich nur NumPy selbst.
 
 Weil die Varianz quadriert, steht sie in quadrierten Einheiten und ist nicht direkt lesbar. Die Standardabweichung führt zurück in die Einheit der Daten und ist deshalb das Mass, das berichtet wird. Der **Variationskoeffizient** $v = s / \bar{x}$ setzt die Streuung ins Verhältnis zur Lage und macht Grössenordnungen vergleichbar — sinnvoll nur bei positiven Verhältnisskalen, denn bei einem Mittel nahe null explodiert er.
 
@@ -236,6 +350,49 @@ pd.Series({
     "vk":         loehne.std(ddof=1) / loehne.mean(),
 }).round(3)
 ```
+:::
+
+::: {.quiz}
+Dieselben zehn Messwerte werden in R mit `sd(x)` und in Python mit
+`np.std(x)` ausgewertet. Das R-Ergebnis ist grösser. Woran liegt das?
+
+- [x] NumPy teilt ohne Angabe durch $n$, R durch $n-1$ ~ Richtig. Der kleinere
+      Nenner in R ergibt den grösseren Wert. Mit `np.std(x, ddof=1)` stimmen
+      beide überein.
+- [ ] R rundet anders ~ Die Abweichung entsteht nicht beim Runden, sondern im
+      Nenner der Formel. Sie ist bei kleinem n deutlich sichtbar.
+- [ ] Die Werte wurden unterschiedlich eingelesen ~ Möglich wäre das, hier ist
+      es aber nicht die Ursache. Der Unterschied tritt auch bei identischen
+      Zahlen auf.
+:::
+
+::: {.quiz}
+Warum wird bei der Varianz überhaupt durch $n-1$ geteilt und nicht durch $n$?
+
+- [ ] Damit das Ergebnis grösser wird ~ Das ist die Folge, nicht der Grund.
+      Die Frage ist, warum die Vergrösserung berechtigt ist.
+- [x] Weil um das eigene Mittel gerechnet wird und die Streuung sonst
+      systematisch zu klein ausfällt ~ Richtig. Die Werte streuen um ihren
+      eigenen Mittelwert enger als um jeden anderen Bezugspunkt, deshalb
+      unterschätzt die Division durch $n$ die wahre Streuung.
+- [ ] Weil ein Wert für den Mittelwert verbraucht wurde und deshalb einer
+      fehlt ~ Das ist die übliche Kurzformel und als Merkhilfe brauchbar, aber
+      sie erklärt nicht, warum daraus eine Unterschätzung folgt.
+:::
+
+::: {.quiz}
+Zwei Maschinen produzieren Wellen. Maschine A hat eine Standardabweichung von
+0.8 mm bei einem Mitteldurchmesser von 40 mm, Maschine B eine von 2.0 mm bei
+200 mm. Welche arbeitet relativ gesehen genauer?
+
+- [ ] Maschine A, weil 0.8 kleiner ist als 2.0 ~ Der Vergleich der absoluten
+      Streuung übersieht, dass die Teile ganz verschieden gross sind.
+- [x] Maschine B ~ Richtig. Der Variationskoeffizient beträgt bei A 0.8/40 = 2
+      Prozent, bei B 2.0/200 = 1 Prozent. Gemessen an der Teilegrösse streut B
+      halb so stark.
+- [ ] Das lässt sich ohne die Stichprobengrössen nicht sagen ~ Für den
+      Vergleich der Streuung genügen Mittel und Standardabweichung. Der Umfang
+      beträfe die Genauigkeit der Schätzung, nicht den Vergleich selbst.
 :::
 
 ### Der Boxplot und seine Anatomie
@@ -342,6 +499,34 @@ plt.show()
 :::
 
 Deshalb gehört zum Boxplot immer ein zweiter Blick auf die Verteilung — Histogramm, Dichtekurve oder bei kleinen Stichproben schlicht die einzelnen Punkte.
+
+::: {.quiz}
+In @fig-boxplot-anatomie-r ist ein Punkt oberhalb der Antenne eingezeichnet.
+Was bedeutet er?
+
+- [ ] Der Wert ist ein Messfehler ~ Das kann sein, folgt aber nicht daraus.
+      Die Regel markiert Werte, sie beurteilt sie nicht.
+- [x] Der Wert liegt mehr als das Anderthalbfache des Interquartilsabstands
+      über dem oberen Quartil ~ Richtig. Das ist die gesamte Aussage der
+      1.5-Regel, eine Konvention zum Hinsehen und kein Test.
+- [ ] Der Wert ist statistisch signifikant auffällig ~ Es findet kein Test
+      statt. Bei normalverteilten Daten fallen rund 0.7 Prozent der Werte
+      darunter, in grossen Stichproben also regelmässig einige.
+:::
+
+::: {.quiz}
+Zwei Gruppen haben nahezu identische Boxplots, wie in @fig-blind-r. Was lässt
+sich daraus schliessen?
+
+- [ ] Die Verteilungen sind gleich ~ Nein. Der Boxplot zeigt fünf Kennzahlen,
+      und die können übereinstimmen, während die Form völlig verschieden ist.
+- [x] Median, Quartile und Spannweite stimmen ungefähr überein, über die Form
+      sagt das nichts ~ Richtig. @fig-blind-hist-r zeigt dieselben Daten als
+      Histogramm, und dort ist eine der beiden Verteilungen zweigipflig.
+- [ ] Eine der beiden Gruppen enthält Ausreisser ~ Ausreisser wären als
+      einzelne Punkte sichtbar. Hier ist gerade das Fehlen von Unterschieden
+      das Auffällige.
+:::
 
 ### Kennzahlen je Gruppe
 

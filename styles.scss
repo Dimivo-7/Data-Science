@@ -1062,3 +1062,154 @@ main.content > p > strong:only-child {
   display: inline-block;
   margin-top: 0.6rem;
 }
+
+// ============================================================================
+// 15. Quiz
+// ============================================================================
+//
+// Erzeugt von quiz.lua aus einem ::: {.quiz}-Block. Die Antworten sind
+// anklickbar, die Erklaerung erscheint danach.
+//
+// Gestaltung bewusst ruhig: Vor dem Klick soll nichts verraten, welche
+// Antwort die richtige ist, auch nicht durch Groesse oder Abstand.
+
+.quiz {
+  margin: 1.4rem 0 1.8rem;
+  padding: 0.9rem 1.1rem 1rem;
+  border: 1px solid var(--nb-border);
+  border-left: 3px solid var(--py-yellow);
+  border-radius: var(--nb-radius);
+  background: var(--nb-surface-alt);
+}
+
+.quiz::before {
+  content: "Frage";
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--nb-text-muted);
+}
+
+.quiz__frage > :last-child {
+  margin-bottom: 0.8rem;
+}
+
+.quiz__optionen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.quiz__option {
+  border: 1px solid var(--nb-border);
+  border-radius: var(--nb-radius-sm);
+  background: var(--nb-surface);
+  overflow: hidden;
+}
+
+.quiz__antwort {
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.12s ease;
+}
+
+.quiz__antwort:hover {
+  background: var(--py-blue-soft);
+}
+
+.quiz__antwort:focus-visible {
+  outline: 2px solid var(--py-blue);
+  outline-offset: -2px;
+}
+
+.quiz__antwort > :last-child {
+  margin-bottom: 0;
+}
+
+// Die Erklaerung ist bis zum Klick nicht vorhanden, nicht nur unsichtbar:
+// display:none haelt sie auch aus der Textsuche im Browser heraus.
+.quiz__erklaerung {
+  display: none;
+  padding: 0.5rem 0.7rem 0.6rem;
+  border-top: 1px solid var(--nb-border);
+  background: var(--nb-surface-alt);
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--nb-text-muted);
+}
+
+.quiz__option.is-beantwortet .quiz__erklaerung {
+  display: block;
+}
+
+// --- Rueckmeldung -----------------------------------------------------------
+//
+// Neben der Farbe steht ein Zeichen. Farbe allein waere fuer Menschen mit
+// Rotgruenschwaeche keine Information.
+
+.quiz__option.is-richtig {
+  border-color: #2e7d5b;
+}
+
+.quiz__option.is-richtig .quiz__antwort::after {
+  content: " ✓";
+  font-weight: 700;
+  color: #2e7d5b;
+}
+
+.quiz__option.is-falsch {
+  border-color: #b3402f;
+}
+
+.quiz__option.is-falsch .quiz__antwort::after {
+  content: " ✗";
+  font-weight: 700;
+  color: #b3402f;
+}
+
+.quiz-dark-hilfe {
+  display: none;
+}
+
+.quarto-dark .quiz__option.is-richtig {
+  border-color: #6cc39a;
+}
+
+.quarto-dark .quiz__option.is-richtig .quiz__antwort::after {
+  color: #6cc39a;
+}
+
+.quarto-dark .quiz__option.is-falsch {
+  border-color: #e08b7c;
+}
+
+.quarto-dark .quiz__option.is-falsch .quiz__antwort::after {
+  color: #e08b7c;
+}
+
+// Nach der richtigen Antwort werden die uebrigen Erklaerungen mit aufgedeckt,
+// aber zurueckgenommen dargestellt.
+.quiz__option.is-verworfen {
+  opacity: 0.72;
+}
+
+.quiz__option.is-verworfen .quiz__antwort {
+  cursor: default;
+}
+
+.quiz.is-geloest .quiz__antwort:hover {
+  background: transparent;
+}
+
+.quiz__warnung {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed #b3402f;
+  border-radius: var(--nb-radius-sm);
+  font-size: 0.8rem;
+  color: #b3402f;
+}
