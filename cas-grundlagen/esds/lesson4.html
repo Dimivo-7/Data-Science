@@ -115,6 +115,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -631,9 +660,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#kernideen-aus-dem-kurs" id="toc-kernideen-aus-dem-kurs" class="nav-link active" data-scroll-target="#kernideen-aus-dem-kurs">Kernideen aus dem Kurs</a></li>
-  <li><a href="#meine-zusammenfassung" id="toc-meine-zusammenfassung" class="nav-link" data-scroll-target="#meine-zusammenfassung">Meine Zusammenfassung</a></li>
+  <li><a href="#meine-zusammenfassung" id="toc-meine-zusammenfassung" class="nav-link" data-scroll-target="#meine-zusammenfassung">Meine Zusammenfassung</a>
+  <ul class="collapse">
+  <li><a href="#die-lagemasse-und-das-skalenniveau" id="toc-die-lagemasse-und-das-skalenniveau" class="nav-link" data-scroll-target="#die-lagemasse-und-das-skalenniveau">Die Lagemasse und das Skalenniveau</a></li>
+  <li><a href="#robustheit-was-ein-einziger-wert-anrichtet" id="toc-robustheit-was-ein-einziger-wert-anrichtet" class="nav-link" data-scroll-target="#robustheit-was-ein-einziger-wert-anrichtet">Robustheit: was ein einziger Wert anrichtet</a></li>
+  <li><a href="#quantile" id="toc-quantile" class="nav-link" data-scroll-target="#quantile">Quantile</a></li>
+  <li><a href="#die-streuungsmasse" id="toc-die-streuungsmasse" class="nav-link" data-scroll-target="#die-streuungsmasse">Die Streuungsmasse</a></li>
+  <li><a href="#der-boxplot-und-seine-anatomie" id="toc-der-boxplot-und-seine-anatomie" class="nav-link" data-scroll-target="#der-boxplot-und-seine-anatomie">Der Boxplot und seine Anatomie</a></li>
+  <li><a href="#was-der-boxplot-verschweigt" id="toc-was-der-boxplot-verschweigt" class="nav-link" data-scroll-target="#was-der-boxplot-verschweigt">Was der Boxplot verschweigt</a></li>
+  <li><a href="#was-ich-beim-berichten-festhalte" id="toc-was-ich-beim-berichten-festhalte" class="nav-link" data-scroll-target="#was-ich-beim-berichten-festhalte">Was ich beim Berichten festhalte</a></li>
+  </ul></li>
   <li><a href="#eigene-beispiele-code" id="toc-eigene-beispiele-code" class="nav-link" data-scroll-target="#eigene-beispiele-code">Eigene Beispiele / Code</a></li>
-  <li><a href="#offene-fragen" id="toc-offene-fragen" class="nav-link" data-scroll-target="#offene-fragen">Offene Fragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -672,7 +709,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="last-update"><span class="last-update__dot" aria-hidden="true"></span><span class="last-update__label">Letztes Update</span><time class="last-update__time">8. September 2026, 10:07</time></div>
+<div class="last-update"><span class="last-update__dot" aria-hidden="true"></span><span class="last-update__label">Letztes Update</span><time class="last-update__time">8. September 2026, 11:43</time></div>
 <section id="kernideen-aus-dem-kurs" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen-aus-dem-kurs">Kernideen aus dem Kurs</h2>
 <ul>
@@ -686,10 +723,241 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="meine-zusammenfassung" class="level2">
 <h2 class="anchored" data-anchor-id="meine-zusammenfassung">Meine Zusammenfassung</h2>
-<p>Lage und Streuung beantworten zwei verschiedene Fragen: wo liegt die Verteilung, und wie weit ist sie auseinandergezogen. Beide Angaben gehören zusammen — ein Mittelwert ohne Streuungsmass sagt fast nichts.</p>
-<p>Bei den Lagemassen entscheidet einerseits das <a href="../../cas-grundlagen/esds/lesson3.html">Skalenniveau</a>, andererseits die Robustheit. Der Modus ist für nominale Daten das einzig Sinnvolle, der Median verlangt eine Ordnung, das arithmetische Mittel setzt metrische Daten voraus. Der entscheidende praktische Unterschied ist die Empfindlichkeit gegenüber Ausreissern: ein einziger extremer Wert verschiebt das Mittel beliebig weit, während der Median davon fast unberührt bleibt. Bei schiefen Verteilungen — Einkommen, Wartezeiten, Schadenshöhen — liegt das Mittel deshalb regelmässig oberhalb des Medians, und der Median beschreibt den typischen Fall besser.</p>
-<p>Bei der Streuung gilt dieselbe Aufteilung. Die Spannweite hängt allein von den beiden Extremwerten ab und ist entsprechend instabil. Der Interquartilsabstand umfasst die mittleren fünfzig Prozent und ist robust. Varianz und Standardabweichung nutzen alle Werte, gewichten Abweichungen aber quadratisch und reagieren deshalb ebenfalls stark auf Ausreisser; die Standardabweichung hat gegenüber der Varianz den Vorteil, in der Einheit der Daten zu stehen. Der Variationskoeffizient setzt sie ins Verhältnis zum Mittelwert und macht damit Streuungen unterschiedlicher Grössenordnung vergleichbar — sinnvoll nur bei positiven Verhältnisskalen.</p>
-<p>Der Boxplot bündelt diese Information: Box vom unteren zum oberen Quartil, Strich am Median, Antennen bis zum letzten Wert innerhalb des Anderthalbfachen des Interquartilsabstands, alles darüber hinaus als Punkt. Er ist damit das Werkzeug für den Gruppenvergleich, verdeckt aber Mehrgipfligkeit — dafür braucht es zusätzlich ein Histogramm.</p>
+<p>Lage und Streuung beantworten zwei verschiedene Fragen: <strong>wo</strong> liegt die Verteilung, und <strong>wie breit</strong> ist sie. Beide Angaben gehören zusammen. Ein Mittelwert ohne Streuungsmass ist keine Zusammenfassung, sondern eine halbe Information — die beiden folgenden Datensätze haben denselben Mittelwert und beschreiben trotzdem völlig verschiedene Sachverhalte.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>vergleich <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">wert   =</span> <span class="fu">c</span>(<span class="fu">rnorm</span>(<span class="dv">500</span>, <span class="at">mean =</span> <span class="dv">50</span>, <span class="at">sd =</span> <span class="dv">2</span>), <span class="fu">rnorm</span>(<span class="dv">500</span>, <span class="at">mean =</span> <span class="dv">50</span>, <span class="at">sd =</span> <span class="dv">12</span>)),</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">gruppe =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">"eng: s = 2"</span>, <span class="st">"breit: s = 12"</span>), <span class="at">each =</span> <span class="dv">500</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(vergleich, <span class="fu">aes</span>(wert)) <span class="sc">+</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>, <span class="at">fill =</span> <span class="st">"grey75"</span>, <span class="at">colour =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">50</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> gruppe) <span class="sc">+</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Messwert"</span>, <span class="at">y =</span> <span class="st">"Anzahl"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-gleiches-mittel" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-gleiches-mittel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="lesson4_files/figure-html/fig-gleiches-mittel-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-gleiches-mittel-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Zwei Verteilungen mit identischem Mittelwert (gestrichelt) und sehr unterschiedlicher Streuung.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<section id="die-lagemasse-und-das-skalenniveau" class="level3">
+<h3 class="anchored" data-anchor-id="die-lagemasse-und-das-skalenniveau">Die Lagemasse und das Skalenniveau</h3>
+<p>Welches Lagemass zulässig ist, entscheidet das <a href="../../cas-grundlagen/esds/lesson3.html">Skalenniveau</a>.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Lagemass</th>
+<th>ab Skalenniveau</th>
+<th>robust</th>
+<th>was es beschreibt</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Modus</td>
+<td>nominal</td>
+<td>ja</td>
+<td>die häufigste Ausprägung</td>
+</tr>
+<tr class="even">
+<td>Median</td>
+<td>ordinal</td>
+<td>ja</td>
+<td>der Wert in der Mitte der sortierten Reihe</td>
+</tr>
+<tr class="odd">
+<td>Arithmetisches Mittel</td>
+<td>metrisch</td>
+<td>nein</td>
+<td>der Schwerpunkt der Werte</td>
+</tr>
+</tbody>
+</table>
+<p>Der Median teilt die sortierte Reihe in zwei gleich grosse Hälften. Bei ungerader Anzahl ist er der mittlere Wert, bei gerader das Mittel der beiden mittleren. Das arithmetische Mittel</p>
+<p><span class="math display">\[\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i\]</span></p>
+<p>ist dagegen der Schwerpunkt: die Summe der Abweichungen vom Mittel ist immer null. Genau diese Eigenschaft macht es empfindlich, denn ein weit entfernter Wert zieht den Schwerpunkt mit sich.</p>
+</section>
+<section id="robustheit-was-ein-einziger-wert-anrichtet" class="level3">
+<h3 class="anchored" data-anchor-id="robustheit-was-ein-einziger-wert-anrichtet">Robustheit: was ein einziger Wert anrichtet</h3>
+<p>Das ist kein akademischer Vorbehalt, sondern der wichtigste praktische Unterschied. Ein einziger Ausreisser verschiebt das Mittel beliebig weit, während der Median fast unberührt bleibt:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">12</span>, <span class="dv">14</span>, <span class="dv">15</span>, <span class="dv">15</span>, <span class="dv">18</span>, <span class="dv">21</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"ohne Ausreisser"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="at">mittel =</span> <span class="fu">mean</span>(x),         <span class="at">median =</span> <span class="fu">median</span>(x)),</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">"mit Ausreisser"</span>  <span class="ot">=</span> <span class="fu">c</span>(<span class="at">mittel =</span> <span class="fu">mean</span>(<span class="fu">c</span>(x, <span class="dv">470</span>)), <span class="at">median =</span> <span class="fu">median</span>(<span class="fu">c</span>(x, <span class="dv">470</span>)))</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> <span class="fu">round</span>(<span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                mittel median
+ohne Ausreisser   15.8     15
+mit Ausreisser    80.7     15</code></pre>
+</div>
+</div>
+<p>Das Mittel springt um mehr als das Doppelte, der Median rückt um einen halben Punkt. Deshalb gilt: sobald eine Verteilung schief ist oder Ausreisser enthält, beschreibt der Median den typischen Fall besser — und genau darum werden Löhne und Immobilienpreise als Median berichtet.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>loehne <span class="ot">&lt;-</span> <span class="fu">round</span>(<span class="fu">rlnorm</span>(<span class="dv">800</span>, <span class="at">meanlog =</span> <span class="fl">8.85</span>, <span class="at">sdlog =</span> <span class="fl">0.42</span>))</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="fu">data.frame</span>(<span class="at">lohn =</span> loehne), <span class="fu">aes</span>(lohn)) <span class="sc">+</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">45</span>, <span class="at">fill =</span> <span class="st">"grey75"</span>, <span class="at">colour =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">median</span>(loehne)) <span class="sc">+</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">mean</span>(loehne), <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="fu">median</span>(loehne), <span class="at">y =</span> <span class="cn">Inf</span>, <span class="at">label =</span> <span class="st">"Median"</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>           <span class="at">vjust =</span> <span class="fl">1.6</span>, <span class="at">hjust =</span> <span class="fl">1.1</span>, <span class="at">size =</span> <span class="fl">3.5</span>) <span class="sc">+</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="fu">mean</span>(loehne), <span class="at">y =</span> <span class="cn">Inf</span>, <span class="at">label =</span> <span class="st">"Mittel"</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">vjust =</span> <span class="fl">1.6</span>, <span class="at">hjust =</span> <span class="sc">-</span><span class="fl">0.1</span>, <span class="at">size =</span> <span class="fl">3.5</span>) <span class="sc">+</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Monatslohn (CHF)"</span>, <span class="at">y =</span> <span class="st">"Anzahl"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-schief" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-schief-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="lesson4_files/figure-html/fig-schief-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-schief-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Rechtsschiefe Verteilung: der lange rechte Rand zieht das Mittel über den Median.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="note-box">
+<p>Merkregel für die Schiefe: das Mittel wandert in Richtung des längeren Randes. Liegt es <strong>über</strong> dem Median, ist die Verteilung rechtsschief; liegt es darunter, linksschief. Bei symmetrischen Verteilungen fallen beide zusammen.</p>
+</div>
+</section>
+<section id="quantile" class="level3">
+<h3 class="anchored" data-anchor-id="quantile">Quantile</h3>
+<p>Das <span class="math inline">\(p\)</span>-Quantil ist der Wert, unterhalb dessen ein Anteil <span class="math inline">\(p\)</span> der Beobachtungen liegt. Der Median ist damit das 0.5-Quantil. Die Quartile teilen die Daten in vier Viertel:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">quantile</span>(loehne, <span class="at">probs =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     0%     25%     50%     75%    100% 
+ 2039.0  5259.5  6918.5  9195.5 31431.0 </code></pre>
+</div>
+</div>
+<p>Ein Detail, über das ich sonst stolpern würde: es gibt neun verschiedene Definitionen, wie zwischen zwei Beobachtungen interpoliert wird. R verwendet standardmässig Typ 7 — und NumPy und Pandas rechnen mit derselben linearen Interpolation, sodass beide Sprachen ohne Zutun dasselbe Ergebnis liefern:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>werte <span class="op">=</span> np.array([<span class="dv">12</span>, <span class="dv">14</span>, <span class="dv">15</span>, <span class="dv">15</span>, <span class="dv">18</span>, <span class="dv">21</span>])</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(np.quantile(werte, [<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>]))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[14.25 15.   17.25]</code></pre>
+</div>
+</div>
+</section>
+<section id="die-streuungsmasse" class="level3">
+<h3 class="anchored" data-anchor-id="die-streuungsmasse">Die Streuungsmasse</h3>
+<p>Auch hier gibt es die robuste und die empfindliche Familie.</p>
+<p>Die <strong>Spannweite</strong> ist die Differenz zwischen Maximum und Minimum. Sie nutzt nur zwei Werte, wächst systematisch mit der Stichprobengrösse und ist damit das instabilste Mass.</p>
+<p>Der <strong>Interquartilsabstand</strong> umfasst die mittleren fünfzig Prozent, <span class="math inline">\(\text{IQR} = Q_3 - Q_1\)</span>. Er ignoriert die äusseren Viertel vollständig und ist deshalb robust.</p>
+<p><strong>Varianz</strong> und <strong>Standardabweichung</strong> nutzen alle Werte:</p>
+<p><span class="math display">\[s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2 \qquad s = \sqrt{s^2}\]</span></p>
+<p>Der Nenner <span class="math inline">\(n-1\)</span> statt <span class="math inline">\(n\)</span> ist die Bessel-Korrektur. Der Grund: die Abweichungen werden vom geschätzten Mittel gemessen, nicht vom wahren. Um das eigene Mittel streuen die Daten minimal, wodurch die Streuung systematisch unterschätzt würde — <span class="math inline">\(n-1\)</span> gleicht das aus. R rechnet mit <code>var()</code> und <code>sd()</code> immer so; in Python ist das nicht der Fall, dort steht <code>ddof</code> standardmässig auf 0 und muss auf 1 gesetzt werden.</p>
+<p>Weil die Varianz quadriert, steht sie in quadrierten Einheiten und ist nicht direkt lesbar. Die Standardabweichung führt zurück in die Einheit der Daten und ist deshalb das Mass, das berichtet wird. Beide gewichten Abweichungen quadratisch und reagieren damit noch stärker auf Ausreisser als das Mittel.</p>
+<p>Der <strong>Variationskoeffizient</strong> <span class="math inline">\(v = s / \bar{x}\)</span> setzt die Streuung ins Verhältnis zur Lage und macht Grössenordnungen vergleichbar — sinnvoll nur bei positiven Verhältnisskalen, denn bei einem Mittel nahe null explodiert er:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">spannweite =</span> <span class="fu">diff</span>(<span class="fu">range</span>(loehne)),</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">iqr        =</span> <span class="fu">IQR</span>(loehne),</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">sd         =</span> <span class="fu">sd</span>(loehne),</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">vk         =</span> <span class="fu">sd</span>(loehne) <span class="sc">/</span> <span class="fu">mean</span>(loehne)) <span class="sc">|&gt;</span> <span class="fu">round</span>(<span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>spannweite        iqr         sd         vk 
+ 29392.000   3936.000   3347.531      0.441 </code></pre>
+</div>
+</div>
+</section>
+<section id="der-boxplot-und-seine-anatomie" class="level3">
+<h3 class="anchored" data-anchor-id="der-boxplot-und-seine-anatomie">Der Boxplot und seine Anatomie</h3>
+<p>Der Boxplot bündelt die robuste Familie in einem Bild. Die Box reicht von <span class="math inline">\(Q_1\)</span> bis <span class="math inline">\(Q_3\)</span>, der Strich darin ist der Median. Die Antennen gehen bis zum am weitesten entfernten Wert, der noch innerhalb von <span class="math inline">\(1.5 \times \text{IQR}\)</span> ab dem jeweiligen Quartil liegt — alles darüber hinaus wird als Punkt gezeichnet.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>werte <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">rnorm</span>(<span class="dv">120</span>, <span class="dv">50</span>, <span class="dv">8</span>), <span class="dv">88</span>, <span class="dv">91</span>, <span class="dv">12</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>kennz <span class="ot">&lt;-</span> <span class="fu">quantile</span>(werte, <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>))</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="fu">data.frame</span>(werte), <span class="fu">aes</span>(<span class="at">y =</span> werte, <span class="at">x =</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="fu">aes</span>(<span class="at">group =</span> <span class="dv">1</span>), <span class="at">width =</span> <span class="fl">0.35</span>, <span class="at">fill =</span> <span class="st">"grey90"</span>, <span class="at">outlier.size =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="fl">1.3</span>, <span class="at">y =</span> kennz[<span class="dv">1</span>],   <span class="at">label =</span> <span class="st">"Q1 (25 %)"</span>,  <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">size =</span> <span class="fl">3.4</span>) <span class="sc">+</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="fl">1.3</span>, <span class="at">y =</span> kennz[<span class="dv">2</span>],   <span class="at">label =</span> <span class="st">"Median"</span>,     <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">size =</span> <span class="fl">3.4</span>) <span class="sc">+</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="fl">1.3</span>, <span class="at">y =</span> kennz[<span class="dv">3</span>],   <span class="at">label =</span> <span class="st">"Q3 (75 %)"</span>,  <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">size =</span> <span class="fl">3.4</span>) <span class="sc">+</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="fl">1.3</span>, <span class="at">y =</span> <span class="fu">max</span>(werte), <span class="at">label =</span> <span class="st">"Ausreisser"</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">size =</span> <span class="fl">3.4</span>) <span class="sc">+</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="fl">0.6</span>, <span class="fl">2.4</span>), <span class="at">breaks =</span> <span class="cn">NULL</span>, <span class="at">name =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">"Messwert"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-boxplot-anatomie" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-boxplot-anatomie-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="lesson4_files/figure-html/fig-boxplot-anatomie-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-boxplot-anatomie-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Anatomie des Boxplots. Die Antennen enden am letzten Wert innerhalb der 1.5-IQR-Grenze, nicht an der Grenze selbst.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Die 1.5-Regel ist eine Konvention, kein Test. Sie markiert Werte, die einen zweiten Blick verdienen — sie beweist nicht, dass ein Wert falsch ist. Bei normalverteilten Daten fallen rund 0.7 Prozent der Beobachtungen darunter, in grossen Stichproben also regelmässig einige, ohne dass irgendetwas schiefgelaufen wäre.</p>
+</section>
+<section id="was-der-boxplot-verschweigt" class="level3">
+<h3 class="anchored" data-anchor-id="was-der-boxplot-verschweigt">Was der Boxplot verschweigt</h3>
+<p>Seine Stärke ist der Gruppenvergleich, seine Schwäche die Form. Weil er nur fünf Kennzahlen zeigt, sieht eine zweigipflige Verteilung aus wie eine gleichmässige — hier sind beide Boxplots nahezu identisch, die <a href="../../cas-grundlagen/esds/lesson3.html">Histogramme</a> darunter zeigen etwas völlig anderes:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">wert =</span> <span class="fu">c</span>(<span class="fu">c</span>(<span class="fu">rnorm</span>(<span class="dv">400</span>, <span class="dv">35</span>, <span class="dv">5</span>), <span class="fu">rnorm</span>(<span class="dv">400</span>, <span class="dv">65</span>, <span class="dv">5</span>)),</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>           <span class="fu">runif</span>(<span class="dv">800</span>, <span class="at">min =</span> <span class="dv">25</span>, <span class="at">max =</span> <span class="dv">75</span>)),</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">form =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">"zweigipflig"</span>, <span class="st">"gleichmässig"</span>), <span class="at">each =</span> <span class="dv">800</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(dat, <span class="fu">aes</span>(<span class="at">x =</span> form, <span class="at">y =</span> wert)) <span class="sc">+</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">width =</span> <span class="fl">0.4</span>, <span class="at">fill =</span> <span class="st">"grey90"</span>) <span class="sc">+</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Wert"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-boxplot-blind" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-boxplot-blind-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="lesson4_files/figure-html/fig-boxplot-blind-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-boxplot-blind-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Zwei Verteilungen, deren Boxplots kaum zu unterscheiden sind.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(dat, <span class="fu">aes</span>(wert)) <span class="sc">+</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>, <span class="at">fill =</span> <span class="st">"grey75"</span>, <span class="at">colour =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> form) <span class="sc">+</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Wert"</span>, <span class="at">y =</span> <span class="st">"Anzahl"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-hist-blind" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hist-blind-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="lesson4_files/figure-html/fig-hist-blind-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hist-blind-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Dieselben Daten als Histogramm: erst hier wird der Unterschied sichtbar.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Deshalb gehört zum Boxplot immer ein zweiter Blick auf die Verteilung — Histogramm, Dichtekurve oder bei kleinen Stichproben schlicht die einzelnen Punkte.</p>
+</section>
+<section id="was-ich-beim-berichten-festhalte" class="level3">
+<h3 class="anchored" data-anchor-id="was-ich-beim-berichten-festhalte">Was ich beim Berichten festhalte</h3>
+<ul>
+<li>Lagemass <strong>und</strong> Streuungsmass, nie eines allein.</li>
+<li>Bei schiefen Daten Median und IQR, bei symmetrischen Mittel und Standardabweichung.</li>
+<li>Die Stichprobengrösse dazu, denn ohne <span class="math inline">\(n\)</span> ist keine Streuungsangabe einzuordnen.</li>
+<li>Ausreisser nicht stillschweigend entfernen, sondern benennen.</li>
+</ul>
+</section>
 </section>
 <section id="eigene-beispiele-code" class="level2">
 <h2 class="anchored" data-anchor-id="eigene-beispiele-code">Eigene Beispiele / Code</h2>
@@ -697,47 +965,48 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">12</span>, <span class="dv">14</span>, <span class="dv">15</span>, <span class="dv">15</span>, <span class="dv">18</span>, <span class="dv">21</span>, <span class="dv">47</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(x); <span class="fu">median</span>(x)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">quantile</span>(x, <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>))</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">IQR</span>(x)</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">sd</span>(x); <span class="fu">var</span>(x)</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">sd</span>(x) <span class="sc">/</span> <span class="fu">mean</span>(x)                    <span class="co"># Variationskoeffizient</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(verbrauch <span class="sc">~</span> typ, <span class="at">data =</span> df)</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Wirkung des Ausreissers</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(x[x <span class="sc">&lt;</span> <span class="dv">40</span>]); <span class="fu">median</span>(x[x <span class="sc">&lt;</span> <span class="dv">40</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">12</span>, <span class="dv">14</span>, <span class="dv">15</span>, <span class="dv">15</span>, <span class="dv">18</span>, <span class="dv">21</span>, <span class="dv">47</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(x); <span class="fu">median</span>(x)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="fu">quantile</span>(x, <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>))</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">IQR</span>(x)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="fu">var</span>(x); <span class="fu">sd</span>(x)                      <span class="co"># immer mit n - 1</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="fu">sd</span>(x) <span class="sc">/</span> <span class="fu">mean</span>(x)                    <span class="co"># Variationskoeffizient</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Kennzahlen je Gruppe</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(typ) <span class="sc">|&gt;</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>(), <span class="at">median =</span> <span class="fu">median</span>(wert), <span class="at">iqr =</span> <span class="fu">IQR</span>(wert))</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(wert <span class="sc">~</span> typ, <span class="at">data =</span> df)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> pd.Series([<span class="dv">12</span>, <span class="dv">14</span>, <span class="dv">15</span>, <span class="dv">15</span>, <span class="dv">18</span>, <span class="dv">21</span>, <span class="dv">47</span>])</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>x.mean(), x.median()</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>x.quantile([<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>])</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>x.quantile(<span class="fl">0.75</span>) <span class="op">-</span> x.quantile(<span class="fl">0.25</span>)          <span class="co"># IQR</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>x.std(), x.var()</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>x.std() <span class="op">/</span> x.mean()                            <span class="co"># Variationskoeffizient</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>df.boxplot(column<span class="op">=</span><span class="st">"verbrauch"</span>, by<span class="op">=</span><span class="st">"typ"</span>)</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>x[x <span class="op">&lt;</span> <span class="dv">40</span>].mean(), x[x <span class="op">&lt;</span> <span class="dv">40</span>].median()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> pd.Series([<span class="dv">12</span>, <span class="dv">14</span>, <span class="dv">15</span>, <span class="dv">15</span>, <span class="dv">18</span>, <span class="dv">21</span>, <span class="dv">47</span>])</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>x.mean(), x.median()</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>x.quantile([<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>])</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>x.quantile(<span class="fl">0.75</span>) <span class="op">-</span> x.quantile(<span class="fl">0.25</span>)          <span class="co"># IQR</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>x.var(), x.std()                              <span class="co"># pandas: ddof=1, wie in R</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>x.std() <span class="op">/</span> x.mean()</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Achtung bei NumPy: dort ist ddof=0 die Vorgabe</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a><span class="co"># np.std(x, ddof=1) entspricht sd() in R</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>df.groupby(<span class="st">"typ"</span>)[<span class="st">"wert"</span>].agg([<span class="st">"size"</span>, <span class="st">"median"</span>,</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>                               <span class="kw">lambda</span> s: s.quantile(<span class="fl">.75</span>) <span class="op">-</span> s.quantile(<span class="fl">.25</span>)])</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>df.boxplot(column<span class="op">=</span><span class="st">"wert"</span>, by<span class="op">=</span><span class="st">"typ"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </div>
-</div>
-</section>
-<section id="offene-fragen" class="level2">
-<h2 class="anchored" data-anchor-id="offene-fragen">Offene Fragen</h2>
-<div class="open-question">
-<p>Wann darf ein Ausreisser ausgeschlossen werden? Mir fehlt eine klare Regel, die über “sieht falsch aus” hinausgeht.</p>
 </div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
 <ul>
 <li><a href="https://www.openintro.org/book/os/">OpenIntro Statistics (frei verfügbar)</a></li>
+<li><a href="https://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html">Dokumentation zu <code>quantile</code> in R (die neun Typen)</a></li>
 </ul>
 <div class="placeholder-notice">
 <p>Die Kursfolien zu Lage- und Streuungsparametern liegen im Moodle-Kurs; die Kurs-URL trage ich nach.</p>
