@@ -15,7 +15,6 @@ local stringify = pandoc.utils.stringify
 local terms = {}       -- Suchform -> Eintrag
 local entries = {}     -- fuer die Glossarseite, in Reihenfolge der yml-Datei
 local maxWords = 1     -- laengster Begriff in Woertern
-local seen = {}        -- pro Seite: schon markierte Begriffe
 local active = false   -- Glossar auf dieser Seite ueberhaupt anwenden?
 
 -- ---------------------------------------------------------------------------
@@ -67,7 +66,7 @@ function Meta(meta)
   -- Zustand zuruecksetzen. Falls Quarto denselben Lua-Zustand fuer mehrere
   -- Dokumente wiederverwendet, wuerden sonst Eintraege doppelt in der Liste
   -- landen und "schon markiert" von der Vorseite nachwirken.
-  terms, entries, seen, maxWords, active = {}, {}, {}, 1, false
+  terms, entries, maxWords, active = {}, {}, 1, false
 
   if not quarto.doc.is_format("html:js") then
     return meta
@@ -182,18 +181,18 @@ local function markiere(inlines)
     local treffer = nil
     local laenge = 0
 
+    -- Jedes Vorkommen wird markiert, nicht nur das erste je Seite. Wer auf
+    -- Seite drei ueber einen Begriff stolpert, soll die Erklaerung dort
+    -- bekommen und nicht erst weiter oben suchen muessen.
     for n = math.min(maxWords, #inlines), 1, -1 do
       local t = passt(inlines, i, n)
-      -- Gemerkt wird der Eintrag, nicht die Schreibweise: sonst bekaemen
-      -- "Median" und das Alias "Medians" auf derselben Seite je einen Tooltip.
-      if t and not seen[t.eintrag.term] then
+      if t then
         treffer, laenge = t, n
         break
       end
     end
 
     if treffer then
-      seen[treffer.eintrag.term] = true
       if treffer.vorne ~= "" then raus:insert(pandoc.Str(treffer.vorne)) end
       raus:insert(baueSpan(treffer))
       if treffer.hinten ~= "" then raus:insert(pandoc.Str(treffer.hinten)) end

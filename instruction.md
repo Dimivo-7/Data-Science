@@ -348,8 +348,7 @@ den `.qmd`-Dateien ist **nichts** einzutragen.
 - Ganze Wörter, keine Treffer in anderen Wörtern: `Median` trifft nicht in
   `Medianwert`. Wer den will, ergänzt ein Alias.
 - Gross-/Kleinschreibung egal, Umlaute eingeschlossen.
-- Pro Seite wird nur das **erste** Vorkommen je Eintrag markiert. Alias und
-  Grundform zählen als derselbe Eintrag.
+- **Jedes** Vorkommen wird markiert, nicht nur das erste der Seite.
 - Unberührt bleiben Überschriften, Links, Code, Fussnoten, Tabellen und
   Bildunterschriften.
 - Eine Seite nimmt sich mit `glossary-skip: true` im Front Matter aus.
