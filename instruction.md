@@ -18,6 +18,7 @@ Abschnitt 9 enthält einen fertigen Prompt zum Kopieren.
 | Theme | Bootstrap 5, `cosmo` (hell) / `darkly` (dunkel), plus `styles.scss` |
 | Hosting | GitHub Pages, Branch `gh-pages` |
 | Build | GitHub Actions (`.github/workflows/publish.yml`) bei jedem Push auf `main` |
+| Rechenumgebung | Die Action richtet R und Python samt Paketen ein und führt die Chunks aus |
 
 **Wichtig:** Quarto ist auf meinem Rechner nicht installiert. Ich schreibe nur
 `.qmd`-Dateien und pushe sie; das Rendern übernimmt die GitHub Action. Der
@@ -88,9 +89,11 @@ categories: ["Dimensionsreduktion", "Faktorenanalyse", "R", "Python"]
 
 ## 4. Aufbau einer Lektionsseite
 
-Alle Lektionsseiten haben **dieselben sechs Abschnitte in dieser Reihenfolge**.
-Keine zusätzlichen `##`-Ebenen, keine weggelassenen Abschnitte — die Einheit­lich­keit
-ist der Punkt der ganzen Seite.
+Alle Lektionsseiten haben **dieselben vier Abschnitte in dieser Reihenfolge**.
+Keine weggelassenen, keine zusätzlichen `##`-Abschnitte — die Einheitlichkeit
+ist der Punkt der ganzen Seite. Innerhalb von „Meine Zusammenfassung" sind
+`###`-Zwischentitel erwünscht; sie erscheinen im Inhaltsverzeichnis rechts und
+machen lange Seiten navigierbar.
 
 ````markdown
 ---
@@ -107,9 +110,33 @@ categories: ["…"]
 
 ## Meine Zusammenfassung
 
-Fließtext in eigenen Worten. Hier steht das Verständnis, nicht die Slide.
+Das Herzstück der Seite: ein ausführlicher Erklärtext in eigenen Worten,
+gegliedert mit `###`-Zwischentiteln. Hierhin gehören Formeln, gerechnete
+Beispiele und Abbildungen direkt im Fluss — die Seite soll als Nachschlagewerk
+tragen und mit der Zeit wachsen.
+
+### Ein Zwischentitel je Gedanke
+
+Fliesstext, dazu ein gerechnetes Beispiel:
+
+```{r}
+#| label: robustheit
+x <- c(12, 14, 15, 15, 18, 21)
+c(mittel = mean(x), median = median(x))
+```
+
+Und eine Abbildung mit Beschriftung:
+
+```{r}
+#| label: fig-verteilung
+#| fig-cap: "Was die Abbildung zeigt, in einem Satz."
+ggplot(data.frame(x), aes(x)) + geom_histogram(bins = 20)
+```
 
 ## Eigene Beispiele / Code
+
+Die kompakte R/Python-Gegenüberstellung zum Nachschlagen. Bleibt auch dann
+bestehen, wenn im Text schon Code steht — dort wird erklärt, hier verglichen.
 
 ::: panel-tabset
 ## R
@@ -126,16 +153,38 @@ PCA(n_components=2).fit(X)
 ```
 :::
 
-## Offene Fragen
-
-::: {.open-question}
-Was ist noch unklar?
-:::
-
 ## Verlinkte Ressourcen
 
 - [Original-Kursseite](https://…) *(zum Nachschlagen)*
 ````
+
+### Ausführbare Chunks und reine Listings
+
+Es gibt zwei Sorten Codeblöcke, und die Unterscheidung ist wichtig:
+
+| Schreibweise | Verhalten | wofür |
+|---|---|---|
+| ```` ```{r} ```` bzw. ```` ```{python} ```` | wird beim Build **ausgeführt**, Ausgabe und Grafik landen auf der Seite | Abbildungen, gerechnete Beispiele im Erklärtext |
+| ```` ```r ```` bzw. ```` ```python ```` | wird nur **angezeigt** | Listings im Tabset, Fragmente, Shell-Befehle |
+
+Für ausführbare Chunks gilt:
+
+- **Sie müssen ohne Vorbedingung laufen.** Ein Chunk, der ein `df` erwartet,
+  das es nicht gibt, bricht den ganzen Build ab. Daten im Chunk selbst
+  erzeugen (`rnorm`, `data.frame`) oder einen eingebauten Datensatz nehmen.
+- **`set.seed()` in den Setup-Chunk**, sonst ändern sich Zahlen und Grafiken
+  bei jedem Build und die Seite erzählt jedes Mal etwas anderes.
+- **Jeder Chunk bekommt ein `#| label:`**, Abbildungen zusätzlich
+  `#| fig-cap:`. Labels von Abbildungen beginnen mit `fig-`.
+- Der Setup-Chunk oben auf der Seite trägt `#| include: false` und lädt die
+  Pakete.
+- Verwendet werden dürfen nur Pakete, die in
+  `.github/workflows/publish.yml` installiert sind. Neues Paket gebraucht?
+  Erst dort eintragen.
+
+**Der Build ist die einzige Probe.** Quarto, R und Python laufen nicht auf
+meinem Rechner — ein Fehler im Chunk zeigt sich erst in der GitHub Action.
+Deshalb: einfache, offensichtliche Idiome, keine exotischen Konstruktionen.
 
 ### Zwingend: R vor Python
 
@@ -208,7 +257,7 @@ hell und dunkel:
 | Baustein | Wofür |
 |---|---|
 | `::: {.note-box}` | Hinweis, Merksatz, Einordnung |
-| `::: {.open-question}` | Offene Frage, Unklarheit (gelb markiert) |
+| `::: {.open-question}` | Offene Frage, Unklarheit (gelb markiert) — kein fester Abschnitt mehr, nur noch dort, wo eine Frage wirklich offen ist |
 | `::: {.placeholder-notice}` | Platzhalter: Inhalt existiert noch nicht |
 | `::: {.lesson-card}` in `:::: {.card-grid}` | Kartenraster auf Übersichtsseiten |
 | `::: panel-tabset` | R/Python nebeneinander |
@@ -328,12 +377,21 @@ Kommunikation, Visualisierungsethik, Deployment
 Passt nichts, schlage am Ende einen neuen Tag vor und begründe ihn –
 setze ihn aber nicht selbst ein.
 
-AUFBAU – genau diese sechs Abschnitte, genau in dieser Reihenfolge:
+AUFBAU – genau diese vier Abschnitte, genau in dieser Reihenfolge:
 ## Kernideen aus dem Kurs      4-6 Stichpunkte, Begriffe statt Sätze
-## Meine Zusammenfassung       Fliesstext in eigenen Worten
+## Meine Zusammenfassung       ausführlicher Erklärtext, mit ###-Zwischentiteln
+                               gegliedert, Formeln, gerechnete Beispiele und
+                               Abbildungen direkt im Text
 ## Eigene Beispiele / Code     ::: panel-tabset mit ## R zuerst, dann ## Python
-## Offene Fragen               ::: {.open-question}
 ## Verlinkte Ressourcen        Links, sonst ::: {.placeholder-notice}
+
+AUSFÜHRBARE CHUNKS
+Abbildungen und gerechnete Beispiele als ```{r} bzw. ```{python} – sie laufen
+beim Build. Jeder Chunk muss ohne Vorbedingung laufen: Daten im Chunk selbst
+erzeugen, nie ein df voraussetzen. Jeder Chunk mit #| label:, Abbildungen
+zusätzlich mit #| fig-cap: und dem Präfix fig- im Label. set.seed() in einen
+Setup-Chunk mit #| include: false. Nur Pakete aus publish.yml verwenden.
+Die Listings im Tabset bleiben reine Anzeige (```r bzw. ```python).
 
 HARTE REGELN
 - Im panel-tabset steht IMMER R zuerst, Python als zweites.
@@ -342,8 +400,8 @@ HARTE REGELN
   Kein eigenes HTML, keine Inline-Styles, keine Farben.
 - Formuliere alles in eigenen Worten um. Übernimm keine Formulierungen
   aus den Unterlagen, auch nicht leicht abgewandelt.
-- Erfinde nichts. Was in den Unterlagen fehlt, kommt unter "Offene Fragen",
-  wird aber nicht ergänzt. Erfinde insbesondere keine URLs.
+- Erfinde nichts. Was in den Unterlagen fehlt, wird nicht ergänzt; wo eine
+  Frage offen bleibt, ein ::: {.open-question} setzen. Keine erfundenen URLs.
 - Sprache: Deutsch. Fachbegriffe dürfen englisch bleiben.
 
 AUSGABE
@@ -378,9 +436,11 @@ Dazu am Schluss eine Zeile: der vorgeschlagene Dateiname.
 
 - [ ] Front Matter vollständig: `title`, `description`, `categories`
 - [ ] 3–5 Tags, alle aus dem Vokabular in Abschnitt 5
-- [ ] Die sechs Abschnitte vollständig und in der richtigen Reihenfolge
+- [ ] Die vier Abschnitte vollständig und in der richtigen Reihenfolge
 - [ ] Im Tabset: R zuerst, Python zweitens
 - [ ] Alle Codeblöcke mit Sprachangabe
+- [ ] Ausführbare Chunks laufen ohne Vorbedingung, mit Label und `fig-cap`
+- [ ] Nur Pakete verwendet, die in `publish.yml` installiert werden
 - [ ] Karten liegen in einem `.card-grid`
 - [ ] Nichts wörtlich aus den Kursunterlagen übernommen
 - [ ] Keine erfundenen Links
@@ -401,3 +461,7 @@ Dazu am Schluss eine Zeile: der vorgeschlagene Dateiname.
 | `section:` ohne `href` | Menüeintrag erscheint doppelt |
 | Neues Modul nicht in `project.render` | Seite wird nicht gebaut, 404 im Menü |
 | Änderung direkt in `docs/` | beim nächsten Build überschrieben |
+| Chunk setzt ein `df` voraus, das es nicht gibt | Build bricht ab, ganze Seite fehlt |
+| Paket im Chunk, das nicht in `publish.yml` steht | Build bricht ab |
+| `set.seed()` vergessen | Zahlen und Grafiken ändern sich bei jedem Build |
+| Ausführbarer Chunk im Tabset statt Listing | Tabset wird unnötig langsam und fehleranfällig |
