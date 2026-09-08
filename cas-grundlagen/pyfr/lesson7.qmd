@@ -4,70 +4,337 @@ description: "Series und DataFrame, Auswahl, Gruppierung, Verknüpfung und Umfor
 categories: ["Python", "pandas", "NumPy", "R", "tidyverse"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(dplyr)
+set.seed(42)
+
+standort <- rep(c("Bern", "Chur"), times = 12)
+messungen <- data.frame(
+  datum     = rep(seq(as.Date("2026-01-05"), by = "week", length.out = 12), each = 2),
+  standort  = standort,
+  verbrauch = round(rnorm(24, mean = ifelse(standort == "Bern", 120, 95), sd = 10), 1)
+)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+
+standort = np.array(["Bern", "Chur"] * 12)
+messungen = pd.DataFrame({
+    "datum": np.repeat(pd.date_range("2026-01-05", periods=12, freq="W"), 2),
+    "standort": standort,
+    "verbrauch": np.round(rng.normal(np.where(standort == "Bern", 120, 95), 10), 1),
+})
+```
+
 ## Kernideen aus dem Kurs
 
 - `Series` und `DataFrame`, die Rolle des Index
 - Auswahl mit `loc` und `iloc`
-- Fehlende Werte: `NaN`, `dropna`, `fillna`
-- `groupby` nach dem Muster split–apply–combine
+- Kettenindizierung und warum sie warnt
+- Fehlende Werte und wie pandas sie behandelt
+- `groupby` nach dem Muster split-apply-combine
 - `merge` und `concat`, langes und breites Format
 
-## Meine Zusammenfassung
-
-Pandas legt über [NumPy](lesson6.qmd) eine beschriftete Ebene. Eine `Series` ist ein eindimensionaler Vektor mit Index, ein `DataFrame` eine Tabelle aus solchen Spalten mit gemeinsamem Zeilenindex. Dieser Index ist mehr als eine Zeilennummer — er wird bei Rechenoperationen ausgerichtet, sodass zwei Series nach Schlüssel und nicht nach Position verrechnet werden. Wer das übersieht, wundert sich über unerwartete `NaN`.
-
-Bei der Auswahl trenne ich konsequent: `loc` arbeitet mit Beschriftungen, `iloc` mit Positionen. Der Mischbetrieb über Kettenindizierung ist die häufigste Ursache für Warnungen beim Schreiben, weil dabei unklar bleibt, ob auf eine Kopie oder das Original zugegriffen wird.
-
-Fehlende Werte sind in Pandas ein eigenes Thema, weil sie sich je nach Spaltentyp unterschiedlich verhalten. Vor jeder Aggregation lohnt der Blick darauf, wie viele Werte fehlen und ob sie zufällig fehlen — Löschen und Ersetzen sind beides inhaltliche Entscheidungen, keine technischen.
-
-`groupby` ist das Herzstück: Daten nach einem Schlüssel aufteilen, je Gruppe eine Funktion anwenden, die Ergebnisse wieder zusammensetzen. Dazu kommen die beiden Umformungsrichtungen — Tabellen verknüpfen (`merge` entspricht dem [SQL](lesson12.qmd)-Join) und zwischen langem und breitem Format wechseln. Für die Analyse ist meist das lange Format richtig, für die Darstellung das breite.
+## Erklärung
 
 ::: {.note-box}
-Die Denkweise entspricht weitgehend dplyr: `query` ist `filter`, `assign` ist `mutate`, `groupby().agg()` ist `group_by()` mit `summarise()`. Wer eines kann, überträgt das andere schnell.
+**Vorwissen:** [L6 – NumPy](lesson6.qmd), denn pandas legt eine beschriftete
+Ebene über NumPy-Arrays. Wer [ESDS L2](../esds/lesson2.qmd) kennt, findet hier
+dieselben Operationen unter anderen Namen wieder; die Tabsets stellen sie
+gegenüber.
 :::
 
-## Eigene Beispiele / Code
+### Was pandas über NumPy legt
+
+Ein NumPy-Array kennt nur Positionen. Für Daten braucht man Namen: Spalten
+heissen `verbrauch` und nicht 2, Zeilen gehören zu einem Datum und nicht zu
+Position 17. Genau das ergänzt pandas.
+
+Eine `Series` ist ein Vektor mit Index, ein `DataFrame` eine Sammlung solcher
+Spalten mit gemeinsamem Zeilenindex:
+
+```{python}
+#| label: series-py
+s = pd.Series([120.5, 98.1, 131.0], index=["Bern", "Chur", "Sion"])
+print(s)
+print(s["Chur"])
+print(s.mean())
+```
+
+Der Index ist mehr als eine Beschriftung. Bei Rechnungen zwischen zwei Series
+wird nach Index ausgerichtet, nicht nach Position:
+
+```{python}
+#| label: index-ausrichtung-py
+a = pd.Series([1, 2, 3], index=["x", "y", "z"])
+b = pd.Series([10, 20, 30], index=["z", "y", "x"])   # andere Reihenfolge
+
+print(a + b)          # x+x, y+y, z+z, nicht positionsweise
+```
+
+Wer das übersieht, wundert sich über unerwartete `NaN`, sobald die Indizes
+nicht deckungsgleich sind:
+
+```{python}
+#| label: index-luecke-py
+c = pd.Series([10, 20], index=["x", "y"])
+print(a + c)          # z fehlt in c -> NaN
+```
+
+::: {.note-box}
+Der Index ist der grösste konzeptionelle Unterschied zu einem R-Data-Frame,
+der keinen vergleichbaren Mechanismus kennt. Wo Ausrichtung nicht erwünscht
+ist, hilft `reset_index(drop=True)` oder das Rechnen auf `.to_numpy()`.
+:::
+
+### Auswahl: loc und iloc auseinanderhalten
+
+Zwei Zugriffsarten, und die Verwechslung ist die häufigste Fehlerquelle.
+
+| Zugriff | arbeitet mit | obere Grenze |
+|---|---|---|
+| `.loc` | Beschriftungen | eingeschlossen |
+| `.iloc` | Positionen | ausgeschlossen |
+
+```{python}
+#| label: loc-iloc-py
+df = pd.DataFrame({"wert": [10, 20, 30, 40]}, index=["a", "b", "c", "d"])
+
+print(df.loc["b":"c"])      # b und c, beide dabei
+print(df.iloc[1:3])         # Positionen 1 und 2, also b und c
+```
+
+Der Unterschied bei der oberen Grenze ist Absicht: Bei Beschriftungen wüsste
+man sonst nicht, welcher Wert der nächste wäre, den man ausschliessen soll.
+
+Für Bedingungen wird `.loc` verwendet, und zwar mit Zeilenauswahl und
+Spaltenauswahl in einem Zugriff:
 
 ::: panel-tabset
 ## R
 
-```r
-library(dplyr)
+```{r}
+#| label: auswahl-r
+messungen[messungen$standort == "Bern" & messungen$verbrauch > 120, ] |> head(3)
 
-df |>
-  filter(!is.na(preis)) |>
-  mutate(preis_netto = preis / 1.081) |>
-  group_by(kategorie) |>
-  summarise(n = n(), mittel = mean(preis_netto)) |>
-  arrange(desc(mittel))
-
-# Join
-left_join(bestellungen, kunden, by = "kunden_id")
+subset(messungen, verbrauch > 130, select = c(datum, verbrauch)) |> head(3)
 ```
 
 ## Python
 
-```python
-import pandas as pd
+```{python}
+#| label: auswahl-py
+maske = (messungen["standort"] == "Bern") & (messungen["verbrauch"] > 120)
+print(messungen.loc[maske].head(3))
 
-(df.dropna(subset=["preis"])
-   .assign(preis_netto=lambda d: d["preis"] / 1.081)
-   .groupby("kategorie")
-   .agg(n=("preis_netto", "size"), mittel=("preis_netto", "mean"))
-   .sort_values("mittel", ascending=False))
-
-# Join
-bestellungen.merge(kunden, on="kunden_id", how="left")
+print(messungen.loc[messungen["verbrauch"] > 130, ["datum", "verbrauch"]].head(3))
 ```
 :::
 
-## Offene Fragen
+Die runden Klammern um die Teilbedingungen sind nötig, weil `&` stärker bindet
+als der Vergleich. Ohne sie bricht der Ausdruck mit einer irreführenden
+Meldung ab.
 
-::: {.open-question}
-Wann ist ein aussagekräftiger Index in Pandas ein echter Vorteil und wann bloss eine Fehlerquelle gegenüber einer gewöhnlichen Spalte?
+### Warum Kettenindizierung warnt
+
+Zwei aufeinanderfolgende eckige Klammern erzeugen ein Zwischenergebnis, und ob
+das eine View oder eine Kopie ist, hängt von Umständen ab, die man nicht sieht.
+Schreiben darauf wirkt deshalb mal auf das Original und mal ins Leere:
+
+```{python}
+#| label: kettenindex-py
+#| warning: true
+df = pd.DataFrame({"wert": [1, 2, 3], "gruppe": ["a", "b", "a"]})
+
+# unzuverlaessig: zwei Zugriffe hintereinander
+df[df["gruppe"] == "a"]["wert"] = 99
+print(df)      # unveraendert, die Zuweisung ging ins Zwischenergebnis
+
+# richtig: ein einziger Zugriff
+df.loc[df["gruppe"] == "a", "wert"] = 99
+print(df)
+```
+
+Die erste Variante hat nichts bewirkt. Genau deshalb gilt die Regel: Zeilen-
+und Spaltenauswahl gehören in **einen** `.loc`-Zugriff.
+
+**Verständnisfragen**
+
+1. Warum liefert `df.loc["b":"c"]` zwei Zeilen, `df.iloc[1:3]` aber auch?
+2. Zwei Series mit gleichen Werten, aber verschiedener Indexreihenfolge werden addiert. Was passiert?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil `.loc` die obere Grenze einschliesst, `.iloc` sie ausschliesst. Bei
+   `.loc` sind b und c gemeint und beide dabei; bei `.iloc` sind die Positionen
+   1 und 2 gemeint, was ebenfalls b und c ergibt. Dass beide dasselbe liefern,
+   ist hier Zufall der gewählten Grenzen.
+2. Pandas richtet nach Index aus, nicht nach Position. Addiert werden also die
+   Werte mit gleichem Indexeintrag, unabhängig von ihrer Reihenfolge. Fehlt ein
+   Eintrag auf einer Seite, entsteht dort `NaN`.
+:::
+
+### Fehlende Werte
+
+Pandas behandelt `NaN` in Aggregationen stillschweigend, indem es sie
+weglässt. Das ist bequem und unterscheidet sich von R, wo `mean` bei fehlenden
+Werten `NA` liefert und damit zur Entscheidung zwingt.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: na-r
+x <- c(1, 2, NA, 4)
+
+mean(x)                  # NA
+mean(x, na.rm = TRUE)    # bewusste Entscheidung
+sum(is.na(x))
+```
+
+## Python
+
+```{python}
+#| label: na-py
+x = pd.Series([1, 2, np.nan, 4])
+
+print(x.mean())          # 2.333, NaN wurde still weggelassen
+print(x.count())         # zaehlt nur die vorhandenen
+print(x.isna().sum())
+```
+:::
+
+Der Unterschied ist beim Sprachwechsel wichtig. Wer in Python denselben
+Reflex will wie in R, prüft vor der Aggregation ausdrücklich:
+
+```{python}
+#| label: na-pruefen-py
+werte = pd.Series([1, 2, np.nan, 4])
+if werte.isna().any():
+    print(f"Achtung: {werte.isna().sum()} fehlende Werte von {len(werte)}")
+print(werte.mean())
+```
+
+### Gruppieren und zusammenfassen
+
+Dasselbe Muster wie in [ESDS L2](../esds/lesson2.qmd): aufteilen, je Gruppe
+rechnen, zusammensetzen.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: gruppen-r
+messungen |>
+  group_by(standort) |>
+  summarise(n      = n(),
+            mittel = round(mean(verbrauch), 1),
+            spanne = round(max(verbrauch) - min(verbrauch), 1),
+            .groups = "drop")
+```
+
+## Python
+
+```{python}
+#| label: gruppen-py
+print(messungen.groupby("standort").agg(
+    n=("verbrauch", "size"),
+    mittel=("verbrauch", "mean"),
+    spanne=("verbrauch", lambda s: s.max() - s.min()),
+).round(1))
+```
+:::
+
+Die Gegenüberstellung der Begriffe hilft beim Wechsel:
+
+| dplyr | pandas |
+|---|---|
+| `filter` | `query` oder `.loc[maske]` |
+| `select` | `[["a", "b"]]` |
+| `mutate` | `assign` |
+| `arrange` | `sort_values` |
+| `group_by` mit `summarise` | `groupby` mit `agg` |
+| `left_join` | `merge(how="left")` |
+| `pivot_wider` | `pivot` |
+| `pivot_longer` | `melt` |
+
+### Verknüpfen und Umformen
+
+```{python}
+#| label: merge-py
+stammdaten = pd.DataFrame({
+    "standort": ["Bern", "Chur", "Sion"],
+    "kanton": ["BE", "GR", "VS"],
+})
+
+verknuepft = messungen.merge(stammdaten, on="standort", how="left")
+print(verknuepft.head(3))
+print("Zeilen vorher:", len(messungen), " nachher:", len(verknuepft))
+```
+
+Die letzte Zeile ist eine Gewohnheit, die sich auszahlt. Wächst die Zeilenzahl
+nach einem Join unerwartet, war der Schlüssel auf einer Seite nicht eindeutig,
+und dann stimmt hinterher jede Summe nicht mehr.
+
+```{python}
+#| label: pivot-py
+monatlich = (messungen
+    .assign(monat=lambda d: d["datum"].dt.to_period("M").dt.to_timestamp())
+    .groupby(["monat", "standort"], as_index=False)
+    .agg(mittel=("verbrauch", "mean")))
+
+breit = monatlich.pivot(index="monat", columns="standort", values="mittel")
+print(breit.round(1))
+```
+
+### Methodenketten
+
+Wie die Pipe in R lassen sich Operationen aneinanderreihen. Die runden
+Klammern um den Ausdruck erlauben den Zeilenumbruch:
+
+```{python}
+#| label: kette-py
+ergebnis = (messungen
+    .query("verbrauch > 90")
+    .assign(abweichung=lambda d: d["verbrauch"] - d["verbrauch"].mean())
+    .sort_values("abweichung", ascending=False)
+    .head(3))
+
+print(ergebnis)
+```
+
+`assign` mit einer `lambda`-Funktion ist der Schlüssel dazu: Sie bekommt den
+DataFrame in seinem aktuellen Zustand, also nach den vorherigen Schritten.
+Ohne sie müsste man das Zwischenergebnis benennen und die Kette abbrechen.
+
+**Verständnisfragen**
+
+1. Warum ist `df[df["a"] > 1]["b"] = 0` unzuverlässig?
+2. Nach einem `merge` hat die Tabelle mehr Zeilen als vorher. Was ist passiert?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil zwei Zugriffe hintereinander ein Zwischenergebnis erzeugen, das eine
+   Kopie sein kann. Die Zuweisung trifft dann dieses Zwischenergebnis, das
+   danach verworfen wird, und das Original bleibt unverändert. Ein einziger
+   `.loc`-Zugriff mit Zeilen- und Spaltenangabe umgeht das.
+2. Der Schlüssel war in der rechten Tabelle nicht eindeutig. Jede Zeile links
+   wurde dann mit jeder passenden Zeile rechts kombiniert, was Zeilen
+   vervielfacht. Vor dem Join lohnt die Prüfung, ob der Schlüssel dort
+   tatsächlich eindeutig ist.
 :::
 
 ## Verlinkte Ressourcen
 
 - [Pandas-Benutzerhandbuch](https://pandas.pydata.org/docs/user_guide/index.html)
+- [Vergleich pandas gegen R](https://pandas.pydata.org/docs/getting_started/comparison/comparison_with_r.html)
 - [dplyr-Referenz](https://dplyr.tidyverse.org/)

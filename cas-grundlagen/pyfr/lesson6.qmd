@@ -4,70 +4,345 @@ description: "Arrays, Broadcasting und Vektorisierung als numerisches Fundament,
 categories: ["Python", "NumPy", "Programmiergrundlagen", "R"]
 ---
 
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats, optimize
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen aus dem Kurs
 
-- `ndarray`: homogener Typ, feste Form
+- `ndarray`: ein Typ, feste Form, zusammenhängender Speicher
 - Vektorisierung statt Schleifen
 - Broadcasting bei unterschiedlichen Formen
+- Achsen und was `axis` bedeutet
 - Slicing liefert Views, keine Kopien
-- SciPy für Statistik, Optimierung, Integration
+- SciPy für Statistik, Optimierung, Interpolation
 
-## Meine Zusammenfassung
+## Erklärung
 
-Ein NumPy-Array unterscheidet sich in zwei Punkten grundlegend von einer [Python-Liste](lesson1.qmd): alle Elemente haben denselben Typ, und die Daten liegen zusammenhängend im Speicher. Genau daraus entsteht der Geschwindigkeitsvorteil — Rechenoperationen laufen in kompiliertem Code über den ganzen Block, statt in Python elementweise durchlaufen zu werden. Der praktische Merksatz lautet deshalb: sobald ich eine `for`-Schleife über Zahlen schreibe, gibt es vermutlich eine vektorisierte Alternative.
+::: {.note-box}
+**Vorwissen:** [L1 – Python-Grundlagen](lesson1.qmd) für Listen und Slicing.
+Der Unterschied zwischen Liste und Array ist der rote Faden dieser Seite. Wer
+aus ESDS kommt, erkennt in NumPy das wieder, was R von Haus aus mitbringt.
+:::
 
-Broadcasting ist die Regel, nach der Arrays unterschiedlicher Form miteinander verrechnet werden. Vereinfacht: Dimensionen werden von hinten verglichen und passen, wenn sie gleich sind oder eine davon 1 ist; die Länge 1 wird dann virtuell wiederholt. Das erspart explizites Aufblähen von Arrays, führt aber auch dazu, dass ein Formfehler nicht als Fehler auffällt, sondern als stillschweigend falsches Ergebnis.
+### Warum eine Liste nicht genügt
 
-Die dritte Eigenheit ist, dass Slicing eine View auf dieselben Daten liefert und keine Kopie. Wer den Ausschnitt verändert, verändert das Original mit. Das ist speichereffizient und eine häufige Fehlerquelle zugleich; wo eine unabhängige Kopie gewollt ist, muss sie ausdrücklich angefordert werden.
+Eine Python-Liste darf beliebige Objekte enthalten und speichert deshalb für
+jedes Element einen Verweis. Rechnen heisst dann: Verweis folgen, Typ prüfen,
+Operation heraussuchen, ausführen, und das für jedes Element einzeln.
 
-SciPy baut darauf auf und liefert die numerischen Verfahren: Verteilungen und Tests, Optimierung, Integration, Interpolation, lineare Algebra. Die Arbeitsteilung ist klar — NumPy stellt die Datenstruktur, SciPy die Mathematik darauf.
+Ein Array speichert stattdessen alle Werte desselben Typs zusammenhängend im
+Speicher. Die Rechnung läuft in kompiliertem Code über den ganzen Block. Der
+Unterschied ist messbar:
 
-## Eigene Beispiele / Code
+```{python}
+#| label: geschwindigkeit-py
+n = 1_000_000
+liste = list(range(n))
+feld = np.arange(n)
+
+start = time.perf_counter()
+summe_liste = [w * 2 for w in liste]
+zeit_liste = time.perf_counter() - start
+
+start = time.perf_counter()
+summe_feld = feld * 2
+zeit_feld = time.perf_counter() - start
+
+print(f"Liste: {zeit_liste*1000:7.1f} ms")
+print(f"Array: {zeit_feld*1000:7.1f} ms")
+print(f"Faktor: {zeit_liste/zeit_feld:.0f}")
+```
+
+Der Faktor schwankt je nach Rechner, die Grössenordnung nicht. Daraus folgt der
+praktische Merksatz: Sobald eine Schleife über Zahlen läuft, gibt es
+vermutlich eine vektorisierte Alternative.
 
 ::: panel-tabset
 ## R
 
-```r
-# R ist von Haus aus vektorisiert, Matrizen sind ein Basistyp
-a <- matrix(1:6, nrow = 2)
-a * 2
-colMeans(a)
+```{r}
+#| label: vektorisiert-r
+werte <- c(12, 45, 7, 31)
 
-# Recycling ist das R-Gegenstueck zum Broadcasting
-a + c(10, 20)
-
-# Verteilungen wie in scipy.stats
-pnorm(1.96)
+werte / 10           # elementweise
+werte > 20
+sum(werte > 20)
+sqrt(werte)
 ```
 
 ## Python
 
-```python
-import numpy as np
-from scipy import stats
+```{python}
+#| label: vektorisiert-py
+werte = np.array([12, 45, 7, 31])
 
-a = np.arange(1, 7).reshape(2, 3)
-a * 2                      # vektorisiert, keine Schleife
-a.mean(axis=0)             # spaltenweise
-
-# Broadcasting: (2,3) mit (3,)
-a + np.array([10, 20, 30])
-
-# Slicing liefert eine View
-teil = a[:, 0]
-teil[0] = 99               # veraendert auch a
-
-stats.norm.cdf(1.96)
+print(werte / 10)
+print(werte > 20)
+print((werte > 20).sum())
+print(np.sqrt(werte))
 ```
 :::
 
-## Offene Fragen
+R braucht dafür keine Bibliothek, weil der Vektor dort die Grundstruktur ist.
+NumPy holt Python auf denselben Stand.
 
-::: {.open-question}
-Wie erkenne ich zuverlässig, ob ein Ausdruck eine View oder eine Kopie zurückgibt, bevor ich versehentlich das Original überschreibe?
+### Ein Typ für alle Elemente
+
+Ein Array trägt genau einen Typ, sichtbar als `dtype`. Passt ein Wert nicht
+hinein, wird umgewandelt, und das kann Information kosten:
+
+```{python}
+#| label: dtype-py
+ganze = np.array([1, 2, 3])
+print(ganze.dtype)
+
+ganze[0] = 3.7          # keine Warnung, aber abgeschnitten
+print(ganze)
+
+gemischt = np.array([1, 2.5, 3])
+print(gemischt.dtype)   # alles wird float
+
+mit_text = np.array([1, 2, "drei"])
+print(mit_text.dtype)   # alles wird Text
+```
+
+Das ist dieselbe stillschweigende Vereinheitlichung wie bei R-Vektoren, dort
+Coercion genannt. Die 3.7 wurde beim Einsetzen zu 3, ohne dass jemand gewarnt
+hätte.
+
+### Achsen verstehen
+
+Bei mehrdimensionalen Arrays entscheidet `axis`, in welche Richtung gerechnet
+wird. Die Zahl gibt an, welche Achse **verschwindet**:
+
+```{python}
+#| label: achsen-py
+a = np.arange(1, 13).reshape(3, 4)
+print(a)
+print("Form:", a.shape)
+
+print("axis=0, ueber Zeilen -> je Spalte:", a.sum(axis=0))
+print("axis=1, ueber Spalten -> je Zeile:", a.sum(axis=1))
+print("ohne axis, alles:", a.sum())
+```
+
+Die Merkregel dazu: `axis=0` läuft über die Zeilen und liefert ein Ergebnis je
+Spalte. Wer sich das einmal an einer 3-mal-4-Matrix klarmacht, verwechselt es
+später nicht mehr.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: achsen-r
+a <- matrix(1:12, nrow = 3, byrow = TRUE)
+a
+
+colSums(a)          # entspricht axis = 0
+rowSums(a)          # entspricht axis = 1
+apply(a, 2, mean)   # allgemeiner: 2 = Spalten
+```
+
+## Python
+
+```{python}
+#| label: achsen2-py
+a = np.arange(1, 13).reshape(3, 4)
+print(a.sum(axis=0))
+print(a.sum(axis=1))
+print(a.mean(axis=0))
+```
+:::
+
+Aufgepasst beim Wechsel: In R steht bei `apply` die 2 für Spalten, in NumPy
+liefert `axis=0` das Ergebnis je Spalte. Die Zahlen bedeuten das Gegenteil.
+
+### Broadcasting
+
+Arrays unterschiedlicher Form lassen sich verrechnen, wenn ihre Formen
+zusammenpassen. Die Regel wird von hinten nach vorne geprüft: Zwei Achsen
+passen, wenn sie gleich lang sind oder eine davon die Länge eins hat.
+
+```{python}
+#| label: broadcasting-py
+a = np.arange(1, 13).reshape(3, 4)          # Form (3, 4)
+je_spalte = np.array([10, 20, 30, 40])      # Form (4,)
+
+print(a + je_spalte)        # (4,) wird auf jede Zeile angewendet
+```
+
+Soll stattdessen je Zeile addiert werden, muss die Form ausdrücklich passend
+gemacht werden:
+
+```{python}
+#| label: broadcasting2-py
+je_zeile = np.array([100, 200, 300])        # Form (3,)
+
+try:
+    a + je_zeile
+except ValueError as fehler:
+    print("passt nicht:", fehler)
+
+print(a + je_zeile.reshape(3, 1))           # jetzt Form (3, 1)
+```
+
+::: {.note-box}
+Broadcasting ist bequem und gefährlich zugleich. Passen zwei Formen zufällig
+zusammen, obwohl inhaltlich etwas anderes gemeint war, gibt es keinen Fehler,
+sondern ein stillschweigend falsches Ergebnis. Bei überraschenden Zahlen lohnt
+der Blick auf `.shape` vor allem anderen.
+:::
+
+Das Gegenstück in R heisst Recycling und ist grosszügiger: Dort wird der
+kürzere Vektor einfach wiederholt, auch wenn die Längen nur zufällig teilbar
+sind. NumPy verweigert diesen Fall, was hier die sicherere Wahl ist.
+
+**Verständnisfragen**
+
+1. Ein Array hat die Form `(100, 3)`, ein zweites `(3,)`. Werden sie zusammen verrechnet, worauf wirkt das zweite?
+2. Warum liefert `a.sum(axis=0)` bei einer 3-mal-4-Matrix vier Zahlen?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Auf jede der hundert Zeilen. Die Formen werden von hinten verglichen, dort
+   steht in beiden Fällen die 3, also passt es; nach vorne wird die fehlende
+   Achse mit Länge eins ergänzt und wiederholt. Typischer Anwendungsfall ist
+   das Abziehen von Spaltenmittelwerten.
+2. Weil die Achse 0 die der Zeilen ist und beim Summieren verschwindet. Übrig
+   bleiben die vier Spalten, also vier Zahlen. Die Zahl in `axis` benennt
+   immer die Achse, die wegfällt.
+:::
+
+### View oder Kopie
+
+Ein Ausschnitt eines Arrays ist keine Kopie, sondern ein Fenster auf dieselben
+Daten. Wer den Ausschnitt verändert, verändert das Original mit:
+
+```{python}
+#| label: view-py
+original = np.arange(10)
+teil = original[2:5]        # View
+teil[0] = 999
+print(original)             # das Original hat sich geaendert
+
+kopie = original[2:5].copy()
+kopie[0] = -1
+print(original)             # diesmal nicht
+```
+
+Das ist speichereffizient und bei grossen Datenmengen der Grund, warum NumPy
+schnell bleibt. Es ist zugleich eine häufige Fehlerquelle. Ob ein Array eine
+View ist, lässt sich prüfen:
+
+```{python}
+#| label: view-pruefen-py
+teil = original[2:5]
+maske = original[original > 5]        # Auswahl per Bedingung: immer Kopie
+
+print("Slice ist View:", teil.base is not None)
+print("Maske ist View:", maske.base is not None)
+```
+
+Die Regel dahinter: Ein Slice mit Doppelpunkten liefert eine View, eine Auswahl
+über eine Bedingung oder eine Indexliste liefert eine Kopie.
+
+### SciPy: die Mathematik obendrauf
+
+NumPy stellt die Datenstruktur, SciPy die Verfahren. Die Arbeitsteilung ist
+sauber, und man greift zu SciPy, sobald es über Grundrechenarten hinausgeht.
+
+```{python}
+#| label: scipy-py
+werte = rng.normal(100, 15, 200)
+
+# Verteilungen und Tests
+print("P(Z <= 1.96) =", round(stats.norm.cdf(1.96), 4))
+print("Shapiro-Test p =", round(stats.shapiro(werte).pvalue, 3))
+
+# Optimierung: Minimum einer Funktion
+f = lambda x: (x - 3) ** 2 + 2
+ergebnis = optimize.minimize_scalar(f)
+print("Minimum bei x =", round(ergebnis.x, 4))
+```
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: scipy-r
+werte <- rnorm(200, 100, 15)
+
+pnorm(1.96)
+round(shapiro.test(werte)$p.value, 3)
+
+optimize(function(x) (x - 3)^2 + 2, interval = c(-10, 10))$minimum
+```
+
+## Python
+
+```{python}
+#| label: scipy2-py
+print(round(stats.norm.cdf(1.96), 4))
+print(round(stats.shapiro(rng.normal(100, 15, 200)).pvalue, 3))
+print(round(optimize.minimize_scalar(lambda x: (x - 3) ** 2 + 2).x, 4))
+```
+:::
+
+Was in R zur Basisinstallation gehört, liegt in Python in SciPy. Das ist der
+grösste strukturelle Unterschied zwischen den beiden Welten: R ist eine
+Statistiksprache mit angebauter Allgemeinheit, Python eine allgemeine Sprache
+mit angebauter Statistik.
+
+```{python}
+#| label: fig-verteilung-py
+#| fig-cap: "Stichprobe gegen die theoretische Dichte, gezeichnet mit NumPy, SciPy und matplotlib."
+#| fig-height: 3.4
+x = np.linspace(50, 150, 300)
+
+fig, ax = plt.subplots(figsize=(7, 3.4))
+ax.hist(werte, bins=25, density=True, color="0.8", edgecolor="white")
+ax.plot(x, stats.norm.pdf(x, 100, 15), linewidth=1.5, color="black")
+ax.set_xlabel("Wert")
+ax.set_ylabel("Dichte")
+plt.show()
+```
+
+**Verständnisfragen**
+
+1. Warum ist `original[2:5]` eine View, `original[original > 5]` aber eine Kopie?
+2. Wann ist die Vektorisierung kein Vorteil?
+
+::: {.callout-note collapse="true" title="Lösung"}
+1. Weil ein Slice sich als regelmässiges Muster beschreiben lässt, nämlich
+   Startposition, Endposition und Schrittweite. Das Ergebnis kann daher auf
+   denselben Speicher zeigen. Eine Auswahl per Bedingung greift dagegen
+   unregelmässig verteilte Elemente heraus, die im Speicher nicht
+   zusammenhängen; sie müssen neu abgelegt werden.
+2. Wenn der Zwischenspeicher zum Problem wird. Eine vektorisierte Rechnung legt
+   Zwischenergebnisse in voller Grösse an; bei sehr grossen Arrays kann das den
+   Arbeitsspeicher sprengen, wo eine Schleife stückweise arbeiten würde.
+   Ausserdem bringt sie nichts, wenn jeder Schritt vom vorherigen abhängt.
 :::
 
 ## Verlinkte Ressourcen
 
 - [NumPy-Dokumentation](https://numpy.org/doc/stable/)
+- [NumPy für R-Umsteiger](https://numpy.org/doc/stable/user/numpy-for-matlab-users.html)
 - [SciPy-Dokumentation](https://docs.scipy.org/doc/scipy/)
