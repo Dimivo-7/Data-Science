@@ -215,19 +215,30 @@ Das Gegenstück in R heisst Recycling und ist grosszügiger: Dort wird der
 kürzere Vektor einfach wiederholt, auch wenn die Längen nur zufällig teilbar
 sind. NumPy verweigert diesen Fall, was hier die sicherere Wahl ist.
 
-**Verständnisfragen**
+::: {.quiz}
+Ein Array hat die Form `(100, 3)`, ein zweites `(3,)`. Worauf wirkt das zweite
+bei einer gemeinsamen Rechnung?
 
-1. Ein Array hat die Form `(100, 3)`, ein zweites `(3,)`. Werden sie zusammen verrechnet, worauf wirkt das zweite?
-2. Warum liefert `a.sum(axis=0)` bei einer 3-mal-4-Matrix vier Zahlen?
+- [x] Auf jede der hundert Zeilen ~ Richtig. Die Formen werden von hinten
+      verglichen, dort steht beide Male die 3. Nach vorne wird die fehlende Achse
+      mit Länge eins ergänzt und wiederholt. Typischer Fall ist das Abziehen von
+      Spaltenmittelwerten.
+- [ ] Auf die ersten drei Zeilen ~ Broadcasting schneidet nichts ab, es
+      wiederholt.
+- [ ] Es entsteht ein Fehler wegen unterschiedlicher Formen ~ Die Formen sind
+      verträglich, sonst gäbe es tatsächlich einen Fehler.
+:::
 
-::: {.callout-note collapse="true" title="Lösung"}
-1. Auf jede der hundert Zeilen. Die Formen werden von hinten verglichen, dort
-   steht in beiden Fällen die 3, also passt es; nach vorne wird die fehlende
-   Achse mit Länge eins ergänzt und wiederholt. Typischer Anwendungsfall ist
-   das Abziehen von Spaltenmittelwerten.
-2. Weil die Achse 0 die der Zeilen ist und beim Summieren verschwindet. Übrig
-   bleiben die vier Spalten, also vier Zahlen. Die Zahl in `axis` benennt
-   immer die Achse, die wegfällt.
+::: {.quiz}
+Warum liefert `a.sum(axis=0)` bei einer 3-mal-4-Matrix vier Zahlen?
+
+- [x] Achse 0 ist die der Zeilen und fällt beim Summieren weg ~ Richtig. Übrig
+      bleiben die vier Spalten. Die Zahl in `axis` benennt immer die Achse, die
+      verschwindet, nicht die, die bleibt.
+- [ ] Weil über die Spalten summiert wird und es vier davon gibt ~ Das Ergebnis
+      stimmt, die Begründung führt aber bei `axis=1` in die Irre.
+- [ ] Weil NumPy immer über die längere Achse summiert ~ Die Länge spielt keine
+      Rolle, nur die angegebene Achse.
 :::
 
 ### View oder Kopie
@@ -324,21 +335,34 @@ ax.set_ylabel("Dichte")
 plt.show()
 ```
 
-**Verständnisfragen**
+In @fig-verteilung-py arbeiten alle drei Pakete zusammen: NumPy erzeugt die
+Stichprobe und das Gitter, SciPy liefert die Dichte, matplotlib zeichnet. Diese
+Arbeitsteilung ist der Normalfall.
 
-1. Warum ist `original[2:5]` eine View, `original[original > 5]` aber eine Kopie?
-2. Wann ist die Vektorisierung kein Vorteil?
+::: {.quiz}
+Warum ist `original[2:5]` eine View, `original[original > 5]` aber eine Kopie?
 
-::: {.callout-note collapse="true" title="Lösung"}
-1. Weil ein Slice sich als regelmässiges Muster beschreiben lässt, nämlich
-   Startposition, Endposition und Schrittweite. Das Ergebnis kann daher auf
-   denselben Speicher zeigen. Eine Auswahl per Bedingung greift dagegen
-   unregelmässig verteilte Elemente heraus, die im Speicher nicht
-   zusammenhängen; sie müssen neu abgelegt werden.
-2. Wenn der Zwischenspeicher zum Problem wird. Eine vektorisierte Rechnung legt
-   Zwischenergebnisse in voller Grösse an; bei sehr grossen Arrays kann das den
-   Arbeitsspeicher sprengen, wo eine Schleife stückweise arbeiten würde.
-   Ausserdem bringt sie nichts, wenn jeder Schritt vom vorherigen abhängt.
+- [x] Ein Slice lässt sich als Start, Ende und Schrittweite beschreiben, eine
+      Bedingung nicht ~ Richtig. Das regelmässige Muster kann auf denselben
+      Speicher zeigen. Eine Auswahl per Bedingung greift unregelmässig verteilte
+      Elemente heraus, die neu abgelegt werden müssen.
+- [ ] Weil Vergleiche in NumPy generell Kopien erzeugen ~ Der Vergleich selbst
+      liefert nur ein Wahrheitsarray; entscheidend ist die Unregelmässigkeit des
+      Zugriffs.
+- [ ] Weil das Ergebnis kleiner ist ~ Auch ein Slice ist kleiner als das
+      Original und bleibt trotzdem eine View.
+:::
+
+::: {.quiz}
+Wann ist die Vektorisierung kein Vorteil?
+
+- [x] Wenn die Zwischenergebnisse in voller Grösse den Arbeitsspeicher sprengen ~
+      Richtig, und ebenso, wenn jeder Schritt vom vorherigen abhängt. Eine
+      Schleife arbeitet dann stückweise und kommt durch.
+- [ ] Bei kleinen Arrays, weil der Aufruf teurer ist ~ Der Aufwand fällt kaum ins
+      Gewicht, und lesbarer bleibt die vektorisierte Form ohnehin.
+- [ ] Wenn Zahlen und Text gemischt sind ~ Dann taugt eher der Datentyp nicht;
+      das ist ein anderes Problem.
 :::
 
 ## Verlinkte Ressourcen
