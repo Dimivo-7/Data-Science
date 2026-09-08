@@ -279,9 +279,22 @@ return {
     Table  = function(el) return el, false end,
     Figure = function(el) return el, false end,
 
+    -- Quarto baut Abbildungen und Tabellen als Div auf. Der einzige Text
+    -- darin ist die Bildunterschrift, und ein Tooltip dort sprengt den
+    -- Ausgabecontainer: der traegt overflow: auto, der absolut positionierte
+    -- Kasten vergroessert dessen scrollWidth und die Abbildung bekommt
+    -- Scrollleisten. Der Figure-Ausschluss oben greift hier nicht, weil die
+    -- Abbildung zu diesem Zeitpunkt noch kein pandoc-Figure ist.
     Div = function(el)
       if el.identifier == "glossar-liste" then
         return pandoc.Div(glossarListe(), el.attr), false
+      end
+      for _, klasse in ipairs(el.classes) do
+        if klasse == "quarto-float"
+          or klasse == "cell-output-display"
+          or klasse == "quarto-figure" then
+          return el, false
+        end
       end
       return el
     end,
