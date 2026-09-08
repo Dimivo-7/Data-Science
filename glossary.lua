@@ -4,18 +4,20 @@
 -- _quarto.yml eingebunden ist und deshalb hier als meta.glossary ankommt.
 -- Laeuft zur Build-Zeit, braucht keine externen Abhaengigkeiten.
 --
--- Zwei Aufgaben:
---   1. Jeden Begriff einmal je Seite in ein <span class="glossary-term">
+-- Drei Aufgaben:
+--   1. Jedes Vorkommen eines Begriffs in ein <span class="glossary-term">
 --      mit data-def verpacken. Den Tooltip zeichnet styles.scss.
---   2. Auf der Glossarseite den Platzhalter #glossar-liste durch die
+--   2. Bei mehrdeutigen Begriffen die zur Seite passende Bedeutung waehlen.
+--   3. Auf der Glossarseite den Platzhalter #glossar-liste durch die
 --      vollstaendige, nach Themen gruppierte Liste ersetzen.
 
 local stringify = pandoc.utils.stringify
 
-local terms = {}       -- Suchform -> Eintrag
-local entries = {}     -- fuer die Glossarseite, in Reihenfolge der yml-Datei
-local maxWords = 1     -- laengster Begriff in Woertern
-local active = false   -- Glossar auf dieser Seite ueberhaupt anwenden?
+local terms = {}        -- Suchform -> Eintrag
+local entries = {}      -- fuer die Glossarseite, in Reihenfolge der yml-Datei
+local maxWords = 1      -- laengster Begriff in Woertern
+local active = false    -- Glossar auf dieser Seite anwenden?
+local seitenTags = {}   -- categories dieser Seite, als Menge
 
 -- ---------------------------------------------------------------------------
 -- Kleinschreibung inklusive Umlauten
@@ -41,7 +43,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Pandoc haengt Satzzeichen an das Str-Element: aus "Median," wird ein
 -- einziger Str. Fuer den Vergleich brauchen wir den nackten Wortkern.
-
+--
 -- Bewusst nur ASCII-Satzzeichen. Lua-Muster arbeiten byteweise; eine
 -- Zeichenklasse mit typografischen Anfuehrungszeichen wuerde deren einzelne
 -- Bytes enthalten und dann auch aus anderen UTF-8-Zeichen Bytes abschneiden -
@@ -62,14 +64,60 @@ end
 -- Metadaten einlesen
 -- ---------------------------------------------------------------------------
 
+local function leseListe(feld)
+  local raus = {}
+  if feld then
+    for _, wert in ipairs(feld) do
+      raus[#raus + 1] = stringify(wert)
+    end
+  end
+  return raus
+end
+
+-- Ein Eintrag hat entweder ein einzelnes def oder eine Liste bedeutungen.
+-- Beide Schreibweisen landen hier in derselben Struktur.
+local function leseBedeutungen(roh)
+  local liste = {}
+
+  if roh.bedeutungen then
+    for _, b in ipairs(roh.bedeutungen) do
+      local def = stringify(b.def or "")
+      if def ~= "" then
+        liste[#liste + 1] = {
+          def   = def,
+          topic = b.topic and stringify(b.topic) or "Allgemein",
+          tags  = leseListe(b.tags),
+        }
+      end
+    end
+  else
+    local def = stringify(roh.def or "")
+    if def ~= "" then
+      liste[1] = {
+        def   = def,
+        topic = roh.topic and stringify(roh.topic) or "Allgemein",
+        tags  = leseListe(roh.tags),
+      }
+    end
+  end
+
+  return liste
+end
+
 function Meta(meta)
   -- Zustand zuruecksetzen. Falls Quarto denselben Lua-Zustand fuer mehrere
   -- Dokumente wiederverwendet, wuerden sonst Eintraege doppelt in der Liste
-  -- landen und "schon markiert" von der Vorseite nachwirken.
-  terms, entries, maxWords, active = {}, {}, 1, false
+  -- landen.
+  terms, entries, maxWords, active, seitenTags = {}, {}, 1, false, {}
 
   if not quarto.doc.is_format("html:js") then
     return meta
+  end
+
+  -- Die Tags der Seite entscheiden bei mehrdeutigen Begriffen, welche
+  -- Bedeutung gezeigt wird.
+  for _, tag in ipairs(leseListe(meta.categories)) do
+    seitenTags[tag] = true
   end
 
   if not meta.glossary then
@@ -78,22 +126,16 @@ function Meta(meta)
 
   for _, roh in ipairs(meta.glossary) do
     local begriff = stringify(roh.term or "")
-    local definition = stringify(roh.def or "")
+    local bedeutungen = leseBedeutungen(roh)
 
-    if begriff ~= "" and definition ~= "" then
-      local eintrag = {
-        term  = begriff,
-        def   = definition,
-        topic = roh.topic and stringify(roh.topic) or "Allgemein",
-      }
+    if begriff ~= "" and #bedeutungen > 0 then
+      local eintrag = { term = begriff, bedeutungen = bedeutungen }
       entries[#entries + 1] = eintrag
 
       -- Der Begriff selbst und alle Aliasse zeigen auf denselben Eintrag
       local schreibweisen = { begriff }
-      if roh.aliases then
-        for _, a in ipairs(roh.aliases) do
-          schreibweisen[#schreibweisen + 1] = stringify(a)
-        end
+      for _, a in ipairs(leseListe(roh.aliases)) do
+        schreibweisen[#schreibweisen + 1] = a
       end
 
       for _, form in ipairs(schreibweisen) do
@@ -109,6 +151,47 @@ function Meta(meta)
   -- trotzdem, um die Liste zu bauen.
   active = (next(terms) ~= nil) and not meta["glossary-skip"]
   return meta
+end
+
+-- ---------------------------------------------------------------------------
+-- Mehrdeutige Begriffe
+-- ---------------------------------------------------------------------------
+-- Traegt ein Begriff mehrere Bedeutungen, wird zuerst versucht, anhand der
+-- Tags der Seite genau eine auszuwaehlen. Bleibt es uneindeutig, werden alle
+-- gezeigt, jede mit ihrem Themenlabel davor. Bewusst kein Ausblenden: ein
+-- fehlender Tooltip faellt niemandem auf, ein etwas laengerer schon.
+
+local function passendeBedeutungen(eintrag)
+  local passend = {}
+  for _, b in ipairs(eintrag.bedeutungen) do
+    for _, tag in ipairs(b.tags) do
+      if seitenTags[tag] then
+        passend[#passend + 1] = b
+        break
+      end
+    end
+  end
+  return passend
+end
+
+local function tooltipText(eintrag)
+  local alle = eintrag.bedeutungen
+  if #alle == 1 then
+    return alle[1].def, alle[1].topic
+  end
+
+  local passend = passendeBedeutungen(eintrag)
+  if #passend == 1 then
+    return passend[1].def, passend[1].topic
+  end
+
+  local quelle = (#passend > 1) and passend or alle
+  local teile, themen = {}, {}
+  for _, b in ipairs(quelle) do
+    teile[#teile + 1] = b.topic .. ": " .. b.def
+    themen[#themen + 1] = b.topic
+  end
+  return table.concat(teile, "  ·  "), table.concat(themen, ", ")
 end
 
 -- ---------------------------------------------------------------------------
@@ -140,8 +223,7 @@ local function passt(inlines, i, n)
     woerter[w] = kern
   end
 
-  local text = table.concat(woerter, " ")
-  local eintrag = terms[lower(text)]
+  local eintrag = terms[lower(table.concat(woerter, " "))]
   if not eintrag then return nil end
 
   return { eintrag = eintrag, woerter = woerter, vorne = vorne, hinten = hinten }
@@ -154,9 +236,11 @@ local function baueSpan(treffer)
     inhalt[#inhalt + 1] = pandoc.Str(wort)
   end
 
+  local def, topic = tooltipText(treffer.eintrag)
+
   return pandoc.Span(inhalt, pandoc.Attr("", { "glossary-term" }, {
-    ["data-def"]   = treffer.eintrag.def,
-    ["data-topic"] = treffer.eintrag.topic,
+    ["data-def"]   = def,
+    ["data-topic"] = topic,
     ["tabindex"]   = "0",
   }))
 end
@@ -219,14 +303,21 @@ local function escape(s)
 end
 
 local function glossarListe()
-  -- nach Thema gruppieren, Themen und Begriffe jeweils alphabetisch
+  -- Nach Thema gruppieren. Ein mehrdeutiger Begriff erscheint in jedem Thema,
+  -- zu dem er eine Bedeutung hat, jeweils mit der dortigen Definition.
   local themen, namen = {}, {}
   for _, e in ipairs(entries) do
-    if not themen[e.topic] then
-      themen[e.topic] = {}
-      namen[#namen + 1] = e.topic
+    for _, b in ipairs(e.bedeutungen) do
+      if not themen[b.topic] then
+        themen[b.topic] = {}
+        namen[#namen + 1] = b.topic
+      end
+      table.insert(themen[b.topic], {
+        term = e.term,
+        def = b.def,
+        mehrdeutig = #e.bedeutungen > 1,
+      })
     end
-    table.insert(themen[e.topic], e)
   end
   table.sort(namen)
 
@@ -239,9 +330,13 @@ local function glossarListe()
     html[#html + 1] = '<h2 class="glossary-group__title">' .. escape(thema) .. "</h2>"
 
     for _, e in ipairs(liste) do
+      local hinweis = ""
+      if e.mehrdeutig then
+        hinweis = '<span class="glossary-entry__ambig">mehrdeutig</span>'
+      end
       html[#html + 1] = table.concat({
         '<article class="glossary-entry" data-term="', escape(e.term), '">',
-        '<h3 class="glossary-entry__term">', escape(e.term), "</h3>",
+        '<h3 class="glossary-entry__term">', escape(e.term), hinweis, "</h3>",
         '<p class="glossary-entry__def">', escape(e.def), "</p>",
         '<div class="glossary-entry__pages" data-term="', escape(e.term), '">',
         '<span class="glossary-entry__pending">Seiten werden gesucht …</span>',
@@ -263,8 +358,6 @@ end
 -- ---------------------------------------------------------------------------
 -- Filter
 -- ---------------------------------------------------------------------------
--- topdown, damit das zweite Rueckgabeargument false die Kinder aussparen kann.
--- Ohne das wuerde der Filter auch in Ueberschriften, Links und Code markieren.
 
 return {
   { Meta = Meta },

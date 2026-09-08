@@ -352,6 +352,30 @@ den `.qmd`-Dateien ist **nichts** einzutragen.
 | `topic` | Themenbereich für die Gruppierung auf der Glossarseite. |
 | `aliases` | Optional, für Plural- und Beugungsformen. |
 
+**Mehrdeutige Begriffe.** Bedeutet ein Wort je Themenbereich etwas anderes, wie
+`Faktor` in R gegenüber der Faktorenanalyse, treten an die Stelle von `topic`
+und `def` mehrere `bedeutungen`:
+
+```yaml
+- term: Faktor
+  aliases: [Faktoren]
+  bedeutungen:
+    - topic: Programmierung
+      tags: [Programmiergrundlagen, tidyverse, Tooling]
+      def: Datentyp in R für kategoriale Merkmale …
+    - topic: Statistik
+      tags: [Faktorenanalyse, Dimensionsreduktion]
+      def: Nicht direkt beobachtete Grösse …
+```
+
+Die `tags` werden gegen die `categories` der Seite geprüft. Passt genau eine
+Bedeutung, wird nur sie gezeigt; passt keine oder mehrere, werden alle gezeigt,
+jede mit ihrem Themenlabel. Ausgeblendet wird nie: Ein fehlender Tooltip fällt
+niemandem auf, ein etwas längerer schon.
+
+Als `tags` taugen nur Merkmale, die den Themenbereich wirklich unterscheiden.
+`R` und `Python` stehen auf fast jeder Seite und trennen deshalb nichts.
+
 **Was der Filter tut und was nicht**
 
 - Ganze Wörter, keine Treffer in anderen Wörtern: `Median` trifft nicht in
