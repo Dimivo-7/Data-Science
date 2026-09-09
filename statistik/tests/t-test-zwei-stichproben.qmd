@@ -28,6 +28,20 @@ import pingouin as pg
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
+
+def pg_auswahl(tabelle, *namen):
+    """Gibt die gewuenschten Spalten einer pingouin-Tabelle zurueck, soweit vorhanden."""
+    vorhanden = [s for s in namen if s in tabelle.columns]
+    return tabelle[vorhanden] if vorhanden else tabelle
+
+
+def pg_wert(tabelle, anfang):
+    """Liest einen Wert aus der ersten Zeile; die Spalte wird ueber ihren Anfang gefunden."""
+    for spalte in tabelle.columns:
+        if str(spalte).lower().replace("_", "-").startswith(anfang):
+            return tabelle[spalte].iloc[0]
+    raise KeyError(anfang)
+
 ```
 
 ## Kurzsteckbrief
@@ -248,7 +262,7 @@ round(c(differenz = diff(rev(ergebnis$estimate)),
 ```{python}
 #| label: szenario-a-tt2-py
 a = pg.ttest(maschine_a, maschine_b, correction=True)
-print(a[["T", "dof", "p-val", "CI95%", "cohen-d"]].round(4).to_string(index=False))
+print(pg_auswahl(a, "T", "dof", "p-val", "CI95%", "cohen-d").round(4).to_string(index=False))
 ```
 
 :::
@@ -343,8 +357,8 @@ rng_c = np.random.default_rng(31)
 schief_a = rng_c.exponential(1.0, 12)
 schief_b = rng_c.exponential(2.0, 12)
 
-print(pg.ttest(schief_a, schief_b, correction=True)["p-val"].round(4).item())
-print(pg.mwu(schief_a, schief_b)["p-val"].round(4).item())
+print(round(pg_wert(pg.ttest(schief_a, schief_b, correction=True), "p-val"), 4))
+print(round(pg_wert(pg.mwu(schief_a, schief_b), "p-val"), 4))
 ```
 
 :::
@@ -393,7 +407,8 @@ rng_d = np.random.default_rng(77)
 gross_a = rng_d.normal(12.10, 0.4, 5000)
 gross_b = rng_d.normal(12.12, 0.4, 5000)
 
-print(pg.ttest(gross_a, gross_b, correction=True)[["p-val", "cohen-d"]].round(5).to_string(index=False))
+print(pg_auswahl(pg.ttest(gross_a, gross_b, correction=True),
+                 "p-val", "cohen-d").round(5).to_string(index=False))
 ```
 
 :::

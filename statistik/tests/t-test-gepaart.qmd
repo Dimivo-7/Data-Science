@@ -28,6 +28,20 @@ import pingouin as pg
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
+
+def pg_auswahl(tabelle, *namen):
+    """Gibt die gewuenschten Spalten einer pingouin-Tabelle zurueck, soweit vorhanden."""
+    vorhanden = [s for s in namen if s in tabelle.columns]
+    return tabelle[vorhanden] if vorhanden else tabelle
+
+
+def pg_wert(tabelle, anfang):
+    """Liest einen Wert aus der ersten Zeile; die Spalte wird ueber ihren Anfang gefunden."""
+    for spalte in tabelle.columns:
+        if str(spalte).lower().replace("_", "-").startswith(anfang):
+            return tabelle[spalte].iloc[0]
+    raise KeyError(anfang)
+
 ```
 
 ## Kurzsteckbrief
@@ -199,8 +213,11 @@ R, `t.test(..., paired = TRUE)`:
 | `alternative hypothesis` | Richtung | `true mean difference is not equal to 0` |
 | `Cohens d (paired)` | Effektstärke auf Basis der Differenzen | fällt deutlich grösser aus als die ungepaarte Variante; beide Fassungen nie vermischen |
 
-Python, `pg.ttest(..., paired=True)` liefert dieselben Grössen in einer Zeile
-(`T`, `dof`, `p-val`, `CI95%`, `cohen-d`, `BF10`, `power`). Zwei Unterschiede:
+Python, `pg.ttest(..., paired=True)` liefert dieselben Grössen in einer Zeile:
+Teststatistik, Freiheitsgrade, p-Wert, Konfidenzintervall, Effektstärke, dazu
+Bayes-Faktor und Power. Die Spaltennamen haben sich zwischen den
+pingouin-Versionen geändert, weshalb die Beispiele hier die Spalten nachschlagen
+statt sie festzuschreiben. Zwei Unterschiede zu R:
 `cohen-d` wird von pingouin für gepaarte Daten anders normiert als von
 `effectsize` in R, weshalb die beiden Zahlen abweichen können; welche Fassung
 verwendet wurde, gehört deshalb in den Bericht. Und `CI95%` bezieht sich auf die
@@ -232,8 +249,8 @@ round(c(breite_gepaart = diff(gepaart$conf.int),
 #| label: szenario-a-ttp-py
 g = pg.ttest(nachher, vorher, paired=True)
 u = pg.ttest(nachher, vorher, paired=False)
-print("gepaart  ", round(g["p-val"].item(), 5), g["CI95%"].item())
-print("ungepaart", round(u["p-val"].item(), 5), u["CI95%"].item())
+print("gepaart  ", round(pg_wert(g, "p-val"), 5), pg_wert(g, "ci95"))
+print("ungepaart", round(pg_wert(u, "p-val"), 5), pg_wert(u, "ci95"))
 ```
 
 :::
@@ -323,8 +340,8 @@ round(c(sd_differenz_richtig = sd(nachher - vorher),
 rng_c = np.random.default_rng(3)
 falsch_sortiert = rng_c.permutation(nachher)
 
-print(round(pg.ttest(nachher, vorher, paired=True)["p-val"].item(), 5),
-      round(pg.ttest(falsch_sortiert, vorher, paired=True)["p-val"].item(), 5))
+print(round(pg_wert(pg.ttest(nachher, vorher, paired=True), "p-val"), 5),
+      round(pg_wert(pg.ttest(falsch_sortiert, vorher, paired=True), "p-val"), 5))
 print(round((nachher - vorher).std(ddof=1), 3),
       round((falsch_sortiert - vorher).std(ddof=1), 3))
 ```

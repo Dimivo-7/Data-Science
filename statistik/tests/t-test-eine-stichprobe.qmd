@@ -29,6 +29,20 @@ import pingouin as pg
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
+
+def pg_auswahl(tabelle, *namen):
+    """Gibt die gewuenschten Spalten einer pingouin-Tabelle zurueck, soweit vorhanden."""
+    vorhanden = [s for s in namen if s in tabelle.columns]
+    return tabelle[vorhanden] if vorhanden else tabelle
+
+
+def pg_wert(tabelle, anfang):
+    """Liest einen Wert aus der ersten Zeile; die Spalte wird ueber ihren Anfang gefunden."""
+    for spalte in tabelle.columns:
+        if str(spalte).lower().replace("_", "-").startswith(anfang):
+            return tabelle[spalte].iloc[0]
+    raise KeyError(anfang)
+
 ```
 
 ## Kurzsteckbrief
@@ -215,7 +229,7 @@ round(c(mittelwert = unname(ergebnis$estimate),
 #| label: szenario-a-tt1-py
 a = pg.ttest(dicke, 12)
 print(round(dicke.mean(), 4), round(dicke.mean() - 12, 4))
-print(a[["T", "dof", "p-val", "CI95%", "cohen-d"]].round(4).to_string(index=False))
+print(pg_auswahl(a, "T", "dof", "p-val", "CI95%", "cohen-d").round(4).to_string(index=False))
 ```
 
 :::
@@ -303,7 +317,7 @@ mit_fehler = np.append(sauber, 15.9)
 
 for name, werte in [("sauber", sauber), ("mit Fehler", mit_fehler)]:
     zeile = pg.ttest(werte, 12)
-    print(name, round(zeile["T"].item(), 3), round(zeile["p-val"].item(), 4),
+    print(name, round(pg_wert(zeile, "t"), 3), round(pg_wert(zeile, "p-val"), 4),
           round(werte.std(ddof=1), 3))
 ```
 
