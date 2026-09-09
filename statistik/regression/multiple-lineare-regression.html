@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de" xml:lang="de"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="Mehrere Prädiktoren, adjustiertes R², Multikollinearität und wie man den Output liest.">
+
+<title>Multiple lineare Regression – MAS Data Science – Meine Notizen</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark-f7d73e3450f8f73085b9d3af2b744099.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-b19535b873470a65c585fe6503f5eb6b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "Keine Treffer",
+    "search-matching-documents-text": "Treffer",
+    "search-copy-link-title": "Link in die Suche kopieren",
+    "search-hide-matches-text": "Zusätzliche Treffer verbergen",
+    "search-more-match-text": "weitere Treffer in diesem Dokument",
+    "search-more-matches-text": "weitere Treffer in diesem Dokument",
+    "search-clear-button-title": "Zurücksetzen",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Abbrechen",
+    "search-submit-button-title": "Abschicken",
+    "search-label": "Suchen"
+  }
+}</script>
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar docked nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">MAS Data Science</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Suchen"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Navigation umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Dimivo-7/Data-Science"> <i class="bi bi-github" role="img" aria-label="Repository auf GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Dunkelmodus umschalten"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/regression/index.html">Regression</a></li><li class="breadcrumb-item"><a href="../../statistik/regression/multiple-lineare-regression.html">Multiple lineare Regression</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Startseite</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../tags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Tags</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../glossar.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Glossar</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../links.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Linkliste</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../statistik/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Statistik</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/fragen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Übergreifende Fragen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <span class="sidebar-item-text sidebar-link text-start">
+ <span class="menu-text">Grundlagen</span></span>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <span class="sidebar-item-text sidebar-link text-start">
+ <span class="menu-text">Wahrscheinlichkeit</span></span>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../statistik/inferenz/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inferenz</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Schätzen und <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervalle</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/inferenz/hypothesentests-grundlagen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hypothesentests: Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/inferenz/effektstaerken.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Effektstärken</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik">Power</span> und Stichprobenumfang</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <span class="sidebar-item-text sidebar-link text-start">
+ <span class="menu-text">Tests</span></span>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../statistik/regression/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Regression</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth2 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/regression/einfache-lineare-regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Einfache lineare Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/regression/multiple-lineare-regression.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Multiple lineare Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/regression/regressionsdiagnostik.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Regressionsdiagnostik</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/regression/logistische-regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Logistische Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/regression/klassifikationsguete.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Klassifikationsgüte</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/regression/modellauswahl.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Modellauswahl</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../statistik/ueberlebenszeit/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Überlebenszeit</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/ueberlebenszeit/zensierung-ueberlebensfunktion.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Zensierung und Überlebensfunktion</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/ueberlebenszeit/kaplan-meier.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Kaplan-Meier-Schätzer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/ueberlebenszeit/log-rank-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Log-Rank-Test</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/ueberlebenszeit/cox-modell.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Cox-Modell</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <span class="sidebar-item-text sidebar-link text-start">
+ <span class="menu-text">Multivariat</span></span>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../statistik/zeitreihen/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Zeitreihen</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/zeitreihen/zeitreihen-grundlagen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Zeitreihen: Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/zeitreihen/stationaritaet-acf-pacf.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stationarität, ACF und PACF</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/zeitreihen/arima-sarima.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ARIMA und SARIMA</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../cas-grundlagen/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">CAS Grundlagen Data Science</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-10" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../cas-grundlagen/pyfr/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">PYFR</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-11" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-11" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson1.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L1 – Python-Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson2.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2 – Funktionen &amp; Module</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L3 – Objektorientierung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson4.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L4 – Exceptions, IO &amp; Serialisierung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson5.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L5 – Pakete &amp; virtuelle Umgebungen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson6.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L6 – NumPy &amp; SciPy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson7.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L7 – Pandas</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson8.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L8 – Matplotlib</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson9.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L9 – Linux &amp; Bash</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson10.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L10 – Git &amp; Versionsverwaltung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson11.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L11 – Virtuelle Maschinen &amp; Docker</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/lesson12.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L12 – Datenmodellierung &amp; SQL</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/pyfr/quiz.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Modulquiz PYFR</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../cas-grundlagen/esds/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ESDS</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-12" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-12" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson1.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L1 – R &amp; RStudio – Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson2.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2 – Data Wrangling mit dem Tidyverse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L3 – Skalenniveaus &amp; Häufigkeiten</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson4.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L4 – Lage- und Streuungsmasse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson5.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L5 – Grafiken mit ggplot2</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson6.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L6 – Explorative Datenanalyse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson7.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L7 – Kombinatorik &amp; Wahrscheinlichkeit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson8.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L8 – Bedingte Wahrscheinlichkeit &amp; Bayes</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson9.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L9 – Diskrete Verteilungen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson10.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L10 – Stetige Verteilungen &amp; QQ-Plots</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson11.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L11 – Korrelation &amp; lineare Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson12.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L12 – Schätzen &amp; Konfidenzintervalle</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson13.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L13 – Hypothesentests &amp; t-Test</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/lesson14.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L14 – <span class="glossary-term" tabindex="0" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik">Chi-Quadrat-Tests</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-grundlagen/esds/quiz.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Modulquiz ESDS</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../cas-statda-davi/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">CAS Statistische Datenanalyse &amp; Datenvisualisierung</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-13" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-13" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../cas-statda-davi/statda/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">STATDA</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/statda/lesson1.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L1 – Regression &amp; Survival</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/statda/lesson2.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2 – Hypothesis Testing</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/statda/lesson3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L3 – PCA &amp; EFA</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/statda/lesson4.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L4 – Cluster Analysis</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/statda/lesson5.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L5 – Time <span class="glossary-term" tabindex="0" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position." data-topic="Programmierung">Series</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../../cas-statda-davi/davi/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DAVI</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-15" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-15" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/davi/lesson1.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L1 – Grundlagen &amp; Wahrnehmung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/davi/lesson2.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L2 – Visualisierung mit R</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/davi/lesson3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L3 – Visualisierung mit Python</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/davi/lesson4.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L4 – Interaktive Visualisierung &amp; Dashboards</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../cas-statda-davi/davi/lesson5.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">L5 – Storytelling mit Daten</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Auf dieser Seite</h2>
+   
+  <ul>
+  <li><a href="#kurzsteckbrief" id="toc-kurzsteckbrief" class="nav-link active" data-scroll-target="#kurzsteckbrief">Kurzsteckbrief</a></li>
+  <li><a href="#wann-diese-methode-wann-nicht" id="toc-wann-diese-methode-wann-nicht" class="nav-link" data-scroll-target="#wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</a></li>
+  <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a></li>
+  <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
+  <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
+  <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
+  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a>
+  <ul class="collapse">
+  <li><a href="#szenario-a-klares-ergebnis" id="toc-szenario-a-klares-ergebnis" class="nav-link" data-scroll-target="#szenario-a-klares-ergebnis">Szenario A: klares Ergebnis</a></li>
+  <li><a href="#szenario-b-kein-ergebnis-für-einen-prädiktor" id="toc-szenario-b-kein-ergebnis-für-einen-prädiktor" class="nav-link" data-scroll-target="#szenario-b-kein-ergebnis-für-einen-prädiktor">Szenario B: kein Ergebnis für einen Prädiktor</a></li>
+  <li><a href="#szenario-c-multikollinearität-als-fallstrick" id="toc-szenario-c-multikollinearität-als-fallstrick" class="nav-link" data-scroll-target="#szenario-c-multikollinearität-als-fallstrick">Szenario C: Multikollinearität als Fallstrick</a></li>
+  <li><a href="#weiteres-szenario-kategorialer-prädiktor-mit-mehreren-stufen" id="toc-weiteres-szenario-kategorialer-prädiktor-mit-mehreren-stufen" class="nav-link" data-scroll-target="#weiteres-szenario-kategorialer-prädiktor-mit-mehreren-stufen">Weiteres Szenario: kategorialer Prädiktor mit mehreren Stufen</a></li>
+  </ul></li>
+  <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
+  <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
+  <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
+  <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/regression/index.html">Regression</a></li><li class="breadcrumb-item"><a href="../../statistik/regression/multiple-lineare-regression.html">Multiple lineare Regression</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Multiple lineare Regression</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Regression</div>
+    <div class="quarto-category">Modelldiagnostik</div>
+    <div class="quarto-category">Interpretation</div>
+    <div class="quarto-category">R</div>
+    <div class="quarto-category">Python</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Mehrere Prädiktoren, adjustiertes R², Multikollinearität und wie man den Output liest.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="placeholder-notice">
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
+</div>
+<section id="kurzsteckbrief" class="level2">
+<h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Wie hängt eine metrische Zielgrösse gleichzeitig von mehreren Einflussgrössen ab, und wie gross ist der Beitrag jeder einzelnen bei konstant gehaltenen anderen?</td>
+</tr>
+<tr class="even">
+<td>Zielvariable</td>
+<td>metrisch (intervall- oder verhältnisskaliert)</td>
+</tr>
+<tr class="odd">
+<td>Prädiktoren</td>
+<td>zwei oder mehr, metrisch oder kategorial (kategoriale werden zu Indikatorvariablen)</td>
+</tr>
+<tr class="even">
+<td>Was die Methode liefert</td>
+<td>Koeffizienten mit Standardfehlern, Konfidenzintervallen und p-Werten, R² und adjustiertes R², F-Test des Gesamtmodells, Residuen für die Diagnostik</td>
+</tr>
+<tr class="odd">
+<td>R-Funktion</td>
+<td><code>lm(y ~ x1 + x2, data = df)</code>, gelesen mit <code>summary()</code>, <code>confint()</code>, <code>car::vif()</code></td>
+</tr>
+<tr class="even">
+<td>Python-Funktion</td>
+<td><code>smf.ols("y ~ x1 + x2", data=df).fit()</code>, gelesen mit <code>.summary()</code>, <code>.conf_int()</code>, <code>variance_inflation_factor()</code></td>
+</tr>
+<tr class="odd">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/regression/einfache-lineare-regression.html">einfache lineare Regression</a>, <a href="../../statistik/regression/logistische-regression.html">logistische Regression</a>, Varianzanalyse</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="wann-diese-methode-wann-nicht" class="level2">
+<h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Typische Fragestellungen: Miete aus Fläche und Alter einer Wohnung, Absatz aus Preis und Werbebudget, Laborwert aus Dosis und Körpergewicht. Gemeinsam ist ihnen, dass die Zielgrösse metrisch ist, dass mehrere Einflussgrössen zugleich wirken und dass der Beitrag einer einzelnen Grösse interessiert, gerade weil die anderen mit ihr zusammenhängen.</p>
+<p>Die Methode passt, wenn der Zusammenhang in den Prädiktoren annähernd linear ist, die Beobachtungen <span class="glossary-term" tabindex="0" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre." data-topic="Statistik">unabhängig</span> sind und die Streuung der <span class="glossary-term" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht." data-topic="Statistik">Residuen</span> über den Vorhersagebereich ungefähr gleich bleibt.</p>
+<p>Sie passt nicht in diesen Fällen:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Zielvariable binär</td>
+<td><a href="../../statistik/regression/logistische-regression.html">logistische Regression</a></td>
+</tr>
+<tr class="even">
+<td>Zielvariable ist eine Zeit bis zu einem Ereignis mit zensierten Fällen</td>
+<td><a href="../../statistik/ueberlebenszeit/kaplan-meier.html">Kaplan-Meier</a> und <a href="../../statistik/ueberlebenszeit/cox-modell.html">Cox-Modell</a></td>
+</tr>
+<tr class="odd">
+<td>Nur ein Prädiktor</td>
+<td><a href="../../statistik/regression/einfache-lineare-regression.html">einfache lineare Regression</a></td>
+</tr>
+<tr class="even">
+<td>Beobachtungen sind zeitlich geordnet und autokorreliert</td>
+<td><a href="../../statistik/zeitreihen/arima-sarima.html">Zeitreihenmodelle</a></td>
+</tr>
+<tr class="odd">
+<td>Erkennbar krummer Zusammenhang</td>
+<td>Transformation der Variablen oder Polynomterme im Modell</td>
+</tr>
+<tr class="even">
+<td>Deutlich ungleiche Residuenstreuung</td>
+<td>robuste Standardfehler oder Transformation der Zielvariable</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="grundidee-und-modell" class="level2">
+<h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
+<p>Gesucht ist die Ebene beziehungsweise Hyperebene, die möglichst nah an allen beobachteten Punkten liegt. Nah bedeutet: die Summe der quadrierten senkrechten Abstände zwischen beobachteten und vorhergesagten Werten ist minimal. Das Quadrieren gewichtet grosse Abweichungen stärker und macht die Lösung eindeutig berechenbar.</p>
+<p><span class="math display">\[y_i = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \dots + \beta_k x_{ik} + \varepsilon_i\]</span></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Bestandteil</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(y_i\)</span></td>
+<td>beobachteter Wert der Zielvariable bei Beobachtung <span class="math inline">\(i\)</span></td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\beta_0\)</span></td>
+<td>Achsenabschnitt, erwarteter Wert von <span class="math inline">\(y\)</span>, wenn alle Prädiktoren null sind</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\beta_j\)</span></td>
+<td>erwartete Änderung von <span class="math inline">\(y\)</span>, wenn <span class="math inline">\(x_j\)</span> um eine Einheit steigt und alle anderen Prädiktoren konstant bleiben</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(x_{ij}\)</span></td>
+<td>Wert des <span class="math inline">\(j\)</span>-ten Prädiktors bei Beobachtung <span class="math inline">\(i\)</span></td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\varepsilon_i\)</span></td>
+<td>Residuum, der von keinem Prädiktor erfasste Rest, mit Erwartungswert null und konstanter Varianz</td>
+</tr>
+</tbody>
+</table>
+<p>Geschätzt wird mit der Methode der kleinsten Quadrate. Sie hat eine geschlossene Lösung, es wird also nicht iteriert und es gibt keine Konvergenzprobleme. Entscheidend für die Interpretation ist die Wendung “bei konstant gehaltenen anderen Prädiktoren”: jeder Koeffizient beschreibt den Beitrag seiner Variable, nachdem der Einfluss der übrigen herausgerechnet ist. Deshalb kann sich ein Koeffizient beim Hinzufügen einer weiteren Variablen deutlich ändern, und deshalb ist er nicht dasselbe wie eine einfache Korrelation.</p>
+</section>
+<section id="voraussetzungen-und-ihre-prüfung" class="level2">
+<h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Voraussetzung</th>
+<th>Was sie bedeutet</th>
+<th>Prüfung</th>
+<th>Folge bei Verletzung</th>
+<th>Vorgehen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Linearität</td>
+<td>Der Zusammenhang jedes Prädiktors mit der Zielgrösse ist geradlinig</td>
+<td>Residuen gegen vorhergesagte Werte, gekrümmtes Muster ist verdächtig</td>
+<td>Koeffizienten sind systematisch verzerrt, Vorhersagen in den Randbereichen falsch</td>
+<td>Transformation, Polynomterm oder Aufteilung in Bereiche</td>
+</tr>
+<tr class="even">
+<td>Unabhängigkeit</td>
+<td>Beobachtungen beeinflussen sich nicht gegenseitig</td>
+<td>aus dem Erhebungsdesign, bei zeitlicher Ordnung Durbin-Watson</td>
+<td>Standardfehler zu klein, p-Werte zu optimistisch</td>
+<td>Mehrebenenmodell oder Zeitreihenmodell</td>
+</tr>
+<tr class="odd">
+<td>Homoskedastizität</td>
+<td>Residuenstreuung ist über den Vorhersagebereich konstant</td>
+<td>Residuenplot, Breusch-Pagan-Test</td>
+<td>Schätzwerte bleiben brauchbar, Standardfehler und p-Werte nicht</td>
+<td>robuste Standardfehler oder Transformation</td>
+</tr>
+<tr class="even">
+<td>Normalverteilte Residuen</td>
+<td>Die Residuen streuen annähernd normal</td>
+<td>QQ-Plot der Residuen</td>
+<td>betrifft vor allem Tests und Intervalle bei kleinem n, bei grossem n unkritisch</td>
+<td>Transformation, Bootstrap</td>
+</tr>
+<tr class="odd">
+<td>Keine starke Multikollinearität</td>
+<td>Prädiktoren sind nicht nahezu Linearkombinationen voneinander</td>
+<td>VIF, Werte über 5 sind auffällig, über 10 kritisch</td>
+<td>einzelne Koeffizienten instabil und nicht signifikant, obwohl das Modell gut passt</td>
+<td>eine Variable entfernen oder zusammenfassen</td>
+</tr>
+<tr class="even">
+<td>Keine einflussreichen Einzelfälle</td>
+<td>Kein einzelner Punkt bestimmt das Ergebnis</td>
+<td>Cook-Distanz, Hebelwerte</td>
+<td>Koeffizient hängt an einer Beobachtung</td>
+<td>Fall prüfen, Modell mit und ohne ihn berichten</td>
+</tr>
+</tbody>
+</table>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">200</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>wohnung <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">flaeche =</span> <span class="fu">rnorm</span>(n, <span class="at">mean =</span> <span class="dv">80</span>, <span class="at">sd =</span> <span class="dv">18</span>),</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">alter   =</span> <span class="fu">runif</span>(n, <span class="at">min =</span> <span class="dv">0</span>, <span class="at">max =</span> <span class="dv">60</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>wohnung<span class="sc">$</span>miete <span class="ot">&lt;-</span> <span class="dv">400</span> <span class="sc">+</span> <span class="dv">12</span> <span class="sc">*</span> wohnung<span class="sc">$</span>flaeche <span class="sc">-</span> <span class="dv">3</span> <span class="sc">*</span> wohnung<span class="sc">$</span>alter <span class="sc">+</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rnorm</span>(n, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> <span class="dv">150</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>modell <span class="ot">&lt;-</span> <span class="fu">lm</span>(miete <span class="sc">~</span> flaeche <span class="sc">+</span> alter, <span class="at">data =</span> wohnung)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(modell, <span class="at">which =</span> <span class="dv">1</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(modell, <span class="at">which =</span> <span class="dv">2</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">bptest</span>(modell)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    studentized Breusch-Pagan test
+
+data:  modell
+BP = 0.44568, df = 2, p-value = 0.8002</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vif</span>(modell)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> flaeche    alter 
+1.001675 1.001675 </code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-diagnostik-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-diagnostik-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="multiple-lineare-regression_files/figure-html/fig-diagnostik-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Residuen gegen vorhergesagte Werte und QQ-Plot der Residuen."><img src="multiple-lineare-regression_files/figure-html/fig-diagnostik-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-diagnostik-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Residuen gegen vorhergesagte Werte und QQ-Plot der Residuen.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>rng <span class="op">=</span> np.random.default_rng(<span class="dv">2026</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> <span class="dv">200</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>wohnung <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"flaeche"</span>: rng.normal(<span class="dv">80</span>, <span class="dv">18</span>, n),</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"alter"</span>: rng.uniform(<span class="dv">0</span>, <span class="dv">60</span>, n),</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>wohnung[<span class="st">"miete"</span>] <span class="op">=</span> (<span class="dv">400</span> <span class="op">+</span> <span class="dv">12</span> <span class="op">*</span> wohnung[<span class="st">"flaeche"</span>] <span class="op">-</span> <span class="dv">3</span> <span class="op">*</span> wohnung[<span class="st">"alter"</span>]</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                    <span class="op">+</span> rng.normal(<span class="dv">0</span>, <span class="dv">150</span>, n))</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>modell <span class="op">=</span> smf.ols(<span class="st">"miete ~ flaeche + alter"</span>, data<span class="op">=</span>wohnung).fit()</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].scatter(modell.fittedvalues, modell.resid, s<span class="op">=</span><span class="dv">12</span>, alpha<span class="op">=</span><span class="fl">0.7</span>)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].axhline(<span class="dv">0</span>, linestyle<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"black"</span>)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_xlabel(<span class="st">"vorhergesagte Werte"</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_ylabel(<span class="st">"Residuen"</span>)</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>sm.qqplot(modell.resid, line<span class="op">=</span><span class="st">"s"</span>, ax<span class="op">=</span>axes[<span class="dv">1</span>])</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_title(<span class="st">"QQ-Plot der Residuen"</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-diagnostik-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-diagnostik-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="multiple-lineare-regression_files/figure-html/fig-diagnostik-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Dieselbe Diagnostik in Python: Residuenplot und QQ-Plot."><img src="multiple-lineare-regression_files/figure-html/fig-diagnostik-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-diagnostik-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Dieselbe Diagnostik in Python: Residuenplot und QQ-Plot.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sm.stats.diagnostic.het_breuschpagan(modell.resid, modell.model.exog))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>(np.float64(0.25581547053115106), np.float64(0.879934562328118), np.float64(0.12615047545277044), np.float64(0.8815533448984415))</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> sm.add_constant(wohnung[[<span class="st">"flaeche"</span>, <span class="st">"alter"</span>]])</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>([<span class="bu">round</span>(variance_inflation_factor(X.values, i), <span class="dv">2</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>       <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(X.shape[<span class="dv">1</span>])])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[np.float64(1.0), np.float64(1.0), np.float64(1.0)]</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Im Residuenplot soll eine strukturlose Wolke um die Nulllinie stehen, ohne Trichter und ohne Bogen. Im <span class="glossary-term" tabindex="0" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik">QQ-Plot</span> sollen die Punkte nah an der Geraden liegen; Abweichungen an den beiden Enden sind normal. Der Breusch-Pagan-Test gibt in Python die Reihenfolge Statistik, <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span>, F-Statistik, F-p-Wert zurück; ein grosser <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span> bedeutet keinen Hinweis auf ungleiche Streuung. Die VIF-Werte werden in Python samt Konstante ausgegeben, deren Wert ist ohne Bedeutung.</p>
+</section>
+<section id="durchführung-in-r-und-python" class="level2">
+<h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modell)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = miete ~ flaeche + alter, data = wohnung)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-385.83 -134.75   19.52  107.63  463.14 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 251.7581    59.7814   4.211 3.86e-05 ***
+flaeche      13.6849     0.6681  20.483  &lt; 2e-16 ***
+alter        -2.3937     0.7307  -3.276  0.00124 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 166.9 on 197 degrees of freedom
+Multiple R-squared:  0.689, Adjusted R-squared:  0.6859 
+F-statistic: 218.3 on 2 and 197 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">confint</span>(modell)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 2.5 %      97.5 %
+(Intercept) 133.864405 369.6518220
+flaeche      12.367308  15.0024319
+alter        -3.834651  -0.9527382</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(modell.summary())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                  miete   R-squared:                       0.690
+Model:                            OLS   Adj. R-squared:                  0.687
+Method:                 Least Squares   F-statistic:                     218.9
+Date:                Wed, 09 Sep 2026   Prob (F-statistic):           8.76e-51
+Time:                        09:10:51   Log-Likelihood:                -1297.7
+No. Observations:                 200   AIC:                             2601.
+Df Residuals:                     197   BIC:                             2611.
+Df Model:                           2                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P&gt;|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept    406.5551     51.047      7.964      0.000     305.887     507.223
+flaeche       11.9586      0.578     20.682      0.000      10.818      13.099
+alter         -2.9976      0.656     -4.568      0.000      -4.292      -1.704
+==============================================================================
+Omnibus:                        1.056   Durbin-Watson:                   1.752
+Prob(Omnibus):                  0.590   Jarque-Bera (JB):                0.775
+Skew:                           0.135   Prob(JB):                        0.679
+Kurtosis:                       3.140   Cond. No.                         401.
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(modell.conf_int())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                    0           1
+Intercept  305.887129  507.223169
+flaeche     10.818334   13.098906
+alter       -4.291644   -1.703535</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 200 Wohnungen, Fläche <span class="glossary-term" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik">normalverteilt</span> um 80 Quadratmeter, Alter gleichverteilt zwischen 0 und 60 Jahren, Miete gleich 400 plus 12 mal Fläche minus 3 mal Alter plus normalverteiltes Rauschen mit Standardabweichung 150. Die wahren Werte sind damit bekannt, und der Output lässt sich daran prüfen. Weil die Zufallszahlen der beiden Sprachen verschieden erzeugt werden, unterscheiden sich die Zahlen leicht; die Struktur des Ergebnisses ist dieselbe.</p>
+</section>
+<section id="output-lesen" class="level2">
+<h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
+<p>R, <code>summary(modell)</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Faustregel oder Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Call</code></td>
+<td>die geschätzte Modellformel</td>
+<td>prüfen, ob wirklich das gemeinte Modell gerechnet wurde</td>
+</tr>
+<tr class="even">
+<td><code>Residuals</code></td>
+<td>Minimum, Quartile, Median der Residuen</td>
+<td>Median deutlich neben null oder stark unsymmetrische Extreme deuten auf Schieflage</td>
+</tr>
+<tr class="odd">
+<td><code>Estimate</code></td>
+<td>geschätzter Koeffizient</td>
+<td>Änderung von y je Einheit von x bei konstant gehaltenen anderen Prädiktoren, in den Einheiten der Variablen</td>
+</tr>
+<tr class="even">
+<td><code>Std. Error</code></td>
+<td>Standardfehler des Koeffizienten</td>
+<td>Unsicherheit der Schätzung, wächst mit der Streuung und mit Multikollinearität</td>
+</tr>
+<tr class="odd">
+<td><code>t value</code></td>
+<td>Estimate geteilt durch Std. Error</td>
+<td>Werte über etwa 2 in Betrag sind bei üblichem n signifikant</td>
+</tr>
+<tr class="even">
+<td><code>Pr(&gt;|t|)</code></td>
+<td>p-Wert des Tests, dass der Koeffizient null ist</td>
+<td>prüft nur den einzelnen Koeffizienten, sagt nichts über die Grösse des Effekts</td>
+</tr>
+<tr class="odd">
+<td><code>(Intercept)</code></td>
+<td>erwartete Miete bei Fläche 0 und Alter 0</td>
+<td>oft ohne inhaltliche Bedeutung, weil der Punkt ausserhalb der Daten liegt</td>
+</tr>
+<tr class="even">
+<td><code>Residual standard error</code></td>
+<td>typische Abweichung einer Vorhersage in der Einheit von y</td>
+<td>die direkt interpretierbare Gütezahl, hier vergleichbar mit dem simulierten Rauschen</td>
+</tr>
+<tr class="odd">
+<td>Freiheitsgrade</td>
+<td>n minus Anzahl geschätzter Parameter</td>
+<td>sinken mit jedem zusätzlichen Prädiktor</td>
+</tr>
+<tr class="even">
+<td><code>Multiple R-squared</code></td>
+<td>Anteil der erklärten Streuung</td>
+<td>steigt mit jedem Prädiktor, auch mit einem sinnlosen</td>
+</tr>
+<tr class="odd">
+<td><code>Adjusted R-squared</code></td>
+<td>um die Anzahl Prädiktoren korrigiert</td>
+<td>die Zahl, die man beim Modellvergleich liest</td>
+</tr>
+<tr class="even">
+<td><code>F-statistic</code> mit p-Wert</td>
+<td>Test, ob das Modell insgesamt besser ist als der Mittelwert</td>
+<td>signifikant, ohne dass ein einzelner Koeffizient signifikant sein muss, typisch bei Multikollinearität</td>
+</tr>
+<tr class="odd">
+<td><code>confint()</code></td>
+<td>95-Prozent-Intervall je Koeffizient</td>
+<td>schliesst es null ein, ist der Koeffizient nicht signifikant</td>
+</tr>
+</tbody>
+</table>
+<p>Python, <code>modell.summary()</code>, mit den Unterschieden zu R:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Unterschied zu R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>coef</code>, <code>std err</code>, <code>t</code>, <code>P&gt;|t|</code></td>
+<td>wie Estimate, Std. Error, t value, Pr(&gt;</td>
+<td>t</td>
+</tr>
+<tr class="even">
+<td><code>[0.025 0.975]</code></td>
+<td>Konfidenzintervall</td>
+<td>steht direkt in der Tabelle, in R braucht es <code>confint()</code></td>
+</tr>
+<tr class="odd">
+<td><code>R-squared</code>, <code>Adj. R-squared</code></td>
+<td>wie in R</td>
+<td>identisch berechnet</td>
+</tr>
+<tr class="even">
+<td><code>F-statistic</code>, <code>Prob (F-statistic)</code></td>
+<td>Gesamttest</td>
+<td>identisch</td>
+</tr>
+<tr class="odd">
+<td><code>Df Residuals</code>, <code>Df Model</code></td>
+<td>Freiheitsgrade</td>
+<td>R nennt sie im Fliesstext, Python in eigenen Zeilen</td>
+</tr>
+<tr class="even">
+<td><code>AIC</code>, <code>BIC</code>, <code>Log-Likelihood</code></td>
+<td>Kennzahlen für den Modellvergleich</td>
+<td>R zeigt sie nicht in <code>summary()</code>, dort über <code>AIC(modell)</code></td>
+</tr>
+<tr class="odd">
+<td><code>Omnibus</code>, <code>Jarque-Bera</code>, <code>Skew</code>, <code>Kurtosis</code></td>
+<td>Tests und Masse zur Normalität der Residuen</td>
+<td>in R nicht enthalten, dort über den QQ-Plot</td>
+</tr>
+<tr class="even">
+<td><code>Durbin-Watson</code></td>
+<td>Hinweis auf Autokorrelation der Residuen</td>
+<td>Werte um 2 sind unauffällig, in R über <code>dwtest()</code></td>
+</tr>
+<tr class="odd">
+<td><code>Cond. No.</code></td>
+<td>Konditionszahl der Prädiktormatrix</td>
+<td>grosse Werte deuten auf Multikollinearität, ergänzend zum VIF</td>
+</tr>
+<tr class="even">
+<td>Kein <code>Residual standard error</code></td>
+<td>die Grösse fehlt in der Tabelle</td>
+<td>über <code>np.sqrt(modell.mse_resid)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Ausgelassen wird kein Wert: auch <span class="glossary-term" tabindex="0" data-def="Anzahl der Grössen, die bei gegebenen Randbedingungen noch frei variieren können. Sie bestimmen die Form der Prüfverteilung und damit den p-Wert." data-topic="Statistik">Freiheitsgrade</span>, Residualstreuung und die Normalitätskennzahlen gehören zur Beurteilung, und Warnhinweise am Fuss der Python-Tabelle sind Teil des Ergebnisses.</p>
+</section>
+<section id="ergebnisse-interpretieren" class="level2">
+<h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<section id="szenario-a-klares-ergebnis" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-a-klares-ergebnis">Szenario A: klares Ergebnis</h3>
+<p>Beide Prädiktoren wirken deutlich, die Voraussetzungen sind erfüllt. Das ist der Datensatz aus der Durchführung, hier mit den Koeffizienten und Intervallen nebeneinander.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cbind</span>(<span class="at">Schaetzwert =</span> <span class="fu">coef</span>(modell), <span class="fu">confint</span>(modell)), <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            Schaetzwert  2.5 % 97.5 %
+(Intercept)      251.76 133.86 369.65
+flaeche           13.68  12.37  15.00
+alter             -2.39  -3.83  -0.95</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modell)<span class="sc">$</span>adj.r.squared</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6858739</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>ergebnis <span class="op">=</span> pd.concat([modell.params, modell.conf_int()], axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>ergebnis.columns <span class="op">=</span> [<span class="st">"Schaetzwert"</span>, <span class="st">"unten"</span>, <span class="st">"oben"</span>]</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(ergebnis.<span class="bu">round</span>(<span class="dv">2</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           Schaetzwert   unten    oben
+Intercept       406.56  305.89  507.22
+flaeche          11.96   10.82   13.10
+alter            -3.00   -4.29   -1.70</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">round</span>(modell.rsquared_adj, <span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>0.687</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Der Koeffizient der Fläche liegt in der Nähe des simulierten Werts von 12 und sein <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervall</span> schliesst die Null weit entfernt nicht ein: jeder zusätzliche Quadratmeter geht bei gleichem Alter mit einer um etwa 12 Einheiten höheren Miete einher. Der Koeffizient des Alters ist negativ und liegt in der Nähe von -3: ein Jahr mehr entspricht bei gleicher Fläche einer um rund 3 Einheiten geringeren Miete. Das adjustierte R² sagt, welcher Anteil der Mietstreuung durch die beiden Grössen erklärt ist; der Rest steckt im Rauschen, das bewusst mit Standardabweichung 150 eingebaut wurde.</p>
+<p>Ergebnissatz: Fläche und Alter erklären die Miete gemeinsam deutlich (F-Test <span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik">signifikant</span>, adjustiertes R² wie ausgegeben, n = 200). Pro Quadratmeter steigt die erwartete Miete bei konstantem Alter um den geschätzten Betrag (95-Prozent-Intervall wie ausgegeben, p &lt; 0.001), pro Jahr Alter sinkt sie bei konstanter Fläche entsprechend.</p>
+</section>
+<section id="szenario-b-kein-ergebnis-für-einen-prädiktor" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-b-kein-ergebnis-für-einen-prädiktor">Szenario B: kein Ergebnis für einen Prädiktor</h3>
+<p>Zum Modell kommt die Etage hinzu, die in den simulierten Daten keinen Einfluss hat, und der Stichprobenumfang ist mit 60 klein.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">11</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>n_b <span class="ot">&lt;-</span> <span class="dv">60</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>wohnung_b <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">flaeche =</span> <span class="fu">rnorm</span>(n_b, <span class="at">mean =</span> <span class="dv">80</span>, <span class="at">sd =</span> <span class="dv">18</span>),</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">etage   =</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">5</span>, n_b, <span class="at">replace =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>wohnung_b<span class="sc">$</span>miete <span class="ot">&lt;-</span> <span class="dv">400</span> <span class="sc">+</span> <span class="dv">12</span> <span class="sc">*</span> wohnung_b<span class="sc">$</span>flaeche <span class="sc">+</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rnorm</span>(n_b, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> <span class="dv">150</span>)</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>modell_b <span class="ot">&lt;-</span> <span class="fu">lm</span>(miete <span class="sc">~</span> flaeche <span class="sc">+</span> etage, <span class="at">data =</span> wohnung_b)</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modell_b)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = miete ~ flaeche + etage, data = wohnung_b)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-347.20  -74.22    9.12   94.93  381.17 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  530.514    106.844   4.965 6.57e-06 ***
+flaeche       10.770      1.346   8.001 6.85e-11 ***
+etage        -11.806     11.912  -0.991    0.326    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 154.9 on 57 degrees of freedom
+Multiple R-squared:  0.5305,    Adjusted R-squared:  0.514 
+F-statistic:  32.2 on 2 and 57 DF,  p-value: 4.378e-10</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">confint</span>(modell_b)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 2.5 %    97.5 %
+(Intercept) 316.561708 744.46572
+flaeche       8.074605  13.46572
+etage       -35.658072  12.04692</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>rng_b <span class="op">=</span> np.random.default_rng(<span class="dv">11</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>n_b <span class="op">=</span> <span class="dv">60</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>wohnung_b <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"flaeche"</span>: rng_b.normal(<span class="dv">80</span>, <span class="dv">18</span>, n_b),</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"etage"</span>: rng_b.integers(<span class="dv">0</span>, <span class="dv">6</span>, n_b),</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>wohnung_b[<span class="st">"miete"</span>] <span class="op">=</span> (<span class="dv">400</span> <span class="op">+</span> <span class="dv">12</span> <span class="op">*</span> wohnung_b[<span class="st">"flaeche"</span>]</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>                      <span class="op">+</span> rng_b.normal(<span class="dv">0</span>, <span class="dv">150</span>, n_b))</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>modell_b <span class="op">=</span> smf.ols(<span class="st">"miete ~ flaeche + etage"</span>, data<span class="op">=</span>wohnung_b).fit()</span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(modell_b.summary())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                  miete   R-squared:                       0.525
+Model:                            OLS   Adj. R-squared:                  0.509
+Method:                 Least Squares   F-statistic:                     31.54
+Date:                Wed, 09 Sep 2026   Prob (F-statistic):           5.99e-10
+Time:                        09:10:51   Log-Likelihood:                -384.06
+No. Observations:                  60   AIC:                             774.1
+Df Residuals:                      57   BIC:                             780.4
+Df Model:                           2                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P&gt;|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept    591.0530    101.693      5.812      0.000     387.416     794.689
+flaeche        9.6679      1.218      7.940      0.000       7.230      12.106
+etage         -1.2136     10.604     -0.114      0.909     -22.448      20.021
+==============================================================================
+Omnibus:                        0.454   Durbin-Watson:                   1.712
+Prob(Omnibus):                  0.797   Jarque-Bera (JB):                0.561
+Skew:                           0.187   Prob(JB):                        0.755
+Kurtosis:                       2.710   Cond. No.                         424.
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(modell_b.conf_int())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                    0           1
+Intercept  387.416463  794.689452
+flaeche      7.229681   12.106181
+etage      -22.448136   20.020983</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Der Koeffizient der Etage ist klein gegenüber seinem <span class="glossary-term" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik">Standardfehler</span>, der <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span> liegt weit über 0.05, und das <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervall</span> reicht von einem negativen zu einem positiven Wert, schliesst die Null also ein. Daraus folgt: die Daten zeigen keinen Einfluss der Etage. Sie zeigen nicht, dass es keinen gibt. Das Intervall nennt die Effektgrössen, die weiterhin möglich sind, und bei n = 60 ist dieser Bereich breit. Wer daraus “die Etage spielt keine Rolle” macht, verwechselt fehlenden Nachweis mit Nachweis der Abwesenheit.</p>
+<p>Die Fläche bleibt trotz des kleinen Stichprobenumfangs <span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik">signifikant</span>, weil ihr Effekt gross gegenüber dem Rauschen ist. Das zeigt den Unterschied zwischen den beiden Fragen “gibt es einen Effekt in diesen Daten” und “reicht die Stichprobe, um ihn zu erkennen”.</p>
+<p>Ergebnissatz: Für die Etage ergibt sich kein Zusammenhang mit der Miete (Schätzwert und 95-Prozent-Intervall wie ausgegeben, p wie ausgegeben, n = 60). Das Intervall lässt Effekte in beide Richtungen zu; ein Einfluss ist mit diesen Daten nicht ausgeschlossen, nur nicht belegt.</p>
+</section>
+<section id="szenario-c-multikollinearität-als-fallstrick" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-c-multikollinearität-als-fallstrick">Szenario C: Multikollinearität als Fallstrick</h3>
+<p>Zusätzlich zur Fläche wird die Nutzfläche aufgenommen, die fast dasselbe misst. Das Modell passt weiterhin, aber die beiden Koeffizienten werden unbrauchbar.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">7</span>)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>n_c <span class="ot">&lt;-</span> <span class="dv">120</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>wohnung_c <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">flaeche =</span> <span class="fu">rnorm</span>(n_c, <span class="at">mean =</span> <span class="dv">80</span>, <span class="at">sd =</span> <span class="dv">18</span>),</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">alter   =</span> <span class="fu">runif</span>(n_c, <span class="at">min =</span> <span class="dv">0</span>, <span class="at">max =</span> <span class="dv">60</span>)</span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>wohnung_c<span class="sc">$</span>nutzflaeche <span class="ot">&lt;-</span> wohnung_c<span class="sc">$</span>flaeche <span class="sc">-</span> <span class="fu">runif</span>(n_c, <span class="at">min =</span> <span class="dv">0</span>, <span class="at">max =</span> <span class="dv">4</span>)</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>wohnung_c<span class="sc">$</span>miete <span class="ot">&lt;-</span> <span class="dv">400</span> <span class="sc">+</span> <span class="dv">12</span> <span class="sc">*</span> wohnung_c<span class="sc">$</span>flaeche <span class="sc">-</span> <span class="dv">3</span> <span class="sc">*</span> wohnung_c<span class="sc">$</span>alter <span class="sc">+</span></span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rnorm</span>(n_c, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> <span class="dv">150</span>)</span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a>modell_c <span class="ot">&lt;-</span> <span class="fu">lm</span>(miete <span class="sc">~</span> flaeche <span class="sc">+</span> nutzflaeche <span class="sc">+</span> alter, <span class="at">data =</span> wohnung_c)</span>
+<span id="cb34-12"><a href="#cb34-12" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modell_c)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = miete ~ flaeche + nutzflaeche + alter, data = wohnung_c)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-417.16 -119.22   -7.80   96.03  448.88 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 525.3115    89.6428   5.860 4.43e-08 ***
+flaeche      14.3644    12.9394   1.110 0.269239    
+nutzflaeche  -3.8984    12.9866  -0.300 0.764570    
+alter        -3.3518     0.9622  -3.484 0.000699 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 165.8 on 116 degrees of freedom
+Multiple R-squared:  0.589, Adjusted R-squared:  0.5784 
+F-statistic: 55.42 on 3 and 116 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vif</span>(modell_c)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    flaeche nutzflaeche       alter 
+ 208.658452  208.112745    1.046935 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cor</span>(wohnung_c<span class="sc">$</span>flaeche, wohnung_c<span class="sc">$</span>nutzflaeche)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9975743</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>rng_c <span class="op">=</span> np.random.default_rng(<span class="dv">7</span>)</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>n_c <span class="op">=</span> <span class="dv">120</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>wohnung_c <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"flaeche"</span>: rng_c.normal(<span class="dv">80</span>, <span class="dv">18</span>, n_c),</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"alter"</span>: rng_c.uniform(<span class="dv">0</span>, <span class="dv">60</span>, n_c),</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>wohnung_c[<span class="st">"nutzflaeche"</span>] <span class="op">=</span> wohnung_c[<span class="st">"flaeche"</span>] <span class="op">-</span> rng_c.uniform(<span class="dv">0</span>, <span class="dv">4</span>, n_c)</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>wohnung_c[<span class="st">"miete"</span>] <span class="op">=</span> (<span class="dv">400</span> <span class="op">+</span> <span class="dv">12</span> <span class="op">*</span> wohnung_c[<span class="st">"flaeche"</span>] <span class="op">-</span> <span class="dv">3</span> <span class="op">*</span> wohnung_c[<span class="st">"alter"</span>]</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>                      <span class="op">+</span> rng_c.normal(<span class="dv">0</span>, <span class="dv">150</span>, n_c))</span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>modell_c <span class="op">=</span> smf.ols(<span class="st">"miete ~ flaeche + nutzflaeche + alter"</span>,</span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>                   data<span class="op">=</span>wohnung_c).fit()</span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(modell_c.summary())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                  miete   R-squared:                       0.693
+Model:                            OLS   Adj. R-squared:                  0.685
+Method:                 Least Squares   F-statistic:                     87.32
+Date:                Wed, 09 Sep 2026   Prob (F-statistic):           1.28e-29
+Time:                        09:10:51   Log-Likelihood:                -761.38
+No. Observations:                 120   AIC:                             1531.
+Df Residuals:                     116   BIC:                             1542.
+Df Model:                           3                                         
+Covariance Type:            nonrobust                                         
+===============================================================================
+                  coef    std err          t      P&gt;|t|      [0.025      0.975]
+-------------------------------------------------------------------------------
+Intercept     345.3398     74.326      4.646      0.000     198.127     492.552
+flaeche        26.4311     10.988      2.406      0.018       4.669      48.193
+nutzflaeche   -14.2252     11.004     -1.293      0.199     -36.020       7.570
+alter          -3.3945      0.736     -4.612      0.000      -4.852      -1.937
+==============================================================================
+Omnibus:                        1.180   Durbin-Watson:                   2.098
+Prob(Omnibus):                  0.554   Jarque-Bera (JB):                1.264
+Skew:                           0.220   Prob(JB):                        0.532
+Kurtosis:                       2.757   Cond. No.                         666.
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>X_c <span class="op">=</span> sm.add_constant(wohnung_c[[<span class="st">"flaeche"</span>, <span class="st">"nutzflaeche"</span>, <span class="st">"alter"</span>]])</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>([<span class="bu">round</span>(variance_inflation_factor(X_c.values, i), <span class="dv">1</span>)</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>       <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(X_c.shape[<span class="dv">1</span>])])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[np.float64(1.0), np.float64(177.5), np.float64(177.4), np.float64(1.0)]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">round</span>(wohnung_c[<span class="st">"flaeche"</span>].corr(wohnung_c[<span class="st">"nutzflaeche"</span>]), <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>0.9972</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Erkennbar ist das Problem an drei Stellen gleichzeitig. Erstens sind die VIF-Werte von Fläche und Nutzfläche sehr hoch, weit über der kritischen Marke von 10, während der VIF des Alters unauffällig bleibt. Zweitens sind die <span class="glossary-term" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik">Standardfehler</span> der beiden Flächenvariablen um ein Vielfaches grösser als im Modell aus Szenario A, und die zugehörigen <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Werte</span> sind gross, obwohl der F-Test des Gesamtmodells klar <span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik">signifikant</span> ist und R² hoch bleibt. Diese Kombination, gutes Gesamtmodell mit nicht signifikanten Einzelkoeffizienten, ist das klassische Erkennungszeichen. Drittens sind die Vorzeichen unplausibel: einer der beiden Flächenkoeffizienten kann negativ ausfallen, weil die Aufteilung des gemeinsamen Effekts auf zwei fast identische Variablen willkürlich ist. In Python steht zusätzlich der Warnhinweis zur Konditionszahl unter der Tabelle.</p>
+<p>Verzerrt sind dabei nicht die Vorhersagen, sondern die Aussagen über die einzelnen Variablen. Wer das Modell nur zur Prognose nutzt, wird kaum gestört; wer einen Koeffizienten interpretieren will, darf es nicht. Das Vorgehen: eine der beiden Variablen entfernen, oder beide zu einer zusammenfassen, danach neu schätzen und die Wahl im Bericht begründen.</p>
+<p>Ergebnissatz: Fläche und Nutzfläche sind mit einer Korrelation nahe eins praktisch identisch (VIF wie ausgegeben). Ihre Koeffizienten sind einzeln nicht interpretierbar; berichtet wird das Modell mit nur einer der beiden Variablen.</p>
+</section>
+<section id="weiteres-szenario-kategorialer-prädiktor-mit-mehreren-stufen" class="level3">
+<h3 class="anchored" data-anchor-id="weiteres-szenario-kategorialer-prädiktor-mit-mehreren-stufen">Weiteres Szenario: kategorialer Prädiktor mit mehreren Stufen</h3>
+<p>Wird eine kategoriale Variable aufgenommen, erzeugen beide Sprachen Indikatorvariablen und lassen eine Stufe als Referenz weg. Jeder Koeffizient ist dann der Unterschied zu dieser Referenz, nicht zum Gesamtmittel.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">3</span>)</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>n_d <span class="ot">&lt;-</span> <span class="dv">150</span></span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a>lage_stufen <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Rand"</span>, <span class="st">"Mitte"</span>, <span class="st">"Zentrum"</span>)</span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>wohnung_d <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">flaeche =</span> <span class="fu">rnorm</span>(n_d, <span class="at">mean =</span> <span class="dv">80</span>, <span class="at">sd =</span> <span class="dv">18</span>),</span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">lage    =</span> <span class="fu">factor</span>(<span class="fu">sample</span>(lage_stufen, n_d, <span class="at">replace =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb46-7"><a href="#cb46-7" aria-hidden="true" tabindex="-1"></a>                   <span class="at">levels =</span> lage_stufen)</span>
+<span id="cb46-8"><a href="#cb46-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb46-9"><a href="#cb46-9" aria-hidden="true" tabindex="-1"></a>zuschlag <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">Rand =</span> <span class="dv">0</span>, <span class="at">Mitte =</span> <span class="dv">200</span>, <span class="at">Zentrum =</span> <span class="dv">500</span>)</span>
+<span id="cb46-10"><a href="#cb46-10" aria-hidden="true" tabindex="-1"></a>wohnung_d<span class="sc">$</span>miete <span class="ot">&lt;-</span> <span class="dv">400</span> <span class="sc">+</span> <span class="dv">12</span> <span class="sc">*</span> wohnung_d<span class="sc">$</span>flaeche <span class="sc">+</span></span>
+<span id="cb46-11"><a href="#cb46-11" aria-hidden="true" tabindex="-1"></a>  zuschlag[<span class="fu">as.character</span>(wohnung_d<span class="sc">$</span>lage)] <span class="sc">+</span> <span class="fu">rnorm</span>(n_d, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> <span class="dv">150</span>)</span>
+<span id="cb46-12"><a href="#cb46-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-13"><a href="#cb46-13" aria-hidden="true" tabindex="-1"></a>modell_d <span class="ot">&lt;-</span> <span class="fu">lm</span>(miete <span class="sc">~</span> flaeche <span class="sc">+</span> lage, <span class="at">data =</span> wohnung_d)</span>
+<span id="cb46-14"><a href="#cb46-14" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modell_d)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = miete ~ flaeche + lage, data = wohnung_d)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-379.91  -94.81    3.70   81.90  512.42 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 414.2467    66.1298   6.264 3.97e-09 ***
+flaeche      11.8796     0.7928  14.984  &lt; 2e-16 ***
+lageMitte   206.4871    31.5316   6.549 9.27e-10 ***
+lageZentrum 511.4171    31.0194  16.487  &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 157.8 on 146 degrees of freedom
+Multiple R-squared:  0.7796,    Adjusted R-squared:  0.775 
+F-statistic: 172.1 on 3 and 146 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(modell_d)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Response: miete
+           Df  Sum Sq Mean Sq F value    Pr(&gt;F)    
+flaeche     1 6053053 6053053  243.05 &lt; 2.2e-16 ***
+lage        2 6806732 3403366  136.66 &lt; 2.2e-16 ***
+Residuals 146 3636093   24905                      
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb50"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>rng_d <span class="op">=</span> np.random.default_rng(<span class="dv">3</span>)</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>n_d <span class="op">=</span> <span class="dv">150</span></span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>stufen <span class="op">=</span> [<span class="st">"Rand"</span>, <span class="st">"Mitte"</span>, <span class="st">"Zentrum"</span>]</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>wohnung_d <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"flaeche"</span>: rng_d.normal(<span class="dv">80</span>, <span class="dv">18</span>, n_d),</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"lage"</span>: rng_d.choice(stufen, n_d),</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a>zuschlag <span class="op">=</span> {<span class="st">"Rand"</span>: <span class="dv">0</span>, <span class="st">"Mitte"</span>: <span class="dv">200</span>, <span class="st">"Zentrum"</span>: <span class="dv">500</span>}</span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>wohnung_d[<span class="st">"miete"</span>] <span class="op">=</span> (<span class="dv">400</span> <span class="op">+</span> <span class="dv">12</span> <span class="op">*</span> wohnung_d[<span class="st">"flaeche"</span>]</span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a>                      <span class="op">+</span> wohnung_d[<span class="st">"lage"</span>].<span class="bu">map</span>(zuschlag)</span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>                      <span class="op">+</span> rng_d.normal(<span class="dv">0</span>, <span class="dv">150</span>, n_d))</span>
+<span id="cb50-12"><a href="#cb50-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-13"><a href="#cb50-13" aria-hidden="true" tabindex="-1"></a>modell_d <span class="op">=</span> smf.ols(</span>
+<span id="cb50-14"><a href="#cb50-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"miete ~ flaeche + C(lage, Treatment(reference='Rand'))"</span>,</span>
+<span id="cb50-15"><a href="#cb50-15" aria-hidden="true" tabindex="-1"></a>    data<span class="op">=</span>wohnung_d).fit()</span>
+<span id="cb50-16"><a href="#cb50-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(modell_d.summary())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                  miete   R-squared:                       0.816
+Model:                            OLS   Adj. R-squared:                  0.812
+Method:                 Least Squares   F-statistic:                     216.1
+Date:                Wed, 09 Sep 2026   Prob (F-statistic):           1.73e-53
+Time:                        09:10:51   Log-Likelihood:                -967.61
+No. Observations:                 150   AIC:                             1943.
+Df Residuals:                     146   BIC:                             1955.
+Df Model:                           3                                         
+Covariance Type:            nonrobust                                         
+===================================================================================================================
+                                                      coef    std err          t      P&gt;|t|      [0.025      0.975]
+-------------------------------------------------------------------------------------------------------------------
+Intercept                                         383.6097     56.067      6.842      0.000     272.803     494.417
+C(lage, Treatment(reference='Rand'))[T.Mitte]     203.0812     30.527      6.652      0.000     142.749     263.413
+C(lage, Treatment(reference='Rand'))[T.Zentrum]   505.6251     31.845     15.878      0.000     442.688     568.562
+flaeche                                            12.2037      0.662     18.425      0.000      10.895      13.513
+==============================================================================
+Omnibus:                        0.432   Durbin-Watson:                   2.087
+Prob(Omnibus):                  0.806   Jarque-Bera (JB):                0.161
+Skew:                           0.035   Prob(JB):                        0.923
+Kurtosis:                       3.145   Cond. No.                         373.
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb52"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sm.stats.anova_lm(modell_d, typ<span class="op">=</span><span class="dv">2</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                            sum_sq  ...        PR(&gt;F)
+C(lage, Treatment(reference='Rand'))  6.134055e+06  ...  1.043417e-32
+flaeche                               8.186550e+06  ...  6.351486e-40
+Residual                              3.520814e+06  ...           NaN
+
+[3 rows x 4 columns]</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Referenz ist die Lage am Rand. Die beiden ausgegebenen Lage-Koeffizienten schätzen den Mietunterschied von Mitte und Zentrum gegenüber dem Rand bei gleicher Fläche und liegen in der Nähe der simulierten Zuschläge von 200 und 500. In Python muss die Referenzstufe angegeben werden, sonst wird alphabetisch gewählt; in R bestimmt die Reihenfolge der Faktorstufen die Referenz. Ob die Variable Lage insgesamt etwas beiträgt, beantwortet nicht der einzelne <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span>, sondern der gemeinsame Test über alle Stufen aus der Varianzanalysetabelle.</p>
+</section>
+</section>
+<section id="interpretationsfallen" class="level2">
+<h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong><span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik">Signifikanz</span> ist keine Relevanz.</strong> Bei grossem n wird ein Koeffizient von 0.4 Einheiten pro Quadratmeter <span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik">signifikant</span>, ohne für eine Mietentscheidung eine Rolle zu spielen. Relevanz liest man am Schätzwert in seiner Einheit, an seinem Intervall und an der Residualstreuung.</li>
+<li><strong>Der <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span> ist keine Wahrscheinlichkeit für die <span class="glossary-term" tabindex="0" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." data-topic="Statistik">Nullhypothese</span>.</strong> Er ist die Wahrscheinlichkeit dieser oder extremerer Daten, wenn der Koeffizient null wäre. Siehe <a href="../../statistik/inferenz/hypothesentests-grundlagen.html">Hypothesentests: Grundlagen</a>.</li>
+<li><strong>R² ist keine Modellrichtigkeit.</strong> Ein Modell mit falscher Struktur kann ein hohes R² haben, und ein korrektes Modell für stark streuende Daten ein niedriges. R² steigt zudem mit jedem zusätzlichen Prädiktor; für Vergleiche gilt das adjustierte R².</li>
+<li><strong>Ein Koeffizient ist keine Kausalität.</strong> “Bei konstant gehaltenen anderen Prädiktoren” heisst konstant gehalten unter den aufgenommenen Variablen. Eine nicht erhobene gemeinsame Ursache bleibt im Modell unsichtbar und verzerrt den Koeffizienten.</li>
+<li><strong>Das <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervall</span> ist keine Wahrscheinlichkeitsaussage über den wahren Wert.</strong> Das Verfahren trifft in 95 Prozent aller Anwendungen den wahren Wert; das konkrete Intervall enthält ihn oder nicht.</li>
+<li><strong>Der Achsenabschnitt ist selten interpretierbar.</strong> Fläche null und Alter null kommt in den Daten nicht vor. Wer den Achsenabschnitt deuten will, zentriert die Prädiktoren.</li>
+<li><strong>Vorhersagen nur im beobachteten Bereich.</strong> Ausserhalb der Datenspanne ist die Linearität nicht geprüft und die Vorhersage eine Behauptung.</li>
+</ul>
+</section>
+<section id="ergebnis-berichten" class="level2">
+<h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<p>Vorlage für den Ergebnissatz:</p>
+<blockquote class="blockquote">
+<p>Ein multiples lineares Modell mit [Prädiktoren] erklärt [Zielvariable] (F([Df Model], [Df Residuals]) = [F], p = [p], adjustiertes R² = [Wert], n = [n]). Bei konstant gehaltenen übrigen Prädiktoren steigt [Zielvariable] pro Einheit [Prädiktor] um [Schätzwert] [Einheit] (95-Prozent-Konfidenzintervall [unten] bis [oben], p = [p]).</p>
+</blockquote>
+<p>Immer genannt werden: Schätzwert in seiner Einheit, <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervall</span>, Teststatistik mit Freiheitsgraden, <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span>, adjustiertes R² und n, dazu die Residualstreuung, wenn es um Vorhersagegüte geht. Genannt wird ausserdem, welche Voraussetzungen geprüft wurden und mit welchem Ergebnis.</p>
+<p>Beispiel für eine Ergebnistabelle:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Prädiktor</th>
+<th>Schätzwert</th>
+<th>Standardfehler</th>
+<th>95-Prozent-Intervall</th>
+<th>p</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Achsenabschnitt</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Fläche (m²)</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Alter (Jahre)</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="abgrenzung-zu-verwandten-methoden" class="level2">
+<h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt der multiplen linearen Regression</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/regression/einfache-lineare-regression.html">Einfache lineare Regression</a></td>
+<td>genau ein Prädiktor, keine Kontrolle weiterer Grössen nötig</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/regression/logistische-regression.html">Logistische Regression</a></td>
+<td>binäre Zielvariable</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/regression/regressionsdiagnostik.html">Regressionsdiagnostik</a></td>
+<td>Vertiefung zu Residuen, Hebelwerten, Ausreissern und VIF</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/regression/modellauswahl.html">Modellauswahl</a></td>
+<td>Vergleich mehrerer Modelle, AIC, Validierung</td>
+</tr>
+<tr class="odd">
+<td>Varianzanalyse</td>
+<td>nur kategoriale Prädiktoren, Frage nach Gruppenunterschieden; rechnerisch ein Spezialfall dieses Modells</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/ueberlebenszeit/cox-modell.html">Cox-Modell</a></td>
+<td>Zielvariable ist eine Zeit bis zu einem Ereignis mit zensierten Fällen</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="verständnisfragen" class="level2">
+<h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Im Output steht für einen Prädiktor <code>Estimate = 11.8</code>, <code>Std. Error = 1.2</code>. Was folgt für das 95-Prozent-Konfidenzintervall?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Es reicht ungefähr von 9.4 bis 14.2 und schliesst die Null nicht ein
+</div>
+<div class="quiz__erklaerung">
+Richtig, rund Schätzwert plus minus zwei <span class="glossary-term" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik">Standardfehler</span>. Der Koeffizient ist deutlich von null verschieden.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Es reicht von 10.6 bis 13.0
+</div>
+<div class="quiz__erklaerung">
+Das ist plus minus ein <span class="glossary-term" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik">Standardfehler</span> und entspricht etwa 68 Prozent, nicht 95.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Ohne den <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span> lässt sich das nicht sagen
+</div>
+<div class="quiz__erklaerung">
+Schätzwert und <span class="glossary-term" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik">Standardfehler</span> genügen, der <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span> enthält keine zusätzliche Information darüber.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Der F-Test des Gesamtmodells ist mit p &lt; 0.001 <span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik">signifikant</span>, R² beträgt 0.71, aber kein einzelner Koeffizient hat einen <span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik">p-Wert</span> unter 0.05. Was ist die naheliegendste Erklärung?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Ein Rechenfehler, das kann nicht gleichzeitig auftreten
+</div>
+<div class="quiz__erklaerung">
+Es kann, und es ist ein bekanntes Muster.
+</div>
+</div>
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Starke Multikollinearität zwischen den Prädiktoren
+</div>
+<div class="quiz__erklaerung">
+Richtig. Gemeinsam erklären sie viel, aber der Beitrag der einzelnen Variable ist nicht trennbar, die <span class="glossary-term" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik">Standardfehler</span> werden gross. Prüfen mit VIF.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Das Modell hat zu wenige Prädiktoren
+</div>
+<div class="quiz__erklaerung">
+Zusätzliche Variablen würden die <span class="glossary-term" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt." data-topic="Statistik">Standardfehler</span> eher weiter aufblähen.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Nach Aufnahme eines zweiten Prädiktors fällt der Koeffizient des ersten von 15 auf 4. Was bedeutet das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Der erste Prädiktor ist unwichtig geworden
+</div>
+<div class="quiz__erklaerung">
+Wichtigkeit ist keine Eigenschaft, die sich durch Hinzufügen einer Variablen ändert. Geändert hat sich die Frage, die der Koeffizient beantwortet.
+</div>
+</div>
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Ein Teil des Zusammenhangs lief über den zweiten Prädiktor
+</div>
+<div class="quiz__erklaerung">
+Richtig. Der Koeffizient misst jetzt den Beitrag bei konstant gehaltenem zweitem Prädiktor. Die beiden Grössen hängen zusammen, ein Teil des vorher zugeschriebenen Effekts gehört zum neuen Prädiktor.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Das Modell ist jetzt falsch spezifiziert
+</div>
+<div class="quiz__erklaerung">
+Aus der Änderung allein folgt das nicht. Welche Fassung passt, entscheidet die inhaltliche Frage.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Das adjustierte R² sinkt, wenn ein weiterer Prädiktor aufgenommen wird, während das gewöhnliche R² leicht steigt. Was heisst das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Der Prädiktor erklärt weniger, als seine Kosten an Freiheitsgraden wert sind
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das gewöhnliche R² kann durch Hinzufügen nie sinken, das adjustierte schon. Genau deshalb wird für Vergleiche das adjustierte gelesen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Die Berechnung ist unstimmig
+</div>
+<div class="quiz__erklaerung">
+Beide Grössen verhalten sich genau so, wie sie definiert sind.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Der Prädiktor ist mit der Zielvariable negativ korreliert
+</div>
+<div class="quiz__erklaerung">
+Die Richtung des Zusammenhangs spielt für R² keine Rolle.
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="verlinkte-ressourcen" class="level2">
+<h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://www.statlearning.com/">An Introduction to Statistical Learning, Kapitel 3</a></li>
+<li><a href="https://www.statsmodels.org/stable/regression.html">statsmodels: Ordinary Least Squares</a></li>
+<li><a href="https://stat.ethz.ch/R-manual/R-devel/library/stats/html/lm.html">R-Dokumentation zu <code>lm</code></a></li>
+</ul>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Kopiert");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Kopiert");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("^(?!https?:)|^https?:\/\/(?:[^\/]*\.)?github\.(?:io|com)(?:\/|$)");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+            // target, if specified
+            link.setAttribute("target", "_blank");
+            if (link.getAttribute("rel") === null) {
+              link.setAttribute("rel", "noopener");
+            }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Private Notizen zum MAS Data Science (FFHS) – nicht öffentlich beworben</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+<script>
+(function () {
+  var nav = document.querySelector(".navbar .navbar-container")
+         || document.querySelector(".navbar");
+  if (!nav) { return; }
+  var box = document.createElement("div");
+  box.className = "last-update";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 09:10</time>";
+  var tools = nav.querySelector(".quarto-navbar-tools");
+  if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
+
+
+
+
+</body></html>
