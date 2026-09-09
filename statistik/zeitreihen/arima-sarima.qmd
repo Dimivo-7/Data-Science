@@ -319,6 +319,20 @@ die Daten und darf die Werte nicht mehr vergleichen. Zweitens ist die automatisc
 Suche in R nützlich, aber kein Ersatz für den Blick auf die Korrelogramme: Sie
 findet ein Modell mit gutem Kriterium, nicht notwendigerweise ein sinnvolles.
 
+Drittens sind die Werte der beiden Tabs nicht untereinander vergleichbar, und ihre
+Rangfolge kann abweichen. `Arima()` und `SARIMAX` behandeln die Startwerte der
+differenzierten Reihe unterschiedlich, deshalb liegen die Zahlenniveaus weit
+auseinander; und weil hier `enforce_stationarity` und `enforce_invertibility`
+abgeschaltet sind, darf die grösste Ordnung in Python an den Rand des
+Parameterraums laufen und bekommt dort ein besseres Kriterium. Verglichen wird
+also innerhalb einer Umgebung, nie über die Tabs hinweg.
+
+Auch die automatische Suche in R landet nicht bei der von Hand gewählten Ordnung,
+sondern bei einer Variante mit Drift und saisonalen AR-Termen. Beide beschreiben
+dieselbe Struktur, Trend plus Jahressaison, nur über verschiedene Bauteile. Das
+ist der Normalfall und kein Widerspruch: Die Entscheidung fällt danach über
+Residuendiagnostik und Testfehler, nicht über das Kriterium allein.
+
 Ergebnissatz: Unter den geprüften Ordnungen hat die ausgegebene das kleinste AICc;
 die automatische Suche wählt das ausgegebene Modell.
 
@@ -389,7 +403,9 @@ Aussage über die Unsicherheit.
 
 Ergebnissatz: Das Modell prognostiziert die folgenden zwölf Monate mit einem RMSE
 von dem ausgegebenen Wert, gegenüber dem ausgegebenen Wert bei der naiven
-saisonalen Prognose. Alle tatsächlichen Werte liegen im
+saisonalen Prognose. Holt-Winters liegt nur knapp dahinter: Gegenüber der naiven
+Prognose ist der Gewinn gross, gegenüber dem einfacheren Modell klein, und dieser
+Abstand entscheidet, ob der Aufwand sich lohnt. Alle tatsächlichen Werte liegen im
 95-Prozent-Prognoseintervall.
 
 ### Szenario C: Fallstrick Residuen mit Struktur

@@ -311,8 +311,9 @@ print(pd.DataFrame({"prognose": prognose.round(1).values,
 
 :::
 
-Die Prognose folgt Trend und Saisonfigur, und die tatsächlichen Werte liegen
-innerhalb des Intervalls. Zu berichten sind drei Dinge: die Punktprognose, das
+Die Prognose folgt Trend und Saisonfigur, und die tatsächlichen Werte liegen im
+Intervall, die beiden grössten Abweichungen im Juli und im November knapp am
+Rand. Zu berichten sind drei Dinge: die Punktprognose, das
 Intervall und ein Fehlermass auf dem Testteil. Ohne Intervall ist eine Prognose
 eine Behauptung; ohne Testteil ist ein gutes Fehlermass auf den Trainingsdaten
 wertlos, weil das Modell diese Werte gesehen hat.
@@ -326,7 +327,8 @@ gebaut ist und nicht aus dem Modell stammt.
 Ergebnissatz: Holt-Winters mit additivem Trend und additiver Saison (geschätzt auf
 60 Monaten) prognostiziert die folgenden zwölf Monate mit einem RMSE von dem
 ausgegebenen Wert und einem MAPE von dem ausgegebenen Prozentsatz. Alle
-tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall.
+tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall, zwei davon knapp am
+Rand.
 
 ### Szenario B: einfache Glättung, wo Trend und Saison vorliegen
 
@@ -420,8 +422,11 @@ print(lb.round(4))
 
 :::
 
-Beide Extreme sind schlechter als der geschätzte Wert: Ein sehr kleines Alpha
-reagiert zu träge auf den Trend, ein sehr grosses folgt dem Rauschen. Deshalb
+Das kleine Alpha ist klar am schlechtesten: Es reagiert zu träge auf den Trend und
+bleibt weit unter dem Niveau der Testmonate. Das grosse Alpha landet dagegen
+praktisch beim geschätzten Wert, weil die Schätzung bei dieser Reihe selbst nahe
+bei eins liegt. Der Vergleich zeigt also nicht, dass ein geschätztes Alpha immer
+gewinnt, sondern dass ein von Hand gesetzter Wert leicht daneben liegt: Deshalb
 schätzt man den Parameter statt ihn zu setzen; die Programme minimieren dafür den
 Fehler auf den Trainingsdaten.
 
@@ -432,9 +437,13 @@ prüfen sind drei Dinge: Die ACF der Residuen soll innerhalb der Grenzen liegen,
 Verlauf soll keine Muster zeigen, und die Verteilung soll ungefähr symmetrisch
 sein.
 
-Ergebnissatz: Ein geschätztes Alpha schlägt beide festen Werte (RMSE wie
-ausgegeben). Die Residuen des Holt-Winters-Modells zeigen im Ljung-Box-Test den
-ausgegebenen p-Wert.
+Ergebnissatz: Ein Alpha von 0.05 liegt beim Testfehler weit hinter dem geschätzten
+Wert, ein Alpha von 0.95 praktisch gleichauf (RMSE wie ausgegeben). Die Residuen
+des Holt-Winters-Modells zeigen im Ljung-Box-Test den ausgegebenen p-Wert. Dass
+die beiden Sprachen hier nicht denselben p-Wert liefern, liegt an der
+unterschiedlichen Zählung der Freiheitsgrade und daran, dass der Wert nahe an der
+Grenze von 0.05 liegt; ein solcher Befund trägt kein Urteil, sondern verlangt den
+Blick auf die Residuengrafik.
 
 ### Weiteres Szenario: gegen die naive Prognose messen
 
