@@ -1533,7 +1533,7 @@ Training set 0.09953009</code></pre>
 Dep. Variable:                                  y   No. Observations:                   84
 Model:             SARIMAX(1, 1, 1)x(0, 1, 1, 12)   Log Likelihood                -246.818
 Date:                            Wed, 09 Sep 2026   AIC                            501.636
-Time:                                    13:05:46   BIC                            509.808
+Time:                                    13:18:54   BIC                            509.808
 Sample:                                01-01-2018   HQIC                           504.812
                                      - 12-01-2024                                         
 Covariance Type:                              opg                                         
@@ -1738,6 +1738,8 @@ AIC=626.41   AICc=627.32   BIC=637.79</code></pre>
 </div>
 <p>Die Informationskriterien wägen Anpassung gegen Anzahl Parameter ab: Ein Modell mit mehr Koeffizienten passt immer besser, wird aber bestraft. Kleiner ist besser, und Unterschiede unter etwa zwei gelten als unbedeutend.</p>
 <p>Zwei Hinweise zur Handhabung. Erstens sind die Kriterien nur zwischen Modellen auf <strong>identischen</strong> Daten vergleichbar; wer die Anzahl Differenzen ändert, verändert die Daten und darf die Werte nicht mehr vergleichen. Zweitens ist die automatische Suche in R nützlich, aber kein Ersatz für den Blick auf die Korrelogramme: Sie findet ein Modell mit gutem Kriterium, nicht notwendigerweise ein sinnvolles.</p>
+<p>Drittens sind die Werte der beiden Tabs nicht untereinander vergleichbar, und ihre Rangfolge kann abweichen. <code>Arima()</code> und <code>SARIMAX</code> behandeln die Startwerte der differenzierten Reihe unterschiedlich, deshalb liegen die Zahlenniveaus weit auseinander; und weil hier <code>enforce_stationarity</code> und <code>enforce_invertibility</code> abgeschaltet sind, darf die grösste Ordnung in Python an den Rand des Parameterraums laufen und bekommt dort ein besseres Kriterium. Verglichen wird also innerhalb einer Umgebung, nie über die Tabs hinweg.</p>
+<p>Auch die automatische Suche in R landet nicht bei der von Hand gewählten Ordnung, sondern bei einer Variante mit Drift und saisonalen AR-Termen. Beide beschreiben dieselbe Struktur, Trend plus Jahressaison, nur über verschiedene Bauteile. Das ist der Normalfall und kein Widerspruch: Die Entscheidung fällt danach über Residuendiagnostik und Testfehler, nicht über das Kriterium allein.</p>
 <p>Ergebnissatz: Unter den geprüften Ordnungen hat die ausgegebene das kleinste AICc; die automatische Suche wählt das ausgegebene Modell.</p>
 </section>
 <section id="szenario-b-prognose-und-vergleich-mit-einfachen-verfahren" class="level3">
@@ -1827,7 +1829,7 @@ Abbildung&nbsp;4: Dieselbe Prognose in Python.
 </div>
 <p>Die Prognose folgt Trend und Saison, und die tatsächlichen Werte liegen im Intervall. Entscheidend ist der Vergleich in der Tabelle: Das Modell muss die naive saisonale Prognose deutlich schlagen, sonst rechtfertigt es seinen Aufwand nicht. Der Vergleich mit Holt-Winters zeigt zusätzlich, ob die explizite Modellierung der Abhängigkeit hier etwas bringt.</p>
 <p>Wie schnell das Intervall breiter wird, gehört mitberichtet: Bei zwölf Monaten Horizont ist es am Ende deutlich breiter als am Anfang, und das ist die ehrliche Aussage über die Unsicherheit.</p>
-<p>Ergebnissatz: Das Modell prognostiziert die folgenden zwölf Monate mit einem RMSE von dem ausgegebenen Wert, gegenüber dem ausgegebenen Wert bei der naiven saisonalen Prognose. Alle tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall.</p>
+<p>Ergebnissatz: Das Modell prognostiziert die folgenden zwölf Monate mit einem RMSE von dem ausgegebenen Wert, gegenüber dem ausgegebenen Wert bei der naiven saisonalen Prognose. Holt-Winters liegt nur knapp dahinter: Gegenüber der naiven Prognose ist der Gewinn gross, gegenüber dem einfacheren Modell klein, und dieser Abstand entscheidet, ob der Aufwand sich lohnt. Alle tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall.</p>
 </section>
 <section id="szenario-c-fallstrick-residuen-mit-struktur" class="level3">
 <h3 class="anchored" data-anchor-id="szenario-c-fallstrick-residuen-mit-struktur">Szenario C: Fallstrick Residuen mit Struktur</h3>
@@ -2029,7 +2031,7 @@ mit Saison | Ljung-Box p: [0.2401, 0.1234]</code></pre>
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="1">
 Saisonale Anteile
 </div>
 <div class="quiz__erklaerung">
@@ -2037,7 +2039,7 @@ Richtig. Spitzen bei Vielfachen der Periode sind das Zeichen für nicht erfasste
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="2">
 Ein zusätzlicher gewöhnlicher AR-Term
 </div>
 <div class="quiz__erklaerung">
@@ -2045,7 +2047,7 @@ Der würde den ersten Abstand betreffen, nicht Vielfache von zwölf.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="3">
 Eine weitere gewöhnliche Differenz
 </div>
 <div class="quiz__erklaerung">
@@ -2060,7 +2062,7 @@ Sie entfernt Trend, nicht Saison.
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="1">
 B, das AIC ist kleiner
 </div>
 <div class="quiz__erklaerung">
@@ -2068,7 +2070,7 @@ Die Werte sind nicht vergleichbar.
 </div>
 </div>
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="2">
 Nicht entscheidbar: verschiedene Anzahl Differenzen heisst verschiedene Daten
 </div>
 <div class="quiz__erklaerung">
@@ -2076,7 +2078,7 @@ Richtig. Informationskriterien gelten nur zwischen Modellen auf identischen Date
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="3">
 A, weil weniger Differenzen sparsamer sind
 </div>
 <div class="quiz__erklaerung">
@@ -2091,7 +2093,7 @@ A hat mehr Differenzen, und Sparsamkeit entscheidet hier nicht.
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="1">
 Trägheit: ein Teil der Abweichung vom Niveau überträgt sich auf den nächsten Zeitpunkt
 </div>
 <div class="quiz__erklaerung">
@@ -2099,7 +2101,7 @@ Richtig. Der Wert beschreibt die Struktur der Reihe, nicht eine Ursache. Beträg
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="2">
 Der nächste Wert ist 60 Prozent des aktuellen
 </div>
 <div class="quiz__erklaerung">
@@ -2107,7 +2109,7 @@ Der Koeffizient wirkt auf die Abweichung vom Niveau, nicht auf den Wert selbst.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="3">
 Das Modell erklärt 60 Prozent der Varianz
 </div>
 <div class="quiz__erklaerung">
@@ -2122,7 +2124,7 @@ Das wäre eine andere Kennzahl.
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="1">
 Ob die Reihe differenziert werden müsste; ohne Differenz modelliert das Modell den Trend über viele AR-Terme
 </div>
 <div class="quiz__erklaerung">
@@ -2130,7 +2132,7 @@ Richtig. Eine hohe AR-Ordnung bei <code>d = 0</code> und sichtbarem Trend ist ei
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="2">
 Nichts, die Suche minimiert das Kriterium
 </div>
 <div class="quiz__erklaerung">
@@ -2138,7 +2140,7 @@ Sie tut das, kann dabei aber eine unpassende Struktur wählen.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="3">
 Ob genügend Beobachtungen vorliegen
 </div>
 <div class="quiz__erklaerung">
@@ -2599,7 +2601,7 @@ Auch eine Frage, aber nicht die auffällige hier.
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 15:09</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 15:22</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
