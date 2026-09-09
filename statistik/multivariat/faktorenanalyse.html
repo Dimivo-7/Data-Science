@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Latente Faktoren schätzen, Rotation und Abgrenzung zur PCA.">
+<meta name="description" content="Latente Faktoren schätzen, Rotation und Abgrenzung zur Hauptkomponentenanalyse.">
 
 <title>Faktorenanalyse – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-b19535b873470a65c585fe6503f5eb6b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -80,6 +118,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -339,7 +406,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" tabindex="0" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-topic="Programmierung" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." tabindex="0">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +454,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -410,7 +477,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." tabindex="0">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -510,7 +577,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" tabindex="0" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-topic="Werkzeuge" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." tabindex="0">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -554,7 +621,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." tabindex="0">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -595,19 +662,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" tabindex="0" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-topic="Statistik" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." tabindex="0">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." tabindex="0">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -625,13 +692,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik">Normalverteilung</span> und <span class="glossary-term" tabindex="0" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." tabindex="0">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." tabindex="0">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -648,7 +715,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -666,7 +733,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik">Power</span> und Stichprobenumfang</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -695,19 +762,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -719,7 +786,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." tabindex="0">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1095,7 +1162,13 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
   <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
+  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a>
+  <ul class="collapse">
+  <li><a href="#szenario-a-klare-zweifaktorenstruktur" id="toc-szenario-a-klare-zweifaktorenstruktur" class="nav-link" data-scroll-target="#szenario-a-klare-zweifaktorenstruktur">Szenario A: klare Zweifaktorenstruktur</a></li>
+  <li><a href="#szenario-b-ein-item-das-nicht-passt" id="toc-szenario-b-ein-item-das-nicht-passt" class="nav-link" data-scroll-target="#szenario-b-ein-item-das-nicht-passt">Szenario B: ein Item, das nicht passt</a></li>
+  <li><a href="#szenario-c-fallstrick-zu-viele-faktoren" id="toc-szenario-c-fallstrick-zu-viele-faktoren" class="nav-link" data-scroll-target="#szenario-c-fallstrick-zu-viele-faktoren">Szenario C: Fallstrick zu viele Faktoren</a></li>
+  <li><a href="#weiteres-szenario-die-faktorenzahl-bestimmen" id="toc-weiteres-szenario-die-faktorenzahl-bestimmen" class="nav-link" data-scroll-target="#weiteres-szenario-die-faktorenzahl-bestimmen">Weiteres Szenario: die Faktorenzahl bestimmen</a></li>
+  </ul></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
@@ -1122,7 +1195,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Latente Faktoren schätzen, Rotation und Abgrenzung zur PCA.
+    Latente Faktoren schätzen, Rotation und Abgrenzung zur Hauptkomponentenanalyse.
   </div>
 </div>
 
@@ -1140,43 +1213,975 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Welche wenigen nicht beobachtbaren Grössen erzeugen die Korrelationen zwischen vielen beobachteten Variablen?</td>
+</tr>
+<tr class="even">
+<td>Zielvariable</td>
+<td>keine, das Verfahren ist unüberwacht</td>
+</tr>
+<tr class="odd">
+<td>Eingang</td>
+<td>mehrere metrische oder als metrisch behandelte Variablen, meist Fragebogenitems</td>
+</tr>
+<tr class="even">
+<td>Was die Methode liefert</td>
+<td>Ladungsmatrix nach Rotation, Kommunalitäten, erklärte Varianz je Faktor, Faktorwerte</td>
+</tr>
+<tr class="odd">
+<td>R-Funktion</td>
+<td><code>psych::fa(daten, nfactors = 2, rotate = "oblimin")</code></td>
+</tr>
+<tr class="even">
+<td>Python-Funktion</td>
+<td><code>FactorAnalyzer(n_factors=2, rotation="oblimin").fit(daten)</code></td>
+</tr>
+<tr class="odd">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/multivariat/hauptkomponentenanalyse.html">Hauptkomponentenanalyse</a>, Strukturgleichungsmodelle</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Typische Fragestellungen: Welche Dimensionen misst ein Fragebogen wirklich, lassen sich zwanzig Items zu drei Skalen zusammenfassen, misst eine Skala das, was sie messen soll.</p>
+<p>Der Unterschied zur <a href="../../statistik/multivariat/hauptkomponentenanalyse.html">Hauptkomponentenanalyse</a> ist nicht rechnerischer Feinschliff, sondern die Denkrichtung. Die Hauptkomponentenanalyse fasst beobachtete Variablen zusammen: Die Komponente ist eine Summe der Items. Die Faktorenanalyse unterstellt das Gegenteil: Es gibt nicht beobachtbare Grössen, und die Items sind deren Ausprägungen plus Eigenanteil. Wer nach Ursachen fragt, braucht die Faktorenanalyse; wer nur verdichten will, die Komponentenanalyse.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Nur Verdichtung, keine Deutung als Ursache</td>
+<td><a href="../../statistik/multivariat/hauptkomponentenanalyse.html">Hauptkomponentenanalyse</a></td>
+</tr>
+<tr class="even">
+<td>Die Faktorstruktur ist bereits bekannt und soll geprüft werden</td>
+<td>konfirmatorische Faktorenanalyse, Strukturgleichungsmodelle</td>
+</tr>
+<tr class="odd">
+<td>Gruppen von Personen statt Dimensionen von Items</td>
+<td><a href="../../statistik/multivariat/k-means.html">k-Means</a></td>
+</tr>
+<tr class="even">
+<td>Es gibt eine Zielvariable</td>
+<td><a href="../../statistik/regression/index.html">Regression</a></td>
+</tr>
+<tr class="odd">
+<td>Items sind binär oder stark schief</td>
+<td>Faktorenanalyse auf polychorischen Korrelationen</td>
+</tr>
+<tr class="even">
+<td>Weniger als etwa drei Items je erwartetem Faktor</td>
+<td>keine sinnvolle Schätzung möglich</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
+<p>Jedes Item wird als Kombination gemeinsamer <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> und eines Eigenanteils beschrieben:</p>
+<p><span class="math display">\[x_j = \lambda_{j1} F_1 + \dots + \lambda_{jm} F_m + e_j\]</span></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Bestandteil</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(x_j\)</span></td>
+<td>beobachtetes Item <span class="math inline">\(j\)</span>, standardisiert</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(F_k\)</span></td>
+<td>latenter Faktor <span class="math inline">\(k\)</span>, nicht beobachtbar</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\lambda_{jk}\)</span></td>
+<td>Ladung: wie stark Faktor <span class="math inline">\(k\)</span> auf Item <span class="math inline">\(j\)</span> wirkt</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(e_j\)</span></td>
+<td>Eigenanteil des Items, alles Nichtgemeinsame samt Messfehler</td>
+</tr>
+<tr class="odd">
+<td>Kommunalität</td>
+<td>Anteil der Varianz von <span class="math inline">\(x_j\)</span>, den die Faktoren erklären, also die Summe der quadrierten Ladungen</td>
+</tr>
+<tr class="even">
+<td>Uniqueness</td>
+<td>eins minus Kommunalität, der Eigenanteil</td>
+</tr>
+</tbody>
+</table>
+<p>Der Unterschied zur Komponentenanalyse steckt genau in <span class="math inline">\(e_j\)</span>: Die Faktorenanalyse modelliert nur die <strong>gemeinsame</strong> Varianz und lässt den Eigenanteil ausdrücklich draussen. Deshalb sind ihre Ladungen in der Regel etwas kleiner, und deshalb ist sie das richtige Werkzeug, wenn Messfehler eine Rolle spielt.</p>
+<p><strong>Rotation</strong> löst ein Problem der Deutbarkeit: Die Lage der <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> im Raum ist nicht eindeutig bestimmt, man kann sie drehen, ohne die Anpassung zu ändern. Gedreht wird auf Einfachstruktur, also darauf, dass jedes Item möglichst nur auf einem <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> hoch lädt. Orthogonale Rotation, etwa Varimax, hält die <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> unkorreliert; oblique Rotation, etwa Oblimin, erlaubt Korrelation zwischen ihnen. Bei inhaltlich verwandten Dimensionen ist oblique die realistischere Annahme.</p>
 </section>
 <section id="voraussetzungen-und-ihre-prüfung" class="level2">
 <h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Voraussetzung</th>
+<th>Was sie bedeutet</th>
+<th>Prüfung</th>
+<th>Folge bei Verletzung</th>
+<th>Vorgehen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Genügend Korrelation</td>
+<td>Die Items hängen zusammen</td>
+<td>Korrelationsmatrix, Bartlett-Test, KMO-Kriterium</td>
+<td>Keine gemeinsamen Faktoren auffindbar</td>
+<td>Items überarbeiten, Analyse abbrechen</td>
+</tr>
+<tr class="even">
+<td>Genügend Beobachtungen</td>
+<td>Faustregel: mindestens fünf bis zehn je Item, nie unter 100</td>
+<td>n zählen</td>
+<td>Ladungen instabil, Struktur nicht reproduzierbar</td>
+<td>mehr Daten, weniger Items</td>
+</tr>
+<tr class="odd">
+<td>Genügend Items je Faktor</td>
+<td>mindestens drei, besser vier</td>
+<td>Struktur planen</td>
+<td>Faktor nicht identifizierbar</td>
+<td>Items ergänzen oder Faktoren zusammenlegen</td>
+</tr>
+<tr class="even">
+<td>Metrisch oder annähernd metrisch</td>
+<td>Korrelationen sind sinnvoll interpretierbar</td>
+<td>Skalenniveau, Verteilung der Items</td>
+<td>Ladungen verzerrt</td>
+<td>polychorische Korrelationen</td>
+</tr>
+<tr class="odd">
+<td>Lineare Zusammenhänge</td>
+<td>Ladungen beschreiben lineare Wirkung</td>
+<td>Streudiagramme</td>
+<td>Struktur wird verfehlt</td>
+<td>Transformation</td>
+</tr>
+<tr class="even">
+<td>Keine extremen Ausreisser</td>
+<td>Korrelationen nicht von Einzelfällen getrieben</td>
+<td>Ausreisserdiagnostik</td>
+<td>Faktoren richten sich auf Ausreisser aus</td>
+<td>Ursachen prüfen</td>
+</tr>
+</tbody>
+</table>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cor</span>(fragebogen), <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             freundlich beratung erreichbar hilfsbereit geraete sauberkeit
+freundlich         1.00     0.43       0.36        0.34    0.04      -0.03
+beratung           0.43     1.00       0.35        0.39   -0.07      -0.01
+erreichbar         0.36     0.35       1.00        0.36   -0.05       0.06
+hilfsbereit        0.34     0.39       0.36        1.00   -0.01      -0.04
+geraete            0.04    -0.07      -0.05       -0.01    1.00       0.36
+sauberkeit        -0.03    -0.01       0.06       -0.04    0.36       1.00
+garderobe          0.01    -0.03      -0.04       -0.03    0.38       0.34
+platzangebot       0.05     0.02      -0.06       -0.06    0.36       0.34
+parkplatz          0.11     0.05      -0.02        0.06   -0.01      -0.09
+             garderobe platzangebot parkplatz
+freundlich        0.01         0.05      0.11
+beratung         -0.03         0.02      0.05
+erreichbar       -0.04        -0.06     -0.02
+hilfsbereit      -0.03        -0.06      0.06
+geraete           0.38         0.36     -0.01
+sauberkeit        0.34         0.34     -0.09
+garderobe         1.00         0.27      0.04
+platzangebot      0.27         1.00      0.01
+parkplatz         0.04         0.01      1.00</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Eignung der Korrelationsmatrix</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">KMO</span>(fragebogen)<span class="sc">$</span>MSA                                    <span class="co"># gesamtes KMO-Mass</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.7102572</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cortest.bartlett</span>(<span class="fu">cor</span>(fragebogen), <span class="at">n =</span> <span class="fu">nrow</span>(fragebogen))<span class="sc">$</span>p.value</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 4.101069e-85</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> factor_analyzer.factor_analyzer <span class="im">import</span> (calculate_kmo,</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                                            calculate_bartlett_sphericity)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(fragebogen.corr().<span class="bu">round</span>(<span class="dv">2</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              freundlich  beratung  ...  platzangebot  parkplatz
+freundlich          1.00      0.42  ...         -0.06      -0.01
+beratung            0.42      1.00  ...          0.01       0.00
+erreichbar          0.37      0.32  ...          0.02       0.07
+hilfsbereit         0.42      0.41  ...          0.05      -0.00
+geraete            -0.03      0.05  ...          0.31      -0.02
+sauberkeit         -0.01     -0.01  ...          0.37       0.06
+garderobe          -0.09     -0.04  ...          0.30       0.03
+platzangebot       -0.06      0.01  ...          1.00       0.10
+parkplatz          -0.01      0.00  ...          0.10       1.00
+
+[9 rows x 9 columns]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"KMO gesamt:"</span>, <span class="bu">round</span>(calculate_kmo(fragebogen)[<span class="dv">1</span>], <span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>KMO gesamt: 0.729</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>chi2, p <span class="op">=</span> calculate_bartlett_sphericity(fragebogen)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Bartlett p:"</span>, <span class="ss">f"</span><span class="sc">{</span>p<span class="sc">:.3g}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Bartlett p: 7.39e-96</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die Korrelationsmatrix zeigt zwei Blöcke: die vier Service-Items untereinander und die vier Anlage-Items untereinander. Das Item zum Parkplatz korreliert mit nichts.</p>
+<p>Das KMO-Mass beurteilt, ob die <span class="glossary-term" data-topic="Programmierung" data-def="Rechteckige Anordnung von Werten desselben Typs in Zeilen und Spalten. Anders als ein Data Frame kann sie keine gemischten Typen aufnehmen." tabindex="0">Matrix</span> überhaupt für eine Faktorenanalyse taugt; Werte über 0.7 gelten als gut, unter 0.5 als unbrauchbar. Der Bartlett-Test prüft, ob die <span class="glossary-term" data-topic="Programmierung" data-def="Rechteckige Anordnung von Werten desselben Typs in Zeilen und Spalten. Anders als ein Data Frame kann sie keine gemischten Typen aufnehmen." tabindex="0">Matrix</span> von der Einheitsmatrix abweicht, also ob es Korrelationen gibt. Beide sind Eingangsprüfungen: Sie sagen, ob man anfangen darf, nicht ob das Ergebnis gut ist.</p>
 </section>
 <section id="durchführung-in-r-und-python" class="level2">
 <h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>efa <span class="ot">&lt;-</span> <span class="fu">fa</span>(fragebogen, <span class="at">nfactors =</span> <span class="dv">2</span>, <span class="at">rotate =</span> <span class="st">"oblimin"</span>, <span class="at">fm =</span> <span class="st">"ml"</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(efa<span class="sc">$</span>loadings, <span class="at">cutoff =</span> <span class="fl">0.3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Loadings:
+             ML2    ML1   
+freundlich    0.635       
+beratung      0.655       
+erreichbar    0.565       
+hilfsbereit   0.584       
+geraete              0.645
+sauberkeit           0.583
+garderobe            0.561
+platzangebot         0.546
+parkplatz                 
+
+                 ML2   ML1
+SS loadings    1.499 1.373
+Proportion Var 0.167 0.153
+Cumulative Var 0.167 0.319</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">data.frame</span>(<span class="at">kommunalitaet =</span> efa<span class="sc">$</span>communality,</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">eigenanteil =</span> efa<span class="sc">$</span>uniquenesses), <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             kommunalitaet eigenanteil
+freundlich           0.403       0.597
+beratung             0.430       0.570
+erreichbar           0.320       0.680
+hilfsbereit          0.343       0.657
+geraete              0.417       0.583
+sauberkeit           0.339       0.661
+garderobe            0.315       0.685
+platzangebot         0.298       0.702
+parkplatz            0.007       0.993</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>efa <span class="op">=</span> FactorAnalyzer(n_factors<span class="op">=</span><span class="dv">2</span>, rotation<span class="op">=</span><span class="st">"oblimin"</span>, method<span class="op">=</span><span class="st">"ml"</span>).fit(fragebogen)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ladungen <span class="op">=</span> pd.DataFrame(efa.loadings_, index<span class="op">=</span>fragebogen.columns,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>                        columns<span class="op">=</span>[<span class="st">"F1"</span>, <span class="st">"F2"</span>]).<span class="bu">round</span>(<span class="dv">3</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(ladungen.where(ladungen.<span class="bu">abs</span>() <span class="op">&gt;=</span> <span class="fl">0.3</span>, <span class="st">""</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 F1     F2
+freundlich    0.642       
+beratung      0.612       
+erreichbar    0.573       
+hilfsbereit   0.677       
+geraete              0.635
+sauberkeit           0.689
+garderobe            0.554
+platzangebot         0.529
+parkplatz                 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.DataFrame({</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"kommunalitaet"</span>: efa.get_communalities().<span class="bu">round</span>(<span class="dv">3</span>),</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"eigenanteil"</span>: (<span class="dv">1</span> <span class="op">-</span> efa.get_communalities()).<span class="bu">round</span>(<span class="dv">3</span>),</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>}, index<span class="op">=</span>fragebogen.columns))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              kommunalitaet  eigenanteil
+freundlich            0.413        0.587
+beratung              0.377        0.623
+erreichbar            0.329        0.671
+hilfsbereit           0.459        0.541
+geraete               0.404        0.596
+sauberkeit            0.475        0.525
+garderobe             0.312        0.688
+platzangebot          0.281        0.719
+parkplatz             0.005        0.995</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 400 Beobachtungen, neun Items, davon vier aus einem <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> Betreuung, vier aus einem <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> Anlage und eines ohne Bezug. Die Ladungen unterhalb von 0.3 werden ausgeblendet, weil die Ladungsmatrix dadurch lesbar wird; das ist eine Darstellungsentscheidung, keine inhaltliche.</p>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
+<p>R, <code>psych::fa()</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Faustregel oder Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>loadings</code></td>
+<td>Ladung je Item und Faktor nach Rotation</td>
+<td>ab etwa 0.4 als bedeutsam, ab 0.3 erwähnenswert</td>
+</tr>
+<tr class="even">
+<td><code>communality</code></td>
+<td>Anteil der Itemvarianz, den die Faktoren erklären</td>
+<td>unter 0.3 heisst: Item passt nicht zur Struktur</td>
+</tr>
+<tr class="odd">
+<td><code>uniquenesses</code></td>
+<td>Eigenanteil, eins minus Kommunalität</td>
+<td>hoch bei Items, die etwas Eigenes messen</td>
+</tr>
+<tr class="even">
+<td><code>SS loadings</code></td>
+<td>Summe der quadrierten Ladungen je Faktor</td>
+<td>Beitrag des Faktors, in Varianzeinheiten</td>
+</tr>
+<tr class="odd">
+<td><code>Proportion Var</code></td>
+<td>Anteil der Gesamtvarianz je Faktor</td>
+<td>summiert über Faktoren die gemeinsame Varianz</td>
+</tr>
+<tr class="even">
+<td><code>Cor of factors</code></td>
+<td>Korrelation zwischen den Faktoren</td>
+<td>nur bei obliquer Rotation vorhanden</td>
+</tr>
+<tr class="odd">
+<td><code>Mean item complexity</code></td>
+<td>wie viele Faktoren ein Item durchschnittlich braucht</td>
+<td>nahe 1 heisst gute Einfachstruktur</td>
+</tr>
+<tr class="even">
+<td><code>RMSEA</code>, <code>TLI</code>, <code>BIC</code></td>
+<td>Anpassungsmasse</td>
+<td>RMSEA unter 0.06 gilt als gut, aber vor allem bei bestätigenden Modellen aussagekräftig</td>
+</tr>
+<tr class="odd">
+<td>Warnung <code>Heywood case</code></td>
+<td>eine Kommunalität über eins</td>
+<td>Modell überparametrisiert; Faktorenzahl reduzieren</td>
+</tr>
+</tbody>
+</table>
+<p>Python, <code>FactorAnalyzer</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Zugriff</th>
+<th>Was er liefert</th>
+<th>Unterschied zu R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>loadings_</code></td>
+<td>Ladungsmatrix nach Rotation</td>
+<td>Zeilen sind Items, wie in R</td>
+</tr>
+<tr class="even">
+<td><code>get_communalities()</code></td>
+<td>Kommunalitäten</td>
+<td>wie <code>communality</code></td>
+</tr>
+<tr class="odd">
+<td><code>get_factor_variance()</code></td>
+<td>Summe der Ladungen, Anteil, kumuliert</td>
+<td>in R Teil der Ausgabe von <code>print</code></td>
+</tr>
+<tr class="even">
+<td><code>get_uniquenesses()</code></td>
+<td>Eigenanteile</td>
+<td>wie <code>uniquenesses</code></td>
+</tr>
+<tr class="odd">
+<td><code>phi_</code></td>
+<td>Faktorkorrelationen bei obliquer Rotation</td>
+<td>wie <code>Cor of factors</code></td>
+</tr>
+<tr class="even">
+<td>keine Anpassungsmasse</td>
+<td>RMSEA und Ähnliches fehlen</td>
+<td>in R vorhanden</td>
+</tr>
+<tr class="odd">
+<td>kein Abschneiden der Anzeige</td>
+<td>Filterung selbst vornehmen</td>
+<td>in R über <code>cutoff =</code></td>
+</tr>
+</tbody>
+</table>
+<p>Ein Unterschied in der Vorgabe: R verwendet in <code>fa()</code> standardmässig Oblimin, Python ohne Angabe keine Rotation. Ohne Rotation ist die Ladungsmatrix fast immer unlesbar, deshalb gehört sie ausdrücklich gesetzt.</p>
 </section>
 <section id="ergebnisse-interpretieren" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<section id="szenario-a-klare-zweifaktorenstruktur" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-a-klare-zweifaktorenstruktur">Szenario A: klare Zweifaktorenstruktur</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>eigen_werte <span class="ot">&lt;-</span> <span class="fu">eigen</span>(<span class="fu">cor</span>(fragebogen))<span class="sc">$</span>values</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(eigen_werte, <span class="at">type =</span> <span class="st">"b"</span>, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">xlab =</span> <span class="st">"Faktor"</span>, <span class="at">ylab =</span> <span class="st">"Eigenwert"</span>,</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Screeplot"</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">1</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(efa<span class="sc">$</span>Vaccounted[<span class="fu">c</span>(<span class="st">"SS loadings"</span>, <span class="st">"Proportion Var"</span>, <span class="st">"Cumulative Var"</span>), ], <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 ML2   ML1
+SS loadings    1.500 1.374
+Proportion Var 0.167 0.153
+Cumulative Var 0.167 0.319</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(efa<span class="sc">$</span>score.cor, <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       [,1]   [,2]
+[1,]  1.000 -0.035
+[2,] -0.035  1.000</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-szenario-a-fa-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-szenario-a-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="faktorenanalyse_files/figure-html/fig-szenario-a-fa-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Eigenwerte der Korrelationsmatrix. Zwei Werte über eins, danach der Knick."><img src="faktorenanalyse_files/figure-html/fig-szenario-a-fa-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-szenario-a-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Eigenwerte der Korrelationsmatrix. Zwei Werte über eins, danach der Knick.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>eigenwerte <span class="op">=</span> FactorAnalyzer(n_factors<span class="op">=</span><span class="dv">9</span>, rotation<span class="op">=</span><span class="va">None</span>).fit(fragebogen) <span class="op">\</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    .get_eigenvalues()[<span class="dv">0</span>]</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.2</span>))</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>ax.plot(<span class="bu">range</span>(<span class="dv">1</span>, <span class="dv">10</span>), eigenwerte, <span class="st">"o-"</span>, color<span class="op">=</span><span class="st">"#2166ac"</span>)</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>ax.axhline(<span class="dv">1</span>, linestyle<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"black"</span>, linewidth<span class="op">=</span><span class="fl">0.8</span>)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">"Faktor"</span>)</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"Eigenwert"</span>)</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-szenario-a-fa-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-szenario-a-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="faktorenanalyse_files/figure-html/fig-szenario-a-fa-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Dieselben Eigenwerte in Python."><img src="faktorenanalyse_files/figure-html/fig-szenario-a-fa-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-szenario-a-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Dieselben Eigenwerte in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>varianz <span class="op">=</span> pd.DataFrame(efa.get_factor_variance(),</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>                       index<span class="op">=</span>[<span class="st">"SS loadings"</span>, <span class="st">"Anteil"</span>, <span class="st">"kumuliert"</span>],</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>                       columns<span class="op">=</span>[<span class="st">"F1"</span>, <span class="st">"F2"</span>])</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(varianz.<span class="bu">round</span>(<span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                F1     F2
+SS loadings  1.583  1.472
+Anteil       0.176  0.164
+kumuliert    0.176  0.339</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Faktorkorrelation:"</span>, np.<span class="bu">round</span>(efa.phi_, <span class="dv">3</span>).tolist())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Faktorkorrelation: [[1.0, -0.063], [-0.063, 1.0]]</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Der Screeplot zeigt zwei Eigenwerte über eins und danach einen Knick; das bestätigt die Wahl von zwei <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span>. Die Ladungsmatrix aus der Durchführung zeigt Einfachstruktur: Die vier Service-Items laden hoch auf den einen <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span>, die vier Anlage-Items auf den anderen, und kein Item lädt auf beiden bedeutsam.</p>
+<p>Die Deutung kommt nicht aus der Rechnung, sondern von den Items: Der erste <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> lässt sich als Zufriedenheit mit der Betreuung lesen, der zweite als Zufriedenheit mit der Anlage. Ein <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> ohne inhaltliche Beschreibung ist kein Ergebnis, sondern eine Zahlenspalte.</p>
+<p>Die Faktorkorrelation ist bei obliquer Rotation Teil des Ergebnisses. Ist sie nahe null, hätte auch eine orthogonale Rotation genügt; ist sie hoch, sind die beiden Dimensionen inhaltlich verwandt.</p>
+<p>Ergebnissatz: Eine explorative Faktorenanalyse (Maximum-Likelihood, Oblimin, n = 400, KMO wie ausgegeben) ergibt zwei <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span>, die zusammen den ausgegebenen Anteil der Varianz erklären. <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> 1 lädt auf die vier Items zur Betreuung, <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> 2 auf die vier Items zur Anlage; die <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> korrelieren mit dem ausgegebenen Wert.</p>
+</section>
+<section id="szenario-b-ein-item-das-nicht-passt" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-b-ein-item-das-nicht-passt">Szenario B: ein Item, das nicht passt</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">sort</span>(efa<span class="sc">$</span>communality), <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   parkplatz platzangebot    garderobe   erreichbar   sauberkeit  hilfsbereit 
+       0.007        0.298        0.315        0.320        0.339        0.343 
+  freundlich      geraete     beratung 
+       0.403        0.417        0.430 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(efa<span class="sc">$</span>loadings[<span class="st">"parkplatz"</span>, ], <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   ML2    ML1 
+ 0.083 -0.017 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>kommunalitaeten <span class="op">=</span> pd.Series(efa.get_communalities(), index<span class="op">=</span>fragebogen.columns)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(kommunalitaeten.sort_values().<span class="bu">round</span>(<span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>parkplatz       0.005
+platzangebot    0.281
+garderobe       0.312
+erreichbar      0.329
+beratung        0.377
+geraete         0.404
+freundlich      0.413
+hilfsbereit     0.459
+sauberkeit      0.475
+dtype: float64</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(ladungen.loc[<span class="st">"parkplatz"</span>])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>F1    0.026
+F2    0.066
+Name: parkplatz, dtype: float64</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Das Item zum Parkplatz hat die niedrigste Kommunalität und lädt auf keinen <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> bedeutsam. Aussage: Es misst etwas Eigenes, das mit den beiden gefundenen Dimensionen nichts zu tun hat. Das ist ein Befund, kein Fehler.</p>
+<p>Das Vorgehen: Ein solches Item wird entfernt, wenn es zur Fragestellung nicht beiträgt, oder es bleibt als eigenständige Frage stehen, die nicht in eine Skala eingeht. Was nicht geht, ist es einer Skala zuzuschlagen, weil dort noch Platz ist; die Skala misst dann etwas Vermischtes.</p>
+<p>Ergebnissatz: Das Item zum Parkplatz lädt auf keinen <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> (Kommunalität wie ausgegeben) und wird nicht in eine Skala aufgenommen.</p>
+</section>
+<section id="szenario-c-fallstrick-zu-viele-faktoren" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-c-fallstrick-zu-viele-faktoren">Szenario C: Fallstrick zu viele Faktoren</h3>
+<p>Wer die Faktorenzahl zu hoch wählt, bekommt <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span>, die von einzelnen Items getragen werden, und im Extremfall eine unmögliche Lösung.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>efa_zu_viele <span class="ot">&lt;-</span> <span class="fu">fa</span>(fragebogen, <span class="at">nfactors =</span> <span class="dv">4</span>, <span class="at">rotate =</span> <span class="st">"oblimin"</span>, <span class="at">fm =</span> <span class="st">"ml"</span>)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(efa_zu_viele<span class="sc">$</span>loadings, <span class="at">cutoff =</span> <span class="fl">0.3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Loadings:
+             ML4    ML3    ML1    ML2   
+freundlich    0.663                     
+beratung      0.652                     
+erreichbar    0.568                     
+hilfsbereit   0.571                     
+geraete              0.998              
+sauberkeit                  0.819       
+garderobe                   0.319       
+platzangebot                0.335  0.317
+parkplatz                               
+
+                 ML4   ML3   ML1   ML2
+SS loadings    1.526 1.067 0.918 0.287
+Proportion Var 0.170 0.119 0.102 0.032
+Cumulative Var 0.170 0.288 0.390 0.422</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(efa_zu_viele<span class="sc">$</span>Vaccounted[<span class="st">"Proportion Var"</span>, ], <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  ML4   ML3   ML1   ML2 
+0.170 0.125 0.108 0.035 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>efa_viele <span class="op">=</span> FactorAnalyzer(n_factors<span class="op">=</span><span class="dv">4</span>, rotation<span class="op">=</span><span class="st">"oblimin"</span>, method<span class="op">=</span><span class="st">"ml"</span>).fit(fragebogen)</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>viele <span class="op">=</span> pd.DataFrame(efa_viele.loadings_, index<span class="op">=</span>fragebogen.columns,</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>                     columns<span class="op">=</span>[<span class="ss">f"F</span><span class="sc">{</span>i<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">4</span>)]).<span class="bu">round</span>(<span class="dv">3</span>)</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(viele.where(viele.<span class="bu">abs</span>() <span class="op">&gt;=</span> <span class="fl">0.3</span>, <span class="st">""</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 F1     F2     F3 F4
+freundlich           0.696          
+beratung             0.534          
+erreichbar           0.486          
+hilfsbereit                 0.934   
+geraete         0.7                 
+sauberkeit    0.664                 
+garderobe     0.543                 
+platzangebot  0.519                 
+parkplatz                           </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Anteil je Faktor:"</span>, np.<span class="bu">round</span>(efa_viele.get_factor_variance()[<span class="dv">1</span>], <span class="dv">3</span>).tolist())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Anteil je Faktor: [0.167, 0.116, 0.102, 0.027]</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Erkennbar ist das Problem an drei Zeichen: Die zusätzlichen <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> erklären nur wenige Prozent der Varianz, sie tragen jeweils nur ein oder zwei Items, und die Ladungen der ursprünglich klaren Struktur werden unschärfer. Häufig kommt eine Warnung zu einem Heywood-Fall dazu, also einer Kommunalität über eins, was inhaltlich unmöglich ist und ein überparametrisiertes Modell anzeigt.</p>
+<p>Das Vorgehen: Die Faktorenzahl wird nicht nach der erklärten Varianz gewählt, denn die steigt mit jedem <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span>. Herangezogen werden der Screeplot, die Parallelanalyse, die inhaltliche Deutbarkeit und die Forderung, dass jeder <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> mindestens drei Items mit bedeutsamer Ladung trägt.</p>
+<p>Ergebnissatz: Eine Lösung mit vier <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> erklärt kaum mehr Varianz, erzeugt aber zwei <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> mit weniger als drei tragenden Items; berichtet wird die Zweifaktorenlösung.</p>
+</section>
+<section id="weiteres-szenario-die-faktorenzahl-bestimmen" class="level3">
+<h3 class="anchored" data-anchor-id="weiteres-szenario-die-faktorenzahl-bestimmen">Weiteres Szenario: die Faktorenzahl bestimmen</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>parallel <span class="ot">&lt;-</span> <span class="fu">fa.parallel</span>(fragebogen, <span class="at">fa =</span> <span class="st">"fa"</span>, <span class="at">plot =</span> <span class="cn">TRUE</span>, <span class="at">n.iter =</span> <span class="dv">20</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Parallel analysis suggests that the number of factors =  2  and the number of components =  NA </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>parallel<span class="sc">$</span>nfact</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-parallel-fa-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-parallel-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="faktorenanalyse_files/figure-html/fig-parallel-fa-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Abbildung&nbsp;3: Parallelanalyse: verglichen wird mit Eigenwerten aus Zufallsdaten gleicher Grösse."><img src="faktorenanalyse_files/figure-html/fig-parallel-fa-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-parallel-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;3: Parallelanalyse: verglichen wird mit Eigenwerten aus Zufallsdaten gleicher Grösse.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb50"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parallelanalyse von Hand: Eigenwerte der Daten gegen Zufallsdaten</span></span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>echt <span class="op">=</span> FactorAnalyzer(n_factors<span class="op">=</span><span class="dv">9</span>, rotation<span class="op">=</span><span class="va">None</span>).fit(fragebogen).get_eigenvalues()[<span class="dv">0</span>]</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>zufall <span class="op">=</span> np.zeros((<span class="dv">20</span>, <span class="dv">9</span>))</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">20</span>):</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>    daten <span class="op">=</span> pd.DataFrame(rng.normal(size<span class="op">=</span>fragebogen.shape))</span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>    zufall[i] <span class="op">=</span> FactorAnalyzer(n_factors<span class="op">=</span><span class="dv">9</span>, rotation<span class="op">=</span><span class="va">None</span>).fit(daten).get_eigenvalues()[<span class="dv">0</span>]</span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>vergleich <span class="op">=</span> pd.DataFrame({<span class="st">"daten"</span>: echt.<span class="bu">round</span>(<span class="dv">2</span>),</span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a>                          <span class="st">"zufall_mittel"</span>: zufall.mean(axis<span class="op">=</span><span class="dv">0</span>).<span class="bu">round</span>(<span class="dv">2</span>)},</span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>                         index<span class="op">=</span>[<span class="ss">f"F</span><span class="sc">{</span>i<span class="op">+</span><span class="dv">1</span><span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">9</span>)])</span>
+<span id="cb50-12"><a href="#cb50-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(vergleich)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    daten  zufall_mittel
+F1   2.24           1.23
+F2   2.03           1.15
+F3   1.03           1.09
+F4   0.74           1.04
+F5   0.68           1.00
+F6   0.66           0.95
+F7   0.58           0.90
+F8   0.52           0.84
+F9   0.51           0.79</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb52"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Faktoren über dem Zufallsniveau:"</span>, <span class="bu">int</span>((echt <span class="op">&gt;</span> zufall.mean(axis<span class="op">=</span><span class="dv">0</span>)).<span class="bu">sum</span>()))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Faktoren über dem Zufallsniveau: 2</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die Parallelanalyse vergleicht die Eigenwerte der Daten mit denen aus Zufallsdaten derselben Grösse. Behalten werden die <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span>, deren Eigenwert über dem Zufallsniveau liegt. Sie ist dem blossen Eigenwertkriterium überlegen, weil sie die Anzahl Items und Beobachtungen berücksichtigt.</p>
+</section>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong><span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> sind keine gemessenen Grössen.</strong> Sie sind Modellkonstrukte, deren Deutung von den Items kommt und nicht von der Rechnung.</li>
+<li><strong>Faktorenanalyse ist keine Komponentenanalyse.</strong> Die eine modelliert gemeinsame Varianz und Messfehler, die andere verdichtet beobachtete Varianz. Wer Ladungen der einen mit Komponenten der anderen vergleicht, vergleicht Verschiedenes.</li>
+<li><strong>Erklärte Varianz taugt nicht zur Faktorenwahl.</strong> Sie steigt mit jedem <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span>; entscheidend sind Screeplot, Parallelanalyse und Deutbarkeit.</li>
+<li><strong>Rotation ändert die Anpassung nicht.</strong> Sie verbessert nur die Lesbarkeit. Wer verschiedene Rotationen ausprobiert, bis eine These bestätigt ist, betreibt keine Analyse.</li>
+<li><strong>Ladungsschwellen sind Konvention.</strong> 0.3 oder 0.4 sind Faustregeln, keine Grenzen mit statistischer Bedeutung.</li>
+<li><strong>Ein Heywood-Fall ist ein Warnsignal</strong>, keine Formalie: Eine Kommunalität über eins ist unmöglich und heisst, dass das Modell zu gross ist.</li>
+<li><strong>Explorativ ist nicht bestätigend.</strong> Wer eine Struktur an denselben Daten findet und dort prüft, prüft nichts. Bestätigung braucht neue Daten und ein konfirmatorisches Modell.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<p>Vorlage für den Ergebnissatz:</p>
+<blockquote class="blockquote">
+<p>Eine explorative Faktorenanalyse ([Schätzmethode], [Rotation], n = [n], KMO = [Wert], Bartlett p = [p]) ergibt [Anzahl] <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span>, die zusammen [Anteil] der Varianz erklären. <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> 1 lädt hoch auf [Items] und wird als [Deutung] gelesen, <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> 2 auf [Items] als [Deutung]. Die <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> korrelieren mit [Wert]. Item [Name] wurde wegen einer Kommunalität von [Wert] nicht berücksichtigt.</p>
+</blockquote>
+<p>Genannt werden: Schätzmethode und Rotation, n, Eignungsmasse, Kriterium für die Faktorenzahl, die Ladungsmatrix mit Schwelle, Kommunalitäten, erklärte Varianz, Faktorkorrelationen und die inhaltliche Deutung jedes Faktors.</p>
+<p>Beispiel für eine Ergebnistabelle:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Faktor 1</th>
+<th>Faktor 2</th>
+<th>Kommunalität</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>freundlich</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>beratung</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>geraete</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>sauberkeit</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>erklärte Varianz</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt der explorativen Faktorenanalyse</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/multivariat/hauptkomponentenanalyse.html">Hauptkomponentenanalyse</a></td>
+<td>Verdichtung ohne Anspruch auf latente Ursachen</td>
+</tr>
+<tr class="even">
+<td>Konfirmatorische Faktorenanalyse</td>
+<td>die Struktur ist theoretisch vorgegeben und soll geprüft werden</td>
+</tr>
+<tr class="odd">
+<td>Strukturgleichungsmodelle</td>
+<td>Faktoren sollen zusätzlich untereinander in Beziehung stehen</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/multivariat/k-means.html">k-Means</a></td>
+<td>Gruppen von Personen statt Dimensionen von Items</td>
+</tr>
+<tr class="odd">
+<td>Item-Response-Modelle</td>
+<td>binäre oder stark abgestufte Items, Fähigkeitsmessung</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Wann ist die Faktorenanalyse der Hauptkomponentenanalyse vorzuziehen?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
+Wenn dahinterliegende, nicht beobachtbare Grössen unterstellt werden
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die Faktorenanalyse modelliert gemeinsame Varianz und trennt den Eigenanteil ab, was bei Fragebogenitems mit Messfehler der passende Ansatz ist. Wer nur verdichten will, nimmt Komponenten.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
+Wenn mehr als zehn Variablen vorliegen
+</div>
+<div class="quiz__erklaerung">
+Die Anzahl entscheidet nicht.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
+Wenn die Variablen unkorreliert sind
+</div>
+<div class="quiz__erklaerung">
+Dann funktioniert keines der beiden Verfahren.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Item hat eine Kommunalität von 0.12. Was heisst das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
+Die <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> erklären nur 12 Prozent seiner Varianz; es passt nicht zur Struktur
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das Item misst etwas Eigenes. Es wird entfernt oder als Einzelfrage geführt, aber keiner Skala zugeschlagen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
+Das Item ist unzuverlässig gemessen
+</div>
+<div class="quiz__erklaerung">
+Möglich, aber die Kommunalität unterscheidet Messfehler nicht von inhaltlicher Eigenständigkeit.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
+Es lädt auf allen <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span> gleich stark
+</div>
+<div class="quiz__erklaerung">
+Das wäre eine hohe Kommunalität bei schlechter Einfachstruktur.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Die Vier-Faktoren-Lösung erklärt mehr Varianz als die Zwei-Faktoren-Lösung. Ist sie deshalb besser?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
+Ja, mehr erklärte Varianz ist besser
+</div>
+<div class="quiz__erklaerung">
+Sie steigt mit jedem zusätzlichen <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span>, ganz <span class="glossary-term" data-topic="Statistik" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre." tabindex="0">unabhängig</span> davon, ob er etwas bedeutet.
+</div>
+</div>
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
+Nein, entscheidend sind Deutbarkeit und tragende Items je <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span>
+</div>
+<div class="quiz__erklaerung">
+Richtig. Ein <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span> mit einem oder zwei Items ist kein <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktor</span>. Herangezogen werden Screeplot, Parallelanalyse und die inhaltliche Beschreibbarkeit.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
+Das entscheidet der Bartlett-Test
+</div>
+<div class="quiz__erklaerung">
+Der prüft nur, ob überhaupt Korrelationen vorliegen.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Was ändert eine oblique Rotation gegenüber einer orthogonalen?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
+Sie erlaubt Korrelation zwischen den <span class="glossary-term" data-topic="Statistik" data-def="Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0">Faktoren</span>
+</div>
+<div class="quiz__erklaerung">
+Richtig. Bei inhaltlich verwandten Dimensionen ist das die realistischere Annahme, und die Faktorkorrelation wird Teil des Ergebnisses. Die Anpassung an die Daten ändert sich dadurch nicht.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
+Sie verbessert die Anpassung des Modells
+</div>
+<div class="quiz__erklaerung">
+Rotation ändert die Anpassung nicht, nur die Lesbarkeit.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
+Sie erzwingt Einfachstruktur
+</div>
+<div class="quiz__erklaerung">
+Sie strebt sie an, erzwingen kann sie keine Rotation.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://cran.r-project.org/web/packages/psych/vignettes/intro.pdf">psych: Vignette zur Faktorenanalyse</a></li>
+<li><a href="https://factor-analyzer.readthedocs.io/en/latest/">factor_analyzer: Dokumentation</a></li>
+<li><a href="https://link.springer.com/article/10.1007/BF02289447">Was Parallelanalyse leistet</a></li>
+</ul>
 
 
 </section>
@@ -1621,11 +2626,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 13:41</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 14:18</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
