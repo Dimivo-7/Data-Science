@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de" xml:lang="de"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="Persona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts.">
+
+<title>Grundlegende Patterns – Data Science Notizen</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-f7d73e3450f8f73085b9d3af2b744099.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-b19535b873470a65c585fe6503f5eb6b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "Keine Treffer",
+    "search-matching-documents-text": "Treffer",
+    "search-copy-link-title": "Link in die Suche kopieren",
+    "search-hide-matches-text": "Zusätzliche Treffer verbergen",
+    "search-more-match-text": "weitere Treffer in diesem Dokument",
+    "search-more-matches-text": "weitere Treffer in diesem Dokument",
+    "search-clear-button-title": "Zurücksetzen",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Abbrechen",
+    "search-submit-button-title": "Abschicken",
+    "search-label": "Suchen"
+  }
+}</script>
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+
+
+</head>
+
+<body class="nav-sidebar docked nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Data Science</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Suchen"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Navigation umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/Dimivo-7/Data-Science"> <i class="bi bi-github" role="img" aria-label="Repository auf GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Dunkelmodus umschalten"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../ki/index.html">KI</a></li><li class="breadcrumb-item"><a href="../ki/patterns-grundlagen.html">Grundlegende Patterns</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation docked overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Übersicht</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../stand.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stand der Seite</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Tags</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../glossar.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Glossar</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../links.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Linkliste</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../programmierung/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Programmierung</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/python-grundlagen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Python-Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Funktionen und <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren.">Module</span> in Python</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/python-objektorientierung.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Objektorientierung in Python</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/python-exceptions-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fehlerbehandlung und Dateizugriff</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/r-grundlagen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">R-Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/numpy-scipy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">NumPy und SciPy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/pandas.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">pandas</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/pakete-umgebungen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pakete und Umgebungen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/fragen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fragen zur Programmierung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">Reproduzierbarkeit</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../daten/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Daten</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/datenimport-formate.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datenimport und Formate</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus.">Tidy Data</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/data-wrangling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data Wrangling</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/datum-zeit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datum und Zeit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/datenqualitaet.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datenqualität</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/datenmodellierung.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datenmodellierung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/sql.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">SQL</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/datenbanken-zugriff.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Datenbankzugriff aus R und Python</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../daten/fragen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fragen zu Daten</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../werkzeuge/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Werkzeuge</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Linux und <span class="glossary-term" tabindex="0" data-topic="Werkzeuge" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht.">Shell</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../werkzeuge/git.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Git</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../werkzeuge/docker-virtualisierung.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Docker und Virtualisierung</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Statistik</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/fragen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Übergreifende Fragen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/grundlagen/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Grundlagen</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse.">Skalenniveaus</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/grundlagen/haeufigkeiten.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Häufigkeiten</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/grundlagen/lage-streuungsmasse.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Lage- und Streuungsmasse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/grundlagen/korrelation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Korrelation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/grundlagen/explorative-datenanalyse.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Explorative Datenanalyse</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/wahrscheinlichkeit/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Wahrscheinlichkeit</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit.">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft.">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis.">Bayes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden.">Zufallsvariablen</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/wahrscheinlichkeit/diskrete-verteilungen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Diskrete Verteilungen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/wahrscheinlichkeit/stetige-verteilungen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stetige Verteilungen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären.">Normalverteilung</span> und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind.">zentraler Grenzwertsatz</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder.">QQ-Plots</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/inferenz/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inferenz</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Schätzen und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervalle</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/inferenz/hypothesentests-grundlagen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hypothesentests: Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/inferenz/effektstaerken.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Effektstärken</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multiples Testen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/inferenz/bootstrap-resampling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Bootstrap und Resampling</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/tests/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Tests</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für eine Stichprobe</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für zwei Stichproben</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gepaarter <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/anova.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Varianzanalyse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus.">Chi-Quadrat-Tests</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/korrelationstests.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Korrelationstests</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/nichtparametrische-tests.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Nichtparametrische Tests</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/tests/normalitaetstests.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Normalitätstests</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/regression/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Regression</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/regression/einfache-lineare-regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Einfache lineare Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/regression/multiple-lineare-regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multiple lineare Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/regression/regressionsdiagnostik.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Regressionsdiagnostik</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/regression/logistische-regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Logistische Regression</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/regression/klassifikationsguete.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Klassifikationsgüte</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/regression/modellauswahl.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Modellauswahl</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/ueberlebenszeit/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Überlebenszeit</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-10" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/ueberlebenszeit/zensierung-ueberlebensfunktion.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Zensierung und Überlebensfunktion</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/ueberlebenszeit/kaplan-meier.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Kaplan-Meier-Schätzer</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/ueberlebenszeit/log-rank-test.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Log-Rank-Test</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/ueberlebenszeit/cox-modell.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Cox-Modell</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/multivariat/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multivariat</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-11" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-11" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/multivariat/distanzmasse.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Distanzmasse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/multivariat/hauptkomponentenanalyse.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hauptkomponentenanalyse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/multivariat/faktorenanalyse.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Faktorenanalyse</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/multivariat/k-means.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">k-Means</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/multivariat/hierarchisches-clustering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Hierarchisches Clustering</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/multivariat/clusterguete.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Clustergüte</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+          <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../statistik/zeitreihen/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Zeitreihen</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-12" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-12" class="collapse list-unstyled sidebar-section depth2 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/zeitreihen/zeitreihen-grundlagen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Zeitreihen: Grundlagen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/zeitreihen/stationaritaet-acf-pacf.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Stationarität, ACF und PACF</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/zeitreihen/glaettung-einfache-verfahren.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Glättung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../statistik/zeitreihen/arima-sarima.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ARIMA und SARIMA</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../ki/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">KI</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-13" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-13" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/wann-was.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Wann was verwenden</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/prompt-bausteine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Bausteine eines Prompts</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/patterns-grundlagen.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Grundlegende Patterns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/patterns-denkfuehrung.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Denkführende Patterns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/patterns-pruefung.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Prüfende Patterns</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/prompts-datenarbeit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Prompts für die Datenarbeit</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/modelle-und-grenzen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Modelle und ihre Grenzen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/context-engineering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Vom Prompt zum Kontext</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/ki-texte-ueberarbeiten.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">KI-Entwürfe überarbeiten</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../ki/fragen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fragen zu KI</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../visualisierung/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Visualisierung</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/zielbild-audience.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Zielbild und Publikum</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/wahrnehmung-kodierung.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Wahrnehmung und Kodierung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/diagrammtyp-waehlen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Diagrammtyp wählen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/ggplot2.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ggplot2</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/matplotlib.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">matplotlib</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/seaborn-plotly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">seaborn und plotly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/farbe.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Farbe</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/irrefuehrende-darstellungen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Irreführende Darstellungen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/dashboards-interaktivitaet.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Dashboards und Interaktivität</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/fragen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Fragen zur Visualisierung</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../visualisierung/storytelling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Storytelling mit Daten</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a href="../referenz/index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Referenz</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-15" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-15" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../referenz/r.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">R</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../referenz/python.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Python</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Auf dieser Seite</h2>
+   
+  <ul>
+  <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#persona-eine-rolle-zuweisen" id="toc-persona-eine-rolle-zuweisen" class="nav-link" data-scroll-target="#persona-eine-rolle-zuweisen">Persona: eine Rolle zuweisen</a></li>
+  <li><a href="#umgekehrte-befragung-das-modell-fragt" id="toc-umgekehrte-befragung-das-modell-fragt" class="nav-link" data-scroll-target="#umgekehrte-befragung-das-modell-fragt">Umgekehrte Befragung: das Modell fragt</a></li>
+  <li><a href="#few-shot-mit-beispielen-zeigen-statt-beschreiben" id="toc-few-shot-mit-beispielen-zeigen-statt-beschreiben" class="nav-link" data-scroll-target="#few-shot-mit-beispielen-zeigen-statt-beschreiben">Few-Shot: mit Beispielen zeigen statt beschreiben</a></li>
+  <li><a href="#ballast-entfernen-bevor-gearbeitet-wird" id="toc-ballast-entfernen-bevor-gearbeitet-wird" class="nav-link" data-scroll-target="#ballast-entfernen-bevor-gearbeitet-wird">Ballast entfernen, bevor gearbeitet wird</a></li>
+  <li><a href="#die-frage-umformulieren-lassen" id="toc-die-frage-umformulieren-lassen" class="nav-link" data-scroll-target="#die-frage-umformulieren-lassen">Die Frage umformulieren lassen</a></li>
+  <li><a href="#zwischenfragen-zulassen" id="toc-zwischenfragen-zulassen" class="nav-link" data-scroll-target="#zwischenfragen-zulassen">Zwischenfragen zulassen</a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
+  <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../ki/index.html">KI</a></li><li class="breadcrumb-item"><a href="../ki/patterns-grundlagen.html">Grundlegende Patterns</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Grundlegende Patterns</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Prompting</div>
+    <div class="quarto-category">Sprachmodelle</div>
+    <div class="quarto-category">Kommunikation</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Persona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="placeholder-notice">
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
+</div>
+<section id="kernideen" class="level2">
+<h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Eine Rolle verschiebt Perspektive, Tonfall und Tiefe der Antwort</li>
+<li>Umgekehrte Befragung dreht die Richtung: das Modell fragt, man selbst antwortet</li>
+<li>Wenige Beispiele legen Format und Stil zuverlässiger fest als jede Beschreibung</li>
+<li>Ballast im Prompt senkt die Antwortqualität, ein Filterschritt hebt sie wieder</li>
+<li>Die eigene Frage vom Modell umformulieren zu lassen deckt Mehrdeutigkeiten auf</li>
+<li>Zwischenfragen zulassen schlägt eine sofortige Antwort auf eine unklare Frage</li>
+</ul>
+</section>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
+<div class="note-box">
+<p>Welche Aufgabe welches Vorgehen braucht, klärt <a href="../ki/wann-was.html">Wann was verwenden</a>; der Aufbau der Eingabe steht unter <a href="../ki/prompt-bausteine.html">Bausteine eines Prompts</a>. Die Prompts hier lassen sich über das Symbol oben rechts am Block kopieren und mit eckigen Klammern als Platzhalter füllen.</p>
+</div>
+<section id="persona-eine-rolle-zuweisen" class="level3">
+<h3 class="anchored" data-anchor-id="persona-eine-rolle-zuweisen">Persona: eine Rolle zuweisen</h3>
+<p>Das Modell antwortet aus der Perspektive einer Rolle. Das verändert nicht das Wissen, aber die Auswahl: Was gilt als erwähnenswert, welche Fachbegriffe fallen, welche Risiken kommen zur Sprache. Wirksam, wenn man eine bestimmte Sicht braucht oder mehrere Sichten vergleichen will.</p>
+<pre class="text"><code>Du bist [Rolle mit Erfahrungshintergrund, z. B. Reviewer für statistische
+Auswertungen in einem Fachjournal].
+
+Beurteile aus dieser Perspektive: [Material oder Frage]
+
+Nenne, was dir in dieser Rolle zuerst auffällt, und was du zurückweisen
+würdest.</code></pre>
+<p>Zwei Rollen nacheinander auf dasselbe Material anzusetzen ist oft aufschlussreicher als eine ausführliche Einzelantwort:</p>
+<pre class="text"><code>Beurteile den folgenden Abschnitt nacheinander aus zwei Perspektiven:
+1. als Methodenprüferin, die auf Voraussetzungen und Fehlerquellen achtet
+2. als Fachperson des Anwendungsgebiets, die auf Relevanz achtet
+
+Halte die beiden Sichten getrennt und nenne am Ende, wo sie sich
+widersprechen.
+
+Abschnitt: [Text]</code></pre>
+</section>
+<section id="umgekehrte-befragung-das-modell-fragt" class="level3">
+<h3 class="anchored" data-anchor-id="umgekehrte-befragung-das-modell-fragt">Umgekehrte Befragung: das Modell fragt</h3>
+<p>Statt selbst alles zu beschreiben, lässt man sich befragen. Das ist der wirksamste Weg, wenn die eigene Aufgabe noch unscharf ist, und er verhindert die lange Liste von Annahmen, die das Modell sonst still trifft.</p>
+<pre class="text"><code>Ich möchte [Ziel, z. B. eine Auswertung meiner Messdaten planen].
+
+Stelle mir nacheinander die Fragen, die du brauchst, um mir dabei zu helfen.
+Eine Frage pro Nachricht, warte jeweils auf meine Antwort. Beginne mit der
+Frage, deren Antwort am meisten verändert.</code></pre>
+</section>
+<section id="few-shot-mit-beispielen-zeigen-statt-beschreiben" class="level3">
+<h3 class="anchored" data-anchor-id="few-shot-mit-beispielen-zeigen-statt-beschreiben">Few-Shot: mit Beispielen zeigen statt beschreiben</h3>
+<p>Zwei bis fünf Beispiele legen Format, Granularität und Tonfall fest. Das wirkt besonders bei Klassifikationen und bei wiederkehrenden Formulierungen.</p>
+<pre class="text"><code>Ordne jeden Befund einer der Kategorien "gesichert", "unklar" oder
+"widerlegt" zu.
+
+Beispiele:
+Befund: Intervall 10.8 bis 13.1, p &lt; 0.001, n = 200  -&gt; gesichert
+Befund: Intervall -0.2 bis 8.4, p = 0.06, n = 40     -&gt; unklar
+Befund: Intervall -0.4 bis 0.3, p = 0.71, n = 5000   -&gt; widerlegt
+
+Jetzt:
+[eigene Befunde, einer pro Zeile]</code></pre>
+<p>Die Beispiele sollen die Grenzfälle abdecken, nicht die einfachen Fälle. Wer nur eindeutige Beispiele gibt, bekommt bei Grenzfällen eine Zufallsentscheidung.</p>
+</section>
+<section id="ballast-entfernen-bevor-gearbeitet-wird" class="level3">
+<h3 class="anchored" data-anchor-id="ballast-entfernen-bevor-gearbeitet-wird">Ballast entfernen, bevor gearbeitet wird</h3>
+<p>Lange, unstrukturierte Eingaben enthalten Nebensächliches, und das senkt die Antwortqualität. Ein vorgeschalteter Filterschritt hilft.</p>
+<pre class="text"><code>Schritt 1: Entferne aus dem folgenden Text alles, was für die Frage
+"[Frage]" nicht gebraucht wird. Gib den gekürzten Text aus.
+
+Schritt 2: Beantworte die Frage nur auf Basis des gekürzten Textes.
+
+Text: [Material]</code></pre>
+</section>
+<section id="die-frage-umformulieren-lassen" class="level3">
+<h3 class="anchored" data-anchor-id="die-frage-umformulieren-lassen">Die Frage umformulieren lassen</h3>
+<p>Das Modell formuliert die Frage zuerst in eigenen Worten und beantwortet dann die umformulierte Fassung. Damit werden Mehrdeutigkeiten sichtbar, bevor sie in die Antwort einfliessen.</p>
+<pre class="text"><code>Formuliere meine Frage zuerst in eigenen Worten und präzisiere dabei, wie du
+sie verstehst. Antworte danach auf die präzisierte Fassung.
+
+Frage: [Frage]</code></pre>
+<p>Eine schlichte, aber wirksame Variante ist die Aufforderung, die Aufgabe vor der Bearbeitung ein zweites Mal zu lesen:</p>
+<pre class="text"><code>Lies die Aufgabenstellung zweimal, bevor du antwortest. Prüfe beim zweiten
+Lesen, ob eine Bedingung darin steht, die du beim ersten Lesen übersehen
+hättest.
+
+Aufgabe: [Aufgabe]</code></pre>
+</section>
+<section id="zwischenfragen-zulassen" class="level3">
+<h3 class="anchored" data-anchor-id="zwischenfragen-zulassen">Zwischenfragen zulassen</h3>
+<p>Bei komplexen oder schlecht definierten Aufgaben liefert das Modell bessere Ergebnisse, wenn es sich selbst Zwischenfragen stellen und beantworten darf.</p>
+<pre class="text"><code>Wenn du Zwischenfragen brauchst, um die Hauptfrage zu beantworten: Stelle sie
+dir selbst, beantworte sie sichtbar, und komme dann zur Hauptfrage zurück.
+
+Hauptfrage: [Frage]</code></pre>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Für eine Klassifikation werden drei Beispiele mitgegeben, alle eindeutig. Die Ergebnisse bei Grenzfällen schwanken. Woran liegt das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Zu wenige Beispiele, es braucht mindestens zehn
+</div>
+<div class="quiz__erklaerung">
+Die Anzahl ist selten das Problem, die Auswahl schon.
+</div>
+</div>
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Die Beispiele decken die Grenzfälle nicht ab
+</div>
+<div class="quiz__erklaerung">
+Richtig. Beispiele definieren die Entscheidungsgrenze. Wer nur klare Fälle zeigt, überlässt genau die schwierigen Fälle dem Modell.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Das Modell ist zu klein
+</div>
+<div class="quiz__erklaerung">
+Möglich, aber die Grenzfälle blieben auch bei einem grösseren Modell undefiniert.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Wann ist die umgekehrte Befragung, bei der das Modell fragt, dem normalen Prompt überlegen?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Wenn die eigene Aufgabe noch unscharf ist
+</div>
+<div class="quiz__erklaerung">
+Richtig. Statt Annahmen still zu treffen, macht das Modell sie zu Fragen. Der Aufwand verschiebt sich vom Nachbessern nach hinten zum Klären nach vorn.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Immer, weil mehr Interaktion besser ist
+</div>
+<div class="quiz__erklaerung">
+Bei einer klaren, kleinen Aufgabe kostet sie nur Zeit.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Wenn das Modell keinen Kontext hat
+</div>
+<div class="quiz__erklaerung">
+Fehlender Kontext wird durch Fragen nicht ersetzt, sondern nur sichtbar.
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Text für eine bestimmte Zielgruppe umschreiben</strong></p>
+<pre class="text"><code>Du bist Redakteur für Fachtexte. Schreibe den folgenden Abschnitt für
+[Zielgruppe] um. Erhalte alle Zahlen und Einschränkungen, ersetze Fachbegriffe
+nur dort, wo sie für diese Zielgruppe entbehrlich sind. Höchstens [n] Wörter.
+
+Abschnitt: [Text]</code></pre>
+<p><strong>Aus unsortierten Notizen eine Gliederung machen</strong></p>
+<pre class="text"><code>Entferne zuerst alles Nebensächliche aus den folgenden Notizen. Erstelle
+danach eine Gliederung mit höchstens fünf Hauptpunkten und je zwei
+Unterpunkten. Ordne jeder Zeile der Notizen einen Gliederungspunkt zu; was
+nirgends passt, listest du am Ende unter "übrig".
+
+Notizen: [Material]</code></pre>
+<p><strong>Einen Sachverhalt in zwei Tiefen erklären lassen</strong></p>
+<pre class="text"><code>Erkläre [Begriff] zweimal:
+1. in drei Sätzen für jemanden ohne Vorkenntnisse
+2. in fünf Sätzen für jemanden, der [verwandtes Thema] kennt
+
+Nenne danach die häufigste Fehlvorstellung zu diesem Begriff.</code></pre>
+<p><strong>Eine Entscheidung vorbereiten lassen</strong></p>
+<pre class="text"><code>Ich muss zwischen [Option A] und [Option B] entscheiden.
+
+Stelle mir zuerst die Fragen, die du zur Beurteilung brauchst. Wenn ich
+geantwortet habe: Nenne je Option die zwei stärksten Argumente dafür und das
+stärkste dagegen, und benenne die Bedingung, unter der sich die Entscheidung
+umkehrt.</code></pre>
+</section>
+<section id="verlinkte-ressourcen" class="level2">
+<h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://arxiv.org/abs/2406.06608">The Prompt Report: Übersicht über Prompting-Techniken</a></li>
+<li><a href="https://arxiv.org/abs/2311.11829">System 2 Attention</a></li>
+<li><a href="https://arxiv.org/abs/2311.04205">Rephrase and Respond</a></li>
+<li><a href="https://arxiv.org/abs/2309.06275">Re-Reading improves reasoning</a></li>
+</ul>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Kopiert");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Kopiert");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("^(?!https?:)|^https?:\/\/(?:[^\/]*\.)?github\.(?:io|com)(?:\/|$)");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+            // target, if specified
+            link.setAttribute("target", "_blank");
+            if (link.getAttribute("rel") === null) {
+              link.setAttribute("rel", "noopener");
+            }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Persönliche Notizen, nicht öffentlich beworben</p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+<script>
+(function () {
+  var nav = document.querySelector(".navbar .navbar-container")
+         || document.querySelector(".navbar");
+  if (!nav) { return; }
+  var box = document.createElement("div");
+  box.className = "last-update";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 11:33</time>";
+  var tools = nav.querySelector(".quarto-navbar-tools");
+  if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+
+
+
+
+</body></html>
