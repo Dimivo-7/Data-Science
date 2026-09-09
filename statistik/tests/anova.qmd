@@ -4,29 +4,550 @@ description: "Mehr als zwei Gruppen vergleichen, Post-hoc und Bezug zur Regressi
 categories: ["Hypothesentests", "Regression", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 40
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(car)
+
+# Feste Werte, damit R und Python mit denselben Daten rechnen.
+# Durchsatz dreier Standorte in Stueck pro Stunde.
+a1 <- c(94.7, 104.3, 108, 98.9, 94, 101.6, 104.9, 108.6, 94.7, 94.2, 106.2, 104.8, 111.2, 107.9, 101.4)
+a2 <- c(102.4, 119.4, 102.3, 99.3, 97.2, 104.6, 104.9, 101.9, 103.6, 105.6, 108.2, 110.6, 105.3, 93.3, 108.2)
+a3 <- c(103.5, 111, 103.2, 112, 107.3, 113.3, 131.8, 111.7, 117.1, 104.1, 110.3, 116, 111.4, 114.2, 112.6)
+
+b1 <- c(92, 104.5, 93.5, 115, 96, 105.5, 100, 107.6, 95.2, 108, 99, 110.1, 105, 101.1, 93.8)
+b2 <- c(107.1, 104.7, 114.1, 98, 105.4, 105.1, 103.3, 102.7, 102.5, 96.2, 92.9, 97.8, 105.7, 113.1, 108.8)
+b3 <- c(107.4, 105.2, 104.6, 100.5, 105.2, 113.2, 96.4, 93.4, 114.7, 101, 106.8, 106, 89.9, 118.5, 113.2)
+
+c1 <- c(100.5, 102.3, 100.4, 97.3, 99.7, 101.1, 103.3, 102.1, 100.2, 104.1)
+c2 <- c(93.9, 112.5, 116.3, 99.5, 81.5, 92.1, 105.8, 109.3, 121.6, 90.9, 103, 110.8, 101.1, 74.6,
+        112.7, 130.7, 115.1, 92, 98.1, 105.7)
+c3 <- c(116, 108.5, 106.5, 112.2, 105.7, 113.4, 103.3, 104.1, 108.9, 111.7, 108.6, 107.2, 98.7,
+        103.1, 103.6, 103.9, 108.3, 104.7, 109.2, 106.3, 104.7, 106.5, 107.7, 109.4, 104.1, 105.1,
+        100.5, 112.4, 111.8, 105.3)
+
+rahmen <- function(g1, g2, g3) {
+  data.frame(
+    durchsatz = c(g1, g2, g3),
+    standort = factor(rep(c("A", "B", "C"), c(length(g1), length(g2), length(g3))))
+  )
+}
+
+werk <- rahmen(a1, a2, a3)
+werk_ohne <- rahmen(b1, b2, b3)
+werk_streuung <- rahmen(c1, c2, c3)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pingouin as pg
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+# Dieselben festen Werte wie im R-Teil
+a1 = [94.7, 104.3, 108, 98.9, 94, 101.6, 104.9, 108.6, 94.7, 94.2, 106.2, 104.8, 111.2, 107.9, 101.4]
+a2 = [102.4, 119.4, 102.3, 99.3, 97.2, 104.6, 104.9, 101.9, 103.6, 105.6, 108.2, 110.6, 105.3, 93.3, 108.2]
+a3 = [103.5, 111, 103.2, 112, 107.3, 113.3, 131.8, 111.7, 117.1, 104.1, 110.3, 116, 111.4, 114.2, 112.6]
+
+b1 = [92, 104.5, 93.5, 115, 96, 105.5, 100, 107.6, 95.2, 108, 99, 110.1, 105, 101.1, 93.8]
+b2 = [107.1, 104.7, 114.1, 98, 105.4, 105.1, 103.3, 102.7, 102.5, 96.2, 92.9, 97.8, 105.7, 113.1, 108.8]
+b3 = [107.4, 105.2, 104.6, 100.5, 105.2, 113.2, 96.4, 93.4, 114.7, 101, 106.8, 106, 89.9, 118.5, 113.2]
+
+c1 = [100.5, 102.3, 100.4, 97.3, 99.7, 101.1, 103.3, 102.1, 100.2, 104.1]
+c2 = [93.9, 112.5, 116.3, 99.5, 81.5, 92.1, 105.8, 109.3, 121.6, 90.9, 103, 110.8, 101.1, 74.6,
+      112.7, 130.7, 115.1, 92, 98.1, 105.7]
+c3 = [116, 108.5, 106.5, 112.2, 105.7, 113.4, 103.3, 104.1, 108.9, 111.7, 108.6, 107.2, 98.7,
+      103.1, 103.6, 103.9, 108.3, 104.7, 109.2, 106.3, 104.7, 106.5, 107.7, 109.4, 104.1, 105.1,
+      100.5, 112.4, 111.8, 105.3]
+
+
+def rahmen(g1, g2, g3):
+    return pd.DataFrame({
+        "durchsatz": np.concatenate([g1, g2, g3]),
+        "standort": ["A"] * len(g1) + ["B"] * len(g2) + ["C"] * len(g3),
+    })
+
+
+werk = rahmen(a1, a2, a3)
+werk_ohne = rahmen(b1, b2, b3)
+werk_streuung = rahmen(c1, c2, c3)
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Unterscheiden sich die Mittelwerte von mehr als zwei Gruppen? |
+| Zielvariable | metrisch |
+| Gruppen | drei oder mehr, unabhängig voneinander |
+| Was die Methode liefert | F-Statistik mit Freiheitsgraden, p-Wert, Streuungszerlegung, Effektstärke, auf Wunsch paarweise Vergleiche |
+| R-Funktion | `aov(wert ~ gruppe, data = df)`, ungleiche Varianzen mit `oneway.test()` |
+| Python-Funktion | `pg.anova(data=df, dv="wert", between="gruppe")`, ungleiche Varianzen mit `pg.welch_anova()` |
+| Verwandte Methoden | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd), [multiple lineare Regression](../regression/multiple-lineare-regression.qmd), [nichtparametrische Tests](nichtparametrische-tests.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Unterscheidet sich der Durchsatz zwischen drei
+Standorten, die Haltbarkeit zwischen vier Materialien, die Bearbeitungszeit
+zwischen mehreren Teams. Gemeinsam ist ihnen eine metrische Zielgrösse und eine
+Gruppierung mit mehr als zwei Stufen.
+
+Der Grund für ein eigenes Verfahren ist die Fehlerrate. Bei drei Gruppen gibt es
+drei Paarvergleiche, bei fünf Gruppen schon zehn. Wer sie alle einzeln auf dem
+Fünf-Prozent-Niveau prüft, findet fast sicher irgendwo einen Unterschied, auch
+wenn keiner besteht, siehe [multiples Testen](../inferenz/multiples-testen.qmd).
+Die Varianzanalyse stellt stattdessen eine einzige Frage: Gibt es überhaupt einen
+Unterschied irgendwo? Erst wenn die Antwort ja lautet, folgen die paarweisen
+Vergleiche mit Korrektur.
+
+| Situation | Stattdessen |
+|---|---|
+| Genau zwei Gruppen | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) |
+| Dieselben Objekte mehrfach gemessen | Varianzanalyse mit Messwiederholung oder gemischtes Modell |
+| Deutlich ungleiche Varianzen | Welch-Variante, siehe Szenario C auf dieser Seite |
+| Kleine, stark schiefe Gruppen | [Kruskal-Wallis](nichtparametrische-tests.qmd) |
+| Zielvariable kategorial | [Chi-Quadrat-Test](chi-quadrat-tests.qmd) |
+| Weitere Einflussgrössen sollen konstant gehalten werden | [multiple lineare Regression](../regression/multiple-lineare-regression.qmd) |
+
 ## Grundidee und Modell
+
+Die Streuung aller Werte wird in zwei Teile zerlegt: den Teil, der auf die
+Unterschiede zwischen den Gruppenmittelwerten zurückgeht, und den Teil innerhalb
+der Gruppen. Sind die Gruppen wirklich verschieden, ist der erste Teil gross
+gegenüber dem zweiten.
+
+$$F = \frac{\text{mittlere Quadratsumme zwischen den Gruppen}}{\text{mittlere Quadratsumme innerhalb der Gruppen}}$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $SS_{\text{zwischen}}$ | Abweichungen der Gruppenmittelwerte vom Gesamtmittel, gewichtet mit der Gruppengrösse |
+| $SS_{\text{innerhalb}}$ | Abweichungen der einzelnen Werte von ihrem Gruppenmittel |
+| $df_{\text{zwischen}}$ | Anzahl Gruppen minus eins |
+| $df_{\text{innerhalb}}$ | Gesamtzahl Beobachtungen minus Anzahl Gruppen |
+| $F$ | Verhältnis der beiden mittleren Quadratsummen, unter der Nullhypothese nahe eins |
+| $\eta^2$ | Anteil der Streuung, der auf die Gruppierung entfällt |
+
+Die Nullhypothese lautet, dass alle Gruppenerwartungswerte gleich sind. Die
+Alternative ist nicht "alle sind verschieden", sondern "mindestens einer weicht
+ab". Das ist der Grund, warum ein signifikanter F-Wert allein noch keine Aussage
+darüber erlaubt, welche Gruppen sich unterscheiden.
+
+Formal ist die Varianzanalyse ein Spezialfall der linearen Regression mit einem
+kategorialen Prädiktor. Dieselben Daten, dieselben Quadratsummen, andere
+Darstellung; das letzte Szenario auf dieser Seite zeigt es an den Zahlen.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Unabhängigkeit | Beobachtungen beeinflussen sich weder innerhalb noch zwischen den Gruppen | Erhebungsdesign | p-Werte zu optimistisch, nicht reparierbar | Modell für die Struktur, etwa Messwiederholung |
+| Metrische Zielvariable | Mittelwerte und Quadratsummen sind sinnvoll | [Skalenniveau](../grundlagen/skalenniveaus.qmd) | Das Modell rechnet mit undefinierten Grössen | rangbasiertes Verfahren |
+| Annähernd normalverteilte Residuen | Die Abweichungen vom Gruppenmittel, nicht die Rohwerte | [QQ-Plot](../wahrscheinlichkeit/qq-plots.qmd) der Residuen | Bei kleinen Gruppen weicht die Fehlerrate ab | Kruskal-Wallis oder Bootstrap |
+| Gleiche Varianzen in allen Gruppen | Homoskedastizität | Boxplot, Levene-Test | Bei ungleichen Gruppengrössen wird das Niveau verfehlt | Welch-Variante |
+| Keine extremen Ausreisser | Einzelne Werte bestimmen Mittel und Varianz nicht | Boxplot | Das Ergebnis hängt an wenigen Punkten | Ursache prüfen, mit und ohne berichten |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-voraussetzungen-anova-r
+#| fig-cap: "Verteilung je Standort und QQ-Plot der Residuen."
+#| fig-height: 3.4
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+boxplot(durchsatz ~ standort, data = werk, main = "Durchsatz je Standort",
+        xlab = "Standort", ylab = "Stueck pro Stunde")
+
+modell <- aov(durchsatz ~ standort, data = werk)
+qqnorm(residuals(modell), main = "QQ-Plot der Residuen")
+qqline(residuals(modell))
+par(mfrow = c(1, 1))
+
+round(tapply(werk$durchsatz, werk$standort, sd), 2)
+leveneTest(durchsatz ~ standort, data = werk)
+```
+
+## Python
+
+```{python}
+#| label: fig-voraussetzungen-anova-py
+#| fig-cap: "Dieselbe Prüfung in Python."
+#| fig-height: 3.4
+import statsmodels.api as sm
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+achsen[0].boxplot([a1, a2, a3])
+achsen[0].set_xticks([1, 2, 3], ["A", "B", "C"])
+achsen[0].set_title("Durchsatz je Standort")
+achsen[0].set_ylabel("Stueck pro Stunde")
+
+residuen = werk["durchsatz"] - werk.groupby("standort")["durchsatz"].transform("mean")
+sm.qqplot(residuen, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot der Residuen")
+plt.tight_layout()
+plt.show()
+
+print(werk.groupby("standort")["durchsatz"].std().round(2))
+print(pg.homoscedasticity(data=werk, dv="durchsatz", group="standort").round(4))
+```
+
+:::
+
+Im Boxplot interessieren Lage, Streuung und einzelne weit entfernte Punkte. Der
+QQ-Plot gehört zu den Residuen, nicht zu den Rohwerten: Dass die Gesamtverteilung
+mehrgipflig aussieht, ist bei verschiedenen Gruppenmittelwerten normal und kein
+Befund. Der Levene-Test prüft die gleichen Varianzen; ein grosser p-Wert ist kein
+Beweis für Gleichheit, sondern nur das Fehlen eines Hinweises auf Ungleichheit.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-anova-r
+modell <- aov(durchsatz ~ standort, data = werk)
+summary(modell)
+
+round(tapply(werk$durchsatz, werk$standort, mean), 2)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-anova-py
+print(pg.anova(data=werk, dv="durchsatz", between="standort", detailed=True).round(4))
+
+print(werk.groupby("standort")["durchsatz"].mean().round(2))
+```
+
+:::
+
+Beide Sprachen rechnen auf denselben festen Werten: je 15 Schichten an drei
+Standorten, gemessen in Stück pro Stunde. Die Standorte A und B liegen nah
+beieinander, C liegt darüber. Genau diese Lage macht den Unterschied zwischen der
+Gesamtfrage und den paarweisen Vergleichen sichtbar.
 
 ## Output lesen
 
+R, `summary(aov())`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `Df` | Freiheitsgrade, eine Zeile je Quelle | oben Anzahl Gruppen minus eins, unten n minus Anzahl Gruppen |
+| `Sum Sq` | Quadratsummen zwischen und innerhalb | ihr Verhältnis ergibt $\eta^2$ |
+| `Mean Sq` | Quadratsumme geteilt durch Freiheitsgrade | die beiden Werte bilden den F-Bruch |
+| `F value` | Teststatistik | unter der Nullhypothese nahe eins |
+| `Pr(>F)` | p-Wert | sagt nur, dass irgendwo ein Unterschied besteht |
+| `Residuals` | die Zeile innerhalb der Gruppen | ihre Mean Sq ist die geschätzte Fehlervarianz |
+
+Python, `pg.anova(detailed=True)`:
+
+| Spalte | Was sie sagt | Unterschied zu R |
+|---|---|---|
+| `Source` | Quelle der Streuung | wie die Zeilenbeschriftung in R |
+| `SS`, `DF`, `MS` | Quadratsumme, Freiheitsgrade, mittlere Quadratsumme | wie `Sum Sq`, `Df`, `Mean Sq` |
+| `F` | Teststatistik | wie `F value` |
+| `p-unc` | unkorrigierter p-Wert | wie `Pr(>F)` |
+| `np2` | partielles Eta-Quadrat | in R nur über ein Zusatzpaket |
+
+Zwei Unterschiede in der Handhabung. Beide Funktionen erwarten die Daten in langer
+Form, also eine Zeile je Beobachtung mit einer Gruppenspalte, `aov()` über eine
+Formel und `pg.anova` über Spaltennamen. Und `pg.anova` liefert die Effektstärke
+gleich mit, während `summary()` nur die Quadratsummen zeigt, aus denen sie sich
+berechnen lässt.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: klarer Unterschied und paarweise Vergleiche
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-a-anova-r
+zusammenfassung <- summary(modell)[[1]]
+quadratsummen <- zusammenfassung[["Sum Sq"]]
+
+round(c(F = zusammenfassung[["F value"]][1],
+        p = zusammenfassung[["Pr(>F)"]][1],
+        eta_quadrat = quadratsummen[1] / sum(quadratsummen)), 4)
+
+TukeyHSD(modell)
+```
+
+## Python
+
+```{python}
+#| label: szenario-a-anova-py
+tabelle = pg.anova(data=werk, dv="durchsatz", between="standort", detailed=True)
+print(tabelle[["F", "p-unc", "np2"]].iloc[[0]].round(4))
+
+print(pg.pairwise_tukey(data=werk, dv="durchsatz", between="standort").round(4))
+```
+
+:::
+
+Die Gesamtfrage ist beantwortet: Mindestens ein Standort weicht ab. Welcher, sagt
+erst der paarweise Vergleich. Nach Tukey unterscheidet sich C sowohl von A als
+auch von B, während A und B nicht unterscheidbar sind. Zu berichten sind beide
+Ebenen, und zwar in dieser Reihenfolge: erst das Gesamtergebnis mit Effektstärke,
+dann die Paarvergleiche mit ihren Intervallen.
+
+Das Tukey-Verfahren korrigiert dabei für die Anzahl der Vergleiche. Wer
+stattdessen drei einzelne t-Tests rechnet, bekommt kleinere p-Werte und eine
+höhere Rate falscher Alarme.
+
+Ergebnissatz: Der Durchsatz unterscheidet sich zwischen den drei Standorten
+(F wie ausgegeben, p wie ausgegeben, Eta-Quadrat wie ausgegeben). Der Unterschied
+geht auf Standort C zurück, der über A und B liegt; A und B unterscheiden sich
+nicht nachweisbar.
+
+### Szenario B: kein Nachweis, aber auch kein Ausschluss
+
+Dieselbe Frage an drei Standorten, deren Mittelwerte nur wenige Einheiten
+auseinanderliegen.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-b-anova-r
+modell_ohne <- aov(durchsatz ~ standort, data = werk_ohne)
+summary(modell_ohne)
+
+round(tapply(werk_ohne$durchsatz, werk_ohne$standort, mean), 2)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-anova-py
+print(pg.anova(data=werk_ohne, dv="durchsatz", between="standort",
+               detailed=True).round(4))
+print(werk_ohne.groupby("standort")["durchsatz"].mean().round(2))
+```
+
+:::
+
+Der p-Wert ist gross, und genau hier beginnt die Fehlinterpretation. Das Ergebnis
+heisst nicht, dass die Standorte gleich sind. Es heisst, dass die Daten bei diesem
+Umfang nicht ausreichen, um einen Unterschied dieser Grösse vom Zufall zu trennen.
+Die beobachteten Mittelwerte liegen mehrere Einheiten auseinander, und
+Unterschiede in dieser Grössenordnung bleiben nach diesem Befund möglich.
+
+Wer die Frage beantworten will, braucht mehr Beobachtungen, siehe
+[Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd), oder ein
+Äquivalenzverfahren mit vorab festgelegter Toleranz.
+
+Ergebnissatz: Ein Unterschied zwischen den Standorten ist nicht nachweisbar (F wie
+ausgegeben, p wie ausgegeben). Bei diesem Umfang bleiben Unterschiede in der
+Grössenordnung der beobachteten Mittelwertdifferenzen mit den Daten vereinbar.
+
+### Szenario C: Fallstrick ungleiche Varianzen bei ungleichen Gruppengrössen
+
+Drei Standorte mit sehr unterschiedlicher Streuung und unterschiedlichem Umfang:
+zehn Schichten mit ruhigem Betrieb, zwanzig mit stark schwankendem, dreissig mit
+ruhigem.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-c-anova-r
+round(rbind(mittel = tapply(werk_streuung$durchsatz, werk_streuung$standort, mean),
+            sd = tapply(werk_streuung$durchsatz, werk_streuung$standort, sd),
+            n = tapply(werk_streuung$durchsatz, werk_streuung$standort, length)), 2)
+
+leveneTest(durchsatz ~ standort, data = werk_streuung)
+
+summary(aov(durchsatz ~ standort, data = werk_streuung))
+oneway.test(durchsatz ~ standort, data = werk_streuung, var.equal = FALSE)
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-anova-py
+print(werk_streuung.groupby("standort")["durchsatz"].agg(["mean", "std", "count"]).round(2))
+
+print(pg.homoscedasticity(data=werk_streuung, dv="durchsatz", group="standort").round(4))
+
+print(pg.anova(data=werk_streuung, dv="durchsatz", between="standort").round(4))
+print(pg.welch_anova(data=werk_streuung, dv="durchsatz", between="standort").round(4))
+```
+
+:::
+
+Die Standardabweichungen unterscheiden sich um ein Vielfaches, und die
+Gruppengrössen sind ungleich. Das ist die Lage, in der die gewöhnliche
+Varianzanalyse ihr Niveau verfehlt: Sitzt die grosse Streuung in der kleinen
+Gruppe, wird sie zu liberal, im umgekehrten Fall zu konservativ. Die
+Welch-Variante korrigiert die Freiheitsgrade und ist deshalb der sichere
+Standardfall.
+
+Zu vergleichen sind die beiden Ausgaben: gleicher Datensatz, andere
+Freiheitsgrade, anderer p-Wert. Berichtet wird die Welch-Variante, und zwar
+zusammen mit der Feststellung, dass die Varianzen ungleich sind.
+
+### Weiteres Szenario: dieselbe Rechnung als Regression
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-d-anova-r
+regression <- lm(durchsatz ~ standort, data = werk)
+summary(regression)
+```
+
+## Python
+
+```{python}
+#| label: szenario-d-anova-py
+import statsmodels.formula.api as smf
+
+regression = smf.ols("durchsatz ~ C(standort)", data=werk).fit()
+print(regression.summary().tables[1])
+print(f"F = {regression.fvalue:.4f}, p = {regression.f_pvalue:.6f}, "
+      f"R2 = {regression.rsquared:.4f}")
+```
+
+:::
+
+Der F-Wert der Regression stimmt mit dem der Varianzanalyse überein, und das
+Bestimmtheitsmass entspricht dem Eta-Quadrat aus Szenario A. Die Regression zeigt
+zusätzlich, wie die Gruppen kodiert werden: Eine Stufe wird zur Referenz, die
+übrigen Koeffizienten sind Differenzen zu ihr. Wer das versteht, kann die
+Varianzanalyse jederzeit um weitere Einflussgrössen erweitern, siehe
+[multiple lineare Regression](../regression/multiple-lineare-regression.qmd).
 
 ## Interpretationsfallen
 
+- **Ein signifikanter F-Wert sagt nicht, welche Gruppen sich unterscheiden.**
+  Dafür braucht es die paarweisen Vergleiche mit Korrektur.
+- **Paarweise t-Tests ohne Korrektur** erhöhen die Rate falscher Alarme, siehe
+  [multiples Testen](../inferenz/multiples-testen.qmd).
+- **Nicht signifikant ist kein Nachweis von Gleichheit.** Das gilt hier wie beim
+  t-Test.
+- **Der QQ-Plot gehört zu den Residuen.** Die Rohwerte dürfen mehrgipflig sein,
+  das ist gerade der gesuchte Effekt.
+- **Ungleiche Varianzen bei ungleichen Gruppengrössen sind der gefährliche Fall.**
+  Im Zweifel die Welch-Variante rechnen.
+- **Post-hoc-Vergleiche nur nach vorab festgelegtem Plan.** Wer erst die Daten
+  ansieht und dann die interessanten Paare auswählt, prüft nicht mehr fair.
+- **Eta-Quadrat ist keine Relevanz.** Ein hoher Anteil erklärter Streuung sagt
+  nichts darüber, ob der Unterschied fachlich zählt.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> [Zielgrösse] unterscheidet sich zwischen den [Anzahl] Gruppen:
+> F([df zwischen], [df innerhalb]) = [F], p = [p], Eta-Quadrat = [Wert].
+> Im paarweisen Vergleich nach [Verfahren] unterscheidet sich [Gruppe] von
+> [Gruppe] um [Differenz] [Einheit], 95-Prozent-Konfidenzintervall [unten] bis
+> [oben].
+
+Immer genannt werden: Gruppengrössen, Mittelwerte und Streuungen je Gruppe, die
+F-Statistik mit beiden Freiheitsgraden, der p-Wert, eine Effektstärke, das
+verwendete Post-hoc-Verfahren und die Entscheidung zwischen gewöhnlicher und
+Welch-Variante samt Begründung.
+
+Beispiel für eine Ergebnistabelle:
+
+| Gruppe | n | Mittelwert | Standardabweichung |
+|---|---|---|---|
+| A | | | |
+| B | | | |
+| C | | | |
+
+| Quelle | Df | Sum Sq | Mean Sq | F | p |
+|---|---|---|---|---|---|
+| zwischen | | | | | |
+| innerhalb | | | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt der Varianzanalyse |
+|---|---|
+| [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) | genau zwei Gruppen |
+| [Nichtparametrische Tests](nichtparametrische-tests.qmd) | kleine, stark schiefe Gruppen oder ordinale Zielgrösse |
+| [Multiple lineare Regression](../regression/multiple-lineare-regression.qmd) | weitere Einflussgrössen sollen konstant gehalten werden |
+| [Chi-Quadrat-Test](chi-quadrat-tests.qmd) | die Zielgrösse ist kategorial |
+| Varianzanalyse mit Messwiederholung | dieselben Objekte mehrfach gemessen |
+| [Effektstärken](../inferenz/effektstaerken.qmd) | die Grösse des Unterschieds steht im Vordergrund |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Die Varianzanalyse ergibt p = 0.002. Welche Aussage ist zulässig?
+
+- [ ] Alle drei Gruppen unterscheiden sich voneinander ~ Die Alternative lautet
+      nur, dass mindestens eine abweicht.
+- [x] Mindestens eine Gruppe weicht von den übrigen ab ~ Richtig. Welche das ist,
+      beantwortet erst ein paarweiser Vergleich mit Korrektur.
+- [ ] Die grösste beobachtete Differenz ist signifikant ~ Das ist eine eigene
+      Frage, und wer sie nach dem Blick auf die Daten stellt, prüft nicht mehr
+      fair.
+:::
+
+::: {.quiz}
+Drei Gruppen sollen verglichen werden. Warum nicht einfach drei t-Tests?
+
+- [x] Weil die Rate falscher Alarme mit der Anzahl Vergleiche steigt ~ Richtig.
+      Bei drei unabhängigen Vergleichen auf dem Fünf-Prozent-Niveau liegt die
+      Wahrscheinlichkeit für mindestens einen falschen Alarm bereits bei rund
+      vierzehn Prozent.
+- [ ] Weil der t-Test nur bei Normalverteilung gilt ~ Diese Annahme trifft die
+      Varianzanalyse genauso.
+- [ ] Weil t-Tests bei drei Gruppen nicht rechenbar sind ~ Rechenbar sind sie,
+      nur die Fehlerkontrolle stimmt nicht.
+:::
+
+::: {.quiz}
+Der QQ-Plot der Rohwerte zeigt drei Gipfel. Ist die Voraussetzung verletzt?
+
+- [ ] Ja, die Werte sind nicht normalverteilt ~ Geprüft wird nicht die
+      Gesamtverteilung der Rohwerte.
+- [x] Nein, geprüft werden die Residuen ~ Richtig. Verschiedene
+      Gruppenmittelwerte erzeugen genau dieses Bild; die Annahme betrifft die
+      Abweichungen vom jeweiligen Gruppenmittel.
+- [ ] Nein, die Annahme ist bei mehr als zwei Gruppen unnötig ~ Sie gilt weiter,
+      nur bezieht sie sich auf die Residuen.
+:::
+
+::: {.quiz}
+Eine Gruppe mit zehn Beobachtungen streut dreimal so stark wie eine mit dreissig.
+Was folgt?
+
+- [ ] Nichts, die Varianzanalyse ist robust ~ Robust ist sie bei gleichen
+      Gruppengrössen; hier sind sie ungleich.
+- [x] Die Welch-Variante rechnen und sie berichten ~ Richtig. Ungleiche Varianzen
+      zusammen mit ungleichen Gruppengrössen verfehlen das Niveau, und die
+      Richtung des Fehlers hängt davon ab, wo die grosse Streuung sitzt.
+- [ ] Die kleine Gruppe entfernen ~ Das ändert die Fragestellung und wirft Daten
+      weg.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur Varianzanalyse](https://www.openintro.org/book/os/)
+- [R-Dokumentation zu `aov`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/aov.html)
+- [R-Dokumentation zu `oneway.test`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/oneway.test.html)
+- [pingouin: anova](https://pingouin-stats.org/build/html/generated/pingouin.anova.html)
+- [pingouin: welch_anova](https://pingouin-stats.org/build/html/generated/pingouin.welch_anova.html)
