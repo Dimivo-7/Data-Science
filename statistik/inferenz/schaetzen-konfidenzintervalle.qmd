@@ -4,29 +4,505 @@ description: "Punktschätzung, Standardfehler und die korrekte Deutung eines Int
 categories: ["Schätzen", "Interpretation", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 10
 ---
+
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+from statsmodels.stats.proportion import proportion_confint
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie gross ist eine Kennzahl in der Grundgesamtheit, und wie genau ist die Schätzung aus einer Stichprobe? |
+| Zielvariable | metrisch für den Erwartungswert, binär für einen Anteil |
+| Prädiktoren | keine |
+| Was die Methode liefert | Punktschätzer, Standardfehler und ein Konfidenzintervall zu einem gewählten Niveau |
+| R-Funktion | `t.test(x)$conf.int` für den Mittelwert, `prop.test()` oder `binom.test()` für Anteile |
+| Python-Funktion | `stats.t.interval()` für den Mittelwert, `proportion_confint()` für Anteile |
+| Verwandte Methoden | [Hypothesentests](hypothesentests-grundlagen.qmd), [t-Test für eine Stichprobe](../tests/t-test-eine-stichprobe.qmd), [Bootstrap](bootstrap-resampling.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: mittlere Durchlaufzeit einer Produktion, Anteil
+fehlerhafter Teile, durchschnittliche Zustimmung in einer Befragung. Gemeinsam
+ist ihnen, dass eine Stichprobe vorliegt und eine Aussage über die
+Grundgesamtheit gemacht werden soll, aus der sie stammt.
+
+Die Methode setzt voraus, dass die Stichprobe zufällig aus der interessierenden
+Grundgesamtheit gezogen wurde. Diese Bedingung ist die wichtigste und die am
+häufigsten verletzte: eine bequem erreichbare Stichprobe liefert ein sauber
+gerechnetes Intervall um den falschen Wert.
+
+| Situation | Stattdessen |
+|---|---|
+| Zwei Gruppen sollen verglichen werden | [t-Test für zwei Stichproben](../tests/t-test-zwei-stichproben.qmd) |
+| Es geht um eine Ja-Nein-Entscheidung gegen einen Referenzwert | [t-Test für eine Stichprobe](../tests/t-test-eine-stichprobe.qmd) |
+| Die Verteilung ist stark schief und n klein | [Bootstrap](bootstrap-resampling.qmd) |
+| Die Kennzahl ist der Median oder ein anderes Quantil | Bootstrap oder verteilungsfreie Intervalle |
+| Die Stichprobe ist nicht zufällig gezogen | kein Verfahren repariert das; die Einschränkung gehört in den Bericht |
+
 ## Grundidee und Modell
+
+### Die Kennzahl ist selbst zufällig
+
+Bisher beschrieben Kennzahlen die vorliegenden Daten. Interessant ist aber
+selten die Stichprobe, sondern das, woraus sie stammt. Aus dreissig gemessenen
+Werkstücken soll etwas über die gesamte Produktion folgen.
+
+Der entscheidende Gedankenschritt: Eine zweite Stichprobe hätte einen anderen
+Mittelwert ergeben. Der berechnete Wert ist damit selbst eine Zufallsgrösse,
+und die Frage lautet, wie stark er von Stichprobe zu Stichprobe schwankt.
+
+Das lässt sich simulieren, weil wir die Grundgesamtheit hier kennen:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-stichprobenverteilung-r
+#| fig-cap: "2000 Stichproben aus derselben Grundgesamtheit. Jeder Punkt der Verteilung ist ein Stichprobenmittelwert."
+#| fig-height: 3.2
+# Grundgesamtheit: Erwartungswert 500, Standardabweichung 40
+mittelwerte <- replicate(2000, mean(rnorm(30, mean = 500, sd = 40)))
+
+ggplot(data.frame(mittelwerte), aes(mittelwerte)) +
+  geom_histogram(bins = 40, fill = "grey75", colour = "white") +
+  geom_vline(xintercept = 500, linewidth = 0.8) +
+  labs(x = "Mittelwert einer Stichprobe (n = 30)", y = "Anzahl")
+```
+
+## Python
+
+```{python}
+#| label: fig-stichprobenverteilung-py
+#| fig-cap: "Dieselbe Stichprobenverteilung mit matplotlib."
+mittelwerte = rng.normal(500, 40, size=(2000, 30)).mean(axis=1)
+
+fig, ax = plt.subplots(figsize=(7, 3.2))
+ax.hist(mittelwerte, bins=40, color="0.75", edgecolor="white")
+ax.axvline(500, color="black")
+ax.set_xlabel("Mittelwert einer Stichprobe (n = 30)")
+ax.set_ylabel("Anzahl")
+plt.show()
+```
+:::
+
+Diese Verteilung heisst Stichprobenverteilung. Sie liegt um den wahren Wert
+herum, und ihre Streuung ist die Grösse, um die es geht.
+
+### Standardfehler ist nicht Standardabweichung
+
+Der Unterschied wird ständig verwechselt und ist zentral.
+
+| Grösse | beschreibt die Streuung von | hängt ab von |
+|---|---|---|
+| Standardabweichung $s$ | den Einzelwerten | der Grundgesamtheit |
+| Standardfehler $s/\sqrt{n}$ | dem geschätzten Mittelwert | zusätzlich vom Stichprobenumfang |
+
+```{r}
+#| label: standardfehler-r
+stichprobe <- rnorm(30, mean = 500, sd = 40)
+
+c(streuung_einzelwerte = sd(stichprobe),
+  standardfehler       = sd(stichprobe) / sqrt(length(stichprobe)),
+  simuliert            = sd(mittelwerte)) |> round(2)
+```
+
+Der berechnete Standardfehler und die tatsächlich simulierte Streuung der
+Mittelwerte stimmen überein. Das ist der Beleg dafür, dass die Formel das
+Richtige tut.
+
+Die Wurzel im Nenner hat eine unangenehme Folge: Genauigkeit wird teuer. Wer
+den Standardfehler halbieren will, braucht die vierfache Stichprobe.
+
+```{r}
+#| label: wurzel-n-r
+n <- c(10, 40, 160, 640)
+data.frame(n, standardfehler = round(40 / sqrt(n), 2))
+```
+
+Das Konfidenzintervall für den Erwartungswert setzt diese Bestandteile zusammen:
+
+$$\bar{x} \pm t_{1-\alpha/2,\; n-1} \cdot \frac{s}{\sqrt{n}}$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $\bar{x}$ | Punktschätzer, der Mittelwert der Stichprobe |
+| $s$ | Standardabweichung der Stichprobe |
+| $n$ | Stichprobenumfang |
+| $s/\sqrt{n}$ | Standardfehler, die Streuung des Mittelwerts von Stichprobe zu Stichprobe |
+| $t_{1-\alpha/2,\;n-1}$ | Faktor aus der t-Verteilung, wächst bei kleinem n und bei höherem Niveau |
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Zufallsstichprobe | Jede Einheit der Grundgesamtheit hatte eine bekannte Chance | aus dem Erhebungsdesign, nicht aus den Daten | Das Intervall ist um den falschen Wert zentriert, und keine Rechnung zeigt das | Auswahl korrigieren oder die Einschränkung berichten |
+| Unabhängigkeit | Die Beobachtungen beeinflussen sich nicht | Design, Zeit- oder Klumpenstruktur prüfen | Standardfehler zu klein, Intervall zu schmal | Verfahren für geschachtelte Daten |
+| Annähernd normalverteilter Mittelwert | Nicht die Daten, sondern der Mittelwert muss normal sein | [QQ-Plot](../wahrscheinlichkeit/qq-plots.qmd), Schiefe, n | Überdeckung weicht vom Niveau ab, vor allem bei kleinem n | Bootstrap oder Transformation |
+| Für Anteile: genügend Treffer | Faustregel: mindestens etwa zehn Treffer und zehn Nichttreffer | Auszählen | Das einfache Intervall reicht über null oder eins hinaus | Wilson oder Clopper-Pearson |
+
+Bei grossem n sorgt der
+[zentrale Grenzwertsatz](../wahrscheinlichkeit/normalverteilung-zgws.qmd)
+dafür, dass die dritte Voraussetzung praktisch erfüllt ist, auch wenn die
+Einzelwerte schief verteilt sind.
+
 ## Durchführung in R und Python
+
+### Vom Punkt zum Intervall
+
+Ein einzelner Wert sagt nichts über seine Genauigkeit. Das Konfidenzintervall
+gibt stattdessen eine Spanne an, gebildet als Schätzwert plus minus ein
+Vielfaches des Standardfehlers.
+
+Bei unbekannter Varianz, also praktisch immer, wird nicht mit der
+Normalverteilung gerechnet, sondern mit der t-Verteilung. Sie hat schwerere
+Ränder und liefert dadurch etwas breitere und damit ehrlichere Intervalle. Mit
+wachsendem Umfang verschwindet der Unterschied:
+
+```{r}
+#| label: t-vs-normal-r
+n <- c(5, 10, 30, 100, 1000)
+data.frame(
+  n,
+  t_quantil      = round(qt(0.975, df = n - 1), 3),
+  normal_quantil = round(qnorm(0.975), 3)
+)
+```
+
+Der bekannte Faktor 1.96 ist der Grenzwert. Bei fünf Beobachtungen liegt der
+richtige Faktor bei 2.78, also deutlich darüber.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: ki-r
+x <- round(rnorm(25, mean = 12.2, sd = 0.8), 2)
+
+t.test(x, conf.level = 0.95)$conf.int
+
+# von Hand, damit sichtbar ist, was passiert
+se <- sd(x) / sqrt(length(x))
+mean(x) + c(-1, 1) * qt(0.975, df = length(x) - 1) * se
+```
+
+## Python
+
+```{python}
+#| label: ki-py
+x = np.round(rng.normal(12.2, 0.8, 25), 2)
+se = x.std(ddof=1) / np.sqrt(len(x))
+
+print(stats.t.interval(0.95, df=len(x) - 1, loc=x.mean(), scale=se))
+```
+:::
 
 ## Output lesen
 
+R, `t.test(x)`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `mean of x` | Punktschätzer | die Zahl, um die das Intervall liegt |
+| `95 percent confidence interval` | Unter- und Obergrenze | die Spanne der mit den Daten vereinbaren Werte |
+| `t`, `df` | Teststatistik und Freiheitsgrade | `df` ist n minus eins; sie bestimmen den Faktor |
+| `p-value` | zum Test gegen null | für die reine Schätzung ohne Bedeutung |
+| `alternative hypothesis` | die geprüfte Gegenannahme | erinnert daran, dass `t.test` zugleich testet |
+
+Python, `stats.t.interval()` liefert nur das Tupel aus Unter- und Obergrenze.
+Punktschätzer, Standardfehler und Freiheitsgrade stehen dort nicht dabei,
+sondern werden selbst berechnet und gehören trotzdem in den Bericht. Wer die
+vollständige Tabelle möchte, nimmt `pingouin.ttest(x, 0)`; sie enthält
+zusätzlich Effektstärke und Power.
+
+Für Anteile gibt `prop.test()` in R Schätzwert, Intervall und einen Test aus,
+`proportion_confint()` in Python nur die beiden Grenzen. Die Methode steht in
+Python ausdrücklich im Aufruf (`wilson`, `beta`, `normal`), in R entscheidet die
+Funktionswahl darüber.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: klares Ergebnis
+
+Ein Intervall, das eng ist und den interessierenden Referenzwert nicht enthält.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-a-ki-r
+set.seed(9)
+laufzeit <- rnorm(80, mean = 12.6, sd = 1.4)
+
+t.test(laufzeit, mu = 12)
+```
+
+## Python
+
+```{python}
+#| label: szenario-a-ki-py
+rng_a = np.random.default_rng(9)
+laufzeit = rng_a.normal(12.6, 1.4, 80)
+
+se = laufzeit.std(ddof=1) / np.sqrt(len(laufzeit))
+print(laufzeit.mean().round(3))
+print(np.round(stats.t.interval(0.95, df=len(laufzeit) - 1,
+                                loc=laufzeit.mean(), scale=se), 3))
+```
+
+:::
+
+Der Schätzwert liegt bei rund 12.6, das Intervall ist schmal, weil n = 80 gross
+und die Streuung klein ist, und es liegt vollständig oberhalb von 12. Aussage:
+Die mittlere Laufzeit liegt über dem Referenzwert, und die Daten grenzen sie auf
+eine schmale Spanne ein.
+
+Ergebnissatz: Die mittlere Laufzeit beträgt 12.6 Einheiten
+(95-Prozent-Konfidenzintervall wie ausgegeben, n = 80) und liegt damit über dem
+Referenzwert von 12.
+
+### Szenario B: das Intervall lässt beides zu
+
+Derselbe Sachverhalt, aber mit kleiner Stichprobe.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-b-ki-r
+set.seed(4)
+klein <- rnorm(8, mean = 12.6, sd = 1.4)
+
+t.test(klein, mu = 12)$conf.int
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-ki-py
+rng_b = np.random.default_rng(4)
+klein = rng_b.normal(12.6, 1.4, 8)
+
+se_b = klein.std(ddof=1) / np.sqrt(len(klein))
+print(np.round(stats.t.interval(0.95, df=len(klein) - 1,
+                                loc=klein.mean(), scale=se_b), 3))
+```
+
+:::
+
+Bei acht Beobachtungen ist das Intervall so breit, dass es den Referenzwert 12
+einschliesst. Der Punktschätzer liegt weiterhin in derselben Grössenordnung wie
+in Szenario A, aber die Daten schliessen nichts aus. Das ist kein Beleg dafür,
+dass kein Unterschied besteht, sondern die Feststellung, dass die Stichprobe zu
+klein ist, um die Frage zu beantworten. Der Faktor aus der t-Verteilung ist bei
+sieben Freiheitsgraden deutlich grösser als 1.96, was die Breite zusätzlich
+erklärt.
+
+Ergebnissatz: Die mittlere Laufzeit wird auf den ausgegebenen Bereich geschätzt
+(n = 8). Der Referenzwert 12 liegt darin; die Daten erlauben keine Entscheidung.
+
+### Szenario C: Fallstrick bei kleinen Anteilen
+
+### Anteilswerte
+
+Für Anteile gilt dieselbe Logik mit einem eigenen Standardfehler. Die einfache
+Näherung wird bei sehr kleinen oder sehr grossen Anteilen unbrauchbar, weil das
+Intervall dann über null oder eins hinausragen kann.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: anteil-r
+treffer <- 42; versuche <- 200
+
+prop.test(treffer, versuche)$conf.int    # mit Stetigkeitskorrektur
+binom.test(treffer, versuche)$conf.int   # exakt
+
+# der problematische Fall: sehr kleiner Anteil
+prop.test(1, 40)$conf.int
+```
+
+## Python
+
+```{python}
+#| label: anteil-py
+print(proportion_confint(42, 200, alpha=0.05, method="wilson"))
+print(proportion_confint(42, 200, alpha=0.05, method="beta"))    # exakt
+print(proportion_confint(1, 40, alpha=0.05, method="normal"))    # laeuft ins Negative
+```
+:::
+
+Die letzte Zeile zeigt das Problem. Ein Intervall, dessen untere Grenze
+negativ ist, kann für einen Anteil nicht stimmen. Verfahren wie Wilson oder das
+exakte nach Clopper-Pearson vermeiden das.
 
 ## Interpretationsfallen
 
+### Was das Intervall bedeutet, und was nicht
+
+Hier liegt die häufigste Fehlinterpretation der ganzen Statistik. Die Aussage
+bezieht sich auf das **Verfahren**, nicht auf das einzelne berechnete
+Intervall. Der wahre Parameter ist fest, das Intervall ist zufällig.
+
+Richtig ist: Wendet man das Verfahren immer wieder an, überdecken 95 Prozent der
+so erzeugten Intervalle den wahren Wert. Falsch ist die Aussage, der Parameter
+liege mit 95 Prozent Wahrscheinlichkeit in diesem einen Bereich.
+
+Das lässt sich zeigen:
+
+```{r}
+#| label: fig-ueberdeckung-r
+#| fig-cap: "100 Konfidenzintervalle aus je 25 Beobachtungen. Die hervorgehobenen verfehlen den wahren Wert."
+#| fig-height: 3.6
+wahr <- 500
+proben <- replicate(100, rnorm(25, mean = wahr, sd = 40), simplify = FALSE)
+
+intervalle <- do.call(rbind, lapply(seq_along(proben), function(i) {
+  ki <- t.test(proben[[i]])$conf.int
+  data.frame(lauf = i, unten = ki[1], oben = ki[2])
+}))
+intervalle$trifft <- intervalle$unten <= wahr & intervalle$oben >= wahr
+
+ggplot(intervalle, aes(lauf, ymin = unten, ymax = oben, colour = trifft)) +
+  geom_linerange(linewidth = 0.5) +
+  geom_hline(yintercept = wahr, linewidth = 0.7) +
+  scale_colour_manual(values = c("TRUE" = "grey70", "FALSE" = "black")) +
+  labs(x = "Wiederholung", y = "Konfidenzintervall", colour = "überdeckt") +
+  theme(legend.position = "bottom")
+
+sum(!intervalle$trifft)     # wie viele verfehlen den wahren Wert
+```
+
+Von hundert Intervallen verfehlen einige den wahren Wert, und zwar
+ungefähr fünf. Welches davon betroffen ist, weiss man in der Praxis nie, weil
+der wahre Wert unbekannt ist. Genau deshalb ist die Aussage über das Verfahren
+und nicht über das Einzelintervall formuliert.
+
+Dazu kommen drei Verwechslungen, die regelmässig vorkommen:
+
+- **Standardabweichung und Standardfehler.** Die eine beschreibt die Streuung
+  der Einzelwerte, die andere die Genauigkeit des Mittelwerts. Wer beim
+  Berichten das Falsche nennt, gibt eine um den Faktor Wurzel n verschobene
+  Zahl an.
+- **Ein Intervall ist keine Spanne der Einzelwerte.** Dafür wäre das
+  Prognoseintervall zuständig, das deutlich breiter ausfällt.
+- **Zwei überlappende Intervalle bedeuten nicht, dass sich zwei Gruppen nicht
+  unterscheiden.** Der Vergleich zweier Gruppen wird am Intervall der Differenz
+  beurteilt, nicht am Überlappen zweier Einzelintervalle.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> [Kennzahl] beträgt [Schätzwert] [Einheit] (95-Prozent-Konfidenzintervall
+> [unten] bis [oben], n = [n]).
+
+Genannt werden Punktschätzer mit Einheit, Intervall und Niveau, der
+Stichprobenumfang und bei Anteilen zusätzlich das verwendete Verfahren.
+Bewertet wird das Ergebnis an der Breite des Intervalls und nicht daran, ob es
+einen bestimmten Wert enthält.
+
+Beispiel für eine Ergebnistabelle:
+
+| Kennzahl | Schätzwert | Standardfehler | 95-Prozent-Intervall | n |
+|---|---|---|---|---|
+| Mittlere Laufzeit (h) | | | | |
+| Anteil fehlerhafter Teile | | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt der reinen Schätzung |
+|---|---|
+| [Hypothesentests: Grundlagen](hypothesentests-grundlagen.qmd) | eine Ja-Nein-Entscheidung gegen eine Nullhypothese ist gefragt |
+| [t-Test für eine Stichprobe](../tests/t-test-eine-stichprobe.qmd) | derselbe Fall als Test formuliert, mit p-Wert |
+| [t-Test für zwei Stichproben](../tests/t-test-zwei-stichproben.qmd) | zwei Gruppen sollen verglichen werden |
+| [Bootstrap und Resampling](bootstrap-resampling.qmd) | die Verteilung der Schätzung ist unbekannt oder die Kennzahl ist kein Mittelwert |
+| [Power und Stichprobenumfang](power-stichprobenumfang.qmd) | die nötige Stichprobengrösse soll vorher bestimmt werden |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Warum wird ein Konfidenzintervall breiter, wenn man von 95 auf 99 Prozent
+Niveau geht?
+
+- [x] Weil Sicherheit mit Unschärfe bezahlt wird ~ Richtig. Ein höheres Niveau
+      verlangt, dass das Verfahren häufiger richtig liegt. Das geht nur, indem
+      mehr Werte zugelassen werden. Bei hundert Prozent wäre das Intervall
+      unendlich breit und wertlos.
+- [ ] Weil die Stichprobe kleiner wird ~ Der Umfang bleibt unverändert, nur
+      der Faktor vor dem Standardfehler wächst.
+- [ ] Weil die Streuung der Daten zunimmt ~ Die Daten sind dieselben.
+:::
+
+::: {.quiz}
+Eine Umfrage berichtet 52 Prozent Zustimmung mit einem Intervall von 49 bis 55
+Prozent. Was folgt für die Frage, ob die Mehrheit zustimmt?
+
+- [ ] Die Mehrheit stimmt zu, der Punktwert liegt über 50 ~ Der Punktwert
+      allein trägt diese Aussage nicht, und genau dafür steht das Intervall
+      daneben.
+- [x] Die Frage bleibt offen ~ Richtig. Das Intervall enthält Werte unter
+      fünfzig Prozent, also ist auch eine Minderheit mit den Daten vereinbar.
+- [ ] Die Mehrheit stimmt nicht zu ~ Ebenso wenig belegt. Beide Möglichkeiten
+      liegen im Intervall.
+:::
+
+::: {.quiz}
+In @fig-ueberdeckung-r sind hundert Konfidenzintervalle gezeichnet, einige
+verfehlen den wahren Wert. Was zeigt das Bild?
+
+- [ ] Dass das Verfahren fehlerhaft ist ~ Die Fehlschläge sind eingebaut und
+      ihre Häufigkeit ist genau das gewählte Niveau.
+- [x] Dass die Aussage dem Verfahren gilt und nicht dem einzelnen Intervall ~
+      Richtig. Rund fünf von hundert verfehlen den wahren Wert. Welches
+      betroffen ist, weiss man in der Praxis nie, weil der wahre Wert unbekannt
+      ist.
+- [ ] Dass die Stichproben zu klein waren ~ Bei grösseren Stichproben wären die
+      Intervalle schmaler, aber immer noch würden rund fünf Prozent danebenliegen.
+:::
+
+::: {.quiz}
+Eine Auswertung berichtet den Mittelwert mit der Standardabweichung, eine
+zweite denselben Mittelwert mit dem Standardfehler. Welche Zahl ist grösser?
+
+- [x] Die Standardabweichung, und zwar um den Faktor Wurzel n ~ Richtig. Der
+      Standardfehler ist die Standardabweichung geteilt durch die Wurzel des
+      Stichprobenumfangs. Bei n = 100 ist er ein Zehntel davon.
+- [ ] Der Standardfehler, weil er die Unsicherheit enthält ~ Er beschreibt eine
+      andere Streuung, nämlich die des Mittelwerts, und ist deshalb kleiner.
+- [ ] Beide sind gleich gross ~ Nur bei n = 1, und dann ist keine der beiden
+      Zahlen sinnvoll.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur Schätzung](https://www.openintro.org/book/os/)
+- [statsmodels: Konfidenzintervalle für Anteile](https://www.statsmodels.org/stable/generated/statsmodels.stats.proportion.proportion_confint.html)
