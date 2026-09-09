@@ -4,11 +4,115 @@ description: "Erwartungswert, Varianz und Verteilungsfunktion als Grundbegriffe.
 categories: ["Wahrscheinlichkeit", "Verteilungen", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 30
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Zufallsvariable als Abbildung des Ergebnisraums auf Zahlen
+- Wahrscheinlichkeitsfunktion und Verteilungsfunktion
+- Erwartungswert als Schwerpunkt der Verteilung
+- Varianz und Standardabweichung als Streuung des Modells
+- Kennzahl aus Daten und Eigenschaft des Modells sind zweierlei
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Kombinatorik und Wahrscheinlichkeit](kombinatorik-wahrscheinlichkeit.qmd)
+für den Wahrscheinlichkeitsbegriff und
+[bedingte Wahrscheinlichkeit](bedingte-wahrscheinlichkeit-bayes.qmd) für die
+Unabhängigkeit. Aus den
+[Lage- und Streuungsmassen](../grundlagen/lage-streuungsmasse.qmd) wird der
+Unterschied zwischen einer Kennzahl aus Daten und einer Eigenschaft des Modells
+gebraucht. Die konkreten Modelle folgen unter
+[diskrete Verteilungen](diskrete-verteilungen.qmd) und
+[stetige Verteilungen](stetige-verteilungen.qmd).
+:::
+
+### Vom Ereignis zur Zahl
+
+In [Kombinatorik und Wahrscheinlichkeit](kombinatorik-wahrscheinlichkeit.qmd) waren Ereignisse noch sprachlich beschrieben, etwa
+mindestens eine Sechs. Damit lässt sich argumentieren, aber schlecht rechnen.
+Eine Zufallsvariable ordnet jedem Ergebnis eine Zahl zu und macht den Zufall
+damit der Arithmetik zugänglich.
+
+Beim zweifachen Würfelwurf wäre eine mögliche Zufallsvariable die Augensumme.
+Der Ergebnisraum hat 36 Elemente, die Zufallsvariable nimmt elf Werte an, und
+diese Werte sind unterschiedlich wahrscheinlich:
+
+```{r}
+#| label: zufallsvariable-r
+kombinationen <- expand.grid(wurf1 = 1:6, wurf2 = 1:6)
+summe <- kombinationen$wurf1 + kombinationen$wurf2
+
+table(summe)                       # wie viele Kombinationen je Summe
+round(prop.table(table(summe)), 3) # die Wahrscheinlichkeitsfunktion
+```
+
+Die zweite Zeile ist die **Wahrscheinlichkeitsfunktion**: Sie gibt jedem Wert
+seine Wahrscheinlichkeit. Summiert man sie von unten auf, entsteht die
+**Verteilungsfunktion**, die zu jedem Wert angibt, wie wahrscheinlich es ist,
+höchstens diesen zu erreichen. Der Zusammenhang ist derselbe wie zwischen
+relativer und kumulierter Häufigkeit in [Skalenniveaus](../grundlagen/skalenniveaus.qmd), nur im Modell statt
+in Daten.
+
+### Erwartungswert und Varianz
+
+Der Erwartungswert ist das mit Wahrscheinlichkeiten gewichtete Mittel der
+möglichen Werte:
+
+$$E(X) = \sum_i x_i \cdot P(X = x_i)$$
+
+Er ist der Wert, gegen den das arithmetische Mittel bei sehr vielen
+Wiederholungen strebt, und muss selbst kein möglicher Wert sein. Der
+Erwartungswert eines Würfels ist 3.5.
+
+```{r}
+#| label: erwartungswert-r
+werte <- as.numeric(names(table(summe)))
+p     <- as.numeric(prop.table(table(summe)))
+
+ew <- sum(werte * p)
+var_modell <- sum((werte - ew)^2 * p)
+
+c(erwartungswert = ew, varianz = var_modell) |> round(3)
+
+# Gegenprobe: 100000 simulierte Wuerfe
+sim <- rowSums(matrix(sample(1:6, 2e5, replace = TRUE), ncol = 2))
+c(mittel = mean(sim), varianz = var(sim)) |> round(3)
+```
+
+::: {.note-box}
+Begrifflich streng zu trennen: Erwartungswert und Varianz sind Eigenschaften
+des **Modells**, Mittelwert und empirische Varianz sind aus **Daten** gerechnet.
+Sie fallen nicht zusammen, sondern das eine schätzt das andere. Die Simulation
+oben zeigt, wie nahe sie sich bei genügend vielen Wiederholungen kommen.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu Zufallsvariablen](https://www.openintro.org/book/os/)
+

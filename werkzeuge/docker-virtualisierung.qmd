@@ -4,13 +4,262 @@ description: "Images, Container, Volumes und wann sich der Aufwand lohnt."
 categories: ["Tooling", "Deployment", "Reproduzierbarkeit"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 30
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import sys, platform, os
+```
+
 ## Kernideen
+
+- Virtuelle Maschine mit eigenem Betriebssystemkern
+- Container teilen sich den Kern des Hosts
+- Image als Bauplan, Container als laufende Instanz
+- Dockerfile, Schichten und Registry
+- Volumes und Portweiterleitung
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Pakete und Umgebungen](../programmierung/pakete-umgebungen.qmd), denn ein
+Container ist die nächste Stufe derselben Idee, und [Linux und Shell](linux-shell.qmd)
+für die Befehle. Anders als auf den übrigen Seiten läuft hier kein Docker
+mit: Der Build hat keinen Docker-Dienst, die Befehle sind deshalb Listings.
+Alles, was sich ohne Docker zeigen lässt, ist ausgeführt.
+:::
+
+### Was virtuelle Umgebungen offenlassen
+
+Eine virtuelle Umgebung friert die Python-Pakete ein. Sie friert nicht ein,
+welche Python-Version läuft, welche Systembibliotheken vorhanden sind und
+welches Betriebssystem darunter liegt. Genau daran scheitern Auswertungen beim
+Umzug: Das Paket ist installiert, aber gegen eine andere C-Bibliothek gebaut,
+oder die Zeitzone des Servers verschiebt Datumsangaben.
+
+Was eine Umgebung nicht festlegt, lässt sich zeigen:
+
+```{python}
+#| label: umgebung-py
+print("Python:", sys.version.split()[0])
+print("System:", platform.system(), platform.release())
+print("Zeitzone:", os.environ.get("TZ", "nicht gesetzt"))
+```
+
+Diese drei Angaben stammen vom Rechner, der diese Website baut. Auf einem
+anderen Rechner stünde dort etwas anderes, und die Abhängigkeitsliste würde das
+nicht bemerken.
+
+### Zwei Wege, ein Ziel
+
+| | virtuelle Maschine | Container |
+|---|---|---|
+| enthält | vollständiges Gastbetriebssystem samt Kern | nur Dateisystem und Prozesse |
+| Grösse | Gigabyte | Megabyte |
+| Startzeit | Minute | Sekunden |
+| Isolation | sehr weitgehend | gut, aber Kern geteilt |
+| Grenze | schwergewichtig | an die Kernfamilie des Hosts gebunden |
+
+Der entscheidende Unterschied liegt im Kern. Eine VM bringt ihren eigenen mit
+und emuliert damit einen ganzen Rechner. Ein Container nutzt den des Hosts und
+kapselt nur, was darüber liegt. Deshalb startet er in Sekunden, und deshalb
+laufen Linux-Container nicht nativ auf einem Windows-Kern, sondern in einer
+darunterliegenden Linux-VM.
+
+### Image und Container auseinanderhalten
+
+Diese beiden Begriffe werden ständig verwechselt, und die Verwechslung führt zu
+falschen Erwartungen.
+
+Ein **Image** ist unveränderlich und beschreibt, was drin ist. Ein **Container**
+ist ein laufendes Exemplar davon. Aus demselben Image lassen sich beliebig
+viele Container starten, und jeder beginnt im selben definierten Zustand.
+
+Die Beziehung ist dieselbe wie zwischen Klasse und Instanz aus
+[Objektorientierung in Python](../programmierung/python-objektorientierung.qmd): der Bauplan und das Exemplar.
+
+```bash
+docker pull python:3.12-slim          # Image holen
+docker images                          # welche Images liegen lokal
+docker run --rm python:3.12-slim python -c "print('hallo')"
+docker ps -a                           # laufende und beendete Container
+```
+
+### Das Dockerfile
+
+Es beschreibt, wie ein Image gebaut wird. Jeder Schritt erzeugt eine Schicht,
+die zwischengespeichert wird, und daraus folgt die wichtigste Regel für die
+Reihenfolge.
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Erst die Abhaengigkeiten, weil sie sich selten aendern
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Dann der eigene Code, der sich staendig aendert
+COPY . .
+
+CMD ["python", "analyse.py"]
+```
+
+Würden die beiden `COPY`-Zeilen vertauscht, müsste bei jeder Codeänderung die
+gesamte Paketinstallation neu laufen, weil alle darauffolgenden Schichten
+verworfen werden. So gebaut, wird sie aus dem Zwischenspeicher genommen, und
+der Bau dauert Sekunden statt Minuten.
+
+```bash
+docker build -t analyse:1.0 .
+docker run --rm analyse:1.0
+```
+
+::: {.note-box}
+Der Bildname trägt eine Version nach dem Doppelpunkt. `latest` ist verlockend
+und der häufigste Fehler: Es ist kein fester Zeiger, sondern verweist auf das,
+was zuletzt so benannt wurde. Wer Reproduzierbarkeit will, vergibt und
+verwendet feste Versionsnummern.
+:::
+
+### Was den Container überlebt
+
+Ein Container verliert beim Beenden alles, was in ihm geschrieben wurde. Das
+ist gewollt, denn genau daraus folgt der definierte Ausgangszustand. Für Daten,
+die bleiben sollen, wird ein Verzeichnis des Hosts eingehängt:
+
+```bash
+# Das Verzeichnis data des Hosts erscheint im Container unter /app/data
+docker run --rm -v "$PWD/data":/app/data analyse:1.0
+
+# Ein Netzwerkdienst muss ausdruecklich freigegeben werden
+docker run --rm -p 8888:8888 jupyter/scipy-notebook
+```
+
+Die Portangabe liest sich von aussen nach innen: Der Port 8888 des Hosts wird
+auf den Port 8888 im Container geleitet. Ohne diese Zeile läuft der Dienst zwar,
+ist aber von aussen nicht erreichbar.
+
+::: {.quiz}
+Warum kann derselbe Container auf jedem Rechner gleich laufen, dieselbe
+virtuelle Umgebung aber nicht?
+
+- [x] Der Container bringt zusätzlich Dateisystem, Systembibliotheken und
+      Sprachversion mit ~ Richtig. Eine virtuelle Umgebung legt nur die Pakete
+      fest und setzt alles darunter als gegeben voraus. Genau dieses Darunter
+      unterscheidet sich zwischen Rechnern.
+- [ ] Der Container bringt einen eigenen Kernel mit ~ Das täte eine virtuelle
+      Maschine. Der Container teilt sich den Kernel des Wirts.
+- [ ] Virtuelle Umgebungen sind an ein Projektverzeichnis gebunden ~ Sind sie,
+      aber das erklärt die Unterschiede zwischen Rechnern nicht.
+:::
+
+::: {.quiz}
+Warum gehören die Zeilen für die Paketinstallation im Dockerfile vor die für
+den eigenen Code?
+
+- [x] Jede Zeile erzeugt eine zwischengespeicherte Schicht, und eine Änderung
+      macht alle folgenden ungültig ~ Richtig. Der eigene Code ändert sich bei
+      jedem Bau, die Abhängigkeiten fast nie. Steht die Installation oben, wird
+      sie aus dem Zwischenspeicher genommen; steht sie unten, läuft sie jedes Mal
+      neu.
+- [ ] Sonst fehlen beim Installieren die Quelldateien ~ Die Installation liest
+      nur die Paketliste und braucht den Code nicht.
+- [ ] Die Reihenfolge ist vorgeschrieben ~ Vorgeschrieben ist sie nicht, nur
+      deutlich schneller.
+:::
+
+### Für die Datenarbeit
+
+Der Nutzen liegt darin, dass ein Analyseprojekt samt Systembibliotheken,
+Interpreter und Paketversionen als ein einziges Artefakt weitergegeben werden
+kann. Das ist die Stufe über der virtuellen Umgebung.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: umgebung-r
+# Was eine Umgebung nicht festhaelt, dokumentiert sessionInfo
+info <- sessionInfo()
+cat(info$R.version$version.string, "\n")
+cat("Plattform:", info$platform, "\n")
+
+# Fuer R gibt es fertige Images der Rocker-Familie:
+# docker run --rm -p 8787:8787 -e PASSWORD=geheim \
+#   -v "$PWD":/home/rstudio/projekt rocker/rstudio:4.4.1
+```
+
+## Python
+
+```{python}
+#| label: umgebung2-py
+import importlib.metadata as md
+
+print(sys.version.split()[0], platform.machine())
+for paket in ["numpy", "pandas"]:
+    print(f"{paket}=={md.version(paket)}")
+```
+:::
+
+Beide Ausgaben zusammen beschreiben, was ein Image festschreiben würde. Solange
+sie nur im Bericht stehen, sind sie Dokumentation; im Dockerfile werden sie zur
+ausführbaren Zusage.
+
+::: {.note-box}
+Die Abstufung als Faustregel: virtuelle Umgebung für die eigene Arbeit am
+eigenen Rechner, Container sobald etwas weitergegeben wird, auf einem Server
+läuft oder länger reproduzierbar bleiben soll. Virtuelle Maschinen nur, wenn
+ein anderes Betriebssystem gebraucht wird.
+:::
+
 ## Typische Aufgaben
 
+```bash
+docker build -t projekt:1.0 .          # Image aus dem Dockerfile bauen
+docker images                          # vorhandene Images auflisten
+docker run --rm -it projekt:1.0 bash   # Container starten, danach verwerfen
+docker run -p 8888:8888 projekt:1.0    # Port nach aussen durchreichen
+docker ps -a                           # laufende und beendete Container
+docker logs <container>                # Ausgabe eines Containers ansehen
+docker exec -it <container> bash       # in einen laufenden Container gehen
+docker system prune                    # nicht mehr genutzte Objekte entfernen
+```
+
+**Einen Ordner des Rechners im Container verfügbar machen**
+
+```bash
+docker run -v "$PWD/daten:/daten" projekt:1.0
+```
+
+**Ein Dockerfile für eine Auswertung**
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /projekt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "auswertung.py"]
+```
+
+**Ergebnisse aus dem Container herausbekommen**
+
+Nur was in einem eingehängten Ordner oder einem Volume liegt, überlebt das Ende
+des Containers. Ergebnisse deshalb immer in den eingehängten Pfad schreiben,
+nicht in das Arbeitsverzeichnis des Images.
+
 ## Verlinkte Ressourcen
+
+- [Docker-Dokumentation](https://docs.docker.com/)
+- [Rocker-Images für R](https://rocker-project.org/)

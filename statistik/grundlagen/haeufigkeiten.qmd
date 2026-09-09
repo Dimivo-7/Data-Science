@@ -4,11 +4,292 @@ description: "Absolute und relative Häufigkeiten, Kreuztabellen und ihre Darste
 categories: ["Deskriptive Statistik", "EDA", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 20
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(dplyr)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Absolute, relative und kumulierte Häufigkeit
+- Die empirische Verteilungsfunktion als Summe der relativen Häufigkeiten
+- Klassenbildung bei stetigen Merkmalen ist eine Entscheidung mit Folgen
+- Stabdiagramm für Kategorien, Histogramm für klassierte Messwerte
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Skalenniveaus](skalenniveaus.qmd), weil das Messniveau
+bestimmt, welche Zusammenfassung überhaupt zulässig ist und ob klassiert werden
+muss. Die Kennzahlen dazu stehen unter
+[Lage- und Streuungsmasse](lage-streuungsmasse.qmd).
+:::
+
+### Häufigkeiten: die erste Zusammenfassung
+
+Ein Merkmal mit tausend Beobachtungen lässt sich nicht ansehen. Die
+Häufigkeitsverteilung reduziert es auf die Frage, wie oft jede Ausprägung
+vorkommt, und ist damit die einfachste Form der Verdichtung.
+
+Drei Varianten beantworten drei verschiedene Fragen:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: haeufigkeit-r
+zufriedenheit <- factor(
+  sample(c("gering", "mittel", "hoch"), 60, replace = TRUE,
+         prob = c(0.2, 0.5, 0.3)),
+  levels = c("gering", "mittel", "hoch")
+)
+
+table(zufriedenheit)                        # absolut: wie viele?
+round(prop.table(table(zufriedenheit)), 3)  # relativ: welcher Anteil?
+cumsum(prop.table(table(zufriedenheit)))    # kumuliert: hoechstens diese Stufe
+```
+
+## Python
+
+```{python}
+#| label: haeufigkeit-py
+stufen = ["gering", "mittel", "hoch"]
+zufriedenheit = pd.Categorical(
+    rng.choice(stufen, size=60, p=[0.2, 0.5, 0.3]),
+    categories=stufen, ordered=True
+)
+s = pd.Series(zufriedenheit)
+
+print(s.value_counts().reindex(stufen))                     # absolut
+print(s.value_counts(normalize=True).reindex(stufen).round(3))  # relativ
+print(s.value_counts(normalize=True).reindex(stufen).cumsum()) # kumuliert
+```
+:::
+
+Die absolute Häufigkeit zählt. Die relative teilt durch die Gesamtzahl und macht
+damit Gruppen unterschiedlicher Grösse vergleichbar: Zwölf Ausfälle in einem
+Betrieb mit zwanzig Maschinen sind etwas anderes als zwölf in einem mit
+zweihundert. Die kumulierte Häufigkeit summiert von unten auf und beantwortet
+die Frage, welcher Anteil höchstens eine bestimmte Stufe erreicht. Sie setzt
+eine Ordnung voraus und ist bei nominalen Merkmalen sinnlos.
+
+### Die empirische Verteilungsfunktion
+
+Die kumulierte Häufigkeit, konsequent für alle Werte eines metrischen Merkmals
+gebildet, ergibt eine Funktion: Sie gibt zu jedem Wert an, welcher Anteil der
+Beobachtungen höchstens so gross ist. Weil die Daten endlich sind, springt sie
+an jedem beobachteten Wert und ist dazwischen konstant.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-ecdf-r
+#| fig-cap: "Empirische Verteilungsfunktion. Jeder Sprung entspricht einer Beobachtung."
+x <- round(rnorm(40, mean = 20, sd = 4), 1)
+
+ggplot(data.frame(x), aes(x)) +
+  stat_ecdf(geom = "step", linewidth = 0.8) +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  labs(x = "Messwert", y = "Anteil höchstens so gross")
+```
+
+## Python
+
+```{python}
+#| label: fig-ecdf-py
+#| fig-cap: "Dieselbe Treppenfunktion mit matplotlib."
+x = np.round(rng.normal(20, 4, 40), 1)
+sortiert = np.sort(x)
+anteil = np.arange(1, len(x) + 1) / len(x)
+
+fig, ax = plt.subplots()
+ax.step(sortiert, anteil, where="post", linewidth=1.2)
+ax.axhline(0.5, linestyle="--", color="black", linewidth=0.8)
+ax.set_xlabel("Messwert")
+ax.set_ylabel("Anteil höchstens so gross")
+plt.show()
+```
+:::
+
+Aus dieser Kurve lässt sich jedes Quantil ablesen: Man geht auf der senkrechten
+Achse zum gewünschten Anteil und liest waagerecht ab. Die gestrichelte Linie
+bei 0.5 trifft die Kurve am Median. Diese Verbindung zwischen Häufigkeit und
+Kennzahl ist der Grund, warum die Verteilungsfunktion mehr ist als eine
+Darstellungsvariante.
+
+### Klassenbildung: eine Entscheidung mit Folgen
+
+Bei stetigen Merkmalen kommt fast jeder Wert nur einmal vor. Eine Auszählung
+brächte nichts, deshalb werden benachbarte Werte zu Klassen zusammengefasst.
+Wie viele Klassen gewählt werden, verändert das Bild erheblich:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-klassen-r
+#| fig-cap: "Dieselben 300 Werte mit 5, 15 und 60 Klassen. Links verschwindet die Struktur, rechts entsteht Rauschen."
+#| fig-height: 3.2
+werte <- c(rnorm(150, 18, 2), rnorm(150, 28, 3))
+
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+for (k in c(5, 15, 60)) {
+  hist(werte, breaks = k, col = "grey75", border = "white",
+       main = paste(k, "Klassen"), xlab = "Wert", ylab = "Anzahl")
+}
+```
+
+## Python
+
+```{python}
+#| label: fig-klassen-py
+#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
+werte = np.concatenate([rng.normal(18, 2, 150), rng.normal(28, 3, 150)])
+
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2), sharey=False)
+for ax, k in zip(achsen, [5, 15, 60]):
+    ax.hist(werte, bins=k, color="0.75", edgecolor="white")
+    ax.set_title(f"{k} Klassen")
+    ax.set_xlabel("Wert")
+achsen[0].set_ylabel("Anzahl")
+fig.tight_layout()
+plt.show()
+```
+:::
+
+Die Daten stammen aus zwei überlagerten Gruppen. Mit fünf Klassen ist davon
+nichts zu sehen, mit sechzig geht die Struktur im Zufall unter. Die mittlere
+Wahl zeigt, was tatsächlich vorliegt. Eine Faustregel wie die Wurzel aus der
+Beobachtungszahl liefert einen Startwert; die Entscheidung bleibt inhaltlich
+und gehört im Bericht begründet, sobald sie vom Standard abweicht.
+
+::: {.quiz}
+In @fig-klassen-r sind dieselben 300 Werte mit 5, 15 und 60 Klassen
+dargestellt. Was zeigt der Vergleich?
+
+- [ ] Mehr Klassen sind immer genauer ~ Rechts geht die Struktur im Rauschen
+      unter. Auflösung ist nicht dasselbe wie Erkenntnis.
+- [x] Die zwei überlagerten Gruppen sind nur bei der mittleren Wahl zu sehen ~
+      Richtig. Zu wenige Klassen glätten die Struktur weg, zu viele lassen
+      Zufall wie Struktur aussehen.
+- [ ] Die Klassenzahl beeinflusst nur das Aussehen, nicht die Aussage ~ Sie
+      beeinflusst genau die Aussage, wie das Bild zeigt.
+:::
+
+::: {.quiz}
+Warum ist die empirische Verteilungsfunktion unabhängig von der Klassenzahl?
+
+- [x] Weil sie keine Klassen bildet, sondern an jedem beobachteten Wert springt
+      ~ Richtig. Sie enthält damit die vollständige Information der Stichprobe
+      und eignet sich, wenn eine Darstellung frei von willkürlichen
+      Entscheidungen sein soll.
+- [ ] Weil sie immer 100 Klassen verwendet ~ Sie verwendet gar keine.
+- [ ] Weil sie nur für kleine Stichproben definiert ist ~ Sie ist für jede
+      Stichprobengrösse definiert.
+:::
+
+### Stabdiagramm oder Histogramm
+
+Beide zeigen Balken, meinen aber Verschiedenes, und die Verwechslung ist ein
+inhaltlicher Fehler.
+
+Das Stabdiagramm stellt getrennte Kategorien dar. Zwischen den Stäben bleibt
+Luft, weil zwischen Bern und Chur nichts liegt. Das Histogramm stellt ein
+Kontinuum dar, seine Balken stossen aneinander, weil der Bereich lückenlos
+abgedeckt ist.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-stab-hist-r
+#| fig-cap: "Links Kategorien mit Abstand, rechts ein Kontinuum ohne Lücken."
+#| fig-height: 3.2
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(table(zufriedenheit), col = "grey75",
+        main = "Stabdiagramm, nominal/ordinal", ylab = "Anzahl")
+hist(werte, breaks = 15, col = "grey75", border = "white",
+     main = "Histogramm, metrisch", xlab = "Wert", ylab = "Anzahl")
+```
+
+## Python
+
+```{python}
+#| label: fig-stab-hist-py
+#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
+anzahl = s.value_counts().reindex(stufen)
+
+fig, (a, b) = plt.subplots(1, 2, figsize=(7, 3.2))
+a.bar(list(anzahl.index), anzahl.values, color="0.75", width=0.6)
+a.set_title("Stabdiagramm, nominal/ordinal")
+a.set_ylabel("Anzahl")
+b.hist(werte, bins=15, color="0.75", edgecolor="white")
+b.set_title("Histogramm, metrisch")
+b.set_xlabel("Wert")
+fig.tight_layout()
+plt.show()
+```
+:::
+
+Ein Detail, das häufig übergangen wird: Bei ungleich breiten Klassen trägt im
+Histogramm die Fläche die Information, nicht die Höhe. Wer dort einfach
+Häufigkeiten als Höhe aufträgt, verzerrt das Bild zugunsten der breiten
+Klassen. Die korrekte Grösse ist dann die Häufigkeitsdichte, also Häufigkeit
+geteilt durch Klassenbreite.
+
+::: {.note-box}
+Ein Balkendiagramm für ein stetiges Merkmal oder ein Histogramm für Kategorien
+ist keine Geschmacksfrage, sondern ein Fehler in der Aussage.
+:::
+
+::: {.quiz}
+Eine Altersverteilung wird in den Klassen 0 bis 18, 19 bis 25 und 26 bis 65
+dargestellt. Was ist beim Zeichnen zu beachten?
+
+- [x] Aufzutragen ist die Häufigkeitsdichte, nicht die Häufigkeit ~ Richtig.
+      Die Klassen sind 19, 7 und 40 Jahre breit. Trägt man die reinen
+      Häufigkeiten als Höhe auf, erscheint die letzte dominant, nur weil sie
+      mehr Jahre umfasst.
+- [ ] Die Klassen müssen gleich viele Personen enthalten ~ Das ist nicht nötig
+      und meist gar nicht möglich.
+- [ ] Nichts Besonderes, ein Histogramm ist ein Histogramm ~ Bei ungleichen
+      Klassenbreiten trägt die Fläche die Information, nicht die Höhe.
+:::
+
+::: {.quiz}
+Woran erkennt man in einer fremden Grafik, ob ein Histogramm oder ein
+Stabdiagramm gemeint war? Der Vergleich steht in @fig-stab-hist-r.
+
+- [ ] An der Farbe der Balken ~ Die Farbe trägt keine solche Information.
+- [x] Am Abstand zwischen den Balken und an der Achse ~ Richtig. Berühren sich
+      die Balken über einer kontinuierlichen Achse, ist es ein Histogramm.
+      Stehen sie getrennt über beschrifteten Kategorien, ein Stabdiagramm.
+- [ ] An der Anzahl der Balken ~ Beide können beliebig viele haben.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
+

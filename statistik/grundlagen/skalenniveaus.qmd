@@ -4,11 +4,109 @@ description: "Nominal, ordinal, metrisch und was daraus für die Methodenwahl fo
 categories: ["Deskriptive Statistik", "EDA", "Interpretation", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 10
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(dplyr)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Nominal, ordinal, intervall, verhältnis
+- Das Skalenniveau steckt in der Bedeutung, nicht in der gespeicherten Zahl
+- Es entscheidet, welche Rechenoperationen zulässig sind
+- Intervall und Verhältnis werden oft zu metrisch zusammengefasst
+- Der Unterschied der beiden liegt allein im Nullpunkt
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [R-Grundlagen](../../programmierung/r-grundlagen.qmd) für Faktor
+und Data Frame. Der Faktor ist hier zentral, weil das Skalenniveau eines
+Merkmals bestimmt, ob es überhaupt als Faktor gespeichert gehört. Was danach
+kommt, sind die [Häufigkeiten](haeufigkeiten.qmd) und die
+[Lage- und Streuungsmasse](lage-streuungsmasse.qmd).
+:::
+
+### Die Frage, die vor jeder Rechnung steht
+
+Ein Datensatz enthält Zahlen. Das heisst nicht, dass mit ihnen gerechnet werden
+darf. Postleitzahlen sind Zahlen, aber ihr Mittelwert ist sinnlos.
+Kleidergrössen lassen sich ordnen, aber die Differenz zwischen 38 und 40 ist
+nicht dieselbe wie zwischen 46 und 48. Temperaturen in Grad Celsius lassen sich
+subtrahieren, aber 20 Grad sind nicht doppelt so warm wie 10.
+
+Das Skalenniveau beantwortet, welche dieser Operationen zulässig sind. Es ist
+keine Eigenschaft der gespeicherten Zahl, sondern der Bedeutung dahinter, und
+deshalb muss es ein Mensch festlegen.
+
+| Niveau | erlaubt | Beispiel | zulässiges Lagemass |
+|---|---|---|---|
+| nominal | Gleichheit | Standort, Gerätetyp | Modus |
+| ordinal | zusätzlich Rangfolge | Schulnote, Zufriedenheit | zusätzlich Median |
+| intervall | zusätzlich Differenzen | Temperatur in Grad Celsius | zusätzlich Mittelwert |
+| verhältnis | zusätzlich Verhältnisse | Länge, Masse, Anzahl | alle, zusätzlich Variationskoeffizient |
+
+Die beiden oberen Stufen werden häufig zu metrisch zusammengefasst. Der
+Unterschied zwischen ihnen liegt allein im Nullpunkt: Bei einer
+Verhältnisskala bedeutet null, dass nichts vorhanden ist, weshalb sich Aussagen
+wie doppelt so viel bilden lassen. Bei Grad Celsius ist die Null gesetzt und
+nicht absolut, weshalb solche Aussagen dort nicht gelten.
+
+::: {.note-box}
+In der Praxis wird die Regel bei ordinalen Daten regelmässig gebrochen. Der
+Mittelwert einer Zufriedenheitsskala von 1 bis 5 ist streng genommen nicht
+definiert, wird aber überall berichtet. Wer ihn verwendet, sollte wenigstens
+wissen, dass er unterstellt, die Abstände zwischen den Stufen seien gleich.
+:::
+
+::: {.quiz}
+Eine Umfrage codiert das Geschlecht als 1 und 2. Der Bericht nennt einen
+Mittelwert von 1.4. Was sagt diese Zahl?
+
+- [ ] Das durchschnittliche Geschlecht ~ Ein Durchschnitt setzt Abstände
+      voraus, die es hier nicht gibt.
+- [x] Indirekt, dass 40 Prozent der Gruppe mit 2 codiert sind ~ Richtig. Über
+      das Merkmal selbst sagt der Wert nichts, weil die Codierung willkürlich
+      ist. Berichtet gehört dann gleich der Anteil.
+- [ ] Dass die Skala ordinal ist ~ Sie ist nominal. Die Zahlen sind reine
+      Etiketten ohne Rangfolge.
+:::
+
+::: {.quiz}
+Warum ist die Anzahl Ausfälle pro Monat verhältnisskaliert, die Jahreszahl aber
+nur intervallskaliert?
+
+- [x] Weil null Ausfälle bedeuten, dass nichts passiert ist, das Jahr 0 aber
+      ein gesetzter Bezugspunkt ist ~ Richtig. Deshalb sind zwanzig Ausfälle
+      doppelt so viele wie zehn, das Jahr 2000 aber nicht doppelt so spät wie
+      1000.
+- [ ] Weil Jahreszahlen grösser sind ~ Die Grössenordnung spielt keine Rolle.
+- [ ] Weil Ausfälle ganzzahlig sind ~ Ganzzahligkeit und Skalenniveau sind
+      verschiedene Fragen.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
+
