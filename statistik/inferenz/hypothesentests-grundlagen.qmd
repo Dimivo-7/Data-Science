@@ -1,0 +1,233 @@
+---
+title: "Hypothesentests: Grundlagen"
+description: "Testlogik, Fehler erster und zweiter Art, p-Wert und was er nicht bedeutet."
+categories: ["Hypothesentests", "Schätzen", "Interpretation", "R", "Python"]
+quelle: ["ESDS"]
+seitentyp: konzept
+stand: entwurf
+order: 20
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
+## Kernideen
+
+- Nullhypothese als Gegenannahme, die widerlegt werden soll
+- Teststatistik und ihre Verteilung unter der Nullhypothese
+- Fehler erster Art (Signifikanzniveau) und Fehler zweiter Art (Power)
+- p-Wert als bedingte Wahrscheinlichkeit für die Daten, nicht für die Hypothese
+- Signifikanz ist keine Relevanz, fehlende Signifikanz kein Beweis für Gleichheit
+- Konfidenzintervall und Effektstärke gehören zu jedem Testergebnis
+
+## Erklärung
+
+::: {.note-box}
+Vorausgesetzt werden die Verteilung einer Zufallsvariablen, der zentrale
+Grenzwertsatz und das Prinzip des Schätzens mit Unsicherheit. Wer die Verteilung
+einer Schätzung nicht vor Augen hat, kann einen p-Wert nicht einordnen.
+:::
+
+### Die Umkehrung, mit der jeder Test arbeitet
+
+Ein Test beantwortet nicht die Frage, die man eigentlich stellt. Interessant
+wäre "wie wahrscheinlich ist mein Effekt", beantwortet wird "wie ungewöhnlich
+wären meine Daten, wenn es den Effekt nicht gäbe". Dafür wird zuerst eine
+Gegenannahme formuliert, die Nullhypothese: kein Unterschied, kein Zusammenhang,
+kein Effekt. Sie ist präzise, weil sie einen einzigen Wert nennt, und genau
+deshalb lässt sich unter ihr rechnen.
+
+Der Ablauf ist immer derselbe:
+
+1. Nullhypothese und Alternativhypothese festlegen, vor dem Blick in die Daten.
+2. Signifikanzniveau festlegen, üblicherweise 5 Prozent.
+3. Eine Teststatistik berechnen, die den beobachteten Effekt an der Streuung der
+   Daten und am Stichprobenumfang misst.
+4. Die Verteilung dieser Statistik unter der Nullhypothese heranziehen und
+   fragen, wie weit aussen der beobachtete Wert liegt.
+5. Entscheiden, und zwar nur über die Nullhypothese: verwerfen oder nicht
+   verwerfen. Ein Annehmen der Nullhypothese gibt es nicht.
+
+Die Alternativhypothese entscheidet, ob ein- oder zweiseitig getestet wird.
+Zweiseitig ist der Standardfall, es interessiert eine Abweichung in beide
+Richtungen. Einseitig testet nur, wer die Richtung vorher aus der Sache heraus
+festlegen kann, und halbiert damit den p-Wert. Die Richtung nach dem Blick auf
+die Daten zu wählen, ist keine Entscheidung, sondern eine Verschiebung des
+Niveaus.
+
+### Zwei Fehler, die sich nicht gemeinsam kleinmachen lassen
+
+| | Nullhypothese ist wahr | Nullhypothese ist falsch |
+|---|---|---|
+| verworfen | Fehler erster Art, Wahrscheinlichkeit Alpha | richtige Entscheidung, Wahrscheinlichkeit 1 minus Beta (Power) |
+| nicht verworfen | richtige Entscheidung | Fehler zweiter Art, Wahrscheinlichkeit Beta |
+
+Der Fehler erster Art ist ein falscher Alarm: ein Effekt wird berichtet, den es
+nicht gibt. Seine Rate legt man selbst fest, sie ist das Signifikanzniveau. Der
+Fehler zweiter Art ist ein übersehener Effekt. Seine Rate ergibt sich aus
+Effektgrösse, Streuung, Stichprobenumfang und Niveau, und sie ist bei kleinen
+Stichproben regelmässig grösser als 50 Prozent. Wer das Niveau senkt, um falsche
+Alarme zu vermeiden, erhöht damit direkt die Rate der übersehenen Effekte. Der
+einzige Weg, beide Fehler gleichzeitig zu senken, ist ein grösserer
+Stichprobenumfang.
+
+::: {.quiz}
+Ein Test wird mit Alpha = 0.01 statt 0.05 gerechnet. Was passiert?
+
+- [x] Falsche Alarme werden seltener, übersehene Effekte häufiger ~ Richtig. Die
+      Schwelle rückt nach aussen, also wird die Nullhypothese seltener verworfen,
+      unabhängig davon, ob sie stimmt. Der Preis für weniger Fehler erster Art
+      sind mehr Fehler zweiter Art.
+- [ ] Beide Fehlerarten werden seltener ~ Das geht bei gleichem
+      Stichprobenumfang nicht, die beiden Raten bewegen sich gegenläufig.
+- [ ] Das Ergebnis wird zuverlässiger, weil der Effekt grösser sein muss ~ Der
+      wahre Effekt ändert sich nicht. Nur die Schwelle ändert sich, ab der man
+      ihn berichtet.
+:::
+
+### Der p-Wert
+
+Der p-Wert ist die Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so
+extremes Ergebnis zu beobachten wie das vorliegende. Er ist damit eine Aussage
+über die Daten unter einer Annahme, nicht über die Annahme. Die beiden
+Richtungen der Bedingung sind nicht austauschbar: "die Daten sind unter der
+Nullhypothese unwahrscheinlich" ist nicht dasselbe wie "die Nullhypothese ist
+unwahrscheinlich".
+
+Wie gross ein p-Wert wird, hängt an drei Dingen gleichzeitig: an der
+Effektgrösse, an der Streuung und am Stichprobenumfang. Derselbe Effekt kann bei
+kleinem n weit von der Schwelle entfernt bleiben und bei grossem n deutlich
+darunter liegen. Deshalb ist ein p-Wert allein niemals eine Aussage über die
+Bedeutung eines Ergebnisses.
+
+Liegt keine echte Abweichung vor, ist der p-Wert gleichverteilt zwischen null
+und eins. Das ist der Grund, weshalb bei einem Niveau von 5 Prozent rund
+5 Prozent der Tests einen falschen Alarm liefern:
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-pwerte-null-r
+#| fig-cap: "Verteilung der p-Werte aus 2000 t-Tests auf Daten ohne echten Unterschied."
+p_werte <- replicate(2000, {
+  a <- rnorm(30, mean = 100, sd = 15)
+  b <- rnorm(30, mean = 100, sd = 15)
+  t.test(a, b)$p.value
+})
+
+mean(p_werte < 0.05)
+
+ggplot(data.frame(p = p_werte), aes(x = p)) +
+  geom_histogram(binwidth = 0.05, boundary = 0,
+                 fill = "steelblue", colour = "white") +
+  geom_vline(xintercept = 0.05, linetype = "dashed") +
+  labs(x = "p-Wert", y = "Anzahl Tests")
+```
+
+## Python
+
+```{python}
+#| label: fig-pwerte-null-py
+#| fig-cap: "Dieselbe Simulation in Python, die p-Werte sind gleichverteilt."
+p_werte = np.array([
+    stats.ttest_ind(rng.normal(100, 15, 30), rng.normal(100, 15, 30)).pvalue
+    for _ in range(2000)
+])
+
+print((p_werte < 0.05).mean())
+
+fig, ax = plt.subplots()
+ax.hist(p_werte, bins=np.arange(0, 1.01, 0.05),
+        color="steelblue", edgecolor="white")
+ax.axvline(0.05, linestyle="--", color="black")
+ax.set_xlabel("p-Wert")
+ax.set_ylabel("Anzahl Tests")
+plt.show()
+```
+
+:::
+
+Der Anteil unter der Schwelle liegt in beiden Sprachen in der Nähe von 0.05, und
+das Histogramm ist flach. Das ist kein Mangel des Verfahrens, sondern genau
+seine Zusage: das Niveau begrenzt die Rate falscher Alarme, es schliesst sie
+nicht aus. Daraus folgt unmittelbar das Problem des mehrfachen Testens. Wer
+20 Fragen an denselben Datensatz stellt, findet im Schnitt einen signifikanten
+Effekt, auch wenn keiner existiert.
+
+::: {.quiz}
+Ein Test ergibt p = 0.42. Was darf man schliessen?
+
+- [ ] Dass die Gruppen gleich sind ~ Ein fehlender Nachweis ist kein Nachweis der
+      Gleichheit. Möglicherweise ist die Stichprobe zu klein.
+- [x] Nur, dass die Daten mit der Nullhypothese vereinbar sind ~ Richtig. Wie
+      grosse Effekte die Daten noch zulassen, zeigt allein das
+      Konfidenzintervall, und das gehört deshalb immer mitberichtet.
+- [ ] Dass die Nullhypothese mit 58 Prozent Wahrscheinlichkeit falsch ist ~ Der
+      p-Wert ist keine Wahrscheinlichkeit für eine Hypothese, in keiner
+      Rechenrichtung.
+:::
+
+### Was der Test nicht liefert, das Intervall aber schon
+
+Ein Test liefert eine Ja-Nein-Entscheidung. Ein Konfidenzintervall liefert den
+Bereich der Effektgrössen, die mit den Daten vereinbar sind, und enthält die
+Testentscheidung als Nebenprodukt: schliesst das 95-Prozent-Intervall den Wert
+der Nullhypothese ein, ist der zweiseitige Test auf dem 5-Prozent-Niveau nicht
+signifikant. Das Intervall sagt zusätzlich, ob ein nicht signifikantes Ergebnis
+"kein nennenswerter Effekt vorhanden" oder "nichts erkennbar, weil die
+Stichprobe zu klein ist" bedeutet. Diese beiden Fälle sehen im p-Wert identisch
+aus.
+
+Deshalb besteht ein berichtsfähiges Ergebnis immer aus vier Teilen: Schätzwert,
+Konfidenzintervall, Teststatistik mit Freiheitsgraden und p-Wert, dazu die
+Effektstärke und n.
+
+::: {.callout-note collapse="true"}
+## Warum die Power vor der Datenerhebung gerechnet wird
+
+Nach der Erhebung ist der Stichprobenumfang festgelegt, und eine niedrige Power
+lässt sich nicht mehr reparieren. Eine im Nachhinein aus dem beobachteten Effekt
+gerechnete Power ist zudem keine unabhängige Information, sondern eine
+Umrechnung des p-Werts. Nützlich ist die Rechnung nur vorher, mit einer aus der
+Sache begründeten Mindesteffektgrösse.
+:::
+
+::: {.quiz}
+Zwei Untersuchungen betrachten denselben Effekt. A: n = 40, p = 0.06,
+Konfidenzintervall des Unterschieds von -0.2 bis 8.4. B: n = 4000, p = 0.03,
+Intervall von 0.05 bis 0.9. Was ist die richtige Lesart?
+
+- [ ] B zeigt den stärkeren Effekt, weil p kleiner ist ~ Der p-Wert vergleicht
+      keine Effektgrössen. B hat vor allem mehr Beobachtungen.
+- [x] A lässt auch grosse Effekte zu, B belegt einen kleinen ~ Richtig. In A ist
+      das Intervall breit, es ist kaum etwas ausgeschlossen. In B ist es eng und
+      liegt knapp über null, der Effekt ist gesichert, aber klein.
+- [ ] A ist wertlos, weil nicht signifikant ~ A ist unentschieden, und das ist
+      ein Ergebnis. Wertlos wäre die Aussage nur, wenn man das Intervall
+      verschweigt.
+:::
+
+## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zur Inferenz](https://www.openintro.org/book/os/)
+- [Statement der American Statistical Association zum p-Wert](https://www.tandfonline.com/doi/full/10.1080/00031305.2016.1154108)

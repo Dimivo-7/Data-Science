@@ -1,0 +1,614 @@
+---
+title: "Multiple lineare Regression"
+description: "Mehrere Prädiktoren, adjustiertes R², Multikollinearität und wie man den Output liest."
+categories: ["Regression", "Modelldiagnostik", "Interpretation", "R", "Python"]
+quelle: ["STATDA", "ESDS"]
+seitentyp: methode
+stand: entwurf
+order: 20
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(car)
+library(lmtest)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(2026)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+```
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie hängt eine metrische Zielgrösse gleichzeitig von mehreren Einflussgrössen ab, und wie gross ist der Beitrag jeder einzelnen bei konstant gehaltenen anderen? |
+| Zielvariable | metrisch (intervall- oder verhältnisskaliert) |
+| Prädiktoren | zwei oder mehr, metrisch oder kategorial (kategoriale werden zu Indikatorvariablen) |
+| Was die Methode liefert | Koeffizienten mit Standardfehlern, Konfidenzintervallen und p-Werten, R² und adjustiertes R², F-Test des Gesamtmodells, Residuen für die Diagnostik |
+| R-Funktion | `lm(y ~ x1 + x2, data = df)`, gelesen mit `summary()`, `confint()`, `car::vif()` |
+| Python-Funktion | `smf.ols("y ~ x1 + x2", data=df).fit()`, gelesen mit `.summary()`, `.conf_int()`, `variance_inflation_factor()` |
+| Verwandte Methoden | [einfache lineare Regression](einfache-lineare-regression.qmd), [logistische Regression](logistische-regression.qmd), Varianzanalyse |
+
+## Wann diese Methode, wann nicht
+
+Typische Fragestellungen: Miete aus Fläche und Alter einer Wohnung, Absatz aus
+Preis und Werbebudget, Laborwert aus Dosis und Körpergewicht. Gemeinsam ist
+ihnen, dass die Zielgrösse metrisch ist, dass mehrere Einflussgrössen zugleich
+wirken und dass der Beitrag einer einzelnen Grösse interessiert, gerade weil die
+anderen mit ihr zusammenhängen.
+
+Die Methode passt, wenn der Zusammenhang in den Prädiktoren annähernd linear
+ist, die Beobachtungen unabhängig sind und die Streuung der Residuen über den
+Vorhersagebereich ungefähr gleich bleibt.
+
+Sie passt nicht in diesen Fällen:
+
+| Situation | Stattdessen |
+|---|---|
+| Zielvariable binär | [logistische Regression](logistische-regression.qmd) |
+| Zielvariable ist eine Zeit bis zu einem Ereignis mit zensierten Fällen | [Kaplan-Meier](../ueberlebenszeit/kaplan-meier.qmd) und [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) |
+| Nur ein Prädiktor | [einfache lineare Regression](einfache-lineare-regression.qmd) |
+| Beobachtungen sind zeitlich geordnet und autokorreliert | [Zeitreihenmodelle](../zeitreihen/arima-sarima.qmd) |
+| Erkennbar krummer Zusammenhang | Transformation der Variablen oder Polynomterme im Modell |
+| Deutlich ungleiche Residuenstreuung | robuste Standardfehler oder Transformation der Zielvariable |
+
+## Grundidee und Modell
+
+Gesucht ist die Ebene beziehungsweise Hyperebene, die möglichst nah an allen
+beobachteten Punkten liegt. Nah bedeutet: die Summe der quadrierten senkrechten
+Abstände zwischen beobachteten und vorhergesagten Werten ist minimal. Das
+Quadrieren gewichtet grosse Abweichungen stärker und macht die Lösung eindeutig
+berechenbar.
+
+$$y_i = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \dots + \beta_k x_{ik} + \varepsilon_i$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $y_i$ | beobachteter Wert der Zielvariable bei Beobachtung $i$ |
+| $\beta_0$ | Achsenabschnitt, erwarteter Wert von $y$, wenn alle Prädiktoren null sind |
+| $\beta_j$ | erwartete Änderung von $y$, wenn $x_j$ um eine Einheit steigt und alle anderen Prädiktoren konstant bleiben |
+| $x_{ij}$ | Wert des $j$-ten Prädiktors bei Beobachtung $i$ |
+| $\varepsilon_i$ | Residuum, der von keinem Prädiktor erfasste Rest, mit Erwartungswert null und konstanter Varianz |
+
+Geschätzt wird mit der Methode der kleinsten Quadrate. Sie hat eine
+geschlossene Lösung, es wird also nicht iteriert und es gibt keine
+Konvergenzprobleme. Entscheidend für die Interpretation ist die Wendung "bei
+konstant gehaltenen anderen Prädiktoren": jeder Koeffizient beschreibt den
+Beitrag seiner Variable, nachdem der Einfluss der übrigen herausgerechnet ist.
+Deshalb kann sich ein Koeffizient beim Hinzufügen einer weiteren Variablen
+deutlich ändern, und deshalb ist er nicht dasselbe wie eine einfache Korrelation.
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Linearität | Der Zusammenhang jedes Prädiktors mit der Zielgrösse ist geradlinig | Residuen gegen vorhergesagte Werte, gekrümmtes Muster ist verdächtig | Koeffizienten sind systematisch verzerrt, Vorhersagen in den Randbereichen falsch | Transformation, Polynomterm oder Aufteilung in Bereiche |
+| Unabhängigkeit | Beobachtungen beeinflussen sich nicht gegenseitig | aus dem Erhebungsdesign, bei zeitlicher Ordnung Durbin-Watson | Standardfehler zu klein, p-Werte zu optimistisch | Mehrebenenmodell oder Zeitreihenmodell |
+| Homoskedastizität | Residuenstreuung ist über den Vorhersagebereich konstant | Residuenplot, Breusch-Pagan-Test | Schätzwerte bleiben brauchbar, Standardfehler und p-Werte nicht | robuste Standardfehler oder Transformation |
+| Normalverteilte Residuen | Die Residuen streuen annähernd normal | QQ-Plot der Residuen | betrifft vor allem Tests und Intervalle bei kleinem n, bei grossem n unkritisch | Transformation, Bootstrap |
+| Keine starke Multikollinearität | Prädiktoren sind nicht nahezu Linearkombinationen voneinander | VIF, Werte über 5 sind auffällig, über 10 kritisch | einzelne Koeffizienten instabil und nicht signifikant, obwohl das Modell gut passt | eine Variable entfernen oder zusammenfassen |
+| Keine einflussreichen Einzelfälle | Kein einzelner Punkt bestimmt das Ergebnis | Cook-Distanz, Hebelwerte | Koeffizient hängt an einer Beobachtung | Fall prüfen, Modell mit und ohne ihn berichten |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-diagnostik-r
+#| fig-cap: "Residuen gegen vorhergesagte Werte und QQ-Plot der Residuen."
+n <- 200
+wohnung <- data.frame(
+  flaeche = rnorm(n, mean = 80, sd = 18),
+  alter   = runif(n, min = 0, max = 60)
+)
+wohnung$miete <- 400 + 12 * wohnung$flaeche - 3 * wohnung$alter +
+  rnorm(n, mean = 0, sd = 150)
+
+modell <- lm(miete ~ flaeche + alter, data = wohnung)
+
+par(mfrow = c(1, 2))
+plot(modell, which = 1)
+plot(modell, which = 2)
+par(mfrow = c(1, 1))
+
+bptest(modell)
+vif(modell)
+```
+
+## Python
+
+```{python}
+#| label: fig-diagnostik-py
+#| fig-cap: "Dieselbe Diagnostik in Python: Residuenplot und QQ-Plot."
+rng = np.random.default_rng(2026)
+
+n = 200
+wohnung = pd.DataFrame({
+    "flaeche": rng.normal(80, 18, n),
+    "alter": rng.uniform(0, 60, n),
+})
+wohnung["miete"] = (400 + 12 * wohnung["flaeche"] - 3 * wohnung["alter"]
+                    + rng.normal(0, 150, n))
+
+modell = smf.ols("miete ~ flaeche + alter", data=wohnung).fit()
+
+fig, axes = plt.subplots(1, 2)
+axes[0].scatter(modell.fittedvalues, modell.resid, s=12, alpha=0.7)
+axes[0].axhline(0, linestyle="--", color="black")
+axes[0].set_xlabel("vorhergesagte Werte")
+axes[0].set_ylabel("Residuen")
+sm.qqplot(modell.resid, line="s", ax=axes[1])
+axes[1].set_title("QQ-Plot der Residuen")
+plt.tight_layout()
+plt.show()
+
+print(sm.stats.diagnostic.het_breuschpagan(modell.resid, modell.model.exog))
+
+X = sm.add_constant(wohnung[["flaeche", "alter"]])
+print([round(variance_inflation_factor(X.values, i), 2)
+       for i in range(X.shape[1])])
+```
+
+:::
+
+Im Residuenplot soll eine strukturlose Wolke um die Nulllinie stehen, ohne
+Trichter und ohne Bogen. Im QQ-Plot sollen die Punkte nah an der Geraden
+liegen; Abweichungen an den beiden Enden sind normal. Der Breusch-Pagan-Test
+gibt in Python die Reihenfolge Statistik, p-Wert, F-Statistik, F-p-Wert zurück;
+ein grosser p-Wert bedeutet keinen Hinweis auf ungleiche Streuung. Die
+VIF-Werte werden in Python samt Konstante ausgegeben, deren Wert ist ohne
+Bedeutung.
+
+## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-r
+summary(modell)
+confint(modell)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-py
+print(modell.summary())
+print(modell.conf_int())
+```
+
+:::
+
+Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 200
+Wohnungen, Fläche normalverteilt um 80 Quadratmeter, Alter gleichverteilt
+zwischen 0 und 60 Jahren, Miete gleich 400 plus 12 mal Fläche minus 3 mal Alter
+plus normalverteiltes Rauschen mit Standardabweichung 150. Die wahren Werte sind
+damit bekannt, und der Output lässt sich daran prüfen. Weil die Zufallszahlen
+der beiden Sprachen verschieden erzeugt werden, unterscheiden sich die Zahlen
+leicht; die Struktur des Ergebnisses ist dieselbe.
+
+## Output lesen
+
+R, `summary(modell)`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `Call` | die geschätzte Modellformel | prüfen, ob wirklich das gemeinte Modell gerechnet wurde |
+| `Residuals` | Minimum, Quartile, Median der Residuen | Median deutlich neben null oder stark unsymmetrische Extreme deuten auf Schieflage |
+| `Estimate` | geschätzter Koeffizient | Änderung von y je Einheit von x bei konstant gehaltenen anderen Prädiktoren, in den Einheiten der Variablen |
+| `Std. Error` | Standardfehler des Koeffizienten | Unsicherheit der Schätzung, wächst mit der Streuung und mit Multikollinearität |
+| `t value` | Estimate geteilt durch Std. Error | Werte über etwa 2 in Betrag sind bei üblichem n signifikant |
+| `Pr(>|t|)` | p-Wert des Tests, dass der Koeffizient null ist | prüft nur den einzelnen Koeffizienten, sagt nichts über die Grösse des Effekts |
+| `(Intercept)` | erwartete Miete bei Fläche 0 und Alter 0 | oft ohne inhaltliche Bedeutung, weil der Punkt ausserhalb der Daten liegt |
+| `Residual standard error` | typische Abweichung einer Vorhersage in der Einheit von y | die direkt interpretierbare Gütezahl, hier vergleichbar mit dem simulierten Rauschen |
+| Freiheitsgrade | n minus Anzahl geschätzter Parameter | sinken mit jedem zusätzlichen Prädiktor |
+| `Multiple R-squared` | Anteil der erklärten Streuung | steigt mit jedem Prädiktor, auch mit einem sinnlosen |
+| `Adjusted R-squared` | um die Anzahl Prädiktoren korrigiert | die Zahl, die man beim Modellvergleich liest |
+| `F-statistic` mit p-Wert | Test, ob das Modell insgesamt besser ist als der Mittelwert | signifikant, ohne dass ein einzelner Koeffizient signifikant sein muss, typisch bei Multikollinearität |
+| `confint()` | 95-Prozent-Intervall je Koeffizient | schliesst es null ein, ist der Koeffizient nicht signifikant |
+
+Python, `modell.summary()`, mit den Unterschieden zu R:
+
+| Grösse | Was sie sagt | Unterschied zu R |
+|---|---|---|
+| `coef`, `std err`, `t`, `P>|t|` | wie Estimate, Std. Error, t value, Pr(>|t|) | nur andere Bezeichnung |
+| `[0.025 0.975]` | Konfidenzintervall | steht direkt in der Tabelle, in R braucht es `confint()` |
+| `R-squared`, `Adj. R-squared` | wie in R | identisch berechnet |
+| `F-statistic`, `Prob (F-statistic)` | Gesamttest | identisch |
+| `Df Residuals`, `Df Model` | Freiheitsgrade | R nennt sie im Fliesstext, Python in eigenen Zeilen |
+| `AIC`, `BIC`, `Log-Likelihood` | Kennzahlen für den Modellvergleich | R zeigt sie nicht in `summary()`, dort über `AIC(modell)` |
+| `Omnibus`, `Jarque-Bera`, `Skew`, `Kurtosis` | Tests und Masse zur Normalität der Residuen | in R nicht enthalten, dort über den QQ-Plot |
+| `Durbin-Watson` | Hinweis auf Autokorrelation der Residuen | Werte um 2 sind unauffällig, in R über `dwtest()` |
+| `Cond. No.` | Konditionszahl der Prädiktormatrix | grosse Werte deuten auf Multikollinearität, ergänzend zum VIF |
+| Kein `Residual standard error` | die Grösse fehlt in der Tabelle | über `np.sqrt(modell.mse_resid)` |
+
+Ausgelassen wird kein Wert: auch Freiheitsgrade, Residualstreuung und die
+Normalitätskennzahlen gehören zur Beurteilung, und Warnhinweise am Fuss der
+Python-Tabelle sind Teil des Ergebnisses.
+
+## Ergebnisse interpretieren
+
+### Szenario A: klares Ergebnis
+
+Beide Prädiktoren wirken deutlich, die Voraussetzungen sind erfüllt. Das ist
+der Datensatz aus der Durchführung, hier mit den Koeffizienten und Intervallen
+nebeneinander.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-a-r
+round(cbind(Schaetzwert = coef(modell), confint(modell)), 2)
+summary(modell)$adj.r.squared
+```
+
+## Python
+
+```{python}
+#| label: szenario-a-py
+ergebnis = pd.concat([modell.params, modell.conf_int()], axis=1)
+ergebnis.columns = ["Schaetzwert", "unten", "oben"]
+print(ergebnis.round(2))
+print(round(modell.rsquared_adj, 3))
+```
+
+:::
+
+Der Koeffizient der Fläche liegt in der Nähe des simulierten Werts von 12 und
+sein Konfidenzintervall schliesst die Null weit entfernt nicht ein: jeder
+zusätzliche Quadratmeter geht bei gleichem Alter mit einer um etwa 12 Einheiten
+höheren Miete einher. Der Koeffizient des Alters ist negativ und liegt in der
+Nähe von -3: ein Jahr mehr entspricht bei gleicher Fläche einer um rund
+3 Einheiten geringeren Miete. Das adjustierte R² sagt, welcher Anteil der
+Mietstreuung durch die beiden Grössen erklärt ist; der Rest steckt im Rauschen,
+das bewusst mit Standardabweichung 150 eingebaut wurde.
+
+Ergebnissatz: Fläche und Alter erklären die Miete gemeinsam deutlich
+(F-Test signifikant, adjustiertes R² wie ausgegeben, n = 200). Pro Quadratmeter
+steigt die erwartete Miete bei konstantem Alter um den geschätzten Betrag
+(95-Prozent-Intervall wie ausgegeben, p < 0.001), pro Jahr Alter sinkt sie bei
+konstanter Fläche entsprechend.
+
+### Szenario B: kein Ergebnis für einen Prädiktor
+
+Zum Modell kommt die Etage hinzu, die in den simulierten Daten keinen Einfluss
+hat, und der Stichprobenumfang ist mit 60 klein.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-b-r
+set.seed(11)
+n_b <- 60
+wohnung_b <- data.frame(
+  flaeche = rnorm(n_b, mean = 80, sd = 18),
+  etage   = sample(0:5, n_b, replace = TRUE)
+)
+wohnung_b$miete <- 400 + 12 * wohnung_b$flaeche +
+  rnorm(n_b, mean = 0, sd = 150)
+
+modell_b <- lm(miete ~ flaeche + etage, data = wohnung_b)
+summary(modell_b)
+confint(modell_b)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-py
+rng_b = np.random.default_rng(11)
+n_b = 60
+wohnung_b = pd.DataFrame({
+    "flaeche": rng_b.normal(80, 18, n_b),
+    "etage": rng_b.integers(0, 6, n_b),
+})
+wohnung_b["miete"] = (400 + 12 * wohnung_b["flaeche"]
+                      + rng_b.normal(0, 150, n_b))
+
+modell_b = smf.ols("miete ~ flaeche + etage", data=wohnung_b).fit()
+print(modell_b.summary())
+print(modell_b.conf_int())
+```
+
+:::
+
+Der Koeffizient der Etage ist klein gegenüber seinem Standardfehler, der p-Wert
+liegt weit über 0.05, und das Konfidenzintervall reicht von einem negativen zu
+einem positiven Wert, schliesst die Null also ein. Daraus folgt: die Daten
+zeigen keinen Einfluss der Etage. Sie zeigen nicht, dass es keinen gibt. Das
+Intervall nennt die Effektgrössen, die weiterhin möglich sind, und bei n = 60
+ist dieser Bereich breit. Wer daraus "die Etage spielt keine Rolle" macht,
+verwechselt fehlenden Nachweis mit Nachweis der Abwesenheit.
+
+Die Fläche bleibt trotz des kleinen Stichprobenumfangs signifikant, weil ihr
+Effekt gross gegenüber dem Rauschen ist. Das zeigt den Unterschied zwischen den
+beiden Fragen "gibt es einen Effekt in diesen Daten" und "reicht die Stichprobe,
+um ihn zu erkennen".
+
+Ergebnissatz: Für die Etage ergibt sich kein Zusammenhang mit der Miete
+(Schätzwert und 95-Prozent-Intervall wie ausgegeben, p wie ausgegeben, n = 60).
+Das Intervall lässt Effekte in beide Richtungen zu; ein Einfluss ist mit diesen
+Daten nicht ausgeschlossen, nur nicht belegt.
+
+### Szenario C: Multikollinearität als Fallstrick
+
+Zusätzlich zur Fläche wird die Nutzfläche aufgenommen, die fast dasselbe misst.
+Das Modell passt weiterhin, aber die beiden Koeffizienten werden unbrauchbar.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-c-r
+set.seed(7)
+n_c <- 120
+wohnung_c <- data.frame(
+  flaeche = rnorm(n_c, mean = 80, sd = 18),
+  alter   = runif(n_c, min = 0, max = 60)
+)
+wohnung_c$nutzflaeche <- wohnung_c$flaeche - runif(n_c, min = 0, max = 4)
+wohnung_c$miete <- 400 + 12 * wohnung_c$flaeche - 3 * wohnung_c$alter +
+  rnorm(n_c, mean = 0, sd = 150)
+
+modell_c <- lm(miete ~ flaeche + nutzflaeche + alter, data = wohnung_c)
+summary(modell_c)
+vif(modell_c)
+cor(wohnung_c$flaeche, wohnung_c$nutzflaeche)
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-py
+rng_c = np.random.default_rng(7)
+n_c = 120
+wohnung_c = pd.DataFrame({
+    "flaeche": rng_c.normal(80, 18, n_c),
+    "alter": rng_c.uniform(0, 60, n_c),
+})
+wohnung_c["nutzflaeche"] = wohnung_c["flaeche"] - rng_c.uniform(0, 4, n_c)
+wohnung_c["miete"] = (400 + 12 * wohnung_c["flaeche"] - 3 * wohnung_c["alter"]
+                      + rng_c.normal(0, 150, n_c))
+
+modell_c = smf.ols("miete ~ flaeche + nutzflaeche + alter",
+                   data=wohnung_c).fit()
+print(modell_c.summary())
+
+X_c = sm.add_constant(wohnung_c[["flaeche", "nutzflaeche", "alter"]])
+print([round(variance_inflation_factor(X_c.values, i), 1)
+       for i in range(X_c.shape[1])])
+print(round(wohnung_c["flaeche"].corr(wohnung_c["nutzflaeche"]), 4))
+```
+
+:::
+
+Erkennbar ist das Problem an drei Stellen gleichzeitig. Erstens sind die
+VIF-Werte von Fläche und Nutzfläche sehr hoch, weit über der kritischen Marke
+von 10, während der VIF des Alters unauffällig bleibt. Zweitens sind die
+Standardfehler der beiden Flächenvariablen um ein Vielfaches grösser als im
+Modell aus Szenario A, und die zugehörigen p-Werte sind gross, obwohl der F-Test
+des Gesamtmodells klar signifikant ist und R² hoch bleibt. Diese Kombination,
+gutes Gesamtmodell mit nicht signifikanten Einzelkoeffizienten, ist das
+klassische Erkennungszeichen. Drittens sind die Vorzeichen unplausibel: einer
+der beiden Flächenkoeffizienten kann negativ ausfallen, weil die Aufteilung des
+gemeinsamen Effekts auf zwei fast identische Variablen willkürlich ist. In
+Python steht zusätzlich der Warnhinweis zur Konditionszahl unter der Tabelle.
+
+Verzerrt sind dabei nicht die Vorhersagen, sondern die Aussagen über die
+einzelnen Variablen. Wer das Modell nur zur Prognose nutzt, wird kaum gestört;
+wer einen Koeffizienten interpretieren will, darf es nicht. Das Vorgehen: eine
+der beiden Variablen entfernen, oder beide zu einer zusammenfassen, danach neu
+schätzen und die Wahl im Bericht begründen.
+
+Ergebnissatz: Fläche und Nutzfläche sind mit einer Korrelation nahe eins
+praktisch identisch (VIF wie ausgegeben). Ihre Koeffizienten sind einzeln nicht
+interpretierbar; berichtet wird das Modell mit nur einer der beiden Variablen.
+
+### Weiteres Szenario: kategorialer Prädiktor mit mehreren Stufen
+
+Wird eine kategoriale Variable aufgenommen, erzeugen beide Sprachen
+Indikatorvariablen und lassen eine Stufe als Referenz weg. Jeder Koeffizient ist
+dann der Unterschied zu dieser Referenz, nicht zum Gesamtmittel.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-d-r
+set.seed(3)
+n_d <- 150
+lage_stufen <- c("Rand", "Mitte", "Zentrum")
+wohnung_d <- data.frame(
+  flaeche = rnorm(n_d, mean = 80, sd = 18),
+  lage    = factor(sample(lage_stufen, n_d, replace = TRUE),
+                   levels = lage_stufen)
+)
+zuschlag <- c(Rand = 0, Mitte = 200, Zentrum = 500)
+wohnung_d$miete <- 400 + 12 * wohnung_d$flaeche +
+  zuschlag[as.character(wohnung_d$lage)] + rnorm(n_d, mean = 0, sd = 150)
+
+modell_d <- lm(miete ~ flaeche + lage, data = wohnung_d)
+summary(modell_d)
+anova(modell_d)
+```
+
+## Python
+
+```{python}
+#| label: szenario-d-py
+rng_d = np.random.default_rng(3)
+n_d = 150
+stufen = ["Rand", "Mitte", "Zentrum"]
+wohnung_d = pd.DataFrame({
+    "flaeche": rng_d.normal(80, 18, n_d),
+    "lage": rng_d.choice(stufen, n_d),
+})
+zuschlag = {"Rand": 0, "Mitte": 200, "Zentrum": 500}
+wohnung_d["miete"] = (400 + 12 * wohnung_d["flaeche"]
+                      + wohnung_d["lage"].map(zuschlag)
+                      + rng_d.normal(0, 150, n_d))
+
+modell_d = smf.ols(
+    "miete ~ flaeche + C(lage, Treatment(reference='Rand'))",
+    data=wohnung_d).fit()
+print(modell_d.summary())
+print(sm.stats.anova_lm(modell_d, typ=2))
+```
+
+:::
+
+Referenz ist die Lage am Rand. Die beiden ausgegebenen Lage-Koeffizienten
+schätzen den Mietunterschied von Mitte und Zentrum gegenüber dem Rand bei
+gleicher Fläche und liegen in der Nähe der simulierten Zuschläge von 200 und
+500. In Python muss die Referenzstufe angegeben werden, sonst wird alphabetisch
+gewählt; in R bestimmt die Reihenfolge der Faktorstufen die Referenz. Ob die
+Variable Lage insgesamt etwas beiträgt, beantwortet nicht der einzelne p-Wert,
+sondern der gemeinsame Test über alle Stufen aus der Varianzanalysetabelle.
+
+## Interpretationsfallen
+
+- **Signifikanz ist keine Relevanz.** Bei grossem n wird ein Koeffizient von
+  0.4 Einheiten pro Quadratmeter signifikant, ohne für eine Mietentscheidung
+  eine Rolle zu spielen. Relevanz liest man am Schätzwert in seiner Einheit, an
+  seinem Intervall und an der Residualstreuung.
+- **Der p-Wert ist keine Wahrscheinlichkeit für die Nullhypothese.** Er ist die
+  Wahrscheinlichkeit dieser oder extremerer Daten, wenn der Koeffizient null
+  wäre. Siehe [Hypothesentests: Grundlagen](../inferenz/hypothesentests-grundlagen.qmd).
+- **R² ist keine Modellrichtigkeit.** Ein Modell mit falscher Struktur kann ein
+  hohes R² haben, und ein korrektes Modell für stark streuende Daten ein
+  niedriges. R² steigt zudem mit jedem zusätzlichen Prädiktor; für Vergleiche
+  gilt das adjustierte R².
+- **Ein Koeffizient ist keine Kausalität.** "Bei konstant gehaltenen anderen
+  Prädiktoren" heisst konstant gehalten unter den aufgenommenen Variablen. Eine
+  nicht erhobene gemeinsame Ursache bleibt im Modell unsichtbar und verzerrt den
+  Koeffizienten.
+- **Das Konfidenzintervall ist keine Wahrscheinlichkeitsaussage über den wahren
+  Wert.** Das Verfahren trifft in 95 Prozent aller Anwendungen den wahren Wert;
+  das konkrete Intervall enthält ihn oder nicht.
+- **Der Achsenabschnitt ist selten interpretierbar.** Fläche null und Alter null
+  kommt in den Daten nicht vor. Wer den Achsenabschnitt deuten will, zentriert
+  die Prädiktoren.
+- **Vorhersagen nur im beobachteten Bereich.** Ausserhalb der Datenspanne ist
+  die Linearität nicht geprüft und die Vorhersage eine Behauptung.
+
+## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> Ein multiples lineares Modell mit [Prädiktoren] erklärt [Zielvariable]
+> (F([Df Model], [Df Residuals]) = [F], p = [p], adjustiertes R² = [Wert],
+> n = [n]). Bei konstant gehaltenen übrigen Prädiktoren steigt [Zielvariable]
+> pro Einheit [Prädiktor] um [Schätzwert] [Einheit]
+> (95-Prozent-Konfidenzintervall [unten] bis [oben], p = [p]).
+
+Immer genannt werden: Schätzwert in seiner Einheit, Konfidenzintervall,
+Teststatistik mit Freiheitsgraden, p-Wert, adjustiertes R² und n, dazu die
+Residualstreuung, wenn es um Vorhersagegüte geht. Genannt wird ausserdem, welche
+Voraussetzungen geprüft wurden und mit welchem Ergebnis.
+
+Beispiel für eine Ergebnistabelle:
+
+| Prädiktor | Schätzwert | Standardfehler | 95-Prozent-Intervall | p |
+|---|---|---|---|---|
+| Achsenabschnitt | | | | |
+| Fläche (m²) | | | | |
+| Alter (Jahre) | | | | |
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt der multiplen linearen Regression |
+|---|---|
+| [Einfache lineare Regression](einfache-lineare-regression.qmd) | genau ein Prädiktor, keine Kontrolle weiterer Grössen nötig |
+| [Logistische Regression](logistische-regression.qmd) | binäre Zielvariable |
+| [Regressionsdiagnostik](regressionsdiagnostik.qmd) | Vertiefung zu Residuen, Hebelwerten, Ausreissern und VIF |
+| [Modellauswahl](modellauswahl.qmd) | Vergleich mehrerer Modelle, AIC, Validierung |
+| Varianzanalyse | nur kategoriale Prädiktoren, Frage nach Gruppenunterschieden; rechnerisch ein Spezialfall dieses Modells |
+| [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) | Zielvariable ist eine Zeit bis zu einem Ereignis mit zensierten Fällen |
+
+## Verständnisfragen
+
+::: {.quiz}
+Im Output steht für einen Prädiktor `Estimate = 11.8`, `Std. Error = 1.2`. Was
+folgt für das 95-Prozent-Konfidenzintervall?
+
+- [x] Es reicht ungefähr von 9.4 bis 14.2 und schliesst die Null nicht ein ~
+      Richtig, rund Schätzwert plus minus zwei Standardfehler. Der Koeffizient
+      ist deutlich von null verschieden.
+- [ ] Es reicht von 10.6 bis 13.0 ~ Das ist plus minus ein Standardfehler und
+      entspricht etwa 68 Prozent, nicht 95.
+- [ ] Ohne den p-Wert lässt sich das nicht sagen ~ Schätzwert und Standardfehler
+      genügen, der p-Wert enthält keine zusätzliche Information darüber.
+:::
+
+::: {.quiz}
+Der F-Test des Gesamtmodells ist mit p < 0.001 signifikant, R² beträgt 0.71,
+aber kein einzelner Koeffizient hat einen p-Wert unter 0.05. Was ist die
+naheliegendste Erklärung?
+
+- [ ] Ein Rechenfehler, das kann nicht gleichzeitig auftreten ~ Es kann, und es
+      ist ein bekanntes Muster.
+- [x] Starke Multikollinearität zwischen den Prädiktoren ~ Richtig. Gemeinsam
+      erklären sie viel, aber der Beitrag der einzelnen Variable ist nicht
+      trennbar, die Standardfehler werden gross. Prüfen mit VIF.
+- [ ] Das Modell hat zu wenige Prädiktoren ~ Zusätzliche Variablen würden die
+      Standardfehler eher weiter aufblähen.
+:::
+
+::: {.quiz}
+Nach Aufnahme eines zweiten Prädiktors fällt der Koeffizient des ersten von 15
+auf 4. Was bedeutet das?
+
+- [ ] Der erste Prädiktor ist unwichtig geworden ~ Wichtigkeit ist keine
+      Eigenschaft, die sich durch Hinzufügen einer Variablen ändert. Geändert
+      hat sich die Frage, die der Koeffizient beantwortet.
+- [x] Ein Teil des Zusammenhangs lief über den zweiten Prädiktor ~ Richtig. Der
+      Koeffizient misst jetzt den Beitrag bei konstant gehaltenem zweitem
+      Prädiktor. Die beiden Grössen hängen zusammen, ein Teil des vorher
+      zugeschriebenen Effekts gehört zum neuen Prädiktor.
+- [ ] Das Modell ist jetzt falsch spezifiziert ~ Aus der Änderung allein folgt
+      das nicht. Welche Fassung passt, entscheidet die inhaltliche Frage.
+:::
+
+::: {.quiz}
+Das adjustierte R² sinkt, wenn ein weiterer Prädiktor aufgenommen wird, während
+das gewöhnliche R² leicht steigt. Was heisst das?
+
+- [x] Der Prädiktor erklärt weniger, als seine Kosten an Freiheitsgraden wert
+      sind ~ Richtig. Das gewöhnliche R² kann durch Hinzufügen nie sinken, das
+      adjustierte schon. Genau deshalb wird für Vergleiche das adjustierte
+      gelesen.
+- [ ] Die Berechnung ist unstimmig ~ Beide Grössen verhalten sich genau so, wie
+      sie definiert sind.
+- [ ] Der Prädiktor ist mit der Zielvariable negativ korreliert ~ Die Richtung
+      des Zusammenhangs spielt für R² keine Rolle.
+:::
+
+## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 3](https://www.statlearning.com/)
+- [statsmodels: Ordinary Least Squares](https://www.statsmodels.org/stable/regression.html)
+- [R-Dokumentation zu `lm`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/lm.html)
