@@ -17,7 +17,7 @@ jobs:
       - name: Set up Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
-      # Ab hier werden die Rechenumgebungen bereitgestellt. Die Lektionsseiten
+      # Ab hier werden die Rechenumgebungen bereitgestellt. Die Themenseiten
       # enthalten ausfuehrbare Chunks; Grafiken und Ausgaben entstehen beim
       # Build. Ohne diese Schritte bricht das Rendern ab.
       #
@@ -62,3 +62,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TZ: Europe/Zurich
+
+      # Gerechnet wird nur in der Action, also entstehen die Freeze-Dateien auch
+      # nur dort. Ohne diesen Schritt faende der naechste Lauf nichts vor und
+      # wuerde alles neu rechnen. [skip ci] verhindert, dass dieser Commit
+      # seinerseits einen Build ausloest.
+      - name: Freeze-Ergebnisse zurueckschreiben
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f _freeze
+          if git diff --cached --quiet; then
+            echo "Keine neuen Freeze-Ergebnisse."
+          else
+            git commit -m "Freeze-Ergebnisse aktualisieren [skip ci]"
+            git push origin HEAD:main
+          fi

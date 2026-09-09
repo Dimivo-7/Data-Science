@@ -1,60 +1,62 @@
-# MAS Data Science – Meine Notizen
+# Data Science Notizen
 
-Private Lern- und Nachschlageseite für den gesamten MAS Data Science (FFHS), gebaut mit Quarto. Öffentliches Repo, aber nicht gelistet/nicht indexiert – nur erreichbar für alle, die den Link kennen.
+Persönliche Lern- und Nachschlageseite zu Data Science, gebaut mit Quarto.
+Öffentliches Repo, aber nicht gelistet und nicht indexiert, erreichbar nur für
+alle, die den Link kennen.
 
 ## Struktur
 
+Die Seite ist nach Themen gegliedert, nicht nach Kursen. Jede Datei ist ein
+Thema, jeder Ordner ein Bereich.
+
 ```
-index.qmd                          MAS-Übersicht
-cas-grundlagen/                    Platzhalter (noch nicht besucht)
-cas-statda-davi/                   aktuelles CAS, aktiv ausgebaut
-  statda/                          5 Lektionen: Regression, Hypothesis Testing, PCA/EFA, Clustering, Time Series
-  davi/                            5 Lektionen: Grundlagen, R (ggplot2), Python (matplotlib/seaborn/plotly), Dashboards, Storytelling
-cas-ml/                            Platzhalter
-cas-dea/                           Platzhalter
-cas-ai-eng/                        Platzhalter
-cas-adv-ml/                        Platzhalter
-masterthesis/                      Platzhalter
+index.qmd                 Übersicht mit Lesepfaden, Karten aus dem Frontmatter
+stand.qmd                 Statusübersicht aller Seiten
+programmierung/           Python, R, Pakete, Umgebungen, Reproduzierbarkeit
+daten/                    Import, Tidy Data, Wrangling, Qualität, SQL
+werkzeuge/                Shell, Git, Container
+statistik/                Grundlagen, Wahrscheinlichkeit, Inferenz, Tests,
+                          Regression, Überlebenszeit, Multivariat, Zeitreihen
+visualisierung/           Wahrnehmung, Diagrammwahl, ggplot2, matplotlib, mehr
+referenz/                 Befehlsreferenz R und Python
+_templates/karten.ejs     Vorlage, aus der die Karten der Übersichten entstehen
+_freeze/                  gerechnete Chunk-Ergebnisse, gehört ins Repo
 ```
 
-Jede Lektion hat einen R- und Python-Tab nebeneinander (`panel-tabset`), damit beide Sprachen parallel sichtbar sind.
+Daneben liegen `cas-grundlagen/` und `cas-statda-davi/` in der früheren
+Gliederung. Sie werden gerade in die thematische Struktur überführt und
+verschwinden danach samt ihren Einträgen in `_quarto.yml`.
 
-## Einmaliges Setup
+Jedes Beispiel steht in R und Python nebeneinander (`panel-tabset`), R zuerst.
 
-1. **Repo auf GitHub anlegen**
-   - Public (Pflicht für kostenlose GitHub Pages)
-   - **Keine** Description, **keine** Topics setzen, das hält es aus der GitHub-Suche raus
-   - Namen unauffällig wählen
+## Seitentypen
 
-2. **Diesen Ordner pushen**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/DEIN-USERNAME/DEIN-REPO.git
-   git push -u origin main
-   ```
+| Typ | Wofür | Aufbau |
+|---|---|---|
+| Konzept | erklärt einen Begriff | Kernideen, Erklärung, Ressourcen |
+| Methode | führt ein Verfahren durch | Steckbrief, Voraussetzungen, Durchführung, Output lesen, Szenarien, Fallen, Berichten |
+| Werkzeug | zeigt die Handhabung | Kernideen, Erklärung, typische Aufgaben |
+| Referenz | listet Befehle | Tabellen je Themenabschnitt |
 
-3. **GitHub Pages aktivieren**: Settings → Pages → Source: `gh-pages` / `root` (Branch entsteht beim ersten Actions-Lauf automatisch)
+Der Typ steht im Frontmatter (`seitentyp`), ebenso der Bearbeitungsstand
+(`stand`), die Reihenfolge im Bereich (`order`) und die Herkunft des Stoffs
+(`quelle`). Aus diesen Feldern entstehen Karten, Sidebar-Reihenfolge und
+Statusübersicht automatisch; von Hand wird dafür nichts gepflegt.
 
-4. **Push → fertig.** Der Workflow rendert bei jedem Push auf `main` automatisch und veröffentlicht auf `gh-pages`.
+## Rechenumgebung und Build
 
-## Neues CAS-Modul aktiv ausbauen (sobald es losgeht)
+Die Seiten enthalten ausführbare Chunks: Abbildungen und Zahlen entstehen beim
+Build aus dem Code, der auf der Seite steht. R und Python samt Paketen richtet
+die GitHub Action ein, siehe `.github/workflows/publish.yml`. Wird ein neues
+Paket gebraucht, muss es zuerst dort eingetragen werden, sonst bricht der Build
+ab.
 
-1. Im entsprechenden Ordner (z.B. `cas-ml/`) Unterordner + Lektionsseiten anlegen, analog zu `cas-statda-davi/statda/`
-2. In `_quarto.yml` unter `sidebar: contents:` die neuen Seiten eintragen
-3. Push, fertig
+`execute: freeze: auto` sorgt dafür, dass nur geänderte Seiten neu gerechnet
+werden. Die Ergebnisse liegen in `_freeze/` und werden von der Action nach jedem
+Lauf ins Repo zurückgeschrieben. Soll eine Seite erzwungenermassen neu rechnen,
+etwa nach einem Paket-Update, wird ihr Ordner unter `_freeze/` gelöscht.
 
-## Rechenumgebung
-
-Die Lektionsseiten enthalten ausführbare Chunks: Abbildungen und Zahlen
-entstehen beim Build aus dem Code, der auf der Seite steht. Die GitHub Action
-richtet dafür R und Python samt Paketen ein — siehe
-`.github/workflows/publish.yml`.
-
-Wird auf einer Seite ein neues Paket gebraucht, muss es **zuerst** dort in die
-Installationsliste, sonst bricht der Build ab.
+`docs/` ist generiert und wird nie von Hand geändert.
 
 ## Lokal testen (optional)
 
@@ -64,8 +66,9 @@ Voraussetzung: [Quarto CLI](https://quarto.org/docs/get-started/).
 quarto preview
 ```
 
-## Datenschutz-Hinweise
+## Hinweise
 
-- `robots.txt` blockiert alle Crawler
-- Jede Seite hat `<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">`
-- Trotzdem gilt: alles im Repo ist technisch öffentlich einsehbar, sobald jemand die URL kennt. Für Inhalte mit Copyright Dritter (z.B. 1:1 kopierte Prüfungsfragen oder Kursmaterialien) nicht geeignet, nur eigene Notizen/Zusammenfassungen verwenden.
+- `robots.txt` blockiert Crawler, jede Seite trägt zusätzlich ein `noindex`.
+- Alles im Repo ist technisch öffentlich einsehbar, sobald jemand die URL kennt.
+  Deshalb enthält die Seite ausschliesslich eigene Notizen und keine
+  Materialien Dritter.
