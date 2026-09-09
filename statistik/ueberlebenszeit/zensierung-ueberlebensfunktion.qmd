@@ -81,21 +81,22 @@ entgegengesetzte Richtungen.
 
 ```{r}
 #| label: zensierung-r
-n <- 400
-# Studioabos: ein Teil kuendigt, der Rest ist am Stichtag nach 24 Monaten dabei
-rate <- 0.035
-zeit_bis_kuendigung <- rexp(n, rate)
-beobachtungsende <- 24
+# Studioabos: ein Teil kuendigt, der Rest ist am Stichtag nach 24 Monaten dabei.
+# Zwei Faelle: maessige Zensierung (hohe Rate) und starke Zensierung.
+vergleich <- function(rate, stichtag = 24, n = 4000) {
+  t <- rexp(n, rate)
+  zeit <- pmin(t, stichtag)
+  status <- as.integer(t <= stichtag)
+  km <- summary(survfit(Surv(zeit, status) ~ 1))$table["median"]
+  c(anteil_zensiert = round(mean(status == 0), 2),
+    wahrer_median = round(log(2) / rate, 1),
+    nur_ereignisse = round(median(zeit[status == 1]), 1),
+    alle_als_ereignis = round(median(zeit), 1),
+    kaplan_meier = round(unname(km), 1))
+}
 
-zeit <- pmin(zeit_bis_kuendigung, beobachtungsende)
-status <- as.integer(zeit_bis_kuendigung <= beobachtungsende)
-
-c(ereignisse = sum(status),
-  zensiert = sum(status == 0),
-  wahrer_median = round(log(2) / rate, 1),
-  nur_ereignisse = round(median(zeit[status == 1]), 1),
-  alle_als_ereignis = round(median(zeit), 1),
-  kaplan_meier = round(unname(summary(survfit(Surv(zeit, status) ~ 1))$table["median"]), 1))
+rbind(maessig = vergleich(0.035),
+      stark = vergleich(0.020))
 ```
 
 ## Python
@@ -106,33 +107,44 @@ from lifelines import KaplanMeierFitter
 
 rng = np.random.default_rng(2026)
 
-n = 400
-rate = 0.035
-zeit_bis_kuendigung = rng.exponential(1 / rate, n)
-beobachtungsende = 24
+def vergleich(rate, stichtag=24, n=4000):
+    t = rng.exponential(1 / rate, n)
+    zeit = np.minimum(t, stichtag)
+    status = (t <= stichtag).astype(int)
+    km = KaplanMeierFitter().fit(zeit, status)
+    return {
+        "anteil_zensiert": round(float((status == 0).mean()), 2),
+        "wahrer_median": round(np.log(2) / rate, 1),
+        "nur_ereignisse": round(float(np.median(zeit[status == 1])), 1),
+        "alle_als_ereignis": round(float(np.median(zeit)), 1),
+        "kaplan_meier": round(float(km.median_survival_time_), 1),
+    }
 
-zeit = np.minimum(zeit_bis_kuendigung, beobachtungsende)
-status = (zeit_bis_kuendigung <= beobachtungsende).astype(int)
-
-km = KaplanMeierFitter().fit(zeit, status)
-
-print({
-    "ereignisse": int(status.sum()),
-    "zensiert": int((status == 0).sum()),
-    "wahrer_median": round(np.log(2) / rate, 1),
-    "nur_ereignisse": round(float(np.median(zeit[status == 1])), 1),
-    "alle_als_ereignis": round(float(np.median(zeit)), 1),
-    "kaplan_meier": round(float(km.median_survival_time_), 1),
-})
+print(pd.DataFrame({"maessig": vergleich(0.035), "stark": vergleich(0.020)}).T)
 ```
 
 :::
 
-Der wahre Median liegt bei knapp zwanzig Monaten. Wer nur die Gekündigten
-betrachtet, unterschätzt ihn deutlich, weil die Langläufer per Konstruktion
-fehlen. Wer alle Zeiten als Ereigniszeiten behandelt, drückt den Median
-Richtung Beobachtungsende, weil viele Beobachtungen auf 24 gesetzt sind. Der
-Kaplan-Meier-Schätzer nutzt beide Sorten Information und trifft den wahren Wert.
+Beide Behelfslösungen unterschätzen die Zeit, und zwar aus verschiedenen
+Gründen.
+
+**Nur die Gekündigten betrachten** verzerrt am stärksten: Die Langläufer fehlen
+per Konstruktion, weil sie gerade die Zensierten sind. Im Beispiel liegt der so
+berechnete Median bei etwa der Hälfte des wahren Werts, und das gilt in beiden
+Fällen.
+
+**Alle Zeiten als Ereigniszeiten behandeln** verzerrt ebenfalls nach unten, denn
+jede zensierte Zeit ist nur eine Untergrenze. Bei mässiger Zensierung fällt das
+kaum auf, weil der Median deutlich vor dem Stichtag liegt. Im Fall starker
+Zensierung dagegen sind mehr als die Hälfte der Beobachtungen auf den Stichtag
+gesetzt, und der Median wird genau dieser Stichtag: eine Zahl, die nur aussagt,
+wann die Beobachtung endete.
+
+**Kaplan-Meier** nutzt beide Sorten Information. Bei mässiger Zensierung trifft
+der Schätzer den wahren Median. Im Fall starker Zensierung liefert er `NA`
+beziehungsweise unendlich, und das ist die ehrliche Antwort: Die Kurve erreicht
+im Beobachtungszeitraum nie die Hälfte, der Median ist aus diesen Daten nicht
+schätzbar. Ein Verfahren, das hier eine Zahl nennt, erfindet sie.
 
 ::: {.callout-note collapse="true"}
 ## Weitere Formen der Zensierung
