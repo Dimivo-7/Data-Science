@@ -46,7 +46,6 @@ dbExecute(con, "INSERT INTO bestellung VALUES
   (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
   (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
 
-zeige <- function(sql) knitr::kable(dbGetQuery(con, sql))
 ```
 
 ```{python}
@@ -103,37 +102,45 @@ SQLite-Datenbank.
 SQL ist deklarativ. Man beschreibt das gewünschte Ergebnis, nicht den Weg
 dorthin.
 
-```{r}
-#| label: select-r
-zeige("SELECT bezeichnung, kategorie FROM artikel WHERE kategorie = 'Pneumatik'")
+Die folgenden Abfragen laufen beim Bauen der Seite gegen die Beispieldatenbank;
+unter jedem Block steht das tatsächliche Ergebnis. Wie man dieselbe Abfrage aus
+R oder Python absetzt, steht unter
+[Datenbankzugriff](datenbanken-zugriff.qmd).
+
+```{sql}
+#| label: select-sql
+#| connection: con
+SELECT bezeichnung, kategorie
+FROM artikel
+WHERE kategorie = 'Pneumatik'
 ```
 
 Verbinden zweier Tabellen über den Schlüssel:
 
-```{r}
-#| label: join-r
-zeige("
-  SELECT b.datum, a.bezeichnung, b.menge, b.betrag
-  FROM bestellung b
-  JOIN artikel a ON a.artikel_id = b.artikel_id
-  ORDER BY b.datum
-  LIMIT 5")
+```{sql}
+#| label: join-sql
+#| connection: con
+SELECT b.datum, a.bezeichnung, b.menge, b.betrag
+FROM bestellung b
+JOIN artikel a ON a.artikel_id = b.artikel_id
+ORDER BY b.datum
+LIMIT 5
 ```
 
 Gruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:
 
-```{r}
-#| label: groupby-r
-zeige("
-  SELECT a.kategorie,
-         COUNT(*)         AS anzahl,
-         SUM(b.betrag)    AS umsatz,
-         ROUND(AVG(b.betrag), 2) AS mittel
-  FROM bestellung b
-  JOIN artikel a ON a.artikel_id = b.artikel_id
-  GROUP BY a.kategorie
-  HAVING COUNT(*) >= 2
-  ORDER BY umsatz DESC")
+```{sql}
+#| label: groupby-sql
+#| connection: con
+SELECT a.kategorie,
+       COUNT(*)                AS anzahl,
+       SUM(b.betrag)           AS umsatz,
+       ROUND(AVG(b.betrag), 2) AS mittel
+FROM bestellung b
+JOIN artikel a ON a.artikel_id = b.artikel_id
+GROUP BY a.kategorie
+HAVING COUNT(*) >= 2
+ORDER BY umsatz DESC
 ```
 
 ### Die Auswertungsreihenfolge
@@ -153,15 +160,16 @@ Aggregat nicht in `WHERE` prüfen lässt:
 `WHERE` läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht.
 `HAVING` läuft danach.
 
-```{r}
-#| label: reihenfolge-r
-# WHERE filtert Zeilen VOR der Gruppierung
-zeige("
-  SELECT a.kategorie, SUM(b.betrag) AS umsatz
-  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
-  WHERE b.datum >= '2026-02-01'
-  GROUP BY a.kategorie
-  ORDER BY umsatz DESC")
+```{sql}
+#| label: reihenfolge-sql
+#| connection: con
+-- WHERE filtert einzelne Zeilen, und zwar vor der Gruppierung
+SELECT a.kategorie, SUM(b.betrag) AS umsatz
+FROM bestellung b
+JOIN artikel a ON a.artikel_id = b.artikel_id
+WHERE b.datum >= '2026-02-01'
+GROUP BY a.kategorie
+ORDER BY umsatz DESC
 ```
 
 ::: {.quiz}
