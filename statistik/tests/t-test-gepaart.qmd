@@ -4,29 +4,457 @@ description: "Verbundene Messungen über die Differenzen prüfen."
 categories: ["Hypothesentests", "Effektstärke", "Interpretation", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 30
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(effectsize)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(2026)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pingouin as pg
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Hat sich eine Messgrösse an denselben Objekten zwischen zwei Zeitpunkten oder Bedingungen verändert? |
+| Zielvariable | metrisch, zweimal am selben Objekt gemessen |
+| Gruppen | zwei verbundene Messungen, gleiche Anzahl, feste Zuordnung |
+| Was die Methode liefert | mittlere Differenz mit Konfidenzintervall, t-Statistik, Freiheitsgrade, p-Wert, Effektstärke |
+| R-Funktion | `t.test(nachher, vorher, paired = TRUE)` |
+| Python-Funktion | `pg.ttest(nachher, vorher, paired=True)` |
+| Verwandte Methoden | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd), [Wilcoxon-Test](nichtparametrische-tests.qmd), [Varianzanalyse](anova.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Verbrauch vor und nach einer Wartung, Blutdruck vor
+und nach einer Behandlung, Bearbeitungszeit mit zwei Werkzeugen an denselben
+Werkstücken. Gemeinsam ist ihnen, dass jede Messung einen festen Partner hat.
+
+Die Paarung ist keine Formalität, sondern der Kern des Verfahrens. Sie entfernt
+die Unterschiede zwischen den Objekten aus der Rechnung. Wenn Maschinen sich
+stark voneinander unterscheiden, aber alle durch dieselbe Massnahme gleichmässig
+gewinnen, verschwindet dieser Gewinn im ungepaarten Vergleich in der Streuung
+zwischen den Maschinen. Rechnerisch ist der gepaarte Test ein
+[Einstichproben-t-Test](t-test-eine-stichprobe.qmd) auf den Differenzen gegen
+null.
+
+| Situation | Stattdessen |
+|---|---|
+| Unabhängige Gruppen ohne Zuordnung | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) |
+| Mehr als zwei Messzeitpunkte | Varianzanalyse mit Messwiederholung, siehe [ANOVA](anova.qmd) |
+| Differenzen deutlich schief, kleines n | [Wilcoxon-Vorzeichen-Rangtest](nichtparametrische-tests.qmd) |
+| Zielvariable binär, gepaart | McNemar-Test, siehe [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) |
+| Unterschiedliche Anzahl Messungen je Gruppe | Die Paarung ist verletzt; Zuordnung klären oder ungepaart rechnen |
+
 ## Grundidee und Modell
+
+Aus je zwei Messungen wird eine Differenz gebildet, und diese Differenzen werden
+gegen null geprüft. Alles, was ein Objekt dauerhaft auszeichnet, kürzt sich
+dabei heraus.
+
+$$d_i = y_{i,\text{nachher}} - y_{i,\text{vorher}}, \qquad t = \frac{\bar{d}}{s_d/\sqrt{n}}$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $d_i$ | Differenz beim $i$-ten Objekt |
+| $\bar{d}$ | mittlere Differenz, der berichtete Effekt |
+| $s_d$ | Standardabweichung der Differenzen, nicht der Einzelmessungen |
+| $n$ | Anzahl Paare, nicht Anzahl Messwerte |
+| $s_d/\sqrt{n}$ | Standardfehler der mittleren Differenz |
+
+Die Nullhypothese lautet, dass die mittlere Differenz null ist. Voraussetzungen
+betreffen deshalb die Differenzen, nicht die Ausgangswerte: die Einzelmessungen
+dürfen beliebig verteilt sein, solange ihre Differenzen es nicht sind.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Feste Zuordnung | Jede Messung hat genau einen Partner, die Reihenfolge stimmt | Datenstruktur prüfen, Identifikator mitführen | Die Differenzen sind Unsinn, und niemand sieht es dem Ergebnis an | Zuordnung über einen Schlüssel herstellen |
+| Unabhängigkeit der Paare | Die Objekte beeinflussen sich nicht gegenseitig | Erhebungsdesign | p-Wert zu optimistisch | Mehrebenenmodell |
+| Annähernd normalverteilte Differenzen | Nur die Differenzen, nicht die Ausgangswerte | [QQ-Plot](../wahrscheinlichkeit/qq-plots.qmd) der Differenzen | Bei kleinem n weicht die Fehlerrate ab | Wilcoxon oder Bootstrap |
+| Keine extremen Ausreisser in den Differenzen | Ein Paar bestimmt das Ergebnis nicht | Boxplot der Differenzen | Ergebnis hängt an einem Paar | Ursache prüfen, mit und ohne berichten |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-voraussetzungen-ttp-r
+#| fig-cap: "Verlauf je Maschine und Verteilung der Differenzen."
+#| fig-height: 3.4
+n <- 20
+niveau  <- rnorm(n, mean = 100, sd = 12)     # grosse Unterschiede zwischen Maschinen
+vorher  <- niveau + rnorm(n, 0, 1)
+nachher <- niveau + 0.6 + rnorm(n, 0, 1)     # alle gewinnen 0.6
+differenz <- nachher - vorher
+
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+matplot(rbind(vorher, nachher), type = "l", lty = 1, col = "grey50",
+        xaxt = "n", xlab = "", ylab = "Verbrauch", main = "Paare im Verlauf")
+axis(1, at = c(1, 2), labels = c("vorher", "nachher"))
+boxplot(differenz, main = "Differenzen", ylab = "nachher minus vorher")
+abline(h = 0, lty = 2)
+qqnorm(differenz, main = "QQ-Plot der Differenzen"); qqline(differenz)
+par(mfrow = c(1, 1))
+```
+
+## Python
+
+```{python}
+#| label: fig-voraussetzungen-ttp-py
+#| fig-cap: "Dieselbe Prüfung in Python."
+#| fig-height: 3.4
+import statsmodels.api as sm
+
+rng = np.random.default_rng(2026)
+
+n = 20
+niveau = rng.normal(100, 12, n)
+vorher = niveau + rng.normal(0, 1, n)
+nachher = niveau + 0.6 + rng.normal(0, 1, n)
+differenz = nachher - vorher
+
+fig, axes = plt.subplots(1, 3, figsize=(7, 3.4))
+for v, na in zip(vorher, nachher):
+    axes[0].plot([0, 1], [v, na], color="0.5", linewidth=0.8)
+axes[0].set_xticks([0, 1], ["vorher", "nachher"])
+axes[0].set_ylabel("Verbrauch")
+axes[0].set_title("Paare im Verlauf")
+axes[1].boxplot(differenz)
+axes[1].axhline(0, linestyle="--", color="black")
+axes[1].set_title("Differenzen")
+sm.qqplot(differenz, line="s", ax=axes[2])
+axes[2].set_title("QQ-Plot der Differenzen")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+Im linken Bild ist zu sehen, worum es geht: die Maschinen liegen weit
+auseinander, aber fast jede Linie steigt. Genau diese gemeinsame Bewegung nutzt
+der gepaarte Test, und genau sie geht im ungepaarten Vergleich unter. Der
+Boxplot der Differenzen soll deutlich neben der Nulllinie liegen, der QQ-Plot
+der Differenzen nah an der Geraden.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-ttp-r
+t.test(nachher, vorher, paired = TRUE)
+
+effectsize::cohens_d(nachher, vorher, paired = TRUE)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-ttp-py
+print(pg.ttest(nachher, vorher, paired=True).round(4).T)
+```
+
+:::
+
+Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 20
+Maschinen mit einem eigenen Niveau um 100 und einer Streuung von 12 zwischen
+den Maschinen, dazu ein Messrauschen von 1. Jede Maschine gewinnt durch die
+Wartung genau 0.6 Einheiten. Der Unterschied zwischen den Maschinen ist damit
+zwanzigmal grösser als der gesuchte Effekt.
 
 ## Output lesen
 
+R, `t.test(..., paired = TRUE)`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `Paired t-test` | die Variante | fehlt `Paired`, wurde die Paarung vergessen |
+| `t` | mittlere Differenz in Einheiten ihres Standardfehlers | beruht auf der Streuung der Differenzen |
+| `df` | Anzahl Paare minus eins | nicht Anzahl Messwerte minus zwei |
+| `p-value` | Wahrscheinlichkeit dieser oder extremerer Differenzen bei wahrer Null | keine Aussage über die Grösse |
+| `95 percent confidence interval` | Intervall der mittleren Differenz | die berichtenswerte Zeile, in der Einheit der Messung |
+| `mean difference` | Punktschätzer der mittleren Differenz | Vorzeichen hängt an der Reihenfolge der Argumente |
+| `alternative hypothesis` | Richtung | `true mean difference is not equal to 0` |
+| `Cohens d (paired)` | Effektstärke auf Basis der Differenzen | fällt deutlich grösser aus als die ungepaarte Variante; beide Fassungen nie vermischen |
+
+Python, `pg.ttest(..., paired=True)` liefert dieselben Grössen in einer Zeile
+(`T`, `dof`, `p-val`, `CI95%`, `cohen-d`, `BF10`, `power`). Zwei Unterschiede:
+`cohen-d` wird von pingouin für gepaarte Daten anders normiert als von
+`effectsize` in R, weshalb die beiden Zahlen abweichen können; welche Fassung
+verwendet wurde, gehört deshalb in den Bericht. Und `CI95%` bezieht sich auf die
+mittlere Differenz, was hier die interessierende Grösse ist.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: der Gewinn der Paarung
+
+Derselbe Datensatz, einmal gepaart und einmal fälschlich ungepaart gerechnet.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-a-ttp-r
+gepaart   <- t.test(nachher, vorher, paired = TRUE)
+ungepaart <- t.test(nachher, vorher)
+
+round(c(p_gepaart = gepaart$p.value, p_ungepaart = ungepaart$p.value), 5)
+round(c(breite_gepaart = diff(gepaart$conf.int),
+        breite_ungepaart = diff(ungepaart$conf.int)), 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-a-ttp-py
+g = pg.ttest(nachher, vorher, paired=True)
+u = pg.ttest(nachher, vorher, paired=False)
+print("gepaart  ", round(g["p-val"].item(), 5), g["CI95%"].item())
+print("ungepaart", round(u["p-val"].item(), 5), u["CI95%"].item())
+```
+
+:::
+
+Der gepaarte Test findet den Effekt deutlich, der ungepaarte nicht, und das
+Konfidenzintervall des gepaarten Tests ist um ein Vielfaches schmaler. Der Grund
+steht in den Daten: die Streuung zwischen den Maschinen beträgt 12, die Streuung
+der Differenzen dagegen nur etwa 1.4. Wer die Paarung ignoriert, misst den
+Effekt an der falschen Streuung und übersieht ihn.
+
+Ergebnissatz: Nach der Wartung sinkt der Verbrauch im Mittel um den geschätzten
+Betrag (95-Prozent-Intervall wie ausgegeben, t(19) wie ausgegeben, p wie
+ausgegeben, n = 20 Paare).
+
+### Szenario B: kein nachweisbarer Effekt
+
+Dieselbe Struktur, aber die Massnahme wirkt nicht.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-b-ttp-r
+set.seed(19)
+n_b <- 20
+niveau_b  <- rnorm(n_b, mean = 100, sd = 12)
+vorher_b  <- niveau_b + rnorm(n_b, 0, 1)
+nachher_b <- niveau_b + rnorm(n_b, 0, 1)     # kein Effekt
+
+t.test(nachher_b, vorher_b, paired = TRUE)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-ttp-py
+rng_b = np.random.default_rng(19)
+n_b = 20
+niveau_b = rng_b.normal(100, 12, n_b)
+vorher_b = niveau_b + rng_b.normal(0, 1, n_b)
+nachher_b = niveau_b + rng_b.normal(0, 1, n_b)
+
+print(pg.ttest(nachher_b, vorher_b, paired=True).round(4).T)
+```
+
+:::
+
+Die mittlere Differenz liegt nahe null, das Konfidenzintervall schliesst die
+Null ein, der p-Wert ist gross. Wichtig ist hier die Breite des Intervalls: Sie
+ist klein, weil die Paarung die Streuung zwischen den Maschinen entfernt. Das
+Ergebnis sagt also nicht nur "kein Nachweis", sondern grenzt den möglichen
+Effekt eng ein. Genau diese Kombination erlaubt die Aussage, dass ein
+praktisch bedeutsamer Effekt unwahrscheinlich ist, ohne dass daraus ein Beweis
+für Gleichheit wird.
+
+Ergebnissatz: Ein Effekt der Massnahme lässt sich nicht nachweisen (mittlere
+Differenz wie ausgegeben, 95-Prozent-Intervall wie ausgegeben, p wie ausgegeben,
+n = 20 Paare). Das Intervall schliesst Effekte oberhalb seiner Grenzen aus.
+
+### Szenario C: Fallstrick verlorene Zuordnung
+
+Die häufigste Panne ist keine statistische, sondern eine der Datenaufbereitung:
+Die beiden Messreihen liegen in verschiedener Reihenfolge vor, und die Paarung
+verbindet die falschen Werte.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-c-ttp-r
+set.seed(3)
+falsch_sortiert <- nachher[sample(length(nachher))]   # Zuordnung zerstoert
+
+round(c(richtig = t.test(nachher, vorher, paired = TRUE)$p.value,
+        vertauscht = t.test(falsch_sortiert, vorher, paired = TRUE)$p.value), 5)
+
+round(c(sd_differenz_richtig = sd(nachher - vorher),
+        sd_differenz_vertauscht = sd(falsch_sortiert - vorher)), 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-ttp-py
+rng_c = np.random.default_rng(3)
+falsch_sortiert = rng_c.permutation(nachher)
+
+print(round(pg.ttest(nachher, vorher, paired=True)["p-val"].item(), 5),
+      round(pg.ttest(falsch_sortiert, vorher, paired=True)["p-val"].item(), 5))
+print(round((nachher - vorher).std(ddof=1), 3),
+      round((falsch_sortiert - vorher).std(ddof=1), 3))
+```
+
+:::
+
+Erkennbar ist der Fehler an der Streuung der Differenzen: Sie springt von etwa
+1.4 auf die Grössenordnung der Streuung zwischen den Maschinen. Der Mittelwert
+der Differenzen bleibt dabei nahezu unverändert, deshalb fällt der Fehler weder
+am Schätzwert noch an einer Fehlermeldung auf. Er zeigt sich nur daran, dass der
+Vorteil der Paarung plötzlich verschwunden ist.
+
+Das Vorgehen: Paare immer über einen Identifikator verbinden, nie über die
+Zeilenreihenfolge, und nach dem Zusammenführen prüfen, dass die Anzahl Paare
+stimmt und keine Zeile ohne Partner geblieben ist.
+
+Ergebnissatz: Die Zuordnung der Messungen erfolgte über die Maschinennummer;
+alle 20 Paare sind vollständig.
 
 ## Interpretationsfallen
 
+- **Die Paarung ist eine Eigenschaft der Erhebung, keine Wahl der Auswertung.**
+  Gepaarte Daten ungepaart zu rechnen verschenkt Schärfe, ungepaarte Daten
+  gepaart zu rechnen ist schlicht falsch.
+- **Freiheitsgrade richtig lesen.** Sie ergeben sich aus der Anzahl Paare, nicht
+  aus der Anzahl Messwerte.
+- **Die Effektstärke ist nicht mit der ungepaarten vergleichbar.** Für gepaarte
+  Daten wird an der Streuung der Differenzen normiert, was systematisch grössere
+  Werte ergibt.
+- **Vorzeichen prüfen.** Ob eine Verbesserung positiv oder negativ erscheint,
+  hängt allein an der Reihenfolge der Argumente.
+- **Voraussetzungen gelten den Differenzen.** Schiefe Ausgangswerte sind
+  unkritisch, solange die Differenzen symmetrisch streuen.
+- **Regression zur Mitte.** Werden Objekte wegen extremer Ausgangswerte
+  ausgewählt, fallen die zweiten Messungen schon aus statistischen Gründen
+  weniger extrem aus. Ohne Kontrollgruppe ist ein solcher Effekt kein Beleg für
+  die Wirkung der Massnahme.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> [Zielgrösse] verändert sich zwischen [Zeitpunkt 1] (M = [Mittelwert],
+> SD = [Streuung]) und [Zeitpunkt 2] (M = [Mittelwert], SD = [Streuung]) um
+> [mittlere Differenz] [Einheit] (95-Prozent-Konfidenzintervall [unten] bis
+> [oben], t([df]) = [t], p = [p], Cohens d = [d], n = [Paare]).
+
+Genannt werden beide Messzeitpunkte mit Mittelwert und Streuung, die mittlere
+Differenz mit Konfidenzintervall, Teststatistik mit Freiheitsgraden, p-Wert,
+Effektstärke samt ihrer Fassung und die Anzahl vollständiger Paare.
+
+Beispiel für eine Ergebnistabelle:
+
+| Zeitpunkt | n | Mittelwert | Standardabweichung |
+|---|---|---|---|
+| vorher | | | |
+| nachher | | | |
+
+| Mittlere Differenz | 95-Prozent-Intervall | t | df | p | d |
+|---|---|---|---|---|---|
+| | | | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt des gepaarten t-Tests |
+|---|---|
+| [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) | die Beobachtungen sind einander nicht zugeordnet |
+| [t-Test für eine Stichprobe](t-test-eine-stichprobe.qmd) | rechnerisch derselbe Test auf den Differenzen; nützlich, wenn die Differenzen bereits vorliegen |
+| [Wilcoxon-Vorzeichen-Rangtest](nichtparametrische-tests.qmd) | die Differenzen sind deutlich schief oder enthalten Ausreisser |
+| [Varianzanalyse](anova.qmd) | mehr als zwei Messzeitpunkte an denselben Objekten |
+| [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) | gepaarte binäre Daten, dort der McNemar-Test |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Der gepaarte Test liefert p = 0.002, der ungepaarte auf denselben Daten
+p = 0.31. Welche Zahl gilt?
+
+- [x] Die des gepaarten Tests, wenn die Daten tatsächlich gepaart erhoben wurden ~
+      Richtig. Die Paarung entfernt die Streuung zwischen den Objekten. Der
+      ungepaarte Test misst den Effekt an einer viel grösseren Streuung und
+      übersieht ihn deshalb.
+- [ ] Die des ungepaarten Tests, weil er konservativer ist ~ Konservativ ist
+      hier kein Vorzug, sondern das Ergebnis einer falschen Annahme über die
+      Datenstruktur.
+- [ ] Der Mittelwert beider p-Werte ~ p-Werte werden nicht gemittelt.
+:::
+
+::: {.quiz}
+Nach dem Zusammenführen zweier Messreihen springt die Standardabweichung der
+Differenzen von 1.4 auf 12. Was ist zu prüfen?
+
+- [x] Ob die Paarung noch stimmt ~ Richtig. Eine Streuung in der Grössenordnung
+      der Unterschiede zwischen den Objekten deutet darauf hin, dass die
+      Zuordnung verloren ging und zufällige Paare gebildet wurden.
+- [ ] Ob die Messgeräte kalibriert waren ~ Möglich, aber dann wäre auch der
+      Mittelwert der Differenzen betroffen.
+- [ ] Nichts, das ist normal ~ Es ist das Gegenteil von normal: die Paarung
+      soll die Streuung gerade verkleinern.
+:::
+
+::: {.quiz}
+Warum sind bei 20 Maschinen die Freiheitsgrade 19 und nicht 38?
+
+- [x] Weil die Analyse auf 20 Differenzen beruht ~ Richtig. Aus 40 Messwerten
+      werden 20 Paare und daraus 20 Differenzen; ein Freiheitsgrad geht für den
+      Mittelwert verloren.
+- [ ] Weil zwei Parameter geschätzt werden ~ Das wäre die Rechnung beim
+      ungepaarten Test mit zwei Gruppen.
+- [ ] Weil die Hälfte der Werte redundant ist ~ Redundant ist nichts; die
+      Information steckt in den Differenzen.
+:::
+
+::: {.quiz}
+Für eine Massnahme wurden gezielt die 20 Maschinen mit dem höchsten Verbrauch
+ausgewählt. Nach der Wartung liegt der Verbrauch signifikant niedriger. Was
+fehlt für den Schluss auf die Wirkung?
+
+- [ ] Nichts, das Ergebnis ist eindeutig ~ Es ist statistisch eindeutig und
+      inhaltlich nicht.
+- [x] Eine Kontrollgruppe, wegen der Regression zur Mitte ~ Richtig. Objekte,
+      die wegen extremer Werte ausgewählt wurden, zeigen bei der zweiten Messung
+      schon aus statistischen Gründen weniger extreme Werte, auch ohne jede
+      Massnahme.
+- [ ] Ein grösserer Stichprobenumfang ~ Mehr Maschinen würden denselben
+      systematischen Fehler nur präziser reproduzieren.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu gepaarten Daten](https://www.openintro.org/book/os/)
+- [pingouin: ttest](https://pingouin-stats.org/build/html/generated/pingouin.ttest.html)
+- [R-Dokumentation zu `t.test`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/t.test.html)

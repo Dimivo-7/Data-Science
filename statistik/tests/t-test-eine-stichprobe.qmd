@@ -4,29 +4,428 @@ description: "Mittelwert gegen einen festen Wert prüfen und das Ergebnis deuten
 categories: ["Hypothesentests", "Effektstärke", "Interpretation", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 10
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(effectsize)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(2026)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import pingouin as pg
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Weicht der Mittelwert einer Gruppe von einem vorgegebenen Sollwert ab? |
+| Zielvariable | metrisch |
+| Gruppen | eine, dazu ein fester Referenzwert |
+| Was die Methode liefert | Mittelwert und Abweichung vom Sollwert mit Konfidenzintervall, t-Statistik, Freiheitsgrade, p-Wert, Effektstärke |
+| R-Funktion | `t.test(x, mu = sollwert)`, Effektstärke mit `effectsize::cohens_d(x, mu = sollwert)` |
+| Python-Funktion | `pg.ttest(x, sollwert)` |
+| Verwandte Methoden | [Schätzen und Konfidenzintervalle](../inferenz/schaetzen-konfidenzintervalle.qmd), [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd), [gepaarter t-Test](t-test-gepaart.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Hält eine Fertigung das Sollmass ein, entspricht die
+Füllmenge der Deklaration, erreicht eine Bearbeitungszeit den vereinbarten
+Richtwert. Gemeinsam ist ihnen eine metrische Messgrösse, eine einzige Gruppe
+und ein von aussen vorgegebener Vergleichswert.
+
+Entscheidend ist die Herkunft des Sollwerts. Er muss aus der Sache stammen, aus
+einer Norm, einer Spezifikation oder einer früheren, unabhängigen Messreihe. Ein
+aus denselben Daten abgeleiteter Wert macht den Test sinnlos, weil dann gegen
+den eigenen Mittelwert getestet wird.
+
+| Situation | Stattdessen |
+|---|---|
+| Zwei Gruppen vergleichen | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) |
+| Dieselben Objekte vorher und nachher | [gepaarter t-Test](t-test-gepaart.qmd) |
+| Nur die Grösse schätzen, ohne Entscheidung | [Konfidenzintervall](../inferenz/schaetzen-konfidenzintervalle.qmd) |
+| Kleine, deutlich schiefe Stichprobe | [Vorzeichen-Rangtest](nichtparametrische-tests.qmd) |
+| Nachweis, dass die Abweichung klein ist | Äquivalenztest mit vorab festgelegter Toleranz |
+| Zielvariable ist ein Anteil | Binomialtest, siehe [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) |
+
 ## Grundidee und Modell
+
+Gemessen wird der Abstand zwischen Stichprobenmittelwert und Sollwert in
+Einheiten des Standardfehlers. Ist dieser Abstand grösser, als es der Zufall bei
+gültigem Sollwert erwarten lässt, spricht das gegen die Nullhypothese.
+
+$$t = \frac{\bar{x} - \mu_0}{s/\sqrt{n}}$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $\bar{x}$ | Mittelwert der Stichprobe |
+| $\mu_0$ | vorgegebener Sollwert, die Nullhypothese |
+| $s$ | Standardabweichung der Stichprobe |
+| $n$ | Stichprobenumfang |
+| $s/\sqrt{n}$ | Standardfehler des Mittelwerts |
+
+Unter der Nullhypothese folgt $t$ einer t-Verteilung mit $n-1$ Freiheitsgraden.
+Der Test ist damit die Entscheidungsvariante desselben Sachverhalts, den das
+[Konfidenzintervall](../inferenz/schaetzen-konfidenzintervalle.qmd) als Spanne
+beschreibt: liegt der Sollwert ausserhalb des 95-Prozent-Intervalls, ist der
+zweiseitige Test auf dem 5-Prozent-Niveau signifikant.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Unabhängigkeit | Die Messwerte beeinflussen sich nicht | Erhebungsdesign, zeitliche Ordnung prüfen | Standardfehler zu klein, p-Wert zu optimistisch | Struktur ins Modell aufnehmen |
+| Metrische Werte | Mittelwert und Differenz sind sinnvoll | [Skalenniveau](../grundlagen/skalenniveaus.qmd) | Der Mittelwert ist nicht definiert | Vorzeichen-Rangtest |
+| Annähernd normalverteilter Mittelwert | Bei grossem n durch den zentralen Grenzwertsatz erfüllt | [QQ-Plot](../wahrscheinlichkeit/qq-plots.qmd), Schiefe | Bei kleinem n weicht die Fehlerrate vom Niveau ab | Vorzeichen-Rangtest oder Bootstrap |
+| Sollwert unabhängig von den Daten | Der Referenzwert stammt aus der Sache, nicht aus der Stichprobe | Herkunft klären | Der Test prüft nichts | anderen Referenzwert wählen |
+| Keine extremen Ausreisser | Einzelne Werte bestimmen den Mittelwert nicht | Boxplot | Das Ergebnis hängt an wenigen Punkten | Ursache prüfen, mit und ohne berichten |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-voraussetzungen-tt1-r
+#| fig-cap: "Verteilung der Messwerte und QQ-Plot."
+#| fig-height: 3.2
+n <- 30
+dicke <- rnorm(n, mean = 12.18, sd = 0.35)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+boxplot(dicke, horizontal = TRUE, main = "Messwerte", xlab = "Dicke (mm)")
+abline(v = 12, lty = 2)
+qqnorm(dicke, main = "QQ-Plot"); qqline(dicke)
+par(mfrow = c(1, 1))
+```
+
+## Python
+
+```{python}
+#| label: fig-voraussetzungen-tt1-py
+#| fig-cap: "Dieselbe Prüfung in Python."
+#| fig-height: 3.2
+rng = np.random.default_rng(2026)
+
+dicke = rng.normal(12.18, 0.35, 30)
+
+fig, axes = plt.subplots(1, 2, figsize=(7, 3.2))
+axes[0].boxplot(dicke, vert=False)
+axes[0].axvline(12, linestyle="--", color="black")
+axes[0].set_title("Messwerte")
+axes[0].set_xlabel("Dicke (mm)")
+sm.qqplot(dicke, line="s", ax=axes[1])
+axes[1].set_title("QQ-Plot")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+Der Sollwert ist als gestrichelte Linie eingezeichnet. Liegt der Kasten des
+Boxplots deutlich neben ihr, ist bereits vor jeder Rechnung sichtbar, in welche
+Richtung das Ergebnis gehen wird. Im QQ-Plot sollen die Punkte nah an der
+Geraden liegen.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-tt1-r
+t.test(dicke, mu = 12)
+
+effectsize::cohens_d(dicke, mu = 12)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-tt1-py
+print(pg.ttest(dicke, 12).round(4).T)
+```
+
+:::
+
+Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 30
+Werkstücke mit Erwartungswert 12.18 mm und Standardabweichung 0.35 mm, geprüft
+gegen den Sollwert 12 mm. Die wahre Abweichung beträgt also 0.18 mm.
 
 ## Output lesen
 
+R, `t.test(x, mu = 12)`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `One Sample t-test` | die Variante | prüfen, dass nicht versehentlich zwei Stichproben übergeben wurden |
+| `t` | Abweichung vom Sollwert in Einheiten des Standardfehlers | Betrag über etwa 2 heisst bei üblichem n signifikant |
+| `df` | Freiheitsgrade, hier n minus eins | ganzzahlig, anders als bei Welch |
+| `p-value` | Wahrscheinlichkeit dieser oder extremerer Daten bei gültigem Sollwert | keine Aussage über die Grösse der Abweichung |
+| `95 percent confidence interval` | Intervall für den wahren Mittelwert | nicht für die Differenz; der Sollwert wird daran gehalten |
+| `mean of x` | Stichprobenmittelwert | die Differenz zum Sollwert ist die berichtete Effektgrösse |
+| `alternative hypothesis` | Richtung | `true mean is not equal to 12` bestätigt den geprüften Wert |
+| `Cohens d` | standardisierte Abweichung | Anhaltspunkte: 0.2 klein, 0.5 mittel, 0.8 gross |
+
+Python, `pg.ttest(x, 12)` liefert eine Zeile mit `T`, `dof`, `alternative`,
+`p-val`, `CI95%`, `cohen-d`, `BF10` und `power`. Zwei Unterschiede sind zu
+beachten: `CI95%` bezieht sich wie in R auf den Mittelwert selbst, nicht auf die
+Differenz zum Sollwert, und `power` bezieht sich auf den beobachteten Effekt,
+ist also im Nachhinein nur eingeschränkt aussagekräftig. Der Sollwert taucht in
+der Tabelle nicht auf und gehört deshalb ausdrücklich in den Bericht.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: klare Abweichung vom Sollwert
+
+Der Fall aus der Durchführung: 30 Werkstücke, wahre Abweichung 0.18 mm.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-a-tt1-r
+ergebnis <- t.test(dicke, mu = 12)
+round(c(mittelwert = unname(ergebnis$estimate),
+        abweichung = unname(ergebnis$estimate) - 12,
+        unten = ergebnis$conf.int[1], oben = ergebnis$conf.int[2],
+        p = ergebnis$p.value), 4)
+```
+
+## Python
+
+```{python}
+#| label: szenario-a-tt1-py
+a = pg.ttest(dicke, 12)
+print(round(dicke.mean(), 4), round(dicke.mean() - 12, 4))
+print(a[["T", "dof", "p-val", "CI95%", "cohen-d"]].round(4).to_string(index=False))
+```
+
+:::
+
+Das Konfidenzintervall für den Mittelwert liegt vollständig oberhalb von 12, der
+p-Wert ist klein. Aussage: Die Fertigung liegt systematisch über dem Sollmass,
+und zwar um den geschätzten Betrag. Ob das zählt, entscheidet nicht der Test,
+sondern die Toleranz der Spezifikation. Liegt sie bei 0.5 mm, ist die Abweichung
+gesichert und trotzdem unkritisch.
+
+Ergebnissatz: Die mittlere Dicke liegt über dem Sollmass von 12 mm (M wie
+ausgegeben, Abweichung wie ausgegeben, 95-Prozent-Intervall wie ausgegeben,
+t(29) wie ausgegeben, p wie ausgegeben, Cohens d wie ausgegeben, n = 30).
+
+### Szenario B: keine nachweisbare Abweichung
+
+Dieselbe wahre Abweichung, aber nur acht Werkstücke.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-b-tt1-r
+set.seed(12)
+wenige <- rnorm(8, mean = 12.18, sd = 0.35)
+
+t.test(wenige, mu = 12)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-tt1-py
+rng_b = np.random.default_rng(12)
+wenige = rng_b.normal(12.18, 0.35, 8)
+
+print(pg.ttest(wenige, 12).round(4).T)
+```
+
+:::
+
+Das Konfidenzintervall enthält den Sollwert, der p-Wert liegt über 0.05. Das
+heisst nicht, dass die Fertigung das Sollmass trifft. Es heisst, dass acht
+Messungen nicht ausreichen, um eine Abweichung dieser Grösse nachzuweisen. Das
+Intervall zeigt, welche Abweichungen weiterhin möglich sind, und diese Spanne
+ist hier breit. Wer belegen will, dass die Abweichung klein ist, braucht einen
+Äquivalenztest mit vorab festgelegter Toleranz, nicht ein nicht signifikantes
+Ergebnis.
+
+Ergebnissatz: Eine Abweichung vom Sollmass lässt sich nicht nachweisen (Werte
+wie ausgegeben, n = 8). Das Konfidenzintervall lässt Abweichungen in beide
+Richtungen zu.
+
+### Szenario C: Fallstrick Ausreisser bei kleinem Umfang
+
+Ein einzelner Messfehler verschiebt Mittelwert und Standardabweichung
+gleichzeitig, und beides wirkt gegenläufig auf die Teststatistik.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-c-tt1-r
+set.seed(8)
+sauber <- rnorm(15, mean = 12.20, sd = 0.20)
+mit_fehler <- c(sauber, 15.9)          # ein Ablesefehler
+
+round(c(t_sauber = t.test(sauber, mu = 12)$statistic,
+        p_sauber = t.test(sauber, mu = 12)$p.value,
+        t_mit    = t.test(mit_fehler, mu = 12)$statistic,
+        p_mit    = t.test(mit_fehler, mu = 12)$p.value), 4)
+
+round(c(sd_sauber = sd(sauber), sd_mit = sd(mit_fehler)), 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-tt1-py
+rng_c = np.random.default_rng(8)
+sauber = rng_c.normal(12.20, 0.20, 15)
+mit_fehler = np.append(sauber, 15.9)
+
+for name, werte in [("sauber", sauber), ("mit Fehler", mit_fehler)]:
+    zeile = pg.ttest(werte, 12)
+    print(name, round(zeile["T"].item(), 3), round(zeile["p-val"].item(), 4),
+          round(werte.std(ddof=1), 3))
+```
+
+:::
+
+Der einzelne falsche Wert vergrössert den Mittelwert, aber er vergrössert die
+Standardabweichung stärker. Die Teststatistik wird dadurch kleiner, nicht
+grösser: aus einem klaren Ergebnis kann ein nicht signifikantes werden, obwohl
+die Abweichung in Wahrheit deutlicher ist. Erkennbar ist das am Boxplot und
+daran, dass die Standardabweichung nicht zu den übrigen Werten passt.
+
+Das Vorgehen: den Wert prüfen. Ist er ein Ablesefehler, wird er korrigiert oder
+entfernt, und das steht im Bericht. Ist er echt, gehört er in die Auswertung,
+und dann ist ein robustes Verfahren die bessere Wahl.
+
+Ergebnissatz: Ein Messwert von 15.9 mm wurde als Ablesefehler identifiziert und
+ausgeschlossen; berichtet wird das Ergebnis ohne diesen Wert (n = 15), zusätzlich
+zum Ergebnis mit allen Werten.
 
 ## Interpretationsfallen
 
+- **Nicht signifikant ist kein Nachweis der Übereinstimmung.** Wer zeigen will,
+  dass der Sollwert eingehalten wird, braucht einen Äquivalenztest.
+- **Signifikanz ist keine Relevanz.** Bei 5000 Messungen wird eine Abweichung
+  von einem Hundertstel Millimeter signifikant. Die Toleranz entscheidet, nicht
+  der p-Wert.
+- **Das Intervall gilt dem Mittelwert, nicht den Einzelwerten.** Für die Frage,
+  wie viele Werkstücke innerhalb der Toleranz liegen, ist es das falsche
+  Werkzeug.
+- **Der Sollwert darf nicht aus den Daten stammen.** Sonst wird gegen den
+  eigenen Mittelwert getestet, und das Ergebnis ist immer nicht signifikant.
+- **Einseitig nur mit vorab festgelegter Richtung.** Nachträglich einseitig zu
+  testen halbiert den p-Wert und verdoppelt die Rate falscher Alarme.
+- **Ein t-Test ersetzt keine Prozessüberwachung.** Er prüft eine Momentaufnahme;
+  eine driftende Fertigung erkennt man an der zeitlichen Entwicklung.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> [Zielgrösse] weicht vom Sollwert [Sollwert] [Einheit] ab: M = [Mittelwert]
+> [Einheit], Abweichung [Differenz] [Einheit], 95-Prozent-Konfidenzintervall
+> [unten] bis [oben], t([df]) = [t], p = [p], Cohens d = [d], n = [n].
+
+Genannt werden Sollwert und seine Herkunft, Mittelwert und Streuung, die
+Abweichung mit Konfidenzintervall, Teststatistik mit Freiheitsgraden, p-Wert,
+Effektstärke und n, dazu die geprüften Voraussetzungen und der Umgang mit
+auffälligen Werten.
+
+Beispiel für eine Ergebnistabelle:
+
+| Kennzahl | Wert |
+|---|---|
+| Sollwert | |
+| Mittelwert (SD) | |
+| Abweichung [95-Prozent-Intervall] | |
+| t (df), p | |
+| Cohens d, n | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt des t-Tests für eine Stichprobe |
+|---|---|
+| [Schätzen und Konfidenzintervalle](../inferenz/schaetzen-konfidenzintervalle.qmd) | es geht um die Grösse, nicht um eine Entscheidung gegen einen Sollwert |
+| [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) | zwei Gruppen statt Gruppe gegen Sollwert |
+| [Gepaarter t-Test](t-test-gepaart.qmd) | dieselben Objekte zweimal gemessen; rechnerisch ein Einstichprobentest auf den Differenzen gegen null |
+| [Nichtparametrische Tests](nichtparametrische-tests.qmd) | kleine, schiefe Stichprobe oder ordinale Werte |
+| [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) | die Zielgrösse ist kategorial |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Das 95-Prozent-Konfidenzintervall für den Mittelwert reicht von 12.05 bis 12.31,
+der Sollwert ist 12. Was folgt für den zweiseitigen Test auf dem 5-Prozent-Niveau?
+
+- [x] Er ist signifikant, der Sollwert liegt ausserhalb des Intervalls ~ Richtig.
+      Intervall und Test sind zwei Darstellungen desselben Sachverhalts; ein
+      p-Wert wird dafür nicht gebraucht.
+- [ ] Das lässt sich ohne p-Wert nicht sagen ~ Doch, die Beziehung gilt exakt.
+- [ ] Er ist nicht signifikant, weil 12 nahe an 12.05 liegt ~ Entscheidend ist,
+      ob der Wert im Intervall liegt, nicht wie nahe er an der Grenze liegt.
+:::
+
+::: {.quiz}
+Ein einzelner Ausreisser wird der Stichprobe hinzugefügt, und der p-Wert steigt
+von 0.01 auf 0.20. Wie kommt das?
+
+- [ ] Der Ausreisser zieht den Mittelwert zum Sollwert hin ~ Er zieht ihn hier
+      sogar weiter weg.
+- [x] Er vergrössert die Standardabweichung stärker als den Mittelwert ~
+      Richtig. Der Nenner der Teststatistik wächst schneller als der Zähler, und
+      damit sinkt t. Ein einzelner Wert kann so ein klares Ergebnis auflösen.
+- [ ] Die Freiheitsgrade sinken ~ Sie steigen um eins, weil eine Beobachtung
+      dazukommt.
+:::
+
+::: {.quiz}
+Der Sollwert wird als Mittelwert derselben Messreihe berechnet, gegen die
+getestet wird. Was passiert?
+
+- [x] Die Teststatistik ist null, das Ergebnis ist wertlos ~ Richtig. Zähler und
+      Sollwert sind identisch, der Test prüft eine Aussage über sich selbst.
+- [ ] Der Test wird konservativ, aber bleibt gültig ~ Er ist nicht konservativ,
+      sondern gegenstandslos.
+- [ ] Das Ergebnis ist immer signifikant ~ Das Gegenteil ist der Fall.
+:::
+
+::: {.quiz}
+Bei n = 4000 ergibt sich p < 0.001 und eine Abweichung von 0.004 mm bei einer
+Toleranz von 0.5 mm. Was berichtet man?
+
+- [ ] Eine signifikante Abweichung vom Sollmass ~ Formal richtig und irreführend,
+      wenn die Grösse fehlt.
+- [x] Die Abweichung mit Intervall, dazu die Einordnung an der Toleranz ~
+      Richtig. Der Prozess ist statistisch von 12 unterscheidbar und praktisch
+      innerhalb der Spezifikation. Beides gehört in denselben Satz.
+- [ ] Dass der Test bei grossem n unbrauchbar ist ~ Er tut genau, was er soll;
+      die Einordnung leistet die Effektgrösse.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zum t-Test](https://www.openintro.org/book/os/)
+- [pingouin: ttest](https://pingouin-stats.org/build/html/generated/pingouin.ttest.html)
+- [R-Dokumentation zu `t.test`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/t.test.html)
