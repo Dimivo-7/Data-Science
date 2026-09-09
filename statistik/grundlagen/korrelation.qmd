@@ -4,11 +4,254 @@ description: "Pearson, Spearman und Kendall als Masse, ihre Grenzen und Fallstri
 categories: ["Korrelation", "Deskriptive Statistik", "Interpretation", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 40
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(dplyr)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+
+anlagen <- data.frame(laufzeit = round(runif(120, 3, 20), 1))
+anlagen$verbrauch <- round(14 + 2.8 * anlagen$laufzeit + rnorm(120, 0, 6), 1)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+import statsmodels.formula.api as smf
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+
+laufzeit = np.round(rng.uniform(3, 20, 120), 1)
+verbrauch = np.round(14 + 2.8 * laufzeit + rng.normal(0, 6, 120), 1)
+anlagen = pd.DataFrame({"laufzeit": laufzeit, "verbrauch": verbrauch})
+```
+
 ## Kernideen
+
+- Das Streudiagramm kommt vor jeder Kennzahl
+- Kovarianz hängt an den Einheiten, die Korrelation nicht
+- Pearson misst linearen Zusammenhang, Spearman monotonen
+- Ein Wert nahe null schliesst einen starken, aber krummen Zusammenhang nicht aus
+- Korrelation ist keine Kausalität, und das ist keine Floskel
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Lage- und Streuungsmasse](lage-streuungsmasse.qmd) für Varianz
+und Standardabweichung, [Skalenniveaus](skalenniveaus.qmd) für die Frage,
+welches Mass zulässig ist. Ob ein beobachteter Zusammenhang mehr ist als
+Zufall, beantwortet der
+[Korrelationstest](../tests/korrelationstests.qmd); die gerichtete Fassung
+steht unter
+[einfache lineare Regression](../regression/einfache-lineare-regression.qmd).
+:::
+
+### Von einem Merkmal zu zweien
+
+Bisher ging es um die Verteilung eines Merkmals. Die interessanteren Fragen
+betreffen zwei: Steigt der Verbrauch mit der Laufzeit? Hängt der Blutdruck vom
+Alter ab? Für solche Fragen braucht es ein Mass für den gemeinsamen Verlauf und
+ein Modell für die Vorhersage.
+
+Vor beidem steht die Grafik. Ein Zusammenhang lässt sich sehen, bevor er
+gerechnet wird, und was man sieht, entscheidet darüber, welche Kennzahl
+überhaupt passt.
+
+```{r}
+#| label: fig-streu-r
+#| fig-cap: "Erster Blick auf zwei Merkmale. Die Punktwolke steigt und wirkt geradlinig."
+#| fig-height: 3.2
+ggplot(anlagen, aes(laufzeit, verbrauch)) +
+  geom_point(alpha = 0.6) +
+  labs(x = "Laufzeit (h)", y = "Verbrauch (l)")
+```
+
+### Kovarianz und Korrelation
+
+Die Kovarianz misst, ob zwei Merkmale gemeinsam von ihrem jeweiligen Mittel
+abweichen. Liegen beide gleichzeitig über oder unter ihrem Mittel, ist der
+Beitrag positiv.
+
+$$\text{cov}(x,y) = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})$$
+
+Ihr Nachteil ist, dass sie an den Einheiten hängt. Werden Liter in Milliliter
+umgerechnet, wird die Kovarianz tausendmal so gross, ohne dass sich am
+Zusammenhang etwas geändert hätte:
+
+```{r}
+#| label: kovarianz-r
+cov(anlagen$laufzeit, anlagen$verbrauch)
+cov(anlagen$laufzeit, anlagen$verbrauch * 1000)   # Milliliter statt Liter
+```
+
+Die Korrelation nach Pearson behebt das, indem sie durch die beiden
+Standardabweichungen teilt. Das Ergebnis liegt immer zwischen minus eins und
+eins und ist einheitenfrei:
+
+$$r = \frac{\text{cov}(x,y)}{s_x \cdot s_y}$$
+
+```{r}
+#| label: korrelation-r
+cor(anlagen$laufzeit, anlagen$verbrauch)
+cor(anlagen$laufzeit, anlagen$verbrauch * 1000)   # unveraendert
+
+# von Hand, zur Kontrolle
+cov(anlagen$laufzeit, anlagen$verbrauch) /
+  (sd(anlagen$laufzeit) * sd(anlagen$verbrauch))
+```
+
+::: {.note-box}
+Die Korrelation nach Pearson misst ausschliesslich den **linearen** Anteil
+eines Zusammenhangs. Ein starker, aber gekrümmter Zusammenhang kann einen Wert
+nahe null ergeben. Deshalb steht das Streudiagramm vor der Kennzahl und nicht
+danach.
+:::
+
+### Warum die Grafik zuerst kommt
+
+Vier Datensätze mit praktisch identischen Kennzahlen, aber völlig verschiedener
+Struktur. Das Beispiel stammt von Anscombe und ist in R eingebaut:
+
+```{r}
+#| label: fig-anscombe-r
+#| fig-cap: "Vier Datensätze mit gleichem Mittelwert, gleicher Varianz und gleicher Korrelation."
+#| fig-height: 3.4
+lang <- data.frame(
+  satz = rep(1:4, each = 11),
+  x = c(anscombe$x1, anscombe$x2, anscombe$x3, anscombe$x4),
+  y = c(anscombe$y1, anscombe$y2, anscombe$y3, anscombe$y4)
+)
+
+ggplot(lang, aes(x, y)) +
+  geom_point(size = 1.8) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE,
+              colour = "black", linewidth = 0.5) +
+  facet_wrap(~ satz, nrow = 1) +
+  labs(x = NULL, y = NULL)
+```
+
+```{r}
+#| label: anscombe-kennzahlen-r
+lang |>
+  group_by(satz) |>
+  summarise(mittel_x = mean(x), mittel_y = round(mean(y), 2),
+            korrelation = round(cor(x, y), 3), .groups = "drop")
+```
+
+Die Kennzahlen stimmen bis auf Rundung überein, die Bilder nicht. Nur der erste
+Datensatz entspricht dem, was die Korrelation suggeriert.
+
+### Wenn Pearson nicht passt
+
+Zwei Fälle sprechen gegen die Korrelation nach Pearson: ordinale Merkmale, bei
+denen Differenzen nicht definiert sind, und monotone, aber nicht lineare
+Zusammenhänge. Die Rangkorrelation nach Spearman rechnet stattdessen auf den
+Rängen und misst damit, ob der Zusammenhang gleichgerichtet verläuft.
+
+```{r}
+#| label: spearman-r
+x <- 1:50
+y <- exp(x / 10)          # streng monoton, aber stark gekruemmt
+
+c(pearson  = round(cor(x, y), 3),
+  spearman = round(cor(x, y, method = "spearman"), 3))
+```
+
+Spearman liefert exakt eins, weil die Reihenfolge perfekt übereinstimmt.
+Pearson bleibt darunter, weil die Beziehung eben nicht geradlinig ist.
+
+::: {.quiz}
+Die Korrelation zwischen zwei Merkmalen beträgt 0.02. Haben sie nichts
+miteinander zu tun?
+
+- [ ] Ja, der Wert liegt praktisch bei null ~ Ausgeschlossen ist damit nur ein
+      linearer Zusammenhang.
+- [x] Nicht unbedingt, ein U-förmiger Zusammenhang ergibt ebenfalls fast null ~
+      Richtig. Pearson misst nur den linearen Anteil. @fig-anscombe-r zeigt vier
+      Datensätze mit identischer Korrelation und völlig verschiedener Struktur.
+- [ ] Der Wert ist zu klein zum Interpretieren ~ Interpretieren lässt er sich
+      gut, man muss nur wissen, was er misst.
+:::
+
+::: {.quiz}
+Warum ändert sich die Korrelation nicht, wenn eine Variable von Liter auf
+Milliliter umgerechnet wird, die Kovarianz aber schon?
+
+- [x] Weil im Nenner die Standardabweichungen stehen, die um denselben Faktor
+      wachsen ~ Richtig. Der Faktor 1000 kürzt sich heraus. Genau das ist der
+      Zweck der Normierung.
+- [ ] Weil die Korrelation gerundet wird ~ Mit Rundung hat es nichts zu tun.
+- [ ] Weil Milliliter und Liter dieselbe Einheit sind ~ Sie unterscheiden sich
+      um den Faktor 1000, und die Kovarianz zeigt das auch.
+:::
+
+### Der wichtigste Vorbehalt
+
+Ein statistischer Zusammenhang belegt keine Ursache. Drei Erklärungen sind
+immer möglich, und die Daten allein unterscheiden nicht zwischen ihnen: x wirkt
+auf y, y wirkt auf x, oder eine dritte, nicht beobachtete Grösse treibt beide.
+
+Der klassische Fall ist die Scheinkorrelation über eine gemeinsame Ursache:
+
+```{r}
+#| label: schein-r
+# Eine verborgene Groesse treibt beide Merkmale
+temperatur <- runif(200, 5, 30)
+glace      <- 20 + 3 * temperatur + rnorm(200, 0, 10)
+badeunfaelle <- 2 + 0.4 * temperatur + rnorm(200, 0, 2)
+
+round(cor(glace, badeunfaelle), 3)                 # deutlich positiv
+# Bei festgehaltener Temperatur verschwindet der Zusammenhang
+round(cor(resid(lm(glace ~ temperatur)),
+          resid(lm(badeunfaelle ~ temperatur))), 3)
+```
+
+Die erste Zahl zeigt einen klaren Zusammenhang zwischen Glaceverkauf und
+Badeunfällen. Rechnet man die Temperatur aus beiden heraus, bleibt nichts
+übrig. Genau das leistet in komplexeren Fällen die multiple Regression, die im
+Aufbaumodul folgt.
+
+::: {.quiz}
+Ein Modell hat ein Bestimmtheitsmass von 0.92. Ist es damit ein gutes Modell?
+
+- [ ] Ja, es erklärt 92 Prozent der Streuung ~ Das tut es, sagt aber nichts
+      über die Angemessenheit der Modellform.
+- [x] Nicht ohne Blick auf die Residuen ~ Richtig. In @fig-residuen-r erreicht
+      das falsch spezifizierte Modell einen hohen Wert, und trotzdem bilden
+      seine Residuen einen deutlichen Bogen.
+- [ ] Nein, unter 0.95 ist ein Modell unbrauchbar ~ Eine solche Schwelle gibt
+      es nicht; was ein guter Wert ist, hängt vom Fachgebiet ab.
+:::
+
+::: {.quiz}
+Die Steigung beträgt 2.8, der Achsenabschnitt 14, die beobachteten Laufzeiten
+liegen zwischen 3 und 20 Stunden. Was ist von der Aussage zu halten, bei null
+Stunden würden 14 Liter verbraucht?
+
+- [ ] Sie stimmt, das ist die Bedeutung des Achsenabschnitts ~ Rechnerisch ja,
+      inhaltlich nicht gedeckt.
+- [x] Sie extrapoliert über den beobachteten Bereich hinaus ~ Richtig. Der Wert
+      null kommt in den Daten nicht vor, das Modell wurde dort nie geprüft, und
+      ob die Beziehung dort noch linear verläuft, ist unbekannt.
+- [ ] Sie ist falsch, weil der Achsenabschnitt immer null sein müsste ~ Es gibt
+      keinen Grund, ihn auf null zu zwingen; das würde das Modell nur
+      verschlechtern.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu Zusammenhängen](https://www.openintro.org/book/os/)
+- [Spurious Correlations: Zusammenhänge ohne Ursache](https://www.tylervigen.com/spurious-correlations)

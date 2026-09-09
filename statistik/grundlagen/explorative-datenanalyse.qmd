@@ -4,11 +4,238 @@ description: "Verteilungen, Ausreisser und Zusammenhänge systematisch sichten."
 categories: ["EDA", "Visualisierung", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 50
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(dplyr)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+
+# Ein Datensatz mit absichtlich eingebauten Auffaelligkeiten, wie sie in
+# echten Exporten vorkommen.
+n <- 400
+roh <- data.frame(
+  gewicht  = round(rnorm(n, 82, 11), 1),
+  alter    = sample(18:74, n, replace = TRUE),
+  standort = sample(c("Bern", "Chur", "Sion"), n, replace = TRUE,
+                    prob = c(0.5, 0.3, 0.2))
+)
+roh$blutdruck <- round(90 + 0.45 * roh$alter + 0.25 * roh$gewicht + rnorm(n, 0, 8))
+# Rundungspraeferenz: ein Teil der Werte wurde auf 5 gerundet abgelesen
+idx <- sample(seq_len(n), 150)
+roh$blutdruck[idx] <- round(roh$blutdruck[idx] / 5) * 5
+# Sensorfehler und Luecken
+roh$gewicht[c(12, 88, 301)] <- -1
+roh$blutdruck[sample(seq_len(n), 18)] <- NA
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+
+n = 400
+gewicht = np.round(rng.normal(82, 11, n), 1)
+alter = rng.integers(18, 75, n)
+standort = rng.choice(["Bern", "Chur", "Sion"], n, p=[0.5, 0.3, 0.2])
+blutdruck = np.round(90 + 0.45 * alter + 0.25 * gewicht + rng.normal(0, 8, n))
+
+idx = rng.choice(n, 150, replace=False)
+blutdruck[idx] = np.round(blutdruck[idx] / 5) * 5
+gewicht[[11, 87, 300]] = -1.0
+blutdruck = blutdruck.astype(float)
+blutdruck[rng.choice(n, 18, replace=False)] = np.nan
+
+roh = pd.DataFrame({"gewicht": gewicht, "alter": alter,
+                    "standort": standort, "blutdruck": blutdruck})
+```
+
 ## Kernideen
+
+- Explorative Analyse erzeugt Fragen, sie beantwortet keine
+- Die Erwartung wird vor dem Blick in die Daten formuliert
+- Variation: ein Merkmal für sich ansehen
+- Kovariation: zwei Merkmale gemeinsam ansehen
+- Jeder Befund ist vorläufig, bis er an neuen Daten geprüft ist
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Data Wrangling](../../daten/data-wrangling.qmd) für die
+Aufbereitung, [Skalenniveaus](skalenniveaus.qmd) und
+[Lage- und Streuungsmasse](lage-streuungsmasse.qmd) für die Kennzahlen sowie
+[ggplot2](../../visualisierung/ggplot2.qmd) für die Grafiken. Diese Seite
+bringt keine neue Technik, sondern ordnet die bisherigen zu einem Vorgehen. Was
+dabei an Mängeln auffällt, behandelt die
+[Datenqualität](../../daten/datenqualitaet.qmd).
+:::
+
+### Was EDA ist und was nicht
+
+Zwischen Rohdaten und Modell liegt eine Phase, die in Lehrbüchern oft fehlt und
+in der Praxis den Ausschlag gibt. Sie besteht nicht darin, eine Liste
+vorgeschriebener Kennzahlen abzuarbeiten. Sie besteht aus einer Schleife: eine
+Frage an die Daten stellen, sie mit einer Kennzahl oder Grafik beantworten, aus
+der Antwort die nächste Frage ableiten.
+
+Daraus folgt etwas Praktisches. Die Grafiken dieser Phase sind Arbeitsmittel
+und dürfen hässlich sein. Wer hier schon an Farben und Beschriftung feilt,
+verlangsamt sich genau dort, wo Tempo zählt. Sorgfalt in der Gestaltung kommt
+später, wenn feststeht, was überhaupt gezeigt werden soll.
+
+### Die Erwartung kommt vor dem Blick
+
+Der menschliche Verstand findet für fast jedes Bild eine Erklärung, auch für
+Zufall. Wer eine Grafik ansieht und danach überlegt, was sie bedeutet, bestätigt
+oft nur, was er ohnehin vermutet hat.
+
+Der Gegenzug ist billig und wirksam: vorher aufschreiben, was man erwartet.
+Etwa so, für das Merkmal Blutdruck: Werte zwischen 90 und 180, eingipflig,
+leicht rechtsschief, Mittelwert um 130. Weicht die Grafik davon ab, fällt es
+sofort auf, und die Abweichung ist der interessante Teil.
+
+### Variation: ein Merkmal ansehen
+
+Die erste Frage gilt jedem Merkmal einzeln. Vier Dinge sind abzulesen: der
+Wertebereich, die Form der Verteilung, die Zahl der Gipfel und alles, was
+absonderlich aussieht.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-variation-r
+#| fig-cap: "Verteilung des Blutdrucks. Der Bereich stimmt, die Form ist auffällig gezackt."
+#| fig-height: 3.2
+ggplot(roh, aes(blutdruck)) +
+  geom_histogram(binwidth = 1, fill = "grey70", colour = "white") +
+  labs(x = "Blutdruck", y = "Anzahl")
+```
+
+## Python
+
+```{python}
+#| label: fig-variation-py
+#| fig-cap: "Dieselbe Verteilung mit matplotlib."
+fig, ax = plt.subplots(figsize=(7, 3.2))
+werte = roh["blutdruck"].dropna()
+ax.hist(werte, bins=int(werte.max() - werte.min()),
+        color="0.7", edgecolor="white")
+ax.set_xlabel("Blutdruck")
+ax.set_ylabel("Anzahl")
+plt.show()
+```
+:::
+
+Das Zackenmuster in @fig-variation-r ist kein Zufall und kein
+Darstellungsfehler. Es verrät etwas über die Entstehung der Daten. Der Verdacht lässt sich prüfen, indem man zählt,
+wie oft die Werte auf 0 oder 5 enden:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: rundung-r
+endziffern <- table(roh$blutdruck %% 10)
+round(prop.table(endziffern), 3)
+```
+
+## Python
+
+```{python}
+#| label: rundung-py
+endziffern = (roh["blutdruck"].dropna() % 10).value_counts(normalize=True)
+print(endziffern.sort_index().round(3))
+```
+:::
+
+Bei sauber gemessenen Werten läge jede Endziffer bei etwa 10 Prozent. Hier
+entfällt ein Vielfaches davon auf 0 und 5. Das ist eine Rundungspräferenz: Ein
+Teil der Werte wurde nicht gemessen, sondern abgelesen und gerundet. Für die
+Auswertung heisst das, dass die Genauigkeit geringer ist, als die Nachkommastellen
+suggerieren.
+
+::: {.note-box}
+Solche Muster sind fast immer Hinweise auf die Erhebung, nicht auf den
+untersuchten Gegenstand. Gehäufte Rundwerte, verdächtig glatte Mittelwerte oder
+identische Wiederholungen entstehen beim Erfassen, nicht in der Natur.
+:::
+
+### Kovariation: zwei Merkmale zusammen
+
+Welche Darstellung passt, hängt von der Kombination der Skalenniveaus ab.
+
+| Kombination | Darstellung |
+|---|---|
+| metrisch und metrisch | Streudiagramm |
+| metrisch und kategorial | Boxplots nebeneinander |
+| kategorial und kategorial | Kreuztabelle, gestapelte Balken |
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-kovariation-r
+#| fig-cap: "Blutdruck gegen Alter, getrennt nach Standort."
+#| fig-height: 3.2
+ggplot(daten, aes(alter, blutdruck)) +
+  geom_point(alpha = 0.5, size = 1.3) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, colour = "black") +
+  facet_wrap(~ standort) +
+  labs(x = "Alter", y = "Blutdruck")
+```
+
+## Python
+
+```{python}
+#| label: fig-kovariation-py
+#| fig-cap: "Dieselbe Aufteilung mit matplotlib."
+orte = sorted(roh["standort"].unique())
+fig, achsen = plt.subplots(1, len(orte), figsize=(7, 3.2), sharey=True)
+for ax, ort in zip(achsen, orte):
+    teil = roh[(roh["standort"] == ort)].dropna(subset=["blutdruck"])
+    ax.scatter(teil["alter"], teil["blutdruck"], alpha=0.5, s=12, color="0.3")
+    k = np.polyfit(teil["alter"], teil["blutdruck"], 1)
+    xs = np.linspace(teil["alter"].min(), teil["alter"].max(), 2)
+    ax.plot(xs, np.polyval(k, xs), color="black")
+    ax.set_title(ort)
+    ax.set_xlabel("Alter")
+achsen[0].set_ylabel("Blutdruck")
+fig.tight_layout()
+plt.show()
+```
+:::
+
+In @fig-kovariation-r fällt auf, dass die Steigung an allen drei Standorten
+ähnlich verläuft; die Standorte unterscheiden sich also im Niveau, nicht im
+Zusammenhang.
+
+Für zwei kategoriale Merkmale ist die Kreuztabelle das Mittel der Wahl. Die
+Zeilenanteile machen Gruppen unterschiedlicher Grösse vergleichbar:
+
+```{r}
+#| label: kreuztabelle-r
+daten$altersgruppe <- cut(daten$alter,
+                          breaks = c(17, 35, 55, 75),
+                          labels = c("18-35", "36-55", "56-74"))
+
+tab <- table(daten$standort, daten$altersgruppe)
+tab
+round(prop.table(tab, margin = 1), 2)    # Anteile je Zeile
+```
+
 ## Verlinkte Ressourcen
+
+- [R for Data Science, Kapitel zur explorativen Datenanalyse](https://r4ds.hadley.nz/eda)

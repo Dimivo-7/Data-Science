@@ -4,13 +4,209 @@ description: "Projekte, Notebooks, Seeds und Quarto als durchgehender Arbeitsweg
 categories: ["Reproduzierbarkeit", "Tooling", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 90
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Das Projekt ersetzt das Arbeitsverzeichnis und den absoluten Pfad
+- Relative Pfade machen eine Auswertung übertragbar
+- Berichte, die Zahlen aus dem Code beziehen, veralten nicht
+- Ein Seed macht Zufall wiederholbar
+- Umgebung und Paketstände gehören zur Auswertung dazu
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [R-Grundlagen](r-grundlagen.qmd) oder
+[Python-Grundlagen](python-grundlagen.qmd), je nachdem, womit gearbeitet wird.
+Wie man die Umgebung selbst festhält, steht unter
+[Pakete und Umgebungen](pakete-umgebungen.qmd).
+:::
+
+### Das Projekt statt des Arbeitsverzeichnisses
+
+Ein Skript, das bei jemand anderem nicht läuft, scheitert erfahrungsgemäss an
+einem absoluten Pfad. Er verweist auf ein Verzeichnis, das nur auf einem
+einzigen Rechner existiert. Dasselbe passiert dem eigenen Skript nach einem
+Umzug der Daten.
+
+Ein RStudio-Projekt löst das, indem es das Arbeitsverzeichnis auf den
+Projektordner festlegt. Pfade werden dann relativ dazu geschrieben und
+funktionieren überall, wo der Ordner als Ganzes liegt.
+
+```r
+# schlecht: existiert nur auf einem Rechner
+read.csv("C:/Users/mv/Desktop/Analyse/daten/messung.csv")
+
+# gut: relativ zum Projektordner
+read.csv("daten/messung.csv")
+```
+
+Der zweite Punkt betrifft den Zustand der Sitzung. RStudio bietet an, die
+Objekte beim Beenden zu speichern und beim Start wiederherzustellen. Das wirkt
+hilfreich, verdeckt aber Fehler: Ein Skript, das nur läuft, weil eine Variable
+noch aus der letzten Woche im Speicher liegt, ist nicht reproduzierbar. Die
+Einstellung gehört ausgeschaltet, und die Probe aufs Exempel ist ein Neustart
+mit leerer Umgebung.
+
+::: {.note-box}
+Nützliche Kürzel in RStudio: neuer Codechunk, Chunk ausführen, Dokument
+rendern. Wer sie kennt, arbeitet spürbar flüssiger als über die Menüs.
+:::
+
+### Berichte, die nicht veralten
+
+Eine Zahl, die von Hand aus der Konsole in ein Textdokument kopiert wurde, ist
+ab dem nächsten Datenstand falsch, und niemand sieht ihr das an. Quarto und R
+Markdown lösen das, indem Text und Rechnung in derselben Datei stehen. Beim
+Rendern wird der Code ausgeführt und das Ergebnis eingesetzt.
+
+Der Baustein dafür heisst Chunk. Er beginnt mit drei Backticks und der
+Sprachangabe in geschweiften Klammern:
+
+````markdown
+Der Mittelwert liegt bei `r round(mean(df$wert), 2)`.
+
+```{r}
+summary(df$wert)
+```
+````
+
+Der erste Teil ist eingebetteter Code mitten im Satz. Ändert sich der
+Datensatz, ändert sich die Zahl im Text beim nächsten Rendern automatisch mit.
+Diese Seite funktioniert genau so: Jede Zahl und jede Abbildung darauf entsteht
+beim Bauen der Website aus dem Code, der daneben steht.
+
+::: {.quiz}
+Ein Skript liest Daten über `read.csv("C:/Users/mv/Desktop/Analyse/daten.csv")`
+und läuft auf dem eigenen Rechner einwandfrei. Was spricht trotzdem dagegen?
+
+- [ ] Nichts, solange es funktioniert ~ Es funktioniert genau so lange, wie
+      niemand anders es ausführt und niemand den Ordner verschiebt.
+- [x] Der Pfad enthält eine Voraussetzung, die nirgends dokumentiert ist ~
+      Richtig. Auf einem anderen Rechner, unter anderem Benutzernamen oder nach
+      einem Umzug bricht es ab. Ein relativer Pfad beschreibt nur die Lage
+      innerhalb des Projekts.
+- [ ] `read.csv` ist veraltet ~ Um die Funktion geht es nicht, sondern um den
+      Pfad, den sie bekommt.
+:::
+
+::: {.quiz}
+Warum sollte RStudio den Arbeitsspeicher beim Beenden nicht sichern?
+
+- [ ] Weil das Speichern zu lange dauert ~ Die Zeit ist nicht das Problem.
+- [x] Weil sonst Objekte überleben, die das Skript gar nicht mehr erzeugt ~
+      Richtig. Das Skript läuft dann scheinbar, obwohl es unvollständig ist.
+      Der Fehler zeigt sich erst bei jemand anderem. Die Probe ist ein Neustart
+      mit leerer Umgebung.
+- [ ] Weil die Datei zu gross wird ~ Sie kann gross werden, aber der
+      entscheidende Grund ist die verdeckte Abhängigkeit.
+:::
+
 ## Typische Aufgaben
 
+**Zufall wiederholbar machen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+set.seed(42)
+rnorm(5)
+```
+
+## Python
+
+```python
+rng = np.random.default_rng(42)
+rng.normal(size=5)
+```
+
+:::
+
+Ein globaler Seed am Anfang genügt, solange die Reihenfolge der Aufrufe gleich
+bleibt. In Python ist der eigene Generator dem globalen `np.random.seed`
+vorzuziehen, weil er nicht von fremdem Code verstellt wird.
+
+**Pfade relativ zum Projekt bilden**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+here::here("daten", "messung.csv")
+```
+
+## Python
+
+```python
+from pathlib import Path
+PROJEKT = Path(__file__).resolve().parent
+PROJEKT / "daten" / "messung.csv"
+```
+
+:::
+
+**Die Umgebung festhalten**
+
+```bash
+pip freeze > requirements.txt          # Python
+```
+
+```r
+renv::snapshot()                       # R
+sessionInfo()                          # Paketstaende dokumentieren
+```
+
+**Ein Notebook so ablegen, dass die Historie lesbar bleibt**
+
+```bash
+jupyter nbconvert --clear-output --inplace analyse.ipynb
+```
+
+Ausgaben im Notebook erzeugen bei jedem Speichern grosse, unleserliche
+Änderungen in der Versionsverwaltung. Wer sie vor dem Commit entfernt, bekommt
+brauchbare Diffs, siehe [Git](../werkzeuge/git.qmd).
+
+**Ein Dokument rendern**
+
+```bash
+quarto render bericht.qmd
+quarto render bericht.qmd --to pdf
+```
+
+**Die Probe aufs Exempel**
+
+Ein Neustart mit leerer Umgebung und ein vollständiger Durchlauf von oben nach
+unten. Läuft die Auswertung dann durch, ist sie reproduzierbar; läuft sie nur
+in der gewachsenen Sitzung, ist sie es nicht.
+
 ## Verlinkte Ressourcen
+
+- [Quarto: Dokumentation](https://quarto.org/docs/guide/)
+- [What They Forgot to Teach You About R: Projektarbeit](https://rstats.wtf/)

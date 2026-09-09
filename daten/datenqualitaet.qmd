@@ -4,13 +4,366 @@ description: "Fehlende Werte, Duplikate und Plausibilität systematisch prüfen.
 categories: ["Datenqualität", "Data Wrangling", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 50
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+library(dplyr)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+
+# Ein Datensatz mit absichtlich eingebauten Auffaelligkeiten, wie sie in
+# echten Exporten vorkommen.
+n <- 400
+roh <- data.frame(
+  gewicht  = round(rnorm(n, 82, 11), 1),
+  alter    = sample(18:74, n, replace = TRUE),
+  standort = sample(c("Bern", "Chur", "Sion"), n, replace = TRUE,
+                    prob = c(0.5, 0.3, 0.2))
+)
+roh$blutdruck <- round(90 + 0.45 * roh$alter + 0.25 * roh$gewicht + rnorm(n, 0, 8))
+# Rundungspraeferenz: ein Teil der Werte wurde auf 5 gerundet abgelesen
+idx <- sample(seq_len(n), 150)
+roh$blutdruck[idx] <- round(roh$blutdruck[idx] / 5) * 5
+# Sensorfehler und Luecken
+roh$gewicht[c(12, 88, 301)] <- -1
+roh$blutdruck[sample(seq_len(n), 18)] <- NA
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+
+n = 400
+gewicht = np.round(rng.normal(82, 11, n), 1)
+alter = rng.integers(18, 75, n)
+standort = rng.choice(["Bern", "Chur", "Sion"], n, p=[0.5, 0.3, 0.2])
+blutdruck = np.round(90 + 0.45 * alter + 0.25 * gewicht + rng.normal(0, 8, n))
+
+idx = rng.choice(n, 150, replace=False)
+blutdruck[idx] = np.round(blutdruck[idx] / 5) * 5
+gewicht[[11, 87, 300]] = -1.0
+blutdruck = blutdruck.astype(float)
+blutdruck[rng.choice(n, 18, replace=False)] = np.nan
+
+roh = pd.DataFrame({"gewicht": gewicht, "alter": alter,
+                    "standort": standort, "blutdruck": blutdruck})
+```
+
 ## Kernideen
+
+- Plausibilität prüfen heisst fragen, was gar nicht sein kann
+- Fehlende Werte werden untersucht, nicht stillschweigend entfernt
+- Der Grund des Fehlens entscheidet über den Umgang damit
+- Duplikate entstehen leise und verzerren jede Kennzahl
+- Jede Bereinigung wird festgehalten, sonst ist sie nicht nachvollziehbar
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Data Wrangling](data-wrangling.qmd) für die Handgriffe und
+[Tidy Data](tidy-data.qmd) für die Form. Die systematische Sichtung insgesamt
+steht unter
+[explorative Datenanalyse](../statistik/grundlagen/explorative-datenanalyse.qmd).
+:::
+
+### Plausibilität: was gar nicht sein kann
+
+Bevor Zusammenhänge interessieren, gehört geprüft, ob die Werte überhaupt
+möglich sind. Negative Mengen, Datumsangaben in der Zukunft, Anteile über 100
+Prozent, ein Alter von 200 Jahren.
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: plausibel-r
+summary(roh$gewicht)                   # das Minimum ist verdaechtig
+sum(roh$gewicht < 0)                   # wie viele Faelle?
+roh |> filter(gewicht < 0) |> head(3)
+```
+
+## Python
+
+```{python}
+#| label: plausibel-py
+print(roh["gewicht"].describe())
+print("negative Werte:", (roh["gewicht"] < 0).sum())
+print(roh[roh["gewicht"] < 0].head(3))
+```
+:::
+
+Ein Gewicht von minus eins ist kein Ausreisser, sondern ein Platzhalter. Viele
+Erfassungssysteme codieren fehlende Werte so. Wer ihn als Zahl behandelt, zieht
+den Mittelwert nach unten, ohne dass es auffällt. Solche Werte gehören auf `NA`
+gesetzt, bevor gerechnet wird.
+
+```{r}
+#| label: plausibel-fix-r
+daten <- roh
+daten$gewicht[daten$gewicht < 0] <- NA
+
+c(vorher  = mean(roh$gewicht),
+  nachher = mean(daten$gewicht, na.rm = TRUE)) |> round(2)
+```
+
+::: {.quiz}
+In den Daten steht bei drei Personen ein Gewicht von minus eins. Warum ist so
+ein Platzhalter gefährlicher als eine leere Zelle?
+
+- [ ] Er ist nicht gefährlicher, nur unschöner ~ Der Unterschied ist, ob ein
+      Fehler auffällt oder nicht.
+- [x] Er sieht wie ein gültiger Wert aus und rechnet stillschweigend mit ~
+      Richtig. Eine leere Zelle wird als `NA` eingelesen und von jeder Rechnung
+      sichtbar behandelt. Minus eins verschiebt jedes Ergebnis ohne Warnung.
+- [ ] Er lässt sich nicht in `NA` umwandeln ~ Umwandeln lässt er sich gut, man
+      muss ihn nur zuerst bemerken.
+:::
+
+::: {.quiz}
+Nach dem Ersetzen der Platzhalter ändert sich der Mittelwert nur um wenige
+Zehntel. Ist das Problem damit klein?
+
+- [ ] Ja, die Auswirkung ist messbar gering ~ Sie ist gering, weil es zufällig
+      nur drei von vierhundert Fällen sind.
+- [x] Nein, die geringe Auswirkung ist Zufall der Anzahl ~ Richtig. Derselbe
+      Platzhalter bei zehn Prozent der Werte, oder einer wie 9999, verschöbe
+      das Ergebnis massiv. Und es geht darum, zu wissen, was in den Daten
+      steht.
+- [ ] Nein, weil Platzhalter immer entfernt werden müssen ~ Entfernt werden
+      müssen sie, aber die Begründung ist nicht die Regel, sondern die
+      Verlässlichkeit des Ergebnisses.
+:::
+
+### Fehlende Werte untersuchen, nicht wegwerfen
+
+Die Anzahl fehlender Werte ist die eine Frage, ihr Muster die wichtigere. Fehlen
+sie zufällig, ist Weglassen vertretbar. Hängt das Fehlen mit anderen Merkmalen
+zusammen, verzerrt jedes Weglassen das Ergebnis.
+
+```{r}
+#| label: na-muster-r
+# Wie viele fehlen, und unterscheiden sich die Faelle mit Luecke?
+daten |>
+  mutate(fehlt = is.na(blutdruck)) |>
+  group_by(fehlt) |>
+  summarise(n = n(), mittleres_alter = round(mean(alter), 1), .groups = "drop")
+```
+
+Liegen die beiden Altersmittel nahe beieinander, spricht das dafür, dass die
+Lücken nicht mit dem Alter zusammenhängen. Das ist kein Beweis, aber ein
+Argument, und es ist mehr, als ein stillschweigendes `na.rm` liefert.
+
+::: {.note-box}
+Was in dieser Phase auffällt, ist eine Hypothese, kein Ergebnis. Ein an
+denselben Daten entdeckter Zusammenhang lässt sich an denselben Daten nicht
+bestätigen. Wer lange genug sucht, findet in jedem Datensatz etwas
+Auffälliges, und genau davor schützt die Trennung zwischen Erkunden und
+Prüfen.
+:::
+
+::: {.quiz}
+Beim Durchsehen der Daten fällt ein deutlicher Zusammenhang auf. Warum sollte
+er nicht direkt als Ergebnis berichtet werden?
+
+- [x] Weil bei vielen betrachteten Kombinationen einige zufällig auffällig
+      aussehen ~ Richtig. Wer zwanzig Zusammenhänge ansieht, findet im Schnitt
+      einen, der auf dem Fünfprozentniveau signifikant wirkt. Der Fund gehört
+      an neuen Daten geprüft.
+- [ ] Weil Grafiken keine Beweise sind ~ Auch ein Test an denselben Daten wäre
+      kein Beleg. Das Problem liegt nicht an der Darstellungsform.
+- [ ] Weil die Stichprobe zu klein ist ~ Der Umfang ist nicht der Punkt; das
+      Problem bestünde auch bei sehr grossen Daten.
+:::
+
+::: {.quiz}
+Wie prüft man, ob fehlende Werte systematisch fehlen?
+
+- [ ] Man zählt sie und vergleicht mit einer Faustregel ~ Die Anzahl sagt über
+      das Muster nichts aus.
+- [x] Man bildet eine Hilfsvariable fehlt ja oder nein und hält sie gegen die
+      übrigen Merkmale ~ Richtig. Unterscheiden sich die Gruppen mit und ohne
+      Lücke systematisch, etwa im Alter, fehlen die Werte nicht zufällig.
+- [ ] Man ersetzt sie durch den Mittelwert und schaut, ob sich etwas ändert ~
+      Das Ersetzen verdeckt die Frage, statt sie zu beantworten.
+:::
+
 ## Typische Aufgaben
 
+**Der Unterschied, der beim Sprachwechsel Ergebnisse verschiebt**
+
+R liefert bei fehlenden Werten `NA` und erzwingt damit eine Entscheidung. pandas
+lässt sie bei `mean` stillschweigend weg und liefert eine Zahl, die aussieht wie
+ein Mittelwert über alle Beobachtungen. Wer zwischen den Sprachen wechselt,
+sollte das im Kopf haben.
+
+::: {.panel-tabset}
+
+## R
+
+```r
+mean(x)                 # NA, sobald ein Wert fehlt
+mean(x, na.rm = TRUE)   # bewusste Entscheidung, sichtbar im Code
+```
+
+## Python
+
+```python
+s.mean()                # laesst fehlende Werte still weg
+s.mean(skipna=False)    # erzwingt dieselbe Sichtbarkeit wie in R
+```
+
+:::
+
+**Fehlende Werte zählen, je Spalte und je Zeile**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+colSums(is.na(df))
+sum(!complete.cases(df))
+```
+
+## Python
+
+```python
+df.isna().sum()
+df.isna().any(axis=1).sum()
+```
+
+:::
+
+**Prüfen, ob sie systematisch fehlen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+df$fehlt <- is.na(df$verbrauch)
+aggregate(fehlt ~ standort, data = df, FUN = mean)
+```
+
+## Python
+
+```python
+df.assign(fehlt=df["verbrauch"].isna()).groupby("standort")["fehlt"].mean()
+```
+
+:::
+
+Verteilen sich die Lücken gleichmässig über Gruppen und Zeit, ist Weglassen
+vertretbar. Häufen sie sich an einer Stelle, hat das eine Ursache, und die
+gehört in den Bericht.
+
+**Platzhalter erkennen und in echte fehlende Werte umwandeln**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+df$gewicht[df$gewicht %in% c(-1, -999)] <- NA
+```
+
+## Python
+
+```python
+df["gewicht"] = df["gewicht"].replace([-1, -999], np.nan)
+```
+
+:::
+
+**Duplikate finden und entfernen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+sum(duplicated(df))
+df[duplicated(df$id), ]          # nur nach Schluessel
+df <- df[!duplicated(df$id), ]
+```
+
+## Python
+
+```python
+df.duplicated().sum()
+df[df.duplicated("id", keep=False)]
+df = df.drop_duplicates("id")
+```
+
+:::
+
+**Wertebereiche prüfen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+range(df$alter, na.rm = TRUE)
+table(df$standort, useNA = "ifany")
+```
+
+## Python
+
+```python
+df["alter"].agg(["min", "max"])
+df["standort"].value_counts(dropna=False)
+```
+
+:::
+
+**Die drei Prüfungen nach jedem Import**
+
+Zeilenzahl plausibel, Spaltentypen korrekt, fehlende Werte gezählt. Diese drei
+Handgriffe finden den grössten Teil der Importfehler, bevor sie in ein Ergebnis
+einfliessen.
+
+::: {.quiz}
+`mean(x)` liefert in R bei fehlenden Werten `NA`, in pandas dagegen einen Wert.
+Welches Verhalten ist für eine Auswertung günstiger?
+
+- [x] Das von R, weil es sichtbar macht, dass etwas fehlt ~ Richtig. Ein
+      stillschweigend berechneter Mittelwert über die vorhandenen Werte sieht
+      aus wie einer über alle. Der Aufwand, `na.rm` zu schreiben, ist der
+      Moment der bewussten Entscheidung.
+- [ ] Das von pandas, weil man weiterarbeiten kann ~ Weiterarbeiten kann man
+      auch in R, nur eben ausdrücklich.
+- [ ] Beide sind gleichwertig ~ Beim Wechsel zwischen den Sprachen führt genau
+      dieser Unterschied zu abweichenden Ergebnissen.
+:::
+
+::: {.quiz}
+Eine Spalte hat 5 Prozent fehlende Werte, alle aus derselben Kalenderwoche. Was
+folgt daraus?
+
+- [ ] Nichts, 5 Prozent sind wenig ~ Der Anteil ist nicht das Entscheidende,
+      sondern das Muster.
+- [x] Sie fehlen nicht zufällig, und Weglassen verzerrt möglicherweise ~
+      Richtig. Ein Ausfall über eine ganze Woche hat eine Ursache.
+      Unterscheidet sich diese Woche von den übrigen, verschiebt das Weglassen
+      das Ergebnis systematisch.
+- [ ] Die Daten sind unbrauchbar ~ Brauchbar bleiben sie, nur gehört die
+      Ursache in den Bericht.
+:::
+
 ## Verlinkte Ressourcen
+
+- [R for Data Science, Kapitel zu fehlenden Werten](https://r4ds.hadley.nz/missing-values)

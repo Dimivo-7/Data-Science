@@ -4,13 +4,269 @@ description: "CSV, Excel, JSON und Pickle lesen und schreiben, Kodierung beachte
 categories: ["Data Wrangling", "R", "Python"]
 quelle: ["PYFR", "ESDS"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 10
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Der erste Blick nach dem Import gehört den Spaltentypen
+- Trennzeichen, Dezimaltrennzeichen und Kodierung sind explizit anzugeben
+- Datumsangaben werden beim Import umgewandelt, nicht später
+- Text, der Zahl sein sollte, verrät fast immer ein Problem in den Rohdaten
+- Jedes Format hat seinen Zweck: CSV zum Austausch, Parquet für Grösse, JSON für Verschachtelung
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [R-Grundlagen](../programmierung/r-grundlagen.qmd) oder
+[pandas](../programmierung/pandas.qmd). Was danach kommt, ist die Prüfung auf
+[Datenqualität](datenqualitaet.qmd) und das Umformen im
+[Data Wrangling](data-wrangling.qmd).
+:::
+
+### Import: der erste Blick gehört den Spaltentypen
+
+Der häufigste Importfehler im deutschsprachigen Raum ist das Dezimalkomma.
+Werkzeuge gehen vom angelsächsischen Format aus, die Datei kommt aber mit
+Semikolon als Trennzeichen und Komma als Dezimalzeichen. Das Ergebnis sieht auf
+den ersten Blick brauchbar aus und ist es nicht.
+
+Die folgende Datei entsteht im Chunk selbst, damit das Beispiel ohne Fremddatei
+nachvollziehbar bleibt:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: import-r
+inhalt <- c("datum;typ;verbrauch",
+            "01.03.2026;A;12,4",
+            "02.03.2026;B;9,8",
+            "03.03.2026;A;14,1")
+
+pfad <- tempfile(fileext = ".csv")
+writeLines(inhalt, pfad)
+
+# Standardannahme: Komma trennt Spalten. Passt hier nicht.
+falsch <- read_csv(pfad, show_col_types = FALSE)
+ncol(falsch)          # alles in einer einzigen Spalte
+
+# read_csv2 erwartet Semikolon als Trenn- und Komma als Dezimalzeichen
+richtig <- read_csv2(pfad, show_col_types = FALSE)
+str(richtig)
+```
+
+## Python
+
+```{python}
+#| label: import-py
+import tempfile, pathlib
+
+inhalt = "\n".join(["datum;typ;verbrauch",
+                    "01.03.2026;A;12,4",
+                    "02.03.2026;B;9,8",
+                    "03.03.2026;A;14,1"])
+pfad = pathlib.Path(tempfile.mkdtemp()) / "messung.csv"
+pfad.write_text(inhalt, encoding="utf-8")
+
+falsch = pd.read_csv(pfad)                          # Standardannahme
+print("Spalten:", falsch.shape[1])
+
+richtig = pd.read_csv(pfad, sep=";", decimal=",")   # passend eingestellt
+print(richtig.dtypes)
+```
+:::
+
+Entscheidend ist, dass `verbrauch` erst mit der richtigen Einstellung numerisch
+wird. Ohne sie bliebe die Spalte Text, und jede spätere Rechnung würde entweder
+abbrechen oder, schlimmer, stillschweigend etwas Falsches liefern.
+
+Die Spalte `datum` ist auch jetzt noch Text. Datumsangaben im europäischen
+Format erkennt kein Import von selbst:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: datum-r
+mit_datum <- richtig |>
+  mutate(datum = dmy(datum))        # Tag-Monat-Jahr
+str(mit_datum)
+```
+
+## Python
+
+```{python}
+#| label: datum-py
+richtig["datum"] = pd.to_datetime(richtig["datum"], format="%d.%m.%Y")
+print(richtig.dtypes)
+```
+:::
+
+Warum das wichtig ist, zeigt ein Sortierversuch. Als Text stünde der 1. März
+vor dem 2. Februar, weil verglichen wird, was vorne steht. Als Datum stimmt die
+Reihenfolge, und Differenzen zwischen zwei Zeitpunkten lassen sich überhaupt
+erst rechnen.
+
+::: {.quiz}
+Eine Spalte kommt beim Import als Text an, obwohl nur Zahlen darin stehen. Das
+Dezimalzeichen ist bereits richtig eingestellt. Was ist die nächstliegende
+Ursache?
+
+- [x] Ein einzelner Platzhalter für fehlende Werte, etwa ein Strich ~ Richtig.
+      Ein einziger solcher Eintrag genügt, weil der Vektor nur einen Typ tragen
+      kann. Dasselbe gilt für Tausendertrennung oder angehängte Einheiten.
+- [ ] Die Datei ist zu gross ~ Die Grösse beeinflusst den erkannten Typ nicht.
+- [ ] R kann Zahlen nur aus Excel-Dateien lesen ~ Der Import aus Text
+      funktioniert, er muss nur richtig eingestellt sein.
+:::
+
+::: {.quiz}
+Warum sollte das Datum direkt beim Import umgewandelt werden und nicht erst
+kurz vor der Grafik?
+
+- [ ] Weil die Umwandlung später länger dauert ~ Die Rechenzeit ist nicht das
+      Problem.
+- [x] Weil jeder Schritt dazwischen sonst mit Text arbeitet und falsch sortiert
+      oder gruppiert ~ Richtig. Wer nach Monat gruppiert, bevor das Datum ein
+      Datum ist, gruppiert nach Zeichenketten und merkt es erst am Ergebnis.
+- [ ] Weil ggplot2 keine Datumsangaben darstellen kann ~ Kann es sehr wohl,
+      sofern der Typ stimmt.
+:::
+
 ## Typische Aufgaben
 
+**CSV mit europäischen Konventionen lesen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+readr::read_delim("daten.csv", delim = ";", locale = readr::locale(decimal_mark = ","))
+```
+
+## Python
+
+```python
+pd.read_csv("daten.csv", sep=";", decimal=",", encoding="utf-8")
+```
+
+:::
+
+**Spaltentypen selbst festlegen statt raten lassen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+readr::read_csv("daten.csv", col_types = readr::cols(
+  id = readr::col_integer(),
+  datum = readr::col_date(format = "%d.%m.%Y"),
+  wert = readr::col_double()
+))
+```
+
+## Python
+
+```python
+pd.read_csv("daten.csv", dtype={"id": "Int64", "wert": "float64"},
+            parse_dates=["datum"], dayfirst=True)
+```
+
+:::
+
+**Excel, JSON und Parquet**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+readxl::read_excel("mappe.xlsx", sheet = "Daten", skip = 2)
+jsonlite::fromJSON("antwort.json")
+arrow::read_parquet("gross.parquet")
+```
+
+## Python
+
+```python
+pd.read_excel("mappe.xlsx", sheet_name="Daten", skiprows=2)
+pd.read_json("antwort.json")
+pd.read_parquet("gross.parquet")
+```
+
+:::
+
+**Nur einen Teil einlesen, um die Struktur zu prüfen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+readr::read_csv("gross.csv", n_max = 1000)
+```
+
+## Python
+
+```python
+pd.read_csv("gross.csv", nrows=1000)
+```
+
+:::
+
+**Schreiben**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+readr::write_csv(df, "ergebnis.csv")
+saveRDS(df, "ergebnis.rds")
+```
+
+## Python
+
+```python
+df.to_csv("ergebnis.csv", index=False)
+df.to_parquet("ergebnis.parquet")
+```
+
+:::
+
+CSV verliert die Typinformation, RDS und Parquet behalten sie. Für
+Zwischenstände einer Auswertung ist das der wichtigere Punkt als die Dateigrösse.
+
 ## Verlinkte Ressourcen
+
+- [readr: Import in R](https://readr.tidyverse.org/)
+- [pandas: Ein- und Ausgabe](https://pandas.pydata.org/docs/user_guide/io.html)

@@ -4,13 +4,399 @@ description: "Filtern, sortieren, gruppieren, umformen und verbinden in beiden S
 categories: ["Data Wrangling", "pandas", "tidyverse", "R", "Python"]
 quelle: ["PYFR", "ESDS"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 30
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Fünf Verben decken den grössten Teil der Aufbereitung ab
+- Die Pipe bringt die Reihenfolge im Code in die Reihenfolge im Kopf
+- Gruppieren heisst aufteilen, rechnen, zusammensetzen
+- Zwischen langem und breitem Format wird umgeformt, nicht neu erhoben
+- Dieselben Operationen heissen in R und Python verschieden und tun dasselbe
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Tidy Data](tidy-data.qmd) für die Zielform und
+[R-Grundlagen](../programmierung/r-grundlagen.qmd) beziehungsweise
+[pandas](../programmierung/pandas.qmd) für die Datenstrukturen. Woher die Daten
+kommen, steht unter [Datenimport](datenimport-formate.qmd).
+:::
+
+### Die fünf Verben
+
+Die Aufbereitung besteht fast vollständig aus fünf Operationen. Jede tut genau
+eine Sache und gibt einen Data Frame zurück, was der Grund dafür ist, dass sie
+sich beliebig aneinanderreihen lassen.
+
+| Verb | Frage, die es beantwortet |
+|---|---|
+| `filter` | Welche Zeilen interessieren mich? |
+| `select` | Welche Spalten brauche ich? |
+| `mutate` | Welche Spalte fehlt noch? |
+| `arrange` | In welcher Reihenfolge? |
+| `summarise` | Wie fasse ich zusammen? |
+
+Als Arbeitsgrundlage dient ein erzeugter Datensatz, einer Maschinenablesung
+nachempfunden. Der Verbrauch hängt dabei vom Standort ab, damit die späteren
+Gruppenvergleiche etwas zu zeigen haben:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: daten-r
+standort <- rep(c("Bern", "Chur"), times = 12)
+
+messungen <- data.frame(
+  datum     = rep(seq(as.Date("2026-01-05"), by = "week", length.out = 12), each = 2),
+  standort  = standort,
+  verbrauch = round(rnorm(24, mean = ifelse(standort == "Bern", 120, 95), sd = 10), 1),
+  laufzeit  = round(runif(24, 4, 20), 1)
+)
+
+head(messungen, 4)
+nrow(messungen)
+```
+
+## Python
+
+```{python}
+#| label: daten-py
+standort = np.array(["Bern", "Chur"] * 12)
+basis = np.where(standort == "Bern", 120, 95)
+
+messungen = pd.DataFrame({
+    "datum": np.repeat(pd.date_range("2026-01-05", periods=12, freq="W"), 2),
+    "standort": standort,
+    "verbrauch": np.round(rng.normal(basis, 10), 1),
+    "laufzeit": np.round(rng.uniform(4, 20, 24), 1),
+})
+
+print(messungen.head(4))
+print(len(messungen))
+```
+:::
+
+Die Verben einzeln, jedes mit dem Zweck davor:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: verben-r
+# nur Bern, und dort nur die hohen Werte
+filter(messungen, standort == "Bern", verbrauch > 120) |> head(3)
+
+# nur die Spalten, die gezeigt werden sollen
+select(messungen, datum, verbrauch) |> head(3)
+
+# eine abgeleitete Groesse dazurechnen
+mutate(messungen, pro_stunde = verbrauch / laufzeit) |> head(3)
+
+# absteigend nach Verbrauch
+arrange(messungen, desc(verbrauch)) |> head(3)
+
+# alles auf eine Zeile eindampfen
+summarise(messungen, n = n(), mittel = mean(verbrauch))
+```
+
+## Python
+
+```{python}
+#| label: verben-py
+print(messungen.query("standort == 'Bern' and verbrauch > 120").head(3))
+print(messungen[["datum", "verbrauch"]].head(3))
+print(messungen.assign(pro_stunde=lambda d: d["verbrauch"] / d["laufzeit"]).head(3))
+print(messungen.sort_values("verbrauch", ascending=False).head(3))
+print(pd.DataFrame({"n": [messungen["verbrauch"].size],
+                    "mittel": [messungen["verbrauch"].mean()]}))
+```
+:::
+
+### Die Pipe: Reihenfolge im Code wie im Kopf
+
+Einzeln aufgerufen sind die Verben unhandlich, weil jedes Zwischenergebnis
+entweder benannt oder verschachtelt werden muss. Verschachtelt liest sich eine
+Kette von innen nach aussen, also rückwärts:
+
+```{r}
+#| label: verschachtelt-r
+arrange(summarise(group_by(messungen, standort), mittel = mean(verbrauch)),
+        desc(mittel))
+```
+
+Dieselbe Rechnung mit der Pipe steht in der Reihenfolge, in der man sie denkt.
+Das Zeichen `|>` reicht das Ergebnis links als erstes Argument nach rechts
+weiter:
+
+```{r}
+#| label: pipe-r
+messungen |>
+  group_by(standort) |>
+  summarise(mittel = mean(verbrauch)) |>
+  arrange(desc(mittel))
+```
+
+In Python entsteht dieselbe Lesbarkeit durch Verkettung von Methoden; die
+runden Klammern um den Ausdruck erlauben den Zeilenumbruch:
+
+```{python}
+#| label: pipe-py
+print(messungen
+      .groupby("standort", as_index=False)
+      .agg(mittel=("verbrauch", "mean"))
+      .sort_values("mittel", ascending=False))
+```
+
+### Gruppieren: aufteilen, rechnen, zusammensetzen
+
+`group_by` verändert die Daten nicht, es markiert sie nur. Erst die folgende
+Zusammenfassung wertet je Gruppe aus. Das Muster heisst split-apply-combine und
+ist dasselbe wie in [pandas](../programmierung/pandas.qmd).
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: gruppen-r
+je_standort <- messungen |>
+  mutate(monat = floor_date(datum, "month")) |>
+  group_by(standort, monat) |>
+  summarise(n      = n(),
+            mittel = round(mean(verbrauch), 1),
+            .groups = "drop")
+
+je_standort
+```
+
+## Python
+
+```{python}
+#| label: gruppen-py
+je_standort = (messungen
+    .assign(monat=lambda d: d["datum"].dt.to_period("M").dt.to_timestamp())
+    .groupby(["standort", "monat"], as_index=False)
+    .agg(n=("verbrauch", "size"), mittel=("verbrauch", "mean")))
+je_standort["mittel"] = je_standort["mittel"].round(1)
+print(je_standort)
+```
+:::
+
+Das Argument `.groups = "drop"` löst die Gruppierung nach der Zusammenfassung
+wieder auf. Ohne es bleibt der Data Frame gruppiert, und der nächste Schritt
+rechnet unbemerkt weiter je Gruppe statt über alles.
+
+Weil das Ergebnis im langen Format vorliegt, lässt es sich unmittelbar
+zeichnen. In @fig-gruppen-r wird die Gruppierung zur Farbe, ohne dass die
+Daten dafür umgebaut werden müssten:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-gruppen-r
+#| fig-cap: "Monatsmittel je Standort. Das lange Format erlaubt die Gruppierung über die Farbe."
+ggplot(je_standort, aes(monat, mittel, colour = standort)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  labs(x = NULL, y = "Verbrauch, Monatsmittel", colour = "Standort")
+```
+
+## Python
+
+```{python}
+#| label: fig-gruppen-py
+#| fig-cap: "Dieselbe Auswertung mit matplotlib."
+fig, ax = plt.subplots()
+for ort, teil in je_standort.groupby("standort"):
+    ax.plot(teil["monat"], teil["mittel"], marker="o", label=ort)
+ax.set_ylabel("Verbrauch, Monatsmittel")
+ax.legend(title="Standort")
+fig.autofmt_xdate()
+plt.show()
+```
+:::
+
+::: {.quiz}
+Warum liefert `summarise` ohne vorheriges `group_by` genau eine Zeile?
+
+- [x] Weil ohne Gruppierung die ganze Tabelle eine einzige Gruppe ist ~
+      Richtig. Die Zusammenfassung dampft jede Gruppe auf eine Zeile ein, hier
+      also alles auf eine.
+- [ ] Weil `summarise` immer nur eine Zeile zurückgeben kann ~ Mit Gruppierung
+      gibt es eine Zeile je Gruppe.
+- [ ] Weil die übrigen Zeilen verworfen werden ~ Verworfen wird nichts, sie
+      gehen in die Berechnung ein.
+:::
+
+::: {.quiz}
+Nach `group_by(standort, monat)` und `summarise` wird ohne `.groups = "drop"`
+ein zweites Mal zusammengefasst. Was passiert?
+
+- [ ] Ein Fehler, weil die Tabelle schon zusammengefasst ist ~ Es gibt keinen
+      Fehler, und das ist gerade das Problem.
+- [x] Die zweite Zusammenfassung rechnet je Standort statt über alle ~ Richtig.
+      In R bleibt nach `summarise` die äusserste Gruppierung bestehen. Das
+      Ergebnis ist plausibel aussehender Unsinn.
+- [ ] Das Ergebnis ist identisch ~ Es unterscheidet sich, sobald es mehr als
+      einen Standort gibt.
+:::
+
+### Zwischen lang und breit wechseln
+
+Für die Auswertung ist lang richtig, für eine Berichtstabelle breit. Der
+Wechsel geht in beide Richtungen und ist verlustfrei:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: pivot-r
+tabelle <- je_standort |>
+  select(standort, monat, mittel) |>
+  pivot_wider(names_from = standort, values_from = mittel)
+
+tabelle
+
+# und wieder zurueck
+tabelle |>
+  pivot_longer(-monat, names_to = "standort", values_to = "mittel") |>
+  head(4)
+```
+
+## Python
+
+```{python}
+#| label: pivot-py
+tabelle = je_standort.pivot(index="monat", columns="standort", values="mittel")
+print(tabelle)
+
+print(tabelle.reset_index()
+             .melt(id_vars="monat", var_name="standort", value_name="mittel")
+             .head(4))
+```
+:::
+
 ## Typische Aufgaben
 
+**Die fünf Verben nebeneinander**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+df |>
+  dplyr::filter(alter > 40) |>
+  dplyr::select(name, miete, lage) |>
+  dplyr::mutate(pro_qm = miete / flaeche) |>
+  dplyr::arrange(dplyr::desc(miete)) |>
+  dplyr::summarise(mittel = mean(miete), n = dplyr::n(), .by = lage)
+```
+
+## Python
+
+```python
+(df.query("alter > 40")
+   [["name", "miete", "lage", "flaeche"]]
+   .assign(pro_qm=lambda d: d["miete"] / d["flaeche"])
+   .sort_values("miete", ascending=False)
+   .groupby("lage")
+   .agg(mittel=("miete", "mean"), n=("miete", "size")))
+```
+
+:::
+
+**Tabellen verbinden**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+dplyr::left_join(bestellungen, artikel, by = "artikel_id")
+```
+
+## Python
+
+```python
+bestellungen.merge(artikel, on="artikel_id", how="left")
+```
+
+:::
+
+**Zwischen lang und breit wechseln**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+tidyr::pivot_longer(breit, cols = -id, names_to = "jahr", values_to = "wert")
+tidyr::pivot_wider(lang, names_from = jahr, values_from = wert)
+```
+
+## Python
+
+```python
+lang = breit.melt(id_vars="id", var_name="jahr", value_name="wert")
+breit = lang.pivot(index="id", columns="jahr", values="wert").reset_index()
+```
+
+:::
+
+**Kategorien zusammenfassen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+dplyr::case_when(
+  wert < 10 ~ "klein",
+  wert < 100 ~ "mittel",
+  TRUE ~ "gross"
+)
+```
+
+## Python
+
+```python
+pd.cut(df["wert"], bins=[-np.inf, 10, 100, np.inf],
+       labels=["klein", "mittel", "gross"])
+```
+
+:::
+
 ## Verlinkte Ressourcen
+
+- [dplyr: Referenz](https://dplyr.tidyverse.org/)
+- [pandas: Vergleich mit R](https://pandas.pydata.org/docs/getting_started/comparison/comparison_with_r.html)
