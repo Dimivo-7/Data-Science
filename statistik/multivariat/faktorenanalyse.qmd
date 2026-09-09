@@ -1,32 +1,556 @@
 ---
 title: "Faktorenanalyse"
-description: "Latente Faktoren schätzen, Rotation und Abgrenzung zur PCA."
+description: "Latente Faktoren schätzen, Rotation und Abgrenzung zur Hauptkomponentenanalyse."
 categories: ["Faktorenanalyse", "Dimensionsreduktion", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 30
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(psych)
+
+set.seed(2026)
+
+# Neun Fragebogenitems, erzeugt aus zwei latenten Faktoren plus Eigenanteil.
+n <- 400
+service <- rnorm(n)     # Zufriedenheit mit der Betreuung
+anlage <- rnorm(n)      # Zufriedenheit mit Geraeten und Raeumen
+
+item <- function(faktor, ladung, rauschen = 1) {
+  round(3 + ladung * faktor + rnorm(n, 0, rauschen), 2)
+}
+
+fragebogen <- data.frame(
+  freundlich   = item(service, 0.85),
+  beratung     = item(service, 0.80),
+  erreichbar   = item(service, 0.70),
+  hilfsbereit  = item(service, 0.75),
+  geraete      = item(anlage, 0.85),
+  sauberkeit   = item(anlage, 0.75),
+  garderobe    = item(anlage, 0.70),
+  platzangebot = item(anlage, 0.65),
+  parkplatz    = item(rnorm(n), 0.30)          # laedt auf keinen Faktor
+)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+from factor_analyzer import FactorAnalyzer
+
+rng = np.random.default_rng(2026)
+
+n = 400
+service = rng.normal(size=n)
+anlage = rng.normal(size=n)
+
+def item(faktor, ladung, rauschen=1.0):
+    return (3 + ladung * faktor + rng.normal(0, rauschen, n)).round(2)
+
+fragebogen = pd.DataFrame({
+    "freundlich": item(service, 0.85),
+    "beratung": item(service, 0.80),
+    "erreichbar": item(service, 0.70),
+    "hilfsbereit": item(service, 0.75),
+    "geraete": item(anlage, 0.85),
+    "sauberkeit": item(anlage, 0.75),
+    "garderobe": item(anlage, 0.70),
+    "platzangebot": item(anlage, 0.65),
+    "parkplatz": item(rng.normal(size=n), 0.30),
+})
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Welche wenigen nicht beobachtbaren Grössen erzeugen die Korrelationen zwischen vielen beobachteten Variablen? |
+| Zielvariable | keine, das Verfahren ist unüberwacht |
+| Eingang | mehrere metrische oder als metrisch behandelte Variablen, meist Fragebogenitems |
+| Was die Methode liefert | Ladungsmatrix nach Rotation, Kommunalitäten, erklärte Varianz je Faktor, Faktorwerte |
+| R-Funktion | `psych::fa(daten, nfactors = 2, rotate = "oblimin")` |
+| Python-Funktion | `FactorAnalyzer(n_factors=2, rotation="oblimin").fit(daten)` |
+| Verwandte Methoden | [Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd), Strukturgleichungsmodelle |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Welche Dimensionen misst ein Fragebogen wirklich,
+lassen sich zwanzig Items zu drei Skalen zusammenfassen, misst eine Skala das,
+was sie messen soll.
+
+Der Unterschied zur [Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) ist
+nicht rechnerischer Feinschliff, sondern die Denkrichtung. Die
+Hauptkomponentenanalyse fasst beobachtete Variablen zusammen: Die Komponente ist
+eine Summe der Items. Die Faktorenanalyse unterstellt das Gegenteil: Es gibt
+nicht beobachtbare Grössen, und die Items sind deren Ausprägungen plus
+Eigenanteil. Wer nach Ursachen fragt, braucht die Faktorenanalyse; wer nur
+verdichten will, die Komponentenanalyse.
+
+| Situation | Stattdessen |
+|---|---|
+| Nur Verdichtung, keine Deutung als Ursache | [Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) |
+| Die Faktorstruktur ist bereits bekannt und soll geprüft werden | konfirmatorische Faktorenanalyse, Strukturgleichungsmodelle |
+| Gruppen von Personen statt Dimensionen von Items | [k-Means](k-means.qmd) |
+| Es gibt eine Zielvariable | [Regression](../regression/index.qmd) |
+| Items sind binär oder stark schief | Faktorenanalyse auf polychorischen Korrelationen |
+| Weniger als etwa drei Items je erwartetem Faktor | keine sinnvolle Schätzung möglich |
+
 ## Grundidee und Modell
+
+Jedes Item wird als Kombination gemeinsamer Faktoren und eines Eigenanteils
+beschrieben:
+
+$$x_j = \lambda_{j1} F_1 + \dots + \lambda_{jm} F_m + e_j$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $x_j$ | beobachtetes Item $j$, standardisiert |
+| $F_k$ | latenter Faktor $k$, nicht beobachtbar |
+| $\lambda_{jk}$ | Ladung: wie stark Faktor $k$ auf Item $j$ wirkt |
+| $e_j$ | Eigenanteil des Items, alles Nichtgemeinsame samt Messfehler |
+| Kommunalität | Anteil der Varianz von $x_j$, den die Faktoren erklären, also die Summe der quadrierten Ladungen |
+| Uniqueness | eins minus Kommunalität, der Eigenanteil |
+
+Der Unterschied zur Komponentenanalyse steckt genau in $e_j$: Die
+Faktorenanalyse modelliert nur die **gemeinsame** Varianz und lässt den
+Eigenanteil ausdrücklich draussen. Deshalb sind ihre Ladungen in der Regel etwas
+kleiner, und deshalb ist sie das richtige Werkzeug, wenn Messfehler eine Rolle
+spielt.
+
+**Rotation** löst ein Problem der Deutbarkeit: Die Lage der Faktoren im Raum ist
+nicht eindeutig bestimmt, man kann sie drehen, ohne die Anpassung zu ändern.
+Gedreht wird auf Einfachstruktur, also darauf, dass jedes Item möglichst nur auf
+einem Faktor hoch lädt. Orthogonale Rotation, etwa Varimax, hält die Faktoren
+unkorreliert; oblique Rotation, etwa Oblimin, erlaubt Korrelation zwischen ihnen.
+Bei inhaltlich verwandten Dimensionen ist oblique die realistischere Annahme.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Genügend Korrelation | Die Items hängen zusammen | Korrelationsmatrix, Bartlett-Test, KMO-Kriterium | Keine gemeinsamen Faktoren auffindbar | Items überarbeiten, Analyse abbrechen |
+| Genügend Beobachtungen | Faustregel: mindestens fünf bis zehn je Item, nie unter 100 | n zählen | Ladungen instabil, Struktur nicht reproduzierbar | mehr Daten, weniger Items |
+| Genügend Items je Faktor | mindestens drei, besser vier | Struktur planen | Faktor nicht identifizierbar | Items ergänzen oder Faktoren zusammenlegen |
+| Metrisch oder annähernd metrisch | Korrelationen sind sinnvoll interpretierbar | Skalenniveau, Verteilung der Items | Ladungen verzerrt | polychorische Korrelationen |
+| Lineare Zusammenhänge | Ladungen beschreiben lineare Wirkung | Streudiagramme | Struktur wird verfehlt | Transformation |
+| Keine extremen Ausreisser | Korrelationen nicht von Einzelfällen getrieben | Ausreisserdiagnostik | Faktoren richten sich auf Ausreisser aus | Ursachen prüfen |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: voraussetzungen-fa-r
+round(cor(fragebogen), 2)
+
+# Eignung der Korrelationsmatrix
+KMO(fragebogen)$MSA                                    # gesamtes KMO-Mass
+cortest.bartlett(cor(fragebogen), n = nrow(fragebogen))$p.value
+```
+
+## Python
+
+```{python}
+#| label: voraussetzungen-fa-py
+from factor_analyzer.factor_analyzer import (calculate_kmo,
+                                            calculate_bartlett_sphericity)
+
+print(fragebogen.corr().round(2))
+print("KMO gesamt:", round(calculate_kmo(fragebogen)[1], 3))
+chi2, p = calculate_bartlett_sphericity(fragebogen)
+print("Bartlett p:", f"{p:.3g}")
+```
+
+:::
+
+Die Korrelationsmatrix zeigt zwei Blöcke: die vier Service-Items untereinander
+und die vier Anlage-Items untereinander. Das Item zum Parkplatz korreliert mit
+nichts.
+
+Das KMO-Mass beurteilt, ob die Matrix überhaupt für eine Faktorenanalyse taugt;
+Werte über 0.7 gelten als gut, unter 0.5 als unbrauchbar. Der Bartlett-Test prüft,
+ob die Matrix von der Einheitsmatrix abweicht, also ob es Korrelationen gibt.
+Beide sind Eingangsprüfungen: Sie sagen, ob man anfangen darf, nicht ob das
+Ergebnis gut ist.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-fa-r
+efa <- fa(fragebogen, nfactors = 2, rotate = "oblimin", fm = "ml")
+
+print(efa$loadings, cutoff = 0.3)
+round(data.frame(kommunalitaet = efa$communality,
+                 eigenanteil = efa$uniquenesses), 3)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-fa-py
+efa = FactorAnalyzer(n_factors=2, rotation="oblimin", method="ml").fit(fragebogen)
+
+ladungen = pd.DataFrame(efa.loadings_, index=fragebogen.columns,
+                        columns=["F1", "F2"]).round(3)
+print(ladungen.where(ladungen.abs() >= 0.3, ""))
+
+print(pd.DataFrame({
+    "kommunalitaet": efa.get_communalities().round(3),
+    "eigenanteil": (1 - efa.get_communalities()).round(3),
+}, index=fragebogen.columns))
+```
+
+:::
+
+Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 400
+Beobachtungen, neun Items, davon vier aus einem Faktor Betreuung, vier aus einem
+Faktor Anlage und eines ohne Bezug. Die Ladungen unterhalb von 0.3 werden
+ausgeblendet, weil die Ladungsmatrix dadurch lesbar wird; das ist eine
+Darstellungsentscheidung, keine inhaltliche.
 
 ## Output lesen
 
+R, `psych::fa()`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `loadings` | Ladung je Item und Faktor nach Rotation | ab etwa 0.4 als bedeutsam, ab 0.3 erwähnenswert |
+| `communality` | Anteil der Itemvarianz, den die Faktoren erklären | unter 0.3 heisst: Item passt nicht zur Struktur |
+| `uniquenesses` | Eigenanteil, eins minus Kommunalität | hoch bei Items, die etwas Eigenes messen |
+| `SS loadings` | Summe der quadrierten Ladungen je Faktor | Beitrag des Faktors, in Varianzeinheiten |
+| `Proportion Var` | Anteil der Gesamtvarianz je Faktor | summiert über Faktoren die gemeinsame Varianz |
+| `Cor of factors` | Korrelation zwischen den Faktoren | nur bei obliquer Rotation vorhanden |
+| `Mean item complexity` | wie viele Faktoren ein Item durchschnittlich braucht | nahe 1 heisst gute Einfachstruktur |
+| `RMSEA`, `TLI`, `BIC` | Anpassungsmasse | RMSEA unter 0.06 gilt als gut, aber vor allem bei bestätigenden Modellen aussagekräftig |
+| Warnung `Heywood case` | eine Kommunalität über eins | Modell überparametrisiert; Faktorenzahl reduzieren |
+
+Python, `FactorAnalyzer`:
+
+| Zugriff | Was er liefert | Unterschied zu R |
+|---|---|---|
+| `loadings_` | Ladungsmatrix nach Rotation | Zeilen sind Items, wie in R |
+| `get_communalities()` | Kommunalitäten | wie `communality` |
+| `get_factor_variance()` | Summe der Ladungen, Anteil, kumuliert | in R Teil der Ausgabe von `print` |
+| `get_uniquenesses()` | Eigenanteile | wie `uniquenesses` |
+| `phi_` | Faktorkorrelationen bei obliquer Rotation | wie `Cor of factors` |
+| keine Anpassungsmasse | RMSEA und Ähnliches fehlen | in R vorhanden |
+| kein Abschneiden der Anzeige | Filterung selbst vornehmen | in R über `cutoff =` |
+
+Ein Unterschied in der Vorgabe: R verwendet in `fa()` standardmässig Oblimin,
+Python ohne Angabe keine Rotation. Ohne Rotation ist die Ladungsmatrix fast immer
+unlesbar, deshalb gehört sie ausdrücklich gesetzt.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: klare Zweifaktorenstruktur
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-a-fa-r
+#| fig-cap: "Eigenwerte der Korrelationsmatrix. Zwei Werte über eins, danach der Knick."
+#| fig-height: 3.2
+eigen_werte <- eigen(cor(fragebogen))$values
+
+plot(eigen_werte, type = "b", pch = 16, xlab = "Faktor", ylab = "Eigenwert",
+     main = "Screeplot")
+abline(h = 1, lty = 2)
+
+round(efa$Vaccounted[c("SS loadings", "Proportion Var", "Cumulative Var"), ], 3)
+round(efa$score.cor, 3)
+```
+
+## Python
+
+```{python}
+#| label: fig-szenario-a-fa-py
+#| fig-cap: "Dieselben Eigenwerte in Python."
+#| fig-height: 3.2
+import matplotlib.pyplot as plt
+
+eigenwerte = FactorAnalyzer(n_factors=9, rotation=None).fit(fragebogen) \
+    .get_eigenvalues()[0]
+
+fig, ax = plt.subplots(figsize=(7, 3.2))
+ax.plot(range(1, 10), eigenwerte, "o-", color="#2166ac")
+ax.axhline(1, linestyle="--", color="black", linewidth=0.8)
+ax.set_xlabel("Faktor")
+ax.set_ylabel("Eigenwert")
+plt.show()
+
+varianz = pd.DataFrame(efa.get_factor_variance(),
+                       index=["SS loadings", "Anteil", "kumuliert"],
+                       columns=["F1", "F2"])
+print(varianz.round(3))
+print("Faktorkorrelation:", np.round(efa.phi_, 3).tolist())
+```
+
+:::
+
+Der Screeplot zeigt zwei Eigenwerte über eins und danach einen Knick; das
+bestätigt die Wahl von zwei Faktoren. Die Ladungsmatrix aus der Durchführung
+zeigt Einfachstruktur: Die vier Service-Items laden hoch auf den einen Faktor,
+die vier Anlage-Items auf den anderen, und kein Item lädt auf beiden bedeutsam.
+
+Die Deutung kommt nicht aus der Rechnung, sondern von den Items: Der erste Faktor
+lässt sich als Zufriedenheit mit der Betreuung lesen, der zweite als
+Zufriedenheit mit der Anlage. Ein Faktor ohne inhaltliche Beschreibung ist kein
+Ergebnis, sondern eine Zahlenspalte.
+
+Die Faktorkorrelation ist bei obliquer Rotation Teil des Ergebnisses. Ist sie
+nahe null, hätte auch eine orthogonale Rotation genügt; ist sie hoch, sind die
+beiden Dimensionen inhaltlich verwandt.
+
+Ergebnissatz: Eine explorative Faktorenanalyse (Maximum-Likelihood, Oblimin,
+n = 400, KMO wie ausgegeben) ergibt zwei Faktoren, die zusammen den ausgegebenen
+Anteil der Varianz erklären. Faktor 1 lädt auf die vier Items zur Betreuung,
+Faktor 2 auf die vier Items zur Anlage; die Faktoren korrelieren mit dem
+ausgegebenen Wert.
+
+### Szenario B: ein Item, das nicht passt
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-b-fa-r
+round(sort(efa$communality), 3)
+round(efa$loadings["parkplatz", ], 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-fa-py
+kommunalitaeten = pd.Series(efa.get_communalities(), index=fragebogen.columns)
+print(kommunalitaeten.sort_values().round(3))
+print(ladungen.loc["parkplatz"])
+```
+
+:::
+
+Das Item zum Parkplatz hat die niedrigste Kommunalität und lädt auf keinen
+Faktor bedeutsam. Aussage: Es misst etwas Eigenes, das mit den beiden gefundenen
+Dimensionen nichts zu tun hat. Das ist ein Befund, kein Fehler.
+
+Das Vorgehen: Ein solches Item wird entfernt, wenn es zur Fragestellung nicht
+beiträgt, oder es bleibt als eigenständige Frage stehen, die nicht in eine Skala
+eingeht. Was nicht geht, ist es einer Skala zuzuschlagen, weil dort noch Platz
+ist; die Skala misst dann etwas Vermischtes.
+
+Ergebnissatz: Das Item zum Parkplatz lädt auf keinen Faktor (Kommunalität wie
+ausgegeben) und wird nicht in eine Skala aufgenommen.
+
+### Szenario C: Fallstrick zu viele Faktoren
+
+Wer die Faktorenzahl zu hoch wählt, bekommt Faktoren, die von einzelnen Items
+getragen werden, und im Extremfall eine unmögliche Lösung.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-c-fa-r
+#| warning: true
+efa_zu_viele <- fa(fragebogen, nfactors = 4, rotate = "oblimin", fm = "ml")
+
+print(efa_zu_viele$loadings, cutoff = 0.3)
+round(efa_zu_viele$Vaccounted["Proportion Var", ], 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-fa-py
+efa_viele = FactorAnalyzer(n_factors=4, rotation="oblimin", method="ml").fit(fragebogen)
+
+viele = pd.DataFrame(efa_viele.loadings_, index=fragebogen.columns,
+                     columns=[f"F{i+1}" for i in range(4)]).round(3)
+print(viele.where(viele.abs() >= 0.3, ""))
+print("Anteil je Faktor:", np.round(efa_viele.get_factor_variance()[1], 3).tolist())
+```
+
+:::
+
+Erkennbar ist das Problem an drei Zeichen: Die zusätzlichen Faktoren erklären nur
+wenige Prozent der Varianz, sie tragen jeweils nur ein oder zwei Items, und die
+Ladungen der ursprünglich klaren Struktur werden unschärfer. Häufig kommt eine
+Warnung zu einem Heywood-Fall dazu, also einer Kommunalität über eins, was
+inhaltlich unmöglich ist und ein überparametrisiertes Modell anzeigt.
+
+Das Vorgehen: Die Faktorenzahl wird nicht nach der erklärten Varianz gewählt, denn
+die steigt mit jedem Faktor. Herangezogen werden der Screeplot, die
+Parallelanalyse, die inhaltliche Deutbarkeit und die Forderung, dass jeder Faktor
+mindestens drei Items mit bedeutsamer Ladung trägt.
+
+Ergebnissatz: Eine Lösung mit vier Faktoren erklärt kaum mehr Varianz, erzeugt
+aber zwei Faktoren mit weniger als drei tragenden Items; berichtet wird die
+Zweifaktorenlösung.
+
+### Weiteres Szenario: die Faktorenzahl bestimmen
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-parallel-fa-r
+#| fig-cap: "Parallelanalyse: verglichen wird mit Eigenwerten aus Zufallsdaten gleicher Grösse."
+#| fig-height: 3.4
+parallel <- fa.parallel(fragebogen, fa = "fa", plot = TRUE, n.iter = 20)
+parallel$nfact
+```
+
+## Python
+
+```{python}
+#| label: szenario-d-fa-py
+# Parallelanalyse von Hand: Eigenwerte der Daten gegen Zufallsdaten
+echt = FactorAnalyzer(n_factors=9, rotation=None).fit(fragebogen).get_eigenvalues()[0]
+
+zufall = np.zeros((20, 9))
+for i in range(20):
+    daten = pd.DataFrame(rng.normal(size=fragebogen.shape))
+    zufall[i] = FactorAnalyzer(n_factors=9, rotation=None).fit(daten).get_eigenvalues()[0]
+
+vergleich = pd.DataFrame({"daten": echt.round(2),
+                          "zufall_mittel": zufall.mean(axis=0).round(2)},
+                         index=[f"F{i+1}" for i in range(9)])
+print(vergleich)
+print("Faktoren über dem Zufallsniveau:", int((echt > zufall.mean(axis=0)).sum()))
+```
+
+:::
+
+Die Parallelanalyse vergleicht die Eigenwerte der Daten mit denen aus
+Zufallsdaten derselben Grösse. Behalten werden die Faktoren, deren Eigenwert über
+dem Zufallsniveau liegt. Sie ist dem blossen Eigenwertkriterium überlegen, weil
+sie die Anzahl Items und Beobachtungen berücksichtigt.
 
 ## Interpretationsfallen
 
+- **Faktoren sind keine gemessenen Grössen.** Sie sind Modellkonstrukte, deren
+  Deutung von den Items kommt und nicht von der Rechnung.
+- **Faktorenanalyse ist keine Komponentenanalyse.** Die eine modelliert
+  gemeinsame Varianz und Messfehler, die andere verdichtet beobachtete Varianz.
+  Wer Ladungen der einen mit Komponenten der anderen vergleicht, vergleicht
+  Verschiedenes.
+- **Erklärte Varianz taugt nicht zur Faktorenwahl.** Sie steigt mit jedem
+  Faktor; entscheidend sind Screeplot, Parallelanalyse und Deutbarkeit.
+- **Rotation ändert die Anpassung nicht.** Sie verbessert nur die Lesbarkeit.
+  Wer verschiedene Rotationen ausprobiert, bis eine These bestätigt ist, betreibt
+  keine Analyse.
+- **Ladungsschwellen sind Konvention.** 0.3 oder 0.4 sind Faustregeln, keine
+  Grenzen mit statistischer Bedeutung.
+- **Ein Heywood-Fall ist ein Warnsignal**, keine Formalie: Eine Kommunalität über
+  eins ist unmöglich und heisst, dass das Modell zu gross ist.
+- **Explorativ ist nicht bestätigend.** Wer eine Struktur an denselben Daten
+  findet und dort prüft, prüft nichts. Bestätigung braucht neue Daten und ein
+  konfirmatorisches Modell.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> Eine explorative Faktorenanalyse ([Schätzmethode], [Rotation], n = [n],
+> KMO = [Wert], Bartlett p = [p]) ergibt [Anzahl] Faktoren, die zusammen [Anteil]
+> der Varianz erklären. Faktor 1 lädt hoch auf [Items] und wird als [Deutung]
+> gelesen, Faktor 2 auf [Items] als [Deutung]. Die Faktoren korrelieren mit
+> [Wert]. Item [Name] wurde wegen einer Kommunalität von [Wert] nicht
+> berücksichtigt.
+
+Genannt werden: Schätzmethode und Rotation, n, Eignungsmasse, Kriterium für die
+Faktorenzahl, die Ladungsmatrix mit Schwelle, Kommunalitäten, erklärte Varianz,
+Faktorkorrelationen und die inhaltliche Deutung jedes Faktors.
+
+Beispiel für eine Ergebnistabelle:
+
+| Item | Faktor 1 | Faktor 2 | Kommunalität |
+|---|---|---|---|
+| freundlich | | | |
+| beratung | | | |
+| geraete | | | |
+| sauberkeit | | | |
+| erklärte Varianz | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt der explorativen Faktorenanalyse |
+|---|---|
+| [Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) | Verdichtung ohne Anspruch auf latente Ursachen |
+| Konfirmatorische Faktorenanalyse | die Struktur ist theoretisch vorgegeben und soll geprüft werden |
+| Strukturgleichungsmodelle | Faktoren sollen zusätzlich untereinander in Beziehung stehen |
+| [k-Means](k-means.qmd) | Gruppen von Personen statt Dimensionen von Items |
+| Item-Response-Modelle | binäre oder stark abgestufte Items, Fähigkeitsmessung |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Wann ist die Faktorenanalyse der Hauptkomponentenanalyse vorzuziehen?
+
+- [x] Wenn dahinterliegende, nicht beobachtbare Grössen unterstellt werden ~
+      Richtig. Die Faktorenanalyse modelliert gemeinsame Varianz und trennt den
+      Eigenanteil ab, was bei Fragebogenitems mit Messfehler der passende Ansatz
+      ist. Wer nur verdichten will, nimmt Komponenten.
+- [ ] Wenn mehr als zehn Variablen vorliegen ~ Die Anzahl entscheidet nicht.
+- [ ] Wenn die Variablen unkorreliert sind ~ Dann funktioniert keines der beiden
+      Verfahren.
+:::
+
+::: {.quiz}
+Ein Item hat eine Kommunalität von 0.12. Was heisst das?
+
+- [x] Die Faktoren erklären nur 12 Prozent seiner Varianz; es passt nicht zur
+      Struktur ~ Richtig. Das Item misst etwas Eigenes. Es wird entfernt oder als
+      Einzelfrage geführt, aber keiner Skala zugeschlagen.
+- [ ] Das Item ist unzuverlässig gemessen ~ Möglich, aber die Kommunalität
+      unterscheidet Messfehler nicht von inhaltlicher Eigenständigkeit.
+- [ ] Es lädt auf allen Faktoren gleich stark ~ Das wäre eine hohe
+      Kommunalität bei schlechter Einfachstruktur.
+:::
+
+::: {.quiz}
+Die Vier-Faktoren-Lösung erklärt mehr Varianz als die Zwei-Faktoren-Lösung. Ist
+sie deshalb besser?
+
+- [ ] Ja, mehr erklärte Varianz ist besser ~ Sie steigt mit jedem zusätzlichen
+      Faktor, ganz unabhängig davon, ob er etwas bedeutet.
+- [x] Nein, entscheidend sind Deutbarkeit und tragende Items je Faktor ~ Richtig.
+      Ein Faktor mit einem oder zwei Items ist kein Faktor. Herangezogen werden
+      Screeplot, Parallelanalyse und die inhaltliche Beschreibbarkeit.
+- [ ] Das entscheidet der Bartlett-Test ~ Der prüft nur, ob überhaupt
+      Korrelationen vorliegen.
+:::
+
+::: {.quiz}
+Was ändert eine oblique Rotation gegenüber einer orthogonalen?
+
+- [x] Sie erlaubt Korrelation zwischen den Faktoren ~ Richtig. Bei inhaltlich
+      verwandten Dimensionen ist das die realistischere Annahme, und die
+      Faktorkorrelation wird Teil des Ergebnisses. Die Anpassung an die Daten
+      ändert sich dadurch nicht.
+- [ ] Sie verbessert die Anpassung des Modells ~ Rotation ändert die Anpassung
+      nicht, nur die Lesbarkeit.
+- [ ] Sie erzwingt Einfachstruktur ~ Sie strebt sie an, erzwingen kann sie
+      keine Rotation.
+:::
+
 ## Verlinkte Ressourcen
+
+- [psych: Vignette zur Faktorenanalyse](https://cran.r-project.org/web/packages/psych/vignettes/intro.pdf)
+- [factor_analyzer: Dokumentation](https://factor-analyzer.readthedocs.io/en/latest/)
+- [Was Parallelanalyse leistet](https://link.springer.com/article/10.1007/BF02289447)
