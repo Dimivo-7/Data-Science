@@ -231,13 +231,15 @@ Python, `ExponentialSmoothing`:
 | `forecast(h)` | Punktprognose | in R Teil des Ergebnisobjekts |
 | `fittedvalues` | angepasste Werte | wie `fitted()` |
 | `sse`, `aic`, `bic` | Anpassungskennzahlen | wie in R |
-| `get_prediction(...)` | Prognoseintervalle | in R direkt in `hw()` enthalten |
+| keine Prognoseintervalle | über `ETSModel` oder `simulate()` zu erzeugen | in R direkt in `hw()` enthalten |
 | keine Fehlermasse | RMSE und MAE selbst rechnen | in R `accuracy()` |
 
-Ein Unterschied, über den man stolpert: R wählt mit `ets()` die Modellstruktur
+Drei Unterschiede, über die man stolpert. R wählt mit `ets()` die Modellstruktur
 automatisch, in Python werden `trend` und `seasonal` von Hand gesetzt. Und
 `initialization_method="estimated"` gehört gesetzt, sonst verwendet statsmodels
-ein einfacheres Startverfahren mit anderen Ergebnissen.
+ein einfacheres Startverfahren mit anderen Ergebnissen. Und `forecast()` liefert
+nur die Punktprognose: Prognoseintervalle gibt es erst über `ETSModel` aus
+`statsmodels.tsa.exponential_smoothing.ets` oder über wiederholte `simulate()`.
 
 ## Ergebnisse interpretieren
 
@@ -269,9 +271,11 @@ fig, ax = plt.subplots()
 ax.plot(training, color="0.5", label="Training")
 ax.plot(test, color="#b2182b", lw=2, label="tatsächlich")
 ax.plot(prognose, color="#2166ac", lw=2, label="Prognose")
-intervall = modell_hw.get_prediction(start=test.index[0], end=test.index[-1]) \
-    .summary_frame(alpha=0.05)
-ax.fill_between(test.index, intervall["pi_lower"], intervall["pi_upper"],
+# Die Holt-Winters-Umsetzung in statsmodels liefert keine analytischen
+# Prognoseintervalle. Das Band hier ist eine Naeherung aus der Streuung der
+# Residuen; exakte Intervalle liefert ETSModel oder simulate().
+band = 1.96 * modell_hw.resid.std(ddof=1)
+ax.fill_between(test.index, prognose - band, prognose + band,
                 color="#2166ac", alpha=0.15)
 ax.set_ylabel("Absatz")
 ax.legend(frameon=False)
@@ -291,9 +295,11 @@ Intervall und ein Fehlermass auf dem Testteil. Ohne Intervall ist eine Prognose
 eine Behauptung; ohne Testteil ist ein gutes Fehlermass auf den Trainingsdaten
 wertlos, weil das Modell diese Werte gesehen hat.
 
-Wie das Intervall wächst, ist ebenfalls Teil der Aussage: Für den ersten
-Prognosemonat ist es schmal, für den zwölften deutlich breiter. Genau deshalb
-gehört der Horizont begrenzt.
+Wie das Intervall wächst, ist ebenfalls Teil der Aussage: In der R-Grafik ist es
+für den ersten Prognosemonat schmal und für den zwölften deutlich breiter. Genau
+deshalb gehört der Horizont begrenzt. Das Band in der Python-Grafik ist dagegen
+über den ganzen Horizont gleich breit, weil es nur aus der Residuenstreuung
+gebaut ist und nicht aus dem Modell stammt.
 
 Ergebnissatz: Holt-Winters mit additivem Trend und additiver Saison (geschätzt auf
 60 Monaten) prognostiziert die folgenden zwölf Monate mit einem RMSE von dem
