@@ -1,16 +1,223 @@
 ---
 title: "seaborn und plotly"
-description: "Statistische Standardgrafiken und interaktive Darstellungen."
+description: "Statistische Standardgrafiken und interaktive Darstellungen in Python."
 categories: ["seaborn", "plotly", "Visualisierung", "Python"]
 quelle: ["PYFR", "DAVI"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 60
 ---
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+sns.set_theme(style="whitegrid", font_scale=0.95)
+rng = np.random.default_rng(2026)
+```
+
 ## Kernideen
+
+- seaborn baut auf matplotlib auf: jede seaborn-Grafik bleibt eine matplotlib-Figur
+- Es erwartet Daten im langen Format, eine Zeile je Beobachtung
+- Statistische Standardgrafiken entstehen mit einem Aufruf statt mit zehn
+- Feinschliff macht man weiterhin über die matplotlib-Achse
+- plotly erzeugt interaktive Grafiken für HTML, nicht für Papier
+- Interaktivität lohnt sich nur, wenn sie eine Frage beantwortet
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [matplotlib](matplotlib.qmd) für Figure und Axes,
+[pandas](../programmierung/pandas.qmd) für die Datenstruktur und
+[Tidy Data](../daten/tidy-data.qmd) für das lange Format. Welche Darstellung zur
+Aufgabe passt, klärt [Diagrammtyp wählen](diagrammtyp-waehlen.qmd).
+:::
+
+### Was seaborn abnimmt
+
+matplotlib zeichnet, seaborn fasst zusammen. Der Unterschied zeigt sich bei
+Standardaufgaben der Datenanalyse: Gruppen vergleichen, Verteilungen
+darstellen, Zusammenhänge mit Trend zeigen. Was in matplotlib mehrere Schritte
+braucht, ist ein Aufruf mit den Spaltennamen.
+
+Die Voraussetzung ist das lange Format: eine Zeile je Beobachtung, eine Spalte je
+Merkmal. Wer im breiten Format arbeitet, formt vorher um, siehe
+[Data Wrangling](../daten/data-wrangling.qmd).
+
+```{python}
+#| label: fig-seaborn-basis-py
+#| fig-cap: "Verteilung je Gruppe mit einem Aufruf, inklusive einzelner Beobachtungen."
+#| fig-height: 3.4
+n = 60
+messung = pd.DataFrame({
+    "standort": np.repeat(["Bern", "Chur", "Sion"], n),
+    "verbrauch": np.concatenate([
+        rng.normal(120, 12, n),
+        rng.normal(95, 9, n),
+        rng.normal(108, 20, n),
+    ]),
+})
+
+fig, ax = plt.subplots(figsize=(7, 3.4))
+sns.boxplot(data=messung, x="standort", y="verbrauch", color="0.85",
+            width=0.5, ax=ax)
+sns.stripplot(data=messung, x="standort", y="verbrauch", size=3,
+              color="#2166ac", alpha=0.6, jitter=0.18, ax=ax)
+ax.set_xlabel("")
+ax.set_ylabel("Verbrauch (Liter)")
+ax.set_title("Sion streut deutlich stärker als die übrigen Standorte")
+plt.show()
+```
+
+Zwei Dinge sind daran typisch. Erstens genügt die Angabe der Spaltennamen,
+seaborn übernimmt Gruppierung und Achsenbeschriftung. Zweitens ist das Ergebnis
+eine gewöhnliche matplotlib-Achse: Titel, Beschriftung und Feinschliff laufen
+weiter über `ax`.
+
+### Die Aufteilung in kleine Teilgrafiken
+
+Der zweite grosse Gewinn ist das Aufteilen nach einer Variablen. Statt fünf
+Farben in einer Grafik entstehen fünf Teilgrafiken mit gemeinsamer Achse, und
+das ist fast immer besser lesbar, siehe
+[Wahrnehmung und Kodierung](wahrnehmung-kodierung.qmd).
+
+```{python}
+#| label: fig-seaborn-facets-py
+#| fig-cap: "Derselbe Zusammenhang, aufgeteilt nach Standort, mit gemeinsamer Achse."
+#| fig-height: 3.2
+messung["laufzeit"] = np.concatenate([
+    rng.uniform(3, 18, n), rng.uniform(3, 18, n), rng.uniform(3, 18, n)
+])
+messung["verbrauch"] = 60 + 3.2 * messung["laufzeit"] + rng.normal(0, 8, 3 * n)
+
+raster = sns.relplot(data=messung, x="laufzeit", y="verbrauch", col="standort",
+                     kind="scatter", height=2.6, aspect=0.95, s=18, color="#2166ac")
+raster.set_axis_labels("Laufzeit (Stunden)", "Verbrauch (Liter)")
+raster.set_titles("{col_name}")
+plt.show()
+```
+
+### Die wichtigsten Funktionen
+
+| Aufgabe | Funktion | Bemerkung |
+|---|---|---|
+| Verteilung | `sns.histplot`, `sns.kdeplot`, `sns.ecdfplot` | `ecdfplot` zeigt alle Daten ohne Bandbreitenwahl |
+| Gruppen vergleichen | `sns.boxplot`, `sns.violinplot`, `sns.stripplot` | Box und Punkte kombinieren |
+| Zusammenhang | `sns.scatterplot`, `sns.regplot`, `sns.lmplot` | `regplot` zeichnet Gerade samt Konfidenzband |
+| Mengen | `sns.barplot`, `sns.countplot` | `barplot` aggregiert selbst und zeigt Unsicherheit |
+| Verlauf | `sns.lineplot` | aggregiert mehrere Werte je x automatisch |
+| Matrix | `sns.heatmap` | für Korrelationen, mit `annot=True` beschriftet |
+| Aufteilen | `sns.relplot`, `sns.displot`, `sns.catplot` | die Varianten mit eingebauter Facettierung |
+
+Eine Eigenheit, über die man einmal stolpert: Die Funktionen auf `ax`-Ebene
+(`boxplot`, `scatterplot`) zeichnen in eine bestehende Achse; die Funktionen auf
+Raster-Ebene (`relplot`, `catplot`, `lmplot`) erzeugen eine eigene Figur und
+nehmen deshalb kein `ax`-Argument.
+
+### plotly: wann Interaktivität lohnt
+
+plotly erzeugt Grafiken, die im Browser reagieren: Werte beim Überfahren,
+Zoomen, Serien ein- und ausblenden. Das ist nützlich, wenn die Grafik eine
+Frage beantwortet, die man nicht vorher kennt, etwa beim eigenen Erkunden oder
+in einem Dashboard.
+
+Für Bericht und Druck bleibt die statische Grafik die richtige Wahl: Sie hat
+eine Aussage, und die steht im Titel. Eine interaktive Grafik verschiebt die
+Arbeit zum Publikum, und das ist genau dann falsch, wenn die Aussage feststeht.
+
+```python
+import plotly.express as px
+
+abb = px.scatter(messung, x="laufzeit", y="verbrauch", color="standort",
+                 hover_data=["standort"],
+                 labels={"laufzeit": "Laufzeit (h)", "verbrauch": "Verbrauch (l)"},
+                 title="Verbrauch nach Laufzeit")
+abb.update_layout(template="simple_white")
+abb.show()
+```
+
+Die Beispiele hier sind Listings: plotly ist in der Rechenumgebung dieser Seite
+nicht installiert, und eine interaktive Grafik gehört ohnehin dorthin, wo man
+sie bedienen kann.
+
+::: {.quiz}
+Ein seaborn-Aufruf mit `relplot` soll in eine vorbereitete Achse gezeichnet
+werden, aber `ax=` wird nicht akzeptiert. Warum?
+
+- [x] `relplot` arbeitet auf Rasterebene und erzeugt eine eigene Figur ~ Richtig.
+      Für das Zeichnen in eine bestehende Achse nimmt man die Funktion auf
+      Achsenebene, hier `scatterplot` oder `lineplot`.
+- [ ] Das Argument heisst in seaborn anders ~ Es heisst überall `ax`, existiert
+      aber nur auf Achsenebene.
+- [ ] Die Figur muss vorher geschlossen werden ~ Das ändert nichts.
+:::
+
 ## Typische Aufgaben
 
+**Verteilung je Gruppe, mit den Einzelwerten**
+
+```python
+fig, ax = plt.subplots()
+sns.boxplot(data=df, x="gruppe", y="wert", color="0.85", width=0.5, ax=ax)
+sns.stripplot(data=df, x="gruppe", y="wert", size=3, alpha=0.6, ax=ax)
+```
+
+**Zusammenhang mit Trendlinie**
+
+```python
+sns.regplot(data=df, x="flaeche", y="miete", scatter_kws={"s": 12, "alpha": 0.6})
+```
+
+**Korrelationsmatrix**
+
+```python
+korr = df.select_dtypes("number").corr()
+sns.heatmap(korr, annot=True, fmt=".2f", cmap="vlag", center=0, square=True)
+```
+
+`center=0` ist hier wichtig: Korrelationen haben einen sinnvollen Nullpunkt und
+brauchen eine divergierende Palette, siehe [Farbe](farbe.qmd).
+
+**Nach einer Variablen aufteilen**
+
+```python
+sns.relplot(data=df, x="datum", y="wert", col="standort", col_wrap=3,
+            kind="line", height=2.4)
+```
+
+**Palette und Thema setzen**
+
+```python
+sns.set_theme(style="whitegrid", font_scale=0.95)
+sns.set_palette("colorblind")          # geprueft auf Farbfehlsichtigkeit
+```
+
+**Feinschliff über matplotlib**
+
+```python
+ax.set_ylim(0, None)
+ax.set_title("Sion streut stärker als die übrigen Standorte")
+ax.legend_.remove()                    # Legende weg, dafuer direkt beschriften
+fig.savefig("abbildung.png", dpi=300, bbox_inches="tight")
+```
+
+**Interaktiv für ein Dashboard**
+
+```python
+import plotly.express as px
+abb = px.line(df, x="datum", y="wert", color="standort", template="simple_white")
+abb.write_html("verlauf.html", include_plotlyjs="cdn")
+```
+
 ## Verlinkte Ressourcen
+
+- [seaborn: Beispielgalerie](https://seaborn.pydata.org/examples/index.html)
+- [seaborn: Achsen- gegenüber Rasterfunktionen](https://seaborn.pydata.org/tutorial/function_overview.html)
+- [plotly express: Übersicht](https://plotly.com/python/plotly-express/)

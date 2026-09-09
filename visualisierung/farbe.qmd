@@ -1,14 +1,167 @@
 ---
 title: "Farbe"
-description: "Paletten nach Datentyp, Kontrast und Farbfehlsichtigkeit."
-categories: ["Farbe", "Wahrnehmung", "Visualisierung"]
+description: "Paletten nach Aufgabe, Kontrast und Farbfehlsichtigkeit."
+categories: ["Farbe", "Wahrnehmung", "Visualisierung", "R"]
 quelle: ["DAVI"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 70
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+```
+
 ## Kernideen
+
+- Farbe hat drei Aufgaben: unterscheiden, Mengen darstellen, hervorheben
+- Zu jeder Aufgabe gehört ein Palettentyp, und Verwechslungen führen in die Irre
+- Ein Farbverlauf über nominale Kategorien behauptet eine Rangfolge
+- Regenbogenpaletten erzeugen Grenzen, die in den Daten nicht existieren
+- Rot-Grün darf nie der einzige Unterscheidungskanal sein
+- Der Graustufentest zeigt, ob eine Grafik zu viel Last auf den Farbton legt
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Wahrnehmung und Kodierung](wahrnehmung-kodierung.qmd), vor
+allem die Rangfolge der Kanäle: Farbton eignet sich zum Unterscheiden, nicht zum
+Ablesen von Mengen.
+:::
+
+### Drei Aufgaben, drei Palettentypen
+
+| Aufgabe | Palettentyp | Wann | Beispiele |
+|---|---|---|---|
+| Unterscheiden | qualitativ | nominale Kategorien ohne Reihenfolge | Okabe-Ito, ColorBrewer Set2 |
+| Menge darstellen | sequenziell | kontinuierliche Werte mit einer Richtung | Viridis, Blues |
+| Abweichung zeigen | divergierend | Werte mit sinnvollem Nullpunkt: Saldo, Veränderung | RdBu, BrBG |
+| Hervorheben | Akzent auf Grau | eine Gruppe soll auffallen | alles grau, eine Serie farbig |
+
+Der häufigste Fehler ist die Verwechslung der ersten beiden. Ein Farbverlauf über
+Standorte suggeriert, dass Bern "weniger" ist als Zürich. Umgekehrt zerlegt eine
+qualitative Palette eine kontinuierliche Grösse in scheinbare Klassen.
+
+```{r}
+#| label: fig-paletten-r
+#| fig-cap: "Dieselben Werte mit einer sequenziellen Palette, mit Regenbogen und in Graustufen umgerechnet."
+#| fig-height: 3.2
+werte <- seq(0, 1, length.out = 40)
+zeige_palette <- function(farben, titel) {
+  image(matrix(seq_along(farben), ncol = 1), col = farben, axes = FALSE, main = titel)
+}
+
+par(mfrow = c(1, 3), mar = c(1, 1, 3, 1))
+zeige_palette(hcl.colors(40, "Viridis"), "sequenziell (Viridis)")
+zeige_palette(rainbow(40), "Regenbogen")
+zeige_palette(grey.colors(40, start = 0, end = 1), "Graustufen")
+par(mfrow = c(1, 1))
+```
+
+Die sequenzielle Palette wird gleichmässig heller; der Regenbogen springt
+dagegen zwischen Gelb und Grün und erzeugt dort scheinbare Kanten, die in den
+Daten nicht vorkommen. Genau deshalb ist er für Mengen ungeeignet, obwohl er
+seit Jahrzehnten Voreinstellung in vielen Programmen war.
+
+### Hervorheben heisst grau werden lassen
+
+Die wirksamste Farbentscheidung ist meist, Farbe wegzunehmen. Alles in Grau,
+und genau das, worum es geht, in einer Farbe. Das Auge findet die Ausnahme
+sofort, und die Grafik verträgt zusätzlich Beschriftung, ohne unruhig zu werden.
+
+```{r}
+#| label: fig-akzent-r
+#| fig-cap: "Links jede Serie in einer eigenen Farbe, rechts eine hervorgehoben."
+#| fig-height: 3.2
+jahre <- 2019:2026
+verlauf <- data.frame(
+  jahr = rep(jahre, 5),
+  region = rep(c("Nord", "Ost", "Sued", "West", "Mitte"), each = 8),
+  wert = c(100, 104, 108, 111, 113, 116, 118, 121,
+           98, 101, 103, 104, 106, 108, 109, 111,
+           95, 99, 106, 115, 126, 138, 151, 166,
+           102, 103, 105, 106, 107, 108, 110, 112,
+           99, 100, 102, 103, 105, 106, 107, 109)
+)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+matplot(jahre, matrix(verlauf$wert, nrow = 8), type = "l", lty = 1, lwd = 2,
+        col = hcl.colors(5, "Dark 3"), xlab = "Jahr", ylab = "Index",
+        main = "fünf Farben")
+matplot(jahre, matrix(verlauf$wert, nrow = 8), type = "l", lty = 1,
+        lwd = c(1.5, 1.5, 3, 1.5, 1.5),
+        col = c("grey75", "grey75", "#b2182b", "grey75", "grey75"),
+        xlab = "Jahr", ylab = "Index", main = "ein Akzent")
+par(mfrow = c(1, 1))
+```
+
+Beide Bilder enthalten dieselben Daten. Rechts ist die Aussage sofort da: eine
+Region wächst, die übrigen nicht.
+
+### Farbfehlsichtigkeit
+
+Etwa acht Prozent der Männer sehen Rot und Grün nur eingeschränkt getrennt. Das
+ist kein Randfall, sondern in jeder grösseren Runde jemand.
+
+Drei Regeln decken das ab:
+
+1. **Rot-Grün nie als einzigen Kanal.** Zusätzlich Form, Position oder direkte
+   Beschriftung einsetzen.
+2. **Geprüfte Paletten verwenden.** Viridis für Verläufe, Okabe-Ito für
+   Kategorien sind dafür entworfen.
+3. **Nicht auf Farbe allein hervorheben.** Ein Akzent verträgt zusätzlich eine
+   dickere Linie oder eine Beschriftung.
+
+Die Okabe-Ito-Palette für Kategorien, als Werte zum Kopieren:
+
+```r
+okabe_ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442",
+               "#0072B2", "#D55E00", "#CC79A7", "#000000")
+```
+
+### Der Graustufentest
+
+Die schnellste Prüfung: die Grafik in Graustufen ansehen. Ist sie dann nicht
+mehr lesbar, trägt der Farbton zu viel Last. Das betrifft nicht nur den Druck,
+sondern auch Projektoren, schlechte Bildschirme und eben eingeschränktes
+Farbsehen.
+
+Zwei weitere Prüfungen gehören dazu: Kontrast zwischen Text und Hintergrund von
+mindestens 4.5 zu 1, und keine Information, die ausschliesslich über Farbe
+kodiert ist.
+
+::: {.quiz}
+Eine Karte färbt Kantone nach Produktgruppe mit einer Verlaufsfarbskala von
+Hellblau bis Dunkelblau. Was stimmt daran nicht?
+
+- [x] Ein Verlauf behauptet eine Reihenfolge, die es bei Produktgruppen nicht
+      gibt ~ Richtig. Nominale Kategorien brauchen eine qualitative Palette;
+      der Verlauf legt nahe, dass dunkleres Blau "mehr" bedeutet.
+- [ ] Blau ist für Karten ungeeignet ~ Die Farbwahl selbst ist unproblematisch,
+      der Palettentyp ist es nicht.
+- [ ] Es fehlt eine Legende ~ Auch mit Legende bliebe die falsche Suggestion.
+:::
+
+::: {.quiz}
+Eine Grafik unterscheidet zwei Serien allein durch Rot und Grün. Warum genügt
+das nicht?
+
+- [ ] Weil Rot und Grün sich zu ähnlich sind ~ Für die meisten sind sie gut
+      unterscheidbar; das Problem ist spezifischer.
+- [x] Weil rund acht Prozent der Männer diese beiden nicht sicher trennen ~
+      Richtig. Ein zweiter Kanal muss dazu: verschiedene Linienarten, direkte
+      Beschriftung oder Position in getrennten Teilgrafiken.
+- [ ] Weil Rot immer Warnung bedeutet ~ Die Bedeutungskonvention ist ein
+      eigenes Thema, aber nicht der Grund hier.
+:::
+
 ## Verlinkte Ressourcen
+
+- [Claus Wilke: Color basics](https://clauswilke.com/dataviz/color-basics.html)
+- [ColorBrewer: Paletten nach Aufgabe](https://colorbrewer2.org/)
+- [Viridis: Farbverläufe für alle Sehtypen](https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html)
+- [Okabe-Ito-Palette](https://jfly.uni-koeln.de/color/)

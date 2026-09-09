@@ -1,14 +1,154 @@
 ---
 title: "Diagrammtyp wählen"
 description: "Vom Datentyp und der Botschaft zur passenden Darstellung."
-categories: ["Visualisierung", "Wahrnehmung"]
+categories: ["Visualisierung", "Wahrnehmung", "R", "Python"]
 quelle: ["DAVI"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 30
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(7)
+```
+
 ## Kernideen
+
+- Die Wahl folgt der Aufgabe, nicht dem Aussehen
+- Sechs Aufgaben decken fast alles ab: Mengen, Verteilungen, Anteile, Zusammenhänge, Räume, Unsicherheit
+- Das Skalenniveau entscheidet, welche Darstellung überhaupt zulässig ist
+- Ordinale Reihenfolgen sind Information und werden nie alphabetisch sortiert
+- Ab etwa sieben Kategorien ist Farbe als Unterscheidung erledigt
+- Nicht beim Lieblingsdiagramm anfangen, sondern bei der Aussage
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Wahrnehmung und Kodierung](wahrnehmung-kodierung.qmd) für die
+Rangfolge der Kanäle und [Skalenniveaus](../statistik/grundlagen/skalenniveaus.qmd)
+für die Frage, was mit welchen Daten zulässig ist. Umgesetzt wird die Wahl mit
+[ggplot2](ggplot2.qmd), [matplotlib](matplotlib.qmd) oder
+[seaborn und plotly](seaborn-plotly.qmd).
+:::
+
+### Zuerst die Aufgabe bestimmen
+
+Die Frage lautet nicht "welches Diagramm sieht gut aus", sondern "welche Art von
+Aussage soll transportiert werden". Sechs Aufgaben decken den Alltag ab:
+
+| Aufgabe | Typische Frage | Kandidaten |
+|---|---|---|
+| Mengen vergleichen | Wer ist grösser, wie viel liegt dazwischen? | Balken, sortierter Punktplot, Heatmap |
+| Verteilung zeigen | Wie streuen die Werte, gibt es mehrere Gipfel? | Histogramm, Dichtekurve, Boxplot, Violinplot, empirische Verteilungsfunktion |
+| Anteile zeigen | Wie verteilt sich ein Ganzes? | gestapelter Balken, Torte bei wenigen Teilen, Mosaik, Treemap |
+| Zusammenhang zeigen | Hängen zwei Grössen zusammen? | Streudiagramm, Blasendiagramm, Steigungsdiagramm |
+| Verlauf zeigen | Wie entwickelt sich etwas über die Zeit? | Liniendiagramm, Flächendiagramm, Kalender-Heatmap |
+| Unsicherheit zeigen | Wie genau ist die Schätzung? | Fehlerbalken, Konfidenzband, Quantilpunkte |
+
+Der Weg ist immer derselbe: Aussage formulieren, Aufgabe zuordnen, aus den
+Kandidaten den einfachsten wählen, der die Aussage trägt.
+
+### Dann das Skalenniveau prüfen
+
+| Datentyp | Beispiel | Zulässig | Nicht zulässig |
+|---|---|---|---|
+| kontinuierlich | Temperatur, Umsatz, Dauer | Position, Länge, Fläche, Farbverlauf | |
+| diskret gezählt | Stückzahl, Anzahl Personen | wie kontinuierlich | zwischen den Punkten interpolieren |
+| kategorial mit Ordnung | Note, klein/mittel/gross | Position, sequenzieller Farbverlauf | alphabetisch sortieren |
+| kategorial ohne Ordnung | Standort, Produktgruppe | Form, qualitative Palette | Farbverlauf, der eine Rangfolge suggeriert |
+
+Drei Regeln fallen daraus:
+
+1. **Ordinale Reihenfolge erhalten.** "klein, mittel, gross" alphabetisch
+   sortiert ergibt "gross, klein, mittel" und macht die Grafik unlesbar.
+2. **Nominale Daten nicht mit Verlaufsfarben.** Ein Verlauf behauptet eine
+   Ordnung, die es nicht gibt.
+3. **Ab etwa sieben Kategorien** ist Farbe als Unterscheidungskanal am Ende.
+   Dann trennt Position, etwa als sortierte Balken oder kleine Teilgrafiken.
+
+### Die drei häufigsten Fehlgriffe
+
+**Torte statt Balken.** Winkel liest sich schlechter als Länge. Eine Torte
+funktioniert bei zwei, höchstens drei Teilen und wenn es um "ungefähr die
+Hälfte" geht, nicht um Rangfolgen.
+
+**Linie über kategoriale Achsen.** Eine Linie behauptet, dass es zwischen den
+Punkten Werte gibt. Zwischen "Bern" und "Chur" gibt es keine.
+
+**Doppelachse für zwei Grössen.** Die zweite Achse ist frei skalierbar, also ist
+auch der suggerierte Gleichlauf frei erfunden, siehe
+[irreführende Darstellungen](irrefuehrende-darstellungen.qmd). Besser sind zwei
+Teilgrafiken übereinander mit gemeinsamer Zeitachse.
+
+### Ein Beispiel für Verteilungen
+
+Boxplots fassen fünf Kennzahlen zusammen und verbergen dabei die Form. Zwei
+völlig verschiedene Verteilungen können identische Boxplots haben:
+
+```{r}
+#| label: fig-verteilung-r
+#| fig-cap: "Oben zwei Verteilungen als Boxplot, unten dieselben Daten als Histogramm."
+#| fig-height: 4.2
+einfach <- rnorm(300, mean = 50, sd = 10)
+zweigipflig <- c(rnorm(150, mean = 38, sd = 4), rnorm(150, mean = 62, sd = 4))
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2.5, 1))
+boxplot(einfach, horizontal = TRUE, main = "eingipflig, Boxplot", ylim = c(20, 80))
+boxplot(zweigipflig, horizontal = TRUE, main = "zweigipflig, Boxplot", ylim = c(20, 80))
+hist(einfach, breaks = 25, main = "eingipflig, Histogramm", xlab = "Wert", xlim = c(20, 80))
+hist(zweigipflig, breaks = 25, main = "zweigipflig, Histogramm", xlab = "Wert", xlim = c(20, 80))
+par(mfrow = c(1, 1))
+```
+
+Die Boxplots sehen ähnlich aus, die Histogramme zeigen den Unterschied sofort.
+Für den Vergleich vieler Gruppen bleibt der Boxplot trotzdem gut: er ist
+kompakt und macht Lage und Streuung vergleichbar. Bei wenigen Gruppen ist die
+Form wichtiger, dann sind Histogramm, Dichtekurve oder Violinplot die bessere
+Wahl.
+
+### Wenn es viele Beobachtungen sind
+
+Ab einigen tausend Punkten überdecken sich die Marken im Streudiagramm, und man
+sieht nur noch eine Wolke. Drei Auswege, in dieser Reihenfolge:
+
+1. Transparenz und kleinere Punkte
+2. Binning: Sechsecke oder Kacheln statt Punkte
+3. Zusammenfassen: Dichtekonturen oder eine Glättungslinie über die Punkte
+
+::: {.quiz}
+Eine Umfrage misst Zufriedenheit auf einer Skala von "sehr unzufrieden" bis
+"sehr zufrieden". Die Grafik sortiert die Balken alphabetisch. Was ist der
+Fehler?
+
+- [x] Die Ordnung der Kategorien ist Information und geht verloren ~ Richtig.
+      Ordinale Stufen haben eine inhaltliche Reihenfolge; alphabetisch sortiert
+      steht "sehr zufrieden" neben "sehr unzufrieden", und das Muster ist nicht
+      mehr erkennbar.
+- [ ] Balken sind für Umfragedaten ungeeignet ~ Sie sind hier passend, nur die
+      Sortierung stimmt nicht.
+- [ ] Die Skala ist zu fein ~ Fünf Stufen sind unproblematisch.
+:::
+
+::: {.quiz}
+Zwei Kennzahlen mit sehr verschiedenen Einheiten sollen im Zeitverlauf
+verglichen werden. Was ist die bessere Lösung als eine zweite y-Achse?
+
+- [ ] Beide Reihen auf denselben Wertebereich normieren und in eine Grafik ~
+      Möglich, aber die Normierung ist ebenso willkürlich wie die zweite Achse.
+- [x] Zwei Teilgrafiken übereinander mit gemeinsamer Zeitachse ~ Richtig. Der
+      zeitliche Zusammenhang bleibt sichtbar, und keine Skalierung suggeriert
+      einen Gleichlauf, den es so nicht gibt.
+- [ ] Eine Kennzahl weglassen ~ Das löst das Darstellungsproblem, aber nicht die
+      Aufgabe.
+:::
+
 ## Verlinkte Ressourcen
+
+- [Claus Wilke: Directory of Visualizations](https://clauswilke.com/dataviz/directory-of-visualizations.html)
+- [From Data to Viz: Entscheidungsbaum nach Datentyp](https://www.data-to-viz.com/)
+- [The R Graph Gallery](https://r-graph-gallery.com/)

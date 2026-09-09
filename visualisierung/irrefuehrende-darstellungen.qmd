@@ -1,14 +1,191 @@
 ---
 title: "Irreführende Darstellungen"
 description: "Abgeschnittene Achsen, falsche Flächen und andere Verzerrungen."
-categories: ["Visualisierungsethik", "Visualisierung", "Wahrnehmung"]
+categories: ["Visualisierungsethik", "Visualisierung", "Wahrnehmung", "R"]
 quelle: ["DAVI"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 80
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+```
+
 ## Kernideen
+
+- Bei Balken kodiert die Länge die Menge, also muss die Achse bei null beginnen
+- Bei Linien trägt die Steigung die Aussage, deshalb ist ein Ausschnitt dort zulässig
+- Eine zweite y-Achse macht jeden gewünschten Gleichlauf herstellbar
+- Flächen nach dem Radius zu skalieren vervierfacht den Eindruck
+- Der gewählte Zeitraum kann die Aussage stärker bestimmen als die Daten
+- Die meisten Verzerrungen entstehen aus Bequemlichkeit, nicht aus Absicht
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Wahrnehmung und Kodierung](wahrnehmung-kodierung.qmd). Fast
+jede Verzerrung hier ist ein Missbrauch eines Kanals: Länge, Fläche oder
+Steigung sagt etwas anderes als die Zahl.
+:::
+
+### Die abgeschnittene Achse
+
+Der bekannteste Fall, und der einzige, bei dem die Antwort von der Diagrammart
+abhängt.
+
+```{r}
+#| label: fig-achse-r
+#| fig-cap: "Dieselben vier Werte: links mit Achse ab null, rechts ab 90. Der Eindruck unterscheidet sich um ein Vielfaches."
+#| fig-height: 3.2
+quartale <- c("Q1", "Q2", "Q3", "Q4")
+werte <- c(96, 98, 99, 101)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(werte, names.arg = quartale, col = "grey70", ylim = c(0, 110),
+        ylab = "Index", main = "Achse ab null")
+barplot(werte, names.arg = quartale, col = "grey70", ylim = c(90, 102), xpd = FALSE,
+        ylab = "Index", main = "Achse ab 90")
+par(mfrow = c(1, 1))
+```
+
+Links ist zu sehen, was der Fall ist: die Werte liegen dicht beieinander.
+Rechts sieht dieselbe Veränderung nach einer Verdreifachung aus. Der Grund ist,
+dass die Länge des Balkens die Menge kodiert; halbiert man den Balken, halbiert
+man die behauptete Menge.
+
+Bei einem **Liniendiagramm** ist der Ausschnitt dagegen zulässig und oft
+notwendig, weil dort nicht die Länge, sondern die Steigung die Aussage trägt.
+Eine Zeitreihe von Körpertemperaturen ab null darzustellen wäre unsinnig. Wer
+den Ausschnitt wählt, sagt es in der Achsenbeschriftung.
+
+### Die zweite y-Achse
+
+Zwei Kurven mit verschiedenen Einheiten, jede an ihrer eigenen Achse: Das ist
+die eleganteste Art, einen Zusammenhang zu behaupten, den es nicht gibt. Weil
+beide Skalen frei wählbar sind, lässt sich fast jeder Gleichlauf herstellen und
+mit einer anderen Skalierung wieder auflösen.
+
+Was stattdessen geht: zwei Teilgrafiken übereinander mit gemeinsamer Zeitachse.
+Der zeitliche Bezug bleibt, die Suggestion verschwindet. Wenn es wirklich um den
+Zusammenhang geht, ist das Streudiagramm der beiden Grössen ehrlicher, siehe
+[Korrelation](../statistik/grundlagen/korrelation.qmd).
+
+### Flächen und Radien
+
+Wird eine Menge über eine Kreisfläche dargestellt und dabei der Radius
+proportional zur Menge gesetzt, wächst die Fläche im Quadrat. Der doppelte Wert
+sieht dann viermal so gross aus.
+
+```{r}
+#| label: fig-flaeche-r
+#| fig-cap: "Zwei Werte im Verhältnis 1 zu 2. Links korrekt über die Fläche skaliert, rechts über den Radius."
+#| fig-height: 3.2
+kreis <- function(x, y, r, farbe = "grey70") {
+  winkel <- seq(0, 2 * pi, length.out = 200)
+  polygon(x + r * cos(winkel), y + r * sin(winkel), col = farbe, border = NA)
+}
+
+par(mfrow = c(1, 2), mar = c(1, 1, 3, 1))
+plot(NA, xlim = c(0, 10), ylim = c(0, 6), axes = FALSE, xlab = "", ylab = "",
+     main = "Fläche verdoppelt (richtig)")
+kreis(2.5, 3, 1); kreis(6.5, 3, sqrt(2))
+plot(NA, xlim = c(0, 10), ylim = c(0, 6), axes = FALSE, xlab = "", ylab = "",
+     main = "Radius verdoppelt (falsch)")
+kreis(2.5, 3, 1); kreis(7, 3, 2)
+par(mfrow = c(1, 1))
+```
+
+Links stimmt der Eindruck mit dem Verhältnis überein, rechts wirkt der zweite
+Wert viermal so gross. Dasselbe gilt für Bildsymbole, die in beide Richtungen
+skaliert werden.
+
+### Der gewählte Ausschnitt
+
+Ein Zeitraum lässt sich so wählen, dass er eine Aussage trägt, die über den
+ganzen Verlauf nicht gilt. Das ist besonders wirksam, weil nichts an der Grafik
+falsch ist: Die Zahlen stimmen, die Achsen stimmen, nur der Ausschnitt ist die
+Botschaft.
+
+Die Gegenprobe ist einfach: Wie sieht dieselbe Grafik mit dem doppelten
+Zeitraum aus? Ändert sich die Aussage, gehört der längere Zeitraum in die
+Grafik oder wenigstens die Begründung für den Ausschnitt in die Bildunterschrift.
+
+### Aggregation, die den Effekt umdreht
+
+Wenn Gruppen zusammengefasst werden, kann der Gesamttrend in die andere Richtung
+zeigen als jede einzelne Gruppe. Das ist kein Darstellungsfehler, sondern ein
+Denkfehler, der sich in der Darstellung fortsetzt, und er heisst
+Simpson-Paradox.
+
+```{r}
+#| label: fig-simpson-r
+#| fig-cap: "Innerhalb jeder Gruppe fällt der Zusammenhang, über alle Gruppen hinweg steigt er."
+#| fig-height: 3.4
+gruppe <- rep(c("A", "B", "C"), each = 20)
+x <- c(seq(1, 4, length.out = 20), seq(4, 7, length.out = 20), seq(7, 10, length.out = 20))
+y <- c(seq(6, 4, length.out = 20), seq(9, 7, length.out = 20), seq(12, 10, length.out = 20))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(x, y, pch = 16, col = "grey40", xlab = "x", ylab = "y",
+     main = "alle Daten zusammen")
+abline(lm(y ~ x), lwd = 2)
+plot(x, y, pch = 16, col = as.factor(gruppe), xlab = "x", ylab = "y",
+     main = "nach Gruppen getrennt")
+for (g in unique(gruppe)) {
+  idx <- gruppe == g
+  abline(lm(y[idx] ~ x[idx]), lwd = 2, col = which(unique(gruppe) == g))
+}
+par(mfrow = c(1, 1))
+```
+
+Links steigt die Gerade, rechts fällt sie in jeder Gruppe. Welche Darstellung
+richtig ist, entscheidet die Fragestellung, nicht die Grafik: Geht es um den
+Effekt innerhalb vergleichbarer Fälle, ist die getrennte Darstellung die
+richtige.
+
+### Die kurze Prüfliste
+
+- Beginnt die Balkenachse bei null?
+- Steht eine zweite y-Achse in der Grafik, und lässt sie sich vermeiden?
+- Sind Flächen nach Fläche skaliert und nicht nach Radius?
+- Ist der Zeitraum begründet, und was zeigt der doppelte?
+- Verstecken zusammengefasste Gruppen einen gegenläufigen Effekt?
+- Ist die Achse nirgends umgedreht, ohne dass es dasteht?
+- Trägt der Titel eine Aussage, die die Daten hergeben?
+
+::: {.quiz}
+Ein Liniendiagramm zeigt die Serverauslastung zwischen 68 und 74 Prozent, die
+Achse beginnt bei 65. Ist das irreführend?
+
+- [ ] Ja, jede Achse muss bei null beginnen ~ Diese Regel gilt für Balken, nicht
+      allgemein.
+- [x] Nein, bei Linien trägt die Steigung die Aussage ~ Richtig. Eine Achse ab
+      null würde den Verlauf zu einer flachen Linie zusammendrücken und die
+      Information vernichten. Der Ausschnitt gehört beschriftet, mehr nicht.
+- [ ] Nur, wenn die Schwankung klein ist ~ Die Grösse der Schwankung ändert die
+      Logik nicht.
+:::
+
+::: {.quiz}
+Eine Infografik stellt zwei Beträge als Kreise dar, der zweite ist doppelt so
+gross im Durchmesser. Wie liest das Publikum das?
+
+- [x] Als das Vierfache, weil die Fläche quadratisch wächst ~ Richtig. Wahrnommen
+      wird die Fläche. Wer den Betrag verdoppeln will, multipliziert den Radius
+      mit der Wurzel aus zwei.
+- [ ] Als das Doppelte, weil der Durchmesser verdoppelt wurde ~ Der Durchmesser
+      ist nicht der Kanal, über den gelesen wird.
+- [ ] Das hängt von der Legende ab ~ Eine Legende korrigiert den optischen
+      Eindruck nicht.
+:::
+
 ## Verlinkte Ressourcen
+
+- [Claus Wilke: Common pitfalls of color use und weitere Fallen](https://clauswilke.com/dataviz/)
+- [Calling Bullshit: Misleading Axes](https://www.callingbullshit.org/tools/tools_misleading_axes.html)
+- [Simpson-Paradox erklärt](https://plato.stanford.edu/entries/paradox-simpson/)

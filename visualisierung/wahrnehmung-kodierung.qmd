@@ -1,14 +1,165 @@
 ---
 title: "Wahrnehmung und Kodierung"
 description: "Welche visuellen Kanäle genau abgelesen werden und welche nicht."
-categories: ["Wahrnehmung", "Visualisierung"]
+categories: ["Wahrnehmung", "Visualisierung", "R"]
 quelle: ["DAVI"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 20
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+```
+
 ## Kernideen
+
+- Visuelle Kanäle sind unterschiedlich genau ablesbar, und die Rangfolge ist bekannt
+- Position auf gemeinsamer Skala schlägt alles andere
+- Die wichtigste Variable bekommt den genauesten Kanal
+- Einige Merkmale werden vorbewusst erfasst, in weniger als einer Viertelsekunde
+- Hervorhebung wirkt nur durch Kontrast, und Kontrast nur, wenn er selten ist
+- Was keine Daten darstellt, konkurriert mit dem, was Daten darstellt
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Zielbild und Publikum](zielbild-audience.qmd), weil die
+Aussage bestimmt, welche Variable den genauesten Kanal verdient. Die
+Konsequenzen für die Wahl stehen unter
+[Diagrammtyp wählen](diagrammtyp-waehlen.qmd).
+:::
+
+### Die Rangfolge der Kanäle
+
+Daten werden über visuelle Eigenschaften kodiert: Position, Länge, Winkel,
+Fläche, Helligkeit, Farbton, Form. Diese Kanäle sind nicht gleichwertig. Wie
+genau Menschen Werte daraus ablesen, ist untersucht, und die Reihenfolge ist
+stabil:
+
+| Rang | Kanal | Beispiel | Genauigkeit |
+|---|---|---|---|
+| 1 | Position auf gemeinsamer Skala | Punkte in einem Streudiagramm, Balkenenden an einer Achse | sehr hoch |
+| 2 | Position auf getrennten Skalen | dieselbe Grösse in mehreren kleinen Teilgrafiken | hoch |
+| 3 | Länge | Balken ohne gemeinsame Grundlinie | hoch |
+| 4 | Winkel und Steigung | Tortensegmente, Linienanstieg | mittel |
+| 5 | Fläche | Blasengrösse, Kacheln | niedrig |
+| 6 | Helligkeit und Sättigung | Heatmap-Zellen | niedrig |
+| 7 | Farbton | Kategorienfarben | nur für Unterscheidung, nicht für Mengen |
+
+Daraus folgt die praktisch wichtigste Regel der ganzen Visualisierung: **Die
+Variable, auf die es ankommt, bekommt Position.** Alles andere sind
+Zusatzkanäle.
+
+Der Vergleich zwischen Balken und Torte zeigt den Unterschied unmittelbar. Es
+sind dieselben fünf Zahlen:
+
+```{r}
+#| label: fig-kanaele-r
+#| fig-cap: "Dieselben Anteile als Länge und als Winkel. Links ist die Reihenfolge auf einen Blick lesbar, rechts nicht."
+#| fig-height: 3.4
+anteile <- data.frame(
+  kategorie = c("A", "B", "C", "D", "E"),
+  wert = c(23, 21, 19, 19, 18)
+)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(anteile$wert, names.arg = anteile$kategorie, col = "grey70",
+        ylab = "Anteil in Prozent", main = "Länge")
+pie(anteile$wert, labels = anteile$kategorie, col = grey.colors(5),
+    main = "Winkel")
+par(mfrow = c(1, 1))
+```
+
+Links ist sofort erkennbar, dass A am grössten und E am kleinsten ist. Rechts
+sind C und D nicht zu unterscheiden, und die Reihenfolge von B und C ist
+Ratesache. Die Zahlen sind identisch.
+
+### Was das Auge vorbewusst erfasst
+
+Bestimmte Merkmale werden in unter einer Viertelsekunde erfasst, ohne dass man
+suchen muss. Dazu gehören Farbe, Grösse, Ausrichtung, Umschliessung und
+räumliche Lage. Genau diese Merkmale eignen sich zum Hervorheben.
+
+Die Bedingung ist Seltenheit. Ein roter Balken unter zwanzig grauen springt ins
+Auge; fünf rote Balken unter fünfzehn grauen sind nur noch bunt.
+
+```{r}
+#| label: fig-hervorhebung-r
+#| fig-cap: "Links ein Akzent unter vielen grauen Balken, rechts fünf Akzente. Rechts hebt nichts mehr hervor."
+#| fig-height: 3.2
+werte <- c(12, 15, 9, 22, 14, 11, 17, 13, 19, 10)
+eine <- c(rep("grau", 3), "akzent", rep("grau", 6))
+viele <- c("akzent", "grau", "akzent", "akzent", "grau", "akzent", "grau", "akzent", "grau", "grau")
+farben <- function(x) ifelse(x == "akzent", "#b2182b", "grey80")
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(werte, col = farben(eine), main = "ein Akzent", ylab = "Wert")
+barplot(werte, col = farben(viele), main = "fünf Akzente", ylab = "Wert")
+par(mfrow = c(1, 1))
+```
+
+Daraus folgt eine einfache Arbeitsregel: alles grau, und genau das eine, worum
+es geht, farbig. Mehr dazu unter [Farbe](farbe.qmd).
+
+### Was keine Daten zeigt, stört
+
+Jedes Element einer Grafik konkurriert um Aufmerksamkeit. Was keine
+Information trägt, nimmt sie dem, was welche trägt.
+
+Streichkandidaten, in dieser Reihenfolge:
+
+- dreidimensionale Effekte, Schatten, Farbverläufe in Flächen
+- dichte Gitternetze, dicke Rahmen, Hintergrundfüllungen
+- Legenden, wenn die Serien direkt beschriftet werden können
+- doppelte Information: Werte an den Balken und Achsenbeschriftung und Legende
+
+Nicht streichen: Achsenbeschriftung mit Einheit, Datenquelle, und den Titel mit
+der Aussage. Sparsamkeit, die den Kontext entfernt, macht die Grafik
+unbrauchbar; das Ziel ist weniger Zierrat, nicht weniger Information.
+
+### Die Konsequenz für die Praxis
+
+Wer die Kanalrangfolge kennt, trifft drei Entscheidungen fast automatisch:
+
+1. **Vergleich von Mengen:** Balken, weil Länge auf gemeinsamer Skala.
+2. **Zusammenhang zweier Grössen:** Streudiagramm, weil Position zweimal.
+3. **Viele Kategorien:** nicht Farbe, sondern Position, etwa als sortierter
+   Balken oder als kleine Teilgrafiken nebeneinander.
+
+::: {.quiz}
+In einem Streudiagramm sollen zusätzlich Umsatz und Region dargestellt werden.
+Welche Zuordnung ist richtig?
+
+- [x] Umsatz auf die Fläche, Region auf den Farbton ~ Richtig. Region ist
+      kategorial und ungeordnet, dafür ist Farbton der passende Kanal. Umsatz
+      ist eine Menge und muss ungenauer abgelesen werden können, also Fläche.
+      Die beiden Hauptvariablen behalten die Position.
+- [ ] Umsatz auf den Farbton, Region auf die Fläche ~ Farbton kodiert keine
+      Mengen, und eine Fläche suggeriert bei Kategorien eine Rangfolge.
+- [ ] Beide auf die Position ~ Die Positionen sind bereits vergeben.
+:::
+
+::: {.quiz}
+Eine Grafik mit zwanzig Balken hebt sechs davon farbig hervor. Was ist das
+Problem?
+
+- [ ] Sechs Farben sind zu viele für die Palette ~ Auch mit einer einzigen
+      Akzentfarbe bliebe das Problem.
+- [x] Kontrast wirkt nur, wenn er selten ist ~ Richtig. Bei sechs von zwanzig
+      hervorgehobenen Balken erfasst das Auge keine Ausnahme mehr, sondern zwei
+      Gruppen. Wer sechs zeigen muss, sortiert stattdessen und trennt die
+      Gruppen räumlich.
+- [ ] Balken eignen sich nicht für Hervorhebung ~ Sie eignen sich gut, solange
+      der Akzent die Ausnahme bleibt.
+:::
+
 ## Verlinkte Ressourcen
+
+- [Claus Wilke: Fundamentals of Data Visualization, Kapitel zu Aesthetics](https://clauswilke.com/dataviz/aesthetic-mapping.html)
+- [Cleveland und McGill: Graphical Perception](https://www.jstor.org/stable/2288400)
+- [Tufte: The Visual Display of Quantitative Information](https://www.edwardtufte.com/tufte/books_vdqi)
