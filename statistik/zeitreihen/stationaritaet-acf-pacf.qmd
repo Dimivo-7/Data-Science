@@ -4,11 +4,308 @@ description: "Differenzieren, ADF-Test und wie man Korrelogramme liest."
 categories: ["Zeitreihen", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 20
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(tseries)
+
+set.seed(2026)
+
+monate <- 120
+t <- 1:monate
+
+# drei Reihen: stationaer, mit Trend, mit Saison
+weiss <- ts(rnorm(monate, 100, 10), start = c(2016, 1), frequency = 12)
+mit_trend <- ts(100 + 0.8 * t + rnorm(monate, 0, 10), start = c(2016, 1), frequency = 12)
+mit_saison <- ts(100 + 25 * sin(2 * pi * t / 12) + rnorm(monate, 0, 8),
+                 start = c(2016, 1), frequency = 12)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller, kpss, acf, pacf
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+rng = np.random.default_rng(2026)
+
+monate = 120
+t = np.arange(1, monate + 1)
+zeitachse = pd.date_range("2016-01-01", periods=monate, freq="MS")
+
+weiss = pd.Series(rng.normal(100, 10, monate), index=zeitachse)
+mit_trend = pd.Series(100 + 0.8 * t + rng.normal(0, 10, monate), index=zeitachse)
+mit_saison = pd.Series(100 + 25 * np.sin(2 * np.pi * t / 12) + rng.normal(0, 8, monate),
+                       index=zeitachse)
+```
+
 ## Kernideen
+
+- Stationär heisst: Mittelwert, Streuung und Abhängigkeitsstruktur ändern sich nicht über die Zeit
+- Fast alle Modelle setzen Stationarität voraus, echte Reihen erfüllen sie selten
+- Differenzieren entfernt Trend, saisonales Differenzieren die Saison
+- Die ACF zeigt die Gesamtabhängigkeit, die PACF die direkte
+- Aus dem Muster der beiden lässt sich die Modellordnung ablesen
+- Ein Test auf Stationarität ergänzt die Grafik, er ersetzt sie nicht
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Zeitreihen: Grundlagen](zeitreihen-grundlagen.qmd) für Trend und
+Saison sowie [Korrelation](../grundlagen/korrelation.qmd). Was darauf aufbaut,
+ist die Modellwahl unter [ARIMA und SARIMA](arima-sarima.qmd).
+:::
+
+### Was stationär bedeutet
+
+Eine Reihe ist stationär, wenn ihre statistischen Eigenschaften nicht davon
+abhängen, wann man hinschaut: konstanter Mittelwert, konstante Streuung, und eine
+Abhängigkeitsstruktur, die nur vom Abstand zweier Zeitpunkte abhängt, nicht von
+deren Lage.
+
+Der Grund für die Wichtigkeit ist praktisch: Ein Modell lernt aus der
+Vergangenheit für die Zukunft. Wenn sich das Niveau laufend verschiebt, gibt es
+kein Niveau, das sich lernen liesse. Deshalb wird eine Reihe zuerst stationär
+gemacht und danach modelliert.
+
+Drei typische Verletzungen und ihr Gegenmittel:
+
+| Verletzung | Erkennbar an | Gegenmittel |
+|---|---|---|
+| Trend | Niveau wandert | einmal differenzieren |
+| Saison | wiederkehrendes Muster | saisonal differenzieren, Abstand gleich Periode |
+| wachsende Streuung | Zacken werden höher | logarithmieren oder Wurzel ziehen |
+
+### Differenzieren
+
+Differenzieren heisst, statt der Werte deren Veränderungen zu betrachten:
+$\Delta y_t = y_t - y_{t-1}$. Aus einem linearen Trend wird damit ein konstantes
+Niveau. Saisonales Differenzieren nimmt den Abstand einer ganzen Periode:
+$y_t - y_{t-12}$ bei Monatsdaten.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-differenzieren-r
+#| fig-cap: "Oben die Reihe mit Trend, unten ihre erste Differenz. Das Niveau ist danach konstant."
+#| fig-height: 3.6
+par(mfrow = c(2, 1), mar = c(3, 4, 2.5, 1))
+plot(mit_trend, ylab = "Wert", main = "mit Trend")
+plot(diff(mit_trend), ylab = "Differenz", main = "einmal differenziert")
+abline(h = 0, lty = 2)
+par(mfrow = c(1, 1))
+
+round(c(sd_original = sd(mit_trend), sd_differenz = sd(diff(mit_trend))), 2)
+```
+
+## Python
+
+```{python}
+#| label: fig-differenzieren-py
+#| fig-cap: "Dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.6
+fig, achsen = plt.subplots(2, 1, figsize=(7, 3.6))
+achsen[0].plot(mit_trend, color="#2166ac")
+achsen[0].set_title("mit Trend")
+achsen[1].plot(mit_trend.diff().dropna(), color="#b2182b")
+achsen[1].axhline(0, linestyle="--", color="black", linewidth=0.8)
+achsen[1].set_title("einmal differenziert")
+plt.tight_layout()
+plt.show()
+
+print({"sd_original": round(float(mit_trend.std(ddof=1)), 2),
+       "sd_differenz": round(float(mit_trend.diff().std(ddof=1)), 2)})
+```
+
+:::
+
+Zwei Beobachtungen. Erstens ist das Niveau nach dem Differenzieren konstant.
+Zweitens ist die Streuung der Differenzen kleiner als die der Originalreihe, weil
+der Trendanteil verschwunden ist. Das ist der Normalfall; nimmt die Streuung durch
+Differenzieren dagegen zu, war die Reihe schon stationär und man hat sie
+verschlechtert.
+
+Diese Überdifferenzierung ist ein häufiger Fehler: Jede zusätzliche Differenz
+erzeugt künstliche negative Abhängigkeit und macht das Modell schlechter. In der
+Praxis genügt fast immer eine Differenz, gelegentlich zwei, mehr praktisch nie.
+
+### ACF und PACF
+
+Beide beschreiben, wie stark ein Wert mit früheren Werten zusammenhängt, aber
+verschieden.
+
+Die **Autokorrelationsfunktion (ACF)** gibt die Korrelation zwischen $y_t$ und
+$y_{t-k}$ für jeden Abstand $k$. Sie enthält auch indirekte Wirkungen: Wenn heute
+mit gestern und gestern mit vorgestern zusammenhängt, zeigt die ACF auch bei
+Abstand zwei einen Wert, obwohl es keine direkte Verbindung gibt.
+
+Die **partielle Autokorrelationsfunktion (PACF)** entfernt genau diese indirekten
+Wirkungen: Sie gibt die Korrelation zwischen $y_t$ und $y_{t-k}$, nachdem der
+Einfluss aller dazwischenliegenden Zeitpunkte herausgerechnet ist. Es ist dieselbe
+Idee wie der Unterschied zwischen einfacher und
+[multipler Regression](../regression/multiple-lineare-regression.qmd).
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-acf-pacf-r
+#| fig-cap: "ACF und PACF für drei Reihen: weisses Rauschen, mit Trend, mit Saison."
+#| fig-height: 5
+par(mfrow = c(3, 2), mar = c(4, 4, 2.5, 1))
+acf(weiss, main = "weisses Rauschen: ACF")
+pacf(weiss, main = "weisses Rauschen: PACF")
+acf(mit_trend, main = "mit Trend: ACF")
+pacf(mit_trend, main = "mit Trend: PACF")
+acf(mit_saison, main = "mit Saison: ACF")
+pacf(mit_saison, main = "mit Saison: PACF")
+par(mfrow = c(1, 1))
+```
+
+## Python
+
+```{python}
+#| label: fig-acf-pacf-py
+#| fig-cap: "Dieselben sechs Korrelogramme in Python."
+#| fig-height: 5
+fig, achsen = plt.subplots(3, 2, figsize=(7, 5))
+for zeile, (reihe, name) in enumerate([(weiss, "weisses Rauschen"),
+                                       (mit_trend, "mit Trend"),
+                                       (mit_saison, "mit Saison")]):
+    plot_acf(reihe, ax=achsen[zeile, 0], lags=24, title=f"{name}: ACF")
+    plot_pacf(reihe, ax=achsen[zeile, 1], lags=24, title=f"{name}: PACF",
+              method="ywm")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+Die drei Muster sind die, die man wiedererkennen muss:
+
+- **Weisses Rauschen:** Alle Balken liegen innerhalb der Konfidenzgrenzen. Es gibt
+  nichts zu modellieren, und das ist das Ziel für die Residuen eines Modells.
+- **Trend:** Die ACF fällt sehr langsam ab und bleibt lange deutlich über null.
+  Das ist das klassische Zeichen für Nichtstationarität, und es heisst
+  differenzieren, nicht ein Modell mit vielen Ordnungen anpassen.
+- **Saison:** Die ACF zeigt Spitzen bei Abständen, die ein Vielfaches der
+  Periode sind, also bei 12, 24 und so weiter, mit Wellen dazwischen.
+
+### Tests auf Stationarität
+
+Der ADF-Test prüft die Nullhypothese, dass die Reihe **nicht** stationär ist. Ein
+kleiner p-Wert spricht also für Stationarität. Der KPSS-Test dreht die Richtung:
+Dort lautet die Nullhypothese Stationarität, ein kleiner p-Wert spricht dagegen.
+Diese Umkehrung ist die häufigste Verwechslung.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: tests-stationaer-r
+#| warning: true
+reihen <- list(weiss = weiss, mit_trend = mit_trend,
+               differenziert = diff(mit_trend))
+
+for (name in names(reihen)) {
+  adf <- suppressWarnings(adf.test(reihen[[name]]))
+  kp <- suppressWarnings(kpss.test(reihen[[name]]))
+  cat(sprintf("%-14s ADF p = %.3f | KPSS p = %.3f\n", name, adf$p.value, kp$p.value))
+}
+```
+
+## Python
+
+```{python}
+#| label: tests-stationaer-py
+import warnings
+warnings.filterwarnings("ignore")
+
+for name, reihe in [("weiss", weiss), ("mit_trend", mit_trend),
+                    ("differenziert", mit_trend.diff().dropna())]:
+    adf_p = adfuller(reihe)[1]
+    kpss_p = kpss(reihe, nlags="auto")[1]
+    print(f"{name:<14} ADF p = {adf_p:.3f} | KPSS p = {kpss_p:.3f}")
+```
+
+:::
+
+Zu lesen ist die Tabelle so: Für weisses Rauschen und die differenzierte Reihe
+spricht der ADF-Test für Stationarität (kleiner p-Wert) und der KPSS-Test dagegen
+nicht (grosser p-Wert). Für die Reihe mit Trend ist es umgekehrt. Beide Tests
+zeigen also dasselbe, nur mit vertauschten Richtungen.
+
+Wichtig bleibt die Rangfolge: Die Grafik entscheidet, der Test bestätigt. Der
+ADF-Test hat bei kurzen Reihen wenig Schärfe und findet Nichtstationarität dann
+nicht, obwohl sie im Bild offensichtlich ist. Und er prüft nur den Trend, nicht
+die Saison.
+
+::: {.quiz}
+Die ACF einer Reihe fällt über zwanzig Abstände hinweg nur langsam ab. Was ist zu
+tun?
+
+- [x] Differenzieren, die Reihe ist nicht stationär ~ Richtig. Eine langsam
+      abfallende ACF ist das klassische Zeichen für einen Trend. Nach dem
+      Differenzieren wird die ACF neu beurteilt.
+- [ ] Ein Modell mit hoher Ordnung anpassen ~ Damit modelliert man den Trend mit
+      vielen Parametern statt ihn zu entfernen.
+- [ ] Nichts, langsames Abfallen ist normal ~ Bei stationären Reihen fällt die
+      ACF schnell ab.
+:::
+
+::: {.quiz}
+Der ADF-Test ergibt p = 0.42. Was folgt?
+
+- [ ] Die Reihe ist stationär, der p-Wert ist gross ~ Die Richtung ist vertauscht:
+      Beim ADF-Test lautet die Nullhypothese Nichtstationarität.
+- [x] Nichtstationarität kann nicht verworfen werden ~ Richtig. Ein grosser p-Wert
+      heisst hier: Es gibt keinen Beleg für Stationarität. Zusammen mit einer
+      langsam abfallenden ACF spricht das für Differenzieren.
+- [ ] Der Test ist ungültig ~ Er ist gültig, nur schwach bei kurzen Reihen.
+:::
+
+::: {.quiz}
+Nach dem Differenzieren ist die Streuung der Reihe grösser als vorher. Was heisst
+das?
+
+- [x] Die Reihe war schon stationär, es wurde überdifferenziert ~ Richtig.
+      Differenzieren einer stationären Reihe erzeugt künstliche negative
+      Abhängigkeit und vergrössert die Streuung. Die Differenz wird
+      zurückgenommen.
+- [ ] Es muss ein zweites Mal differenziert werden ~ Das verschärft das Problem.
+- [ ] Die Reihe enthält einen Ausreisser ~ Möglich, erklärt aber nicht den
+      systematischen Anstieg der Streuung.
+:::
+
+::: {.quiz}
+Worin unterscheiden sich ACF und PACF?
+
+- [x] Die ACF enthält indirekte Abhängigkeiten, die PACF nur die direkten ~
+      Richtig. Wenn heute mit gestern zusammenhängt und gestern mit vorgestern,
+      zeigt die ACF auch bei Abstand zwei einen Wert; die PACF rechnet die
+      Zwischenzeitpunkte heraus.
+- [ ] Die PACF ist die ACF der differenzierten Reihe ~ Das sind zwei
+      verschiedene Dinge.
+- [ ] Die ACF gilt für stationäre, die PACF für nichtstationäre Reihen ~ Beide
+      werden auf stationären Reihen gelesen.
+:::
+
 ## Verlinkte Ressourcen
+
+- [Forecasting: Principles and Practice, Kapitel 9](https://otexts.com/fpp3/stationarity.html)
+- [tseries: adf.test und kpss.test](https://cran.r-project.org/web/packages/tseries/tseries.pdf)
+- [statsmodels: Stationaritätstests](https://www.statsmodels.org/stable/tsa.html#stationarity-and-unit-root-tests)

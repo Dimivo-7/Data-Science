@@ -1,32 +1,549 @@
 ---
 title: "Glättung"
 description: "Gleitender Durchschnitt und exponentielle Glättung als erste Modelle."
-categories: ["Zeitreihen", "Prognose", "R", "Python"]
+categories: ["Zeitreihen", "Prognose", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 25
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(forecast)
+
+set.seed(2026)
+
+monate <- 72
+t <- 1:monate
+absatz <- ts(round(500 + 4 * t + 60 * sin(2 * pi * t / 12) +
+                     25 * cos(2 * pi * t / 12) + rnorm(monate, 0, 20)),
+             start = c(2020, 1), frequency = 12)
+
+# Trainings- und Testteil: die letzten zwoelf Monate bleiben ungesehen
+training <- window(absatz, end = c(2024, 12))
+test <- window(absatz, start = c(2025, 1))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.holtwinters import SimpleExpSmoothing, ExponentialSmoothing
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+rng = np.random.default_rng(2026)
+
+monate = 72
+t = np.arange(1, monate + 1)
+absatz = pd.Series(
+    np.round(500 + 4 * t + 60 * np.sin(2 * np.pi * t / 12) +
+             25 * np.cos(2 * np.pi * t / 12) + rng.normal(0, 20, monate)),
+    index=pd.date_range("2020-01-01", periods=monate, freq="MS"))
+
+training = absatz.iloc[:60]
+test = absatz.iloc[60:]
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie glättet man Rauschen heraus, und wie prognostiziert man mit einfachen Mitteln? |
+| Zielvariable | eine Zeitreihe |
+| Prädiktoren | keine, nur die eigene Vergangenheit |
+| Was die Methode liefert | geglättete Reihe, Prognose mit Prognoseintervall, Fehlermasse |
+| R-Funktion | `ma()`, `ses()`, `holt()`, `hw()` beziehungsweise `ets()` |
+| Python-Funktion | `rolling().mean()`, `SimpleExpSmoothing()`, `ExponentialSmoothing()` |
+| Verwandte Methoden | [ARIMA und SARIMA](arima-sarima.qmd), [Zeitreihen: Grundlagen](zeitreihen-grundlagen.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Rauschen aus einer Reihe entfernen, um den Verlauf zu
+sehen; eine schnelle Prognose für die nächsten Monate; eine Vergleichsgrundlage,
+gegen die sich ein aufwendigeres Modell beweisen muss.
+
+Glättungsverfahren sind einfach, robust und oft überraschend gut. Ihr Kern ist
+ein gewichteter Mittelwert der Vergangenheit: Der gleitende Durchschnitt gewichtet
+alle Werte im Fenster gleich, die exponentielle Glättung gewichtet neuere Werte
+stärker.
+
+| Situation | Stattdessen |
+|---|---|
+| Die Abhängigkeitsstruktur soll modelliert werden | [ARIMA und SARIMA](arima-sarima.qmd) |
+| Externe Einflussgrössen sollen einfliessen | Regression mit Zeitreihenfehlern |
+| Nur die Struktur soll sichtbar werden, ohne Prognose | Zerlegung, siehe [Grundlagen](zeitreihen-grundlagen.qmd) |
+| Reihe mit vielen Nullen oder sehr sporadisch | eigene Verfahren für spärliche Nachfrage |
+| Umbrüche im Niveau, etwa nach einer Regeländerung | Modell mit Strukturbruch, oder Reihe teilen |
+
 ## Grundidee und Modell
+
+**Gleitender Durchschnitt.** Der Wert an jeder Stelle wird durch das Mittel eines
+Fensters ersetzt. Bei ungerader Fensterbreite $m$:
+
+$$\hat{y}_t = \frac{1}{m} \sum_{j=-(m-1)/2}^{(m-1)/2} y_{t+j}$$
+
+Das ist beschreibend, nicht prognostisch: Es braucht Werte aus der Zukunft und
+verkürzt die Reihe an beiden Enden. Für Saisonbereinigung ist die Fensterbreite die
+Periode, also 12 bei Monatsdaten.
+
+**Exponentielle Glättung.** Hier wird nur die Vergangenheit verwendet, und ältere
+Werte zählen weniger:
+
+$$\hat{y}_{t+1} = \alpha y_t + (1-\alpha)\hat{y}_t$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $\alpha$ | Glättungsparameter zwischen 0 und 1 |
+| $\alpha$ nahe 1 | reagiert schnell, folgt dem Rauschen |
+| $\alpha$ nahe 0 | reagiert träge, glättet stark |
+| $\hat{y}_t$ | bisherige Schätzung des Niveaus |
+
+Die einfache Form kennt nur ein Niveau und prognostiziert deshalb eine waagrechte
+Linie. Zwei Erweiterungen füllen das auf:
+
+| Verfahren | Modelliert | Prognose |
+|---|---|---|
+| Einfach | Niveau | konstant |
+| Holt | Niveau und Trend | Gerade |
+| Holt-Winters | Niveau, Trend und Saison | Gerade mit Saisonfigur |
+
+Alle drei sind Spezialfälle der ETS-Modellfamilie, die in R über `ets()`
+automatisch die passende Variante wählt.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Genügend Perioden für die Saison | mindestens drei, besser vier vollständige | Länge prüfen | Saisonfigur nicht schätzbar | Saison weglassen oder Daten sammeln |
+| Kein Strukturbruch | Das Niveau springt nicht dauerhaft | Grafik | Modell mittelt über zwei Regime | Reihe teilen |
+| Passende Zerlegungsart | additiv oder multiplikativ richtig gewählt | Grafik: wachsen die Zacken | Prognoseintervalle falsch | logarithmieren oder multiplikative Variante |
+| Residuen ohne Struktur | Das Modell hat alles Systematische erfasst | ACF der Residuen, Ljung-Box-Test | Prognose systematisch daneben | Modell erweitern, ARIMA prüfen |
+| Prognose nur über kurze Horizonte | Die Unsicherheit wächst schnell | Prognoseintervall ansehen | Scheingenauigkeit | Horizont begrenzen |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-glaettung-vergleich-r
+#| fig-cap: "Die Reihe mit gleitenden Durchschnitten über 3 und 12 Monate."
+absatz_ma3 <- ma(absatz, order = 3)
+absatz_ma12 <- ma(absatz, order = 12)
+
+plot(absatz, col = "grey70", ylab = "Absatz", xlab = "Jahr")
+lines(absatz_ma3, col = "#2166ac", lwd = 2)
+lines(absatz_ma12, col = "#b2182b", lwd = 2)
+legend("topleft", legend = c("Reihe", "MA(3)", "MA(12)"),
+       col = c("grey70", "#2166ac", "#b2182b"), lwd = c(1, 2, 2), bty = "n")
+```
+
+## Python
+
+```{python}
+#| label: fig-glaettung-vergleich-py
+#| fig-cap: "Dieselbe Gegenüberstellung in Python."
+fig, ax = plt.subplots()
+ax.plot(absatz, color="0.7", label="Reihe")
+ax.plot(absatz.rolling(3, center=True).mean(), color="#2166ac", lw=2, label="MA(3)")
+ax.plot(absatz.rolling(12, center=True).mean(), color="#b2182b", lw=2, label="MA(12)")
+ax.set_ylabel("Absatz")
+ax.legend(frameon=False)
+plt.show()
+```
+
+:::
+
+Das Fenster über drei Monate glättet das Rauschen und lässt die Saison stehen. Das
+Fenster über zwölf Monate entfernt die Saison vollständig und zeigt nur noch den
+Trend, verliert dafür an beiden Enden sechs Monate. Die Fensterbreite ist damit
+keine technische Einstellung, sondern die Entscheidung darüber, was man sehen
+will.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-glaettung-r
+modell_hw <- hw(training, h = 12, seasonal = "additive")
+
+modell_hw$model
+round(accuracy(modell_hw, test)[, c("RMSE", "MAE", "MAPE")], 2)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-glaettung-py
+modell_hw = ExponentialSmoothing(training, trend="add", seasonal="add",
+                                 seasonal_periods=12,
+                                 initialization_method="estimated").fit()
+
+prognose = modell_hw.forecast(12)
+
+print({k: round(float(v), 3) for k, v in modell_hw.params.items()
+       if k in {"smoothing_level", "smoothing_trend", "smoothing_seasonal"}})
+
+fehler = test.values - prognose.values
+print({"RMSE": round(float(np.sqrt((fehler ** 2).mean())), 2),
+       "MAE": round(float(np.abs(fehler).mean()), 2),
+       "MAPE": round(float((np.abs(fehler / test.values)).mean() * 100), 2)})
+```
+
+:::
+
+Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 72 Monate mit
+Trend, Jahressaison und Rauschen. Die letzten zwölf Monate bleiben als Testteil
+ungesehen; geschätzt wird auf den ersten 60. Das ist die einzige zulässige
+Aufteilung bei Zeitreihen: Getestet wird auf der Zukunft, nie auf herausgelosten
+Zeitpunkten.
 
 ## Output lesen
 
+R, `hw()` und `ets()`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `ETS(A,A,A)` | gewählte Struktur: Fehler, Trend, Saison, je additiv oder multiplikativ | `N` heisst nicht vorhanden |
+| `alpha` | Glättung des Niveaus | nahe 1: folgt dem Rauschen; nahe 0: träge |
+| `beta` | Glättung des Trends | nahe 0 heisst nahezu konstanter Trend |
+| `gamma` | Glättung der Saison | nahe 0: starre Saisonfigur |
+| `sigma` | Streuung der Residuen | Grundlage der Prognoseintervalle |
+| `AIC`, `BIC` | Kennzahlen für Modellvergleiche | nur zwischen Modellen auf derselben Reihe vergleichbar |
+| `accuracy()` | Fehlermasse auf Trainings- und Testteil | die Zeile `Test set` zählt |
+| `RMSE` | Wurzel des mittleren quadratischen Fehlers | in Einheiten der Reihe, empfindlich für grosse Fehler |
+| `MAE` | mittlerer absoluter Fehler | robuster, ebenfalls in Einheiten der Reihe |
+| `MAPE` | mittlerer absoluter prozentualer Fehler | ungeeignet bei Werten nahe null |
+
+Python, `ExponentialSmoothing`:
+
+| Zugriff | Was er liefert | Unterschied zu R |
+|---|---|---|
+| `params` | `smoothing_level`, `smoothing_trend`, `smoothing_seasonal` | in R `alpha`, `beta`, `gamma` |
+| `forecast(h)` | Punktprognose | in R Teil des Ergebnisobjekts |
+| `fittedvalues` | angepasste Werte | wie `fitted()` |
+| `sse`, `aic`, `bic` | Anpassungskennzahlen | wie in R |
+| `get_prediction(...)` | Prognoseintervalle | in R direkt in `hw()` enthalten |
+| keine Fehlermasse | RMSE und MAE selbst rechnen | in R `accuracy()` |
+
+Ein Unterschied, über den man stolpert: R wählt mit `ets()` die Modellstruktur
+automatisch, in Python werden `trend` und `seasonal` von Hand gesetzt. Und
+`initialization_method="estimated"` gehört gesetzt, sonst verwendet statsmodels
+ein einfacheres Startverfahren mit anderen Ergebnissen.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: Prognose mit Trend und Saison
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-a-glaettung-r
+#| fig-cap: "Holt-Winters auf den ersten 60 Monaten, Prognose für zwölf Monate mit Intervall, dazu die tatsächlichen Werte."
+plot(modell_hw, ylab = "Absatz", xlab = "Jahr", main = "Holt-Winters")
+lines(test, col = "#b2182b", lwd = 2)
+legend("topleft", legend = c("Prognose", "tatsächlich"),
+       col = c("#2166ac", "#b2182b"), lwd = 2, bty = "n")
+
+round(cbind(prognose = as.numeric(modell_hw$mean),
+            tatsaechlich = as.numeric(test),
+            fehler = as.numeric(test) - as.numeric(modell_hw$mean)), 1)
+```
+
+## Python
+
+```{python}
+#| label: fig-szenario-a-glaettung-py
+#| fig-cap: "Dieselbe Prognose in Python."
+fig, ax = plt.subplots()
+ax.plot(training, color="0.5", label="Training")
+ax.plot(test, color="#b2182b", lw=2, label="tatsächlich")
+ax.plot(prognose, color="#2166ac", lw=2, label="Prognose")
+intervall = modell_hw.get_prediction(start=test.index[0], end=test.index[-1]) \
+    .summary_frame(alpha=0.05)
+ax.fill_between(test.index, intervall["pi_lower"], intervall["pi_upper"],
+                color="#2166ac", alpha=0.15)
+ax.set_ylabel("Absatz")
+ax.legend(frameon=False)
+plt.show()
+
+print(pd.DataFrame({"prognose": prognose.round(1).values,
+                    "tatsaechlich": test.values,
+                    "fehler": (test.values - prognose.values).round(1)},
+                   index=test.index.strftime("%Y-%m")))
+```
+
+:::
+
+Die Prognose folgt Trend und Saisonfigur, und die tatsächlichen Werte liegen
+innerhalb des Intervalls. Zu berichten sind drei Dinge: die Punktprognose, das
+Intervall und ein Fehlermass auf dem Testteil. Ohne Intervall ist eine Prognose
+eine Behauptung; ohne Testteil ist ein gutes Fehlermass auf den Trainingsdaten
+wertlos, weil das Modell diese Werte gesehen hat.
+
+Wie das Intervall wächst, ist ebenfalls Teil der Aussage: Für den ersten
+Prognosemonat ist es schmal, für den zwölften deutlich breiter. Genau deshalb
+gehört der Horizont begrenzt.
+
+Ergebnissatz: Holt-Winters mit additivem Trend und additiver Saison (geschätzt auf
+60 Monaten) prognostiziert die folgenden zwölf Monate mit einem RMSE von dem
+ausgegebenen Wert und einem MAPE von dem ausgegebenen Prozentsatz. Alle
+tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall.
+
+### Szenario B: einfache Glättung, wo Trend und Saison vorliegen
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-b-glaettung-r
+#| fig-cap: "Einfache exponentielle Glättung: die Prognose ist eine waagrechte Linie."
+modell_ses <- ses(training, h = 12)
+
+plot(modell_ses, ylab = "Absatz", xlab = "Jahr", main = "einfache Glättung")
+lines(test, col = "#b2182b", lwd = 2)
+
+round(rbind(einfach = accuracy(modell_ses, test)["Test set", c("RMSE", "MAE", "MAPE")],
+            holt_winters = accuracy(modell_hw, test)["Test set", c("RMSE", "MAE", "MAPE")]), 2)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-glaettung-py
+modell_ses = SimpleExpSmoothing(training, initialization_method="estimated").fit()
+prognose_ses = modell_ses.forecast(12)
+
+def masse(wahr, geschaetzt):
+    fehler = wahr - geschaetzt
+    return {"RMSE": round(float(np.sqrt((fehler ** 2).mean())), 2),
+            "MAE": round(float(np.abs(fehler).mean()), 2),
+            "MAPE": round(float(np.abs(fehler / wahr).mean() * 100), 2)}
+
+print("einfach:     ", masse(test.values, prognose_ses.values))
+print("Holt-Winters:", masse(test.values, prognose.values))
+```
+
+:::
+
+Die einfache Glättung kennt nur ein Niveau und prognostiziert deshalb eine
+waagrechte Linie. Bei einer Reihe mit Trend und Saison ist der Fehler um ein
+Vielfaches grösser als bei Holt-Winters. Das ist kein Argument gegen das
+Verfahren, sondern eines für die Passung: Wo es keinen Trend und keine Saison
+gibt, ist die einfache Variante die richtige, weil sie weniger Parameter schätzt.
+
+Der Vergleich ist zugleich die Begründung dafür, immer ein einfaches Modell
+mitzurechnen. Ein aufwendiges Verfahren muss sich gegen die naive Prognose
+beweisen; tut es das nicht, ist der Aufwand nicht gerechtfertigt.
+
+Ergebnissatz: Die einfache exponentielle Glättung erreicht einen RMSE von dem
+ausgegebenen Wert gegenüber dem ausgegebenen Wert bei Holt-Winters; die
+Saisonstruktur ist für die Prognose entscheidend.
+
+### Szenario C: Fallstrick zu grosses Alpha, und Prüfung der Residuen
+
+Ein hoher Glättungsparameter lässt das Modell dem Rauschen folgen. Die Anpassung
+an die Trainingsdaten sieht dann gut aus, die Prognose wird schlechter.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-c-glaettung-r
+#| fig-cap: "Residuen des Holt-Winters-Modells: Verlauf, ACF und Verteilung."
+#| fig-height: 4
+starr <- ses(training, h = 12, alpha = 0.05, initial = "simple")
+nervoes <- ses(training, h = 12, alpha = 0.95, initial = "simple")
+
+round(rbind(alpha_0.05 = accuracy(starr, test)["Test set", c("RMSE", "MAE")],
+            alpha_0.95 = accuracy(nervoes, test)["Test set", c("RMSE", "MAE")],
+            geschaetzt = accuracy(modell_ses, test)["Test set", c("RMSE", "MAE")]), 2)
+
+checkresiduals(modell_hw$model)
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-glaettung-py
+from statsmodels.stats.diagnostic import acorr_ljungbox
+
+for a in [0.05, 0.95]:
+    m = SimpleExpSmoothing(training, initialization_method="known",
+                           initial_level=float(training.iloc[0])).fit(
+                               smoothing_level=a, optimized=False)
+    print(f"alpha = {a}: ", masse(test.values, m.forecast(12).values))
+
+lb = acorr_ljungbox(modell_hw.resid, lags=[12], return_df=True)
+print(lb.round(4))
+```
+
+:::
+
+Beide Extreme sind schlechter als der geschätzte Wert: Ein sehr kleines Alpha
+reagiert zu träge auf den Trend, ein sehr grosses folgt dem Rauschen. Deshalb
+schätzt man den Parameter statt ihn zu setzen; die Programme minimieren dafür den
+Fehler auf den Trainingsdaten.
+
+Der zweite Teil ist die Residuenprüfung und der wichtigere. Der Ljung-Box-Test
+prüft, ob in den Residuen noch Abhängigkeit steckt. Ein kleiner p-Wert heisst: Das
+Modell hat Struktur übersehen, und die Prognoseintervalle sind zu schmal. Zu
+prüfen sind drei Dinge: Die ACF der Residuen soll innerhalb der Grenzen liegen, der
+Verlauf soll keine Muster zeigen, und die Verteilung soll ungefähr symmetrisch
+sein.
+
+Ergebnissatz: Ein geschätztes Alpha schlägt beide festen Werte (RMSE wie
+ausgegeben). Die Residuen des Holt-Winters-Modells zeigen im Ljung-Box-Test den
+ausgegebenen p-Wert.
+
+### Weiteres Szenario: gegen die naive Prognose messen
+
+Eine Prognose ist nur so gut wie ihr Vergleich. Bei saisonalen Reihen ist die
+naive saisonale Prognose der Standardmassstab: Der Wert von vor zwölf Monaten wird
+fortgeschrieben.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-d-glaettung-r
+naiv <- snaive(training, h = 12)
+
+round(rbind(naiv_saisonal = accuracy(naiv, test)["Test set", c("RMSE", "MAE", "MAPE")],
+            holt_winters = accuracy(modell_hw, test)["Test set", c("RMSE", "MAE", "MAPE")]), 2)
+```
+
+## Python
+
+```{python}
+#| label: szenario-d-glaettung-py
+# naive saisonale Prognose: der Wert von vor zwoelf Monaten
+naiv = training.iloc[-12:].values
+
+print("naiv saisonal:", masse(test.values, naiv))
+print("Holt-Winters: ", masse(test.values, prognose.values))
+```
+
+:::
+
+Wenn ein Modell die naive Prognose nicht deutlich schlägt, ist es den Aufwand
+nicht wert. Dieser Vergleich gehört in jeden Bericht, und zwar nicht als Fussnote,
+sondern als Zeile in derselben Tabelle wie das Modell.
 
 ## Interpretationsfallen
 
+- **Fehlermasse auf den Trainingsdaten sagen nichts.** Das Modell hat diese Werte
+  gesehen; bewertet wird auf dem Testteil.
+- **Zufällige Aufteilung ist bei Zeitreihen falsch.** Getestet wird auf der
+  Zukunft, sonst nutzt das Modell Information, die es nicht haben dürfte.
+- **Eine Prognose ohne Intervall ist unvollständig.** Und das Intervall wächst mit
+  dem Horizont, meist schneller als man erwartet.
+- **Ein gleitender Durchschnitt prognostiziert nicht.** Er ist beschreibend und
+  braucht Werte aus der Zukunft.
+- **MAPE ist tückisch.** Bei Werten nahe null explodiert er, und er bestraft
+  Überschätzung anders als Unterschätzung.
+- **Alpha nahe eins ist keine gute Anpassung**, sondern Folgen des Rauschens.
+- **Glättung erklärt nichts.** Sie beschreibt die Reihe aus sich selbst; für
+  Ursachen braucht es Einflussgrössen.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> Die Reihe wurde mit [Verfahren] modelliert (geschätzt auf [Zeitraum], Test auf
+> den folgenden [h] Perioden). Die Prognose erreicht einen RMSE von [Wert] und
+> einen MAPE von [Wert] Prozent, gegenüber [Wert] beziehungsweise [Wert] bei der
+> naiven saisonalen Prognose. Die Residuen zeigen im Ljung-Box-Test p = [p].
+
+Genannt werden: Verfahren und Modellstruktur, Trainings- und Testzeitraum,
+Fehlermasse auf dem Testteil, der Vergleich mit einer naiven Prognose, das
+Ergebnis der Residuenprüfung und der Prognosehorizont mit Intervall.
+
+Beispiel für eine Ergebnistabelle:
+
+| Modell | RMSE | MAE | MAPE |
+|---|---|---|---|
+| naiv saisonal | | | |
+| einfache Glättung | | | |
+| Holt-Winters | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt der Glättung |
+|---|---|
+| [ARIMA und SARIMA](arima-sarima.qmd) | die Abhängigkeitsstruktur selbst interessiert, Modellordnung soll begründet werden |
+| Regression mit Zeitreihenfehlern | externe Einflussgrössen sollen einfliessen |
+| [Zerlegung](zeitreihen-grundlagen.qmd) | nur Beschreibung, keine Prognose |
+| Verfahren für spärliche Nachfrage | viele Nullen in der Reihe |
+| Modelle mit Strukturbruch | dauerhafter Niveausprung in der Reihe |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Ein Modell erreicht auf den Trainingsdaten einen RMSE von 8 und auf dem Testteil
+von 45. Was folgt?
+
+- [x] Das Modell ist an die Trainingsdaten angepasst und prognostiziert schlecht ~
+      Richtig. Der Testteil ist der einzige aussagekräftige Wert. Ein grosser
+      Unterschied deutet auf ein zu reaktives Modell, etwa ein Alpha nahe eins.
+- [ ] Der Testteil ist zu kurz ~ Möglich, aber der Unterschied ist zu gross, um
+      allein daran zu liegen.
+- [ ] Beide Werte gemeinsam beurteilen ~ Der Trainingswert trägt zur Beurteilung
+      der Prognose nichts bei.
+:::
+
+::: {.quiz}
+Warum darf man Zeitreihen nicht zufällig in Trainings- und Testdaten aufteilen?
+
+- [x] Weil das Modell dann Werte aus der Zukunft kennt ~ Richtig. Liegen
+      Testzeitpunkte zwischen Trainingszeitpunkten, nutzt das Modell Information,
+      die zum Prognosezeitpunkt nicht vorlag. Der Fehler wird dadurch zu klein.
+- [ ] Weil die Reihenfolge für die Rechnung nötig ist ~ Auch das, aber der
+      entscheidende Punkt ist die Information.
+- [ ] Weil die Stichprobe sonst zu klein wird ~ Die Grösse ändert sich nicht.
+:::
+
+::: {.quiz}
+Ein gleitender Durchschnitt über zwölf Monate wird für eine Prognose verwendet.
+Was ist das Problem?
+
+- [x] Er ist beschreibend und braucht Werte aus der Zukunft ~ Richtig. Ein
+      zentrierter gleitender Durchschnitt mittelt um jeden Zeitpunkt herum, also
+      auch über spätere Werte, und endet deshalb sechs Monate vor dem
+      Reihenende.
+- [ ] Zwölf Monate sind ein zu langes Fenster ~ Die Fensterbreite ist hier nicht
+      das Problem.
+- [ ] Er glättet die Saison weg ~ Das tut er, und für die Trendbetrachtung ist es
+      gewollt.
+:::
+
+::: {.quiz}
+Der Ljung-Box-Test auf den Residuen ergibt p = 0.003. Was heisst das?
+
+- [x] In den Residuen steckt noch Abhängigkeit, das Modell hat etwas übersehen ~
+      Richtig. Die Folge sind zu schmale Prognoseintervalle. Zu prüfen ist, ob
+      Saison, Trend oder eine Abhängigkeitsstruktur fehlt, die ein ARIMA-Modell
+      erfassen würde.
+- [ ] Das Modell passt gut, der p-Wert ist klein ~ Die Richtung ist vertauscht:
+      Die Nullhypothese lautet keine Autokorrelation.
+- [ ] Die Residuen sind nicht normalverteilt ~ Das prüft ein anderer Test.
+:::
+
 ## Verlinkte Ressourcen
+
+- [Forecasting: Principles and Practice, Kapitel 8](https://otexts.com/fpp3/expsmooth.html)
+- [forecast: ets und hw](https://pkg.robjhyndman.com/forecast/)
+- [statsmodels: Exponentielle Glättung](https://www.statsmodels.org/stable/examples/notebooks/generated/exponential_smoothing.html)

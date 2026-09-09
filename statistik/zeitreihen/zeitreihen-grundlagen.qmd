@@ -4,11 +4,242 @@ description: "Trend, Saison und Rest, Zerlegung und was daran ablesbar ist."
 categories: ["Zeitreihen", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 10
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(2026)
+
+# Monatliche Absatzzahlen: Trend, Jahressaison, Rest
+monate <- 72
+t <- 1:monate
+trend <- 500 + 4 * t
+saison <- 60 * sin(2 * pi * t / 12) + 25 * cos(2 * pi * t / 12)
+rest <- rnorm(monate, 0, 20)
+
+absatz <- ts(round(trend + saison + rest), start = c(2020, 1), frequency = 12)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+rng = np.random.default_rng(2026)
+
+monate = 72
+t = np.arange(1, monate + 1)
+trend = 500 + 4 * t
+saison = 60 * np.sin(2 * np.pi * t / 12) + 25 * np.cos(2 * np.pi * t / 12)
+rest = rng.normal(0, 20, monate)
+
+absatz = pd.Series(np.round(trend + saison + rest),
+                   index=pd.date_range("2020-01-01", periods=monate, freq="MS"),
+                   name="absatz")
+```
+
 ## Kernideen
+
+- Die Reihenfolge der Beobachtungen ist Information, nicht Zufall
+- Die Annahme unabhängiger Beobachtungen fällt weg, und mit ihr viele Standardverfahren
+- Eine Zeitreihe zerfällt in Trend, Saison und Rest
+- Additiv oder multiplikativ ist eine Entscheidung, die man an der Grafik trifft
+- Der Rest soll strukturlos sein; ist er es nicht, fehlt dem Modell etwas
+- Aggregationsebene und Zeitraum bestimmen, was man überhaupt sehen kann
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Datum und Zeit](../../daten/datum-zeit.qmd) für den Umgang mit
+Zeitstempeln und [Lage- und Streuungsmasse](../grundlagen/lage-streuungsmasse.qmd).
+Was danach kommt, ist die [Stationarität](stationaritaet-acf-pacf.qmd) als
+Voraussetzung für Modelle.
+:::
+
+### Was Zeitreihen von anderen Daten unterscheidet
+
+Bei einer Querschnittserhebung ist die Reihenfolge der Zeilen beliebig. Bei einer
+Zeitreihe trägt sie die Information: Der Wert von heute hängt mit dem von gestern
+zusammen. Damit fällt die Annahme unabhängiger Beobachtungen, auf der die meisten
+Verfahren beruhen, siehe
+[Hypothesentests](../inferenz/hypothesentests-grundlagen.qmd).
+
+Praktische Folgen, die man kennen muss:
+
+- **Standardfehler werden zu klein**, wenn man Abhängigkeit ignoriert. Ein
+  t-Test auf autokorrelierten Daten liefert zu optimistische p-Werte.
+- **Zufällige Aufteilung in Trainings- und Testdaten ist falsch.** Getestet wird
+  auf der Zukunft, nicht auf herausgelosten Zeitpunkten.
+- **Zwei Reihen mit Trend korrelieren fast immer.** Das sagt nichts über einen
+  Zusammenhang, siehe [Korrelation](../grundlagen/korrelation.qmd).
+
+### Die drei Bestandteile
+
+| Bestandteil | Was er beschreibt | Woran erkennbar |
+|---|---|---|
+| Trend | langfristige Richtung | die Reihe steigt oder fällt über Jahre |
+| Saison | Muster mit fester Periode | dieselbe Form in jedem Jahr, Quartal, Wochentag |
+| Rest | was übrig bleibt | soll strukturlos um null schwanken |
+
+Manche Reihen haben zusätzlich einen Zyklus: Auf und Ab ohne feste Periode, etwa
+Konjunkturwellen. Der Unterschied zur Saison ist die Vorhersagbarkeit der Länge.
+
+### Additiv oder multiplikativ
+
+Bei additiver Struktur bleibt die Saisonschwankung über die Jahre gleich gross,
+bei multiplikativer wächst sie mit dem Niveau.
+
+$$\text{additiv: } y_t = T_t + S_t + R_t \qquad \text{multiplikativ: } y_t = T_t \cdot S_t \cdot R_t$$
+
+Die Entscheidung fällt am Bild: Werden die Zacken mit steigendem Niveau höher, ist
+die Struktur multiplikativ. Eine Logarithmierung macht daraus eine additive, weil
+aus dem Produkt eine Summe wird. Das ist der übliche Weg, weil danach alle
+Verfahren für additive Reihen anwendbar sind.
+
+### Die Zerlegung
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-zerlegung-r
+#| fig-cap: "Zerlegung der Absatzreihe in Trend, Saison und Rest über gleitende Mittel."
+#| fig-height: 4.4
+zerlegung <- decompose(absatz, type = "additive")
+plot(zerlegung)
+```
+
+## Python
+
+```{python}
+#| label: fig-zerlegung-py
+#| fig-cap: "Dieselbe Zerlegung mit statsmodels."
+#| fig-height: 4.4
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+zerlegung = seasonal_decompose(absatz, model="additive", period=12)
+abb = zerlegung.plot()
+abb.set_size_inches(7, 4.4)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+Vier Bilder, von oben nach unten: die Reihe selbst, der Trend als gleitendes
+Mittel, die geschätzte Saisonfigur und der Rest. Zu lesen ist es so:
+
+- **Trend:** Richtung und Tempo. Die ersten und letzten sechs Monate fehlen, weil
+  ein gleitendes Mittel über zwölf Monate am Rand nicht berechenbar ist.
+- **Saison:** die mittlere Abweichung je Monat, in jedem Jahr identisch
+  wiederholt. Genau diese Starrheit ist die Schwäche des Verfahrens.
+- **Rest:** soll strukturlos aussehen. Bleibt dort ein Muster, hat die Zerlegung
+  etwas nicht erfasst.
+
+Robustere Verfahren wie STL erlauben eine Saisonfigur, die sich langsam ändert,
+und sind gegen Ausreisser weniger empfindlich.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-stl-r
+#| fig-cap: "STL-Zerlegung: die Saisonfigur darf sich über die Jahre verändern."
+#| fig-height: 4.2
+plot(stl(absatz, s.window = "periodic"))
+```
+
+## Python
+
+```{python}
+#| label: fig-stl-py
+#| fig-cap: "STL in statsmodels."
+#| fig-height: 4.2
+from statsmodels.tsa.seasonal import STL
+
+stl = STL(absatz, period=12, robust=True).fit()
+abb = stl.plot()
+abb.set_size_inches(7, 4.2)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+### Was man aus der Zerlegung nicht ablesen darf
+
+Die Zerlegung ist beschreibend. Sie sagt, wie sich die Reihe in Bestandteile
+aufteilen lässt, und nicht, warum. Insbesondere:
+
+- Ein Trend ist keine Ursache und keine Garantie für die Zukunft.
+- Die Saisonfigur ist ein Mittel über die beobachteten Jahre; ein einzelnes
+  ungewöhnliches Jahr verzerrt sie.
+- Der Rest enthält alles, was das Verfahren nicht kennt, also auch echte
+  Ereignisse wie einen Streik oder eine Preisänderung.
+
+### Aggregationsebene und Zeitraum
+
+Beides entscheidet, was sichtbar ist. Tagesdaten zeigen Wochenmuster, die in
+Monatsdaten verschwinden. Ein Zeitraum von zwei Jahren erlaubt keine Aussage über
+Saisonalität, weil zwei Wiederholungen kein Muster belegen. Als Faustregel
+braucht eine Saisonschätzung mindestens drei, besser vier vollständige Perioden.
+
+Umgekehrt kann eine zu feine Ebene Muster erzeugen, die inhaltlich nicht
+interessieren: Wer Tagesdaten auf Trend untersucht, kämpft mit Wochenenden und
+Feiertagen.
+
+::: {.quiz}
+Eine Monatsreihe zeigt Saisonzacken, die mit dem steigenden Niveau immer höher
+werden. Was folgt für die Zerlegung?
+
+- [ ] Additive Zerlegung, sie ist der Standard ~ Sie unterstellt konstante
+      Schwankungsbreite und passt hier nicht.
+- [x] Multiplikative Zerlegung, oder additiv nach Logarithmierung ~ Richtig. Wenn
+      die Schwankung mit dem Niveau wächst, ist die Struktur multiplikativ. Das
+      Logarithmieren macht aus dem Produkt eine Summe und erlaubt danach alle
+      Verfahren für additive Reihen.
+- [ ] Die Saison muss vorher entfernt werden ~ Das ist das Ergebnis der
+      Zerlegung, nicht ihre Voraussetzung.
+:::
+
+::: {.quiz}
+Im Rest der Zerlegung ist ein deutliches wellenförmiges Muster erkennbar. Was
+heisst das?
+
+- [x] Die Zerlegung hat eine Struktur nicht erfasst ~ Richtig. Der Rest soll
+      strukturlos sein. Eine Welle darin deutet auf einen Zyklus, eine falsche
+      Periodenlänge oder eine sich verändernde Saisonfigur, für die STL besser
+      geeignet ist.
+- [ ] Das ist normal, der Rest enthält immer Muster ~ Er enthält Rauschen; ein
+      sichtbares Muster ist ein Befund.
+- [ ] Die Reihe ist zu kurz ~ Möglich, aber eine kurze Reihe erzeugt kein
+      wellenförmiges Restmuster.
+:::
+
+::: {.quiz}
+Zwei Reihen mit deutlichem Aufwärtstrend korrelieren mit 0.95. Was folgt?
+
+- [ ] Ein starker Zusammenhang zwischen den beiden Grössen ~ Der gemeinsame Trend
+      genügt für eine hohe Korrelation, auch ohne jeden inhaltlichen Zusammenhang.
+- [x] Nichts, solange der Trend nicht entfernt ist ~ Richtig. Verglichen werden
+      die Reihen erst nach Entfernen des Trends, etwa über Differenzen, siehe
+      Stationarität.
+- [ ] Die Korrelation ist falsch berechnet ~ Sie ist korrekt berechnet und
+      trotzdem inhaltlich wertlos.
+:::
+
 ## Verlinkte Ressourcen
+
+- [Forecasting: Principles and Practice, Kapitel 2 und 3](https://otexts.com/fpp3/)
+- [R-Dokumentation zu `stl`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/stl.html)
+- [statsmodels: Saisonzerlegung](https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.seasonal_decompose.html)
