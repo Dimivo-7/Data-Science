@@ -2,7 +2,7 @@
 title: "Skalenniveaus"
 description: "Nominal, ordinal, metrisch und was daraus für die Methodenwahl folgt."
 categories: ["Deskriptive Statistik", "EDA", "Interpretation", "R", "Python"]
-quelle: ["ESDS"]
+quelle: ["ESDS", "Jesussek & Volk-Jesussek (2025)"]
 seitentyp: konzept
 stand: entwurf
 order: 10
@@ -37,6 +37,7 @@ rng = np.random.default_rng(42)
 - Es entscheidet, welche Rechenoperationen zulässig sind
 - Intervall und Verhältnis werden oft zu metrisch zusammengefasst
 - Der Unterschied der beiden liegt allein im Nullpunkt
+- Nominale und ordinale Variablen bilden zusammen die kategorischen Variablen
 
 ## Erklärung
 
@@ -58,7 +59,11 @@ subtrahieren, aber 20 Grad sind nicht doppelt so warm wie 10.
 
 Das Skalenniveau beantwortet, welche dieser Operationen zulässig sind. Es ist
 keine Eigenschaft der gespeicherten Zahl, sondern der Bedeutung dahinter, und
-deshalb muss es ein Mensch festlegen.
+deshalb muss es ein Mensch festlegen. Die Bestimmung des Skalenniveaus ist der
+erste Schritt jeder Auswertung — sie entscheidet, welche statistischen Methoden
+überhaupt in Frage kommen.
+
+### Die vier Stufen
 
 | Niveau | erlaubt | Beispiel | zulässiges Lagemass |
 |---|---|---|---|
@@ -67,11 +72,65 @@ deshalb muss es ein Mensch festlegen.
 | intervall | zusätzlich Differenzen | Temperatur in Grad Celsius | zusätzlich Mittelwert |
 | verhältnis | zusätzlich Verhältnisse | Länge, Masse, Anzahl | alle, zusätzlich Variationskoeffizient |
 
-Die beiden oberen Stufen werden häufig zu metrisch zusammengefasst. Der
-Unterschied zwischen ihnen liegt allein im Nullpunkt: Bei einer
-Verhältnisskala bedeutet null, dass nichts vorhanden ist, weshalb sich Aussagen
-wie doppelt so viel bilden lassen. Bei Grad Celsius ist die Null gesetzt und
-nicht absolut, weshalb solche Aussagen dort nicht gelten.
+Je höher das Skalenniveau, desto mehr Vergleichsaussagen und Rechenoperationen
+sind möglich.
+
+### Nominal
+
+Ausprägungen lassen sich unterscheiden, aber nicht sinnvoll ordnen. Die
+Reihenfolge der Kategorien ist austauschbar. Liegen nur zwei Ausprägungen vor
+(z. B. ja/nein, männlich/weiblich), spricht man von **dichotomen** oder
+**binären** Variablen.
+
+Beispiele: Geschlecht, Religionsbekenntnis, Wohnort, Telefonnummer,
+Blutgruppe, Nationalität.
+
+### Ordinal
+
+Ausprägungen haben eine natürliche Rangfolge, aber die Abstände zwischen den
+Stufen sind nicht interpretierbar. Schulnoten lassen sich ordnen, doch der
+Unterschied zwischen 1 und 2 ist nicht zwingend gleich gross wie zwischen 3 und 4.
+
+Beispiele: Schulnoten, Zufriedenheitsskala (1–5), Pflegestufe, militärischer
+Rang, Bildungsabschluss (Lehre < Bachelor < Master).
+
+### Kategorische Variablen als Oberbegriff
+
+Nominale und ordinale Variablen werden zusammen als **kategorische Variablen**
+bezeichnet. Sie haben eine begrenzte, in der Regel feste Anzahl von
+Ausprägungen. In R werden sie als `factor` gespeichert, in Python als
+`pd.Categorical`.
+
+### Metrisch: Intervall und Verhältnis
+
+Die beiden oberen Stufen werden häufig zu **metrisch** zusammengefasst. Der
+Unterschied liegt allein im Nullpunkt:
+
+- **Verhältnisskala:** Null bedeutet, dass nichts vorhanden ist. Aussagen wie
+  *doppelt so viel* sind zulässig. Beispiele: Gewicht, Alter, Einkommen,
+  Wohnfläche in m², CO₂-Ausstoss.
+- **Intervallskala:** Der Nullpunkt ist gesetzt und nicht absolut. Verhältnisse
+  sind nicht sinnvoll. Beispiele: Temperatur in °C, IQ-Score, Jahreszahl.
+
+::: {.note-box}
+**Das Marathon-Beispiel:** Werden die Zeiten ab dem Startschuss gestoppt, ist
+die Skala verhältnisskaliert — null bedeutet *kein Zeitverbrauch*, und man kann
+sagen: Läufer A war doppelt so schnell wie Läufer B. Wird die Stoppuhr
+vergessen und stattdessen nur die Differenz zum Schnellsten gemessen, hat man
+eine Intervallskala: Abstände sind sinnvoll (A ist 22 min schneller als B),
+aber Verhältnisse nicht (A ist *nicht* 20% schneller als B).
+:::
+
+### Warum die Unterscheidung wichtig ist
+
+Das Skalenniveau bestimmt nicht nur, welche Lagemasse erlaubt sind, sondern
+steuert den gesamten weiteren Analysepfad:
+
+| Skalenniveau | typische Verfahren |
+|---|---|
+| nominal | Häufigkeitstabelle, Modus, Chi-Quadrat-Test, Cramers V |
+| ordinal | Median, Spearman-Korrelation, Mann-Whitney, Kruskal-Wallis |
+| metrisch | Mittelwert, Standardabweichung, t-Test, ANOVA, Pearson-Korrelation, Regression |
 
 ::: {.note-box}
 In der Praxis wird die Regel bei ordinalen Daten regelmässig gebrochen. Der
@@ -79,6 +138,21 @@ Mittelwert einer Zufriedenheitsskala von 1 bis 5 ist streng genommen nicht
 definiert, wird aber überall berichtet. Wer ihn verwendet, sollte wenigstens
 wissen, dass er unterstellt, die Abstände zwischen den Stufen seien gleich.
 :::
+
+## Beispiele zum Üben
+
+| Variable | Skalenniveau | Begründung |
+|---|---|---|
+| Wohnort | nominal | Kategorien ohne Rangfolge |
+| Produktbewertung (1–5 Sterne) | ordinal | Rangfolge ja, gleiche Abstände nein |
+| Religionsbekenntnis | nominal | Keine sinnvolle Ordnung |
+| CO₂-Ausstoss pro Jahr | verhältnis | Absoluter Nullpunkt (0 = kein Ausstoss) |
+| IQ-Score | intervall | Nullpunkt willkürlich gesetzt |
+| Prüfungsnoten (1–5) | ordinal | Rangfolge ja, Abstände nicht gleich |
+| Telefonnummer | nominal | Zahl ist reines Etikett |
+| Pflegestufe | ordinal | Rangfolge, aber ungleiche Abstände |
+| Wohnfläche in m² | verhältnis | 0 m² = keine Fläche |
+| Arbeitszufriedenheit (1–4) | ordinal | Likert-Skala ohne garantiert gleiche Abstände |
 
 ::: {.quiz}
 Eine Umfrage codiert das Geschlecht als 1 und 2. Der Bericht nennt einen
@@ -106,7 +180,145 @@ nur intervallskaliert?
       verschiedene Fragen.
 :::
 
+## Skalenniveaus in der Praxis
+
+::: panel-tabset
+### R
+
+In R bestimmt der Datentyp, wie eine Variable behandelt wird. Kategorische
+Variablen werden als **Faktor** gespeichert. Bei ordinalen Variablen wird
+`ordered = TRUE` gesetzt.
+
+```{r}
+#| label: skalen-r
+# Beispiel-Datensatz: Mitarbeiterbefragung
+umfrage <- data.frame(
+  id             = 1:8,
+  abteilung      = c("IT", "HR", "IT", "Verkauf", "HR", "IT", "Verkauf", "HR"),
+  zufriedenheit  = c(4, 2, 5, 3, 1, 4, 5, 3),
+  gehalt         = c(85000, 62000, 91000, 58000, 64000, 78000, 55000, 67000),
+  temperatur_c   = c(22.1, 21.5, 23.0, 20.8, 21.9, 22.4, 19.5, 21.0)
+)
+
+# --- Nominal: Abteilung als Faktor ---
+umfrage$abteilung <- factor(umfrage$abteilung)
+str(umfrage$abteilung)  # Factor w/ 3 levels
+table(umfrage$abteilung)
+
+# --- Ordinal: Zufriedenheit als geordneter Faktor ---
+umfrage$zufriedenheit_ord <- ordered(umfrage$zufriedenheit,
+                                      levels = 1:5,
+                                      labels = c("sehr unzufrieden",
+                                                  "unzufrieden",
+                                                  "neutral",
+                                                  "zufrieden",
+                                                  "sehr zufrieden"))
+str(umfrage$zufriedenheit_ord)
+median(umfrage$zufriedenheit)  # erlaubt: Median
+# mean() wäre rechnerisch möglich, aber inhaltlich fragwürdig
+
+# --- Verhältnis: Gehalt ---
+mean(umfrage$gehalt)
+sd(umfrage$gehalt)
+# Aussage "doppelt so viel" ist hier sinnvoll
+
+# --- Intervall: Temperatur in °C ---
+mean(umfrage$temperatur_c)
+diff(range(umfrage$temperatur_c))  # Spannweite: sinnvoll
+# Aber: "doppelt so warm" ist bei °C nicht zulässig
+```
+
+**Typischer Fehler:** Eine numerisch codierte Variable (z. B. PLZ) wird ohne
+Faktor-Konvertierung direkt in einer Regression verwendet — R rechnet dann
+mit den Zahlen, als wären sie metrisch.
+
+```{r}
+#| label: fehler-plz-r
+# Falsch: PLZ als Zahl belassen
+plz <- c(3000, 8000, 6000, 3000, 8000)
+mean(plz)  # 5600 — sinnlos
+
+# Richtig: PLZ als Faktor
+plz_f <- factor(plz)
+table(plz_f)
+```
+
+### Python
+
+In Python steuert `pd.Categorical` den Umgang mit kategorischen Daten. Das
+Argument `ordered=True` markiert ordinale Variablen.
+
+```{python}
+#| label: skalen-py
+umfrage = pd.DataFrame({
+    "id":            range(1, 9),
+    "abteilung":     ["IT", "HR", "IT", "Verkauf", "HR", "IT", "Verkauf", "HR"],
+    "zufriedenheit": [4, 2, 5, 3, 1, 4, 5, 3],
+    "gehalt":        [85000, 62000, 91000, 58000, 64000, 78000, 55000, 67000],
+    "temperatur_c":  [22.1, 21.5, 23.0, 20.8, 21.9, 22.4, 19.5, 21.0],
+})
+
+# --- Nominal: Abteilung ---
+umfrage["abteilung"] = pd.Categorical(umfrage["abteilung"])
+print(umfrage["abteilung"].dtype)
+print(umfrage["abteilung"].value_counts())
+
+# --- Ordinal: Zufriedenheit ---
+stufen = ["sehr unzufrieden", "unzufrieden", "neutral",
+          "zufrieden", "sehr zufrieden"]
+umfrage["zufriedenheit_ord"] = pd.Categorical(
+    [stufen[v - 1] for v in umfrage["zufriedenheit"]],
+    categories=stufen,
+    ordered=True,
+)
+print(umfrage["zufriedenheit_ord"].dtype)
+print(umfrage["zufriedenheit"].median())  # Median: erlaubt
+
+# --- Verhältnis: Gehalt ---
+print(f"Mittelwert Gehalt: {umfrage['gehalt'].mean():,.0f}")
+print(f"Std.abw. Gehalt:   {umfrage['gehalt'].std():,.0f}")
+
+# --- Intervall: Temperatur ---
+print(f"Mittelwert Temp: {umfrage['temperatur_c'].mean():.1f} °C")
+print(f"Spannweite:      {umfrage['temperatur_c'].max() - umfrage['temperatur_c'].min():.1f} °C")
+```
+
+**Typischer Fehler:** PLZ als `int64` belassen und in ein Modell geben.
+
+```{python}
+#| label: fehler-plz-py
+plz = pd.Series([3000, 8000, 6000, 3000, 8000])
+print(f"mean(PLZ) = {plz.mean():.0f}")  # 5600 — sinnlos
+
+plz_cat = pd.Categorical(plz)
+print(plz_cat.value_counts())  # Häufigkeiten — sinnvoll
+```
+
+### Entscheidungshilfe
+
+So bestimmst du das Skalenniveau einer Variable — drei Fragen reichen:
+
+```
+1. Gibt es eine natürliche Rangfolge?
+   NEIN → nominal
+   JA   → weiter
+
+2. Sind die Abstände zwischen den Stufen gleich und interpretierbar?
+   NEIN → ordinal
+   JA   → weiter
+
+3. Gibt es einen absoluten Nullpunkt (0 = nichts vorhanden)?
+   NEIN → intervall
+   JA   → verhältnis
+```
+
+**Praxistipp:** Im Zweifel lieber ein Niveau tiefer einordnen. Wer eine
+ordinale Variable fälschlich als metrisch behandelt, riskiert falsche
+Schlüsse. Wer sie konservativ als ordinal behandelt, verliert höchstens
+etwas Testschärfe.
+:::
+
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
-
+- Jesussek, M. & Volk-Jesussek, H. (2025). *Statistik leichtgemacht*. 6. Auflage. numiqo.
