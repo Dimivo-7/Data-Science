@@ -27,6 +27,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-b19535b873470a65c585fe6503f5eb6b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -80,6 +118,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -1095,7 +1162,13 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
   <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
+  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a>
+  <ul class="collapse">
+  <li><a href="#szenario-a-prognose-mit-trend-und-saison" id="toc-szenario-a-prognose-mit-trend-und-saison" class="nav-link" data-scroll-target="#szenario-a-prognose-mit-trend-und-saison">Szenario A: Prognose mit Trend und Saison</a></li>
+  <li><a href="#szenario-b-einfache-glättung-wo-trend-und-saison-vorliegen" id="toc-szenario-b-einfache-glättung-wo-trend-und-saison-vorliegen" class="nav-link" data-scroll-target="#szenario-b-einfache-glättung-wo-trend-und-saison-vorliegen">Szenario B: einfache Glättung, wo Trend und Saison vorliegen</a></li>
+  <li><a href="#szenario-c-fallstrick-zu-grosses-alpha-und-prüfung-der-residuen" id="toc-szenario-c-fallstrick-zu-grosses-alpha-und-prüfung-der-residuen" class="nav-link" data-scroll-target="#szenario-c-fallstrick-zu-grosses-alpha-und-prüfung-der-residuen">Szenario C: Fallstrick zu grosses Alpha, und Prüfung der Residuen</a></li>
+  <li><a href="#weiteres-szenario-gegen-die-naive-prognose-messen" id="toc-weiteres-szenario-gegen-die-naive-prognose-messen" class="nav-link" data-scroll-target="#weiteres-szenario-gegen-die-naive-prognose-messen">Weiteres Szenario: gegen die naive Prognose messen</a></li>
+  </ul></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
@@ -1114,6 +1187,7 @@ ul.task-list li input[type="checkbox"] {
   <div class="quarto-categories">
     <div class="quarto-category">Zeitreihen</div>
     <div class="quarto-category">Prognose</div>
+    <div class="quarto-category">Interpretation</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
   </div>
@@ -1139,43 +1213,923 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Wie glättet man Rauschen heraus, und wie prognostiziert man mit einfachen Mitteln?</td>
+</tr>
+<tr class="even">
+<td>Zielvariable</td>
+<td>eine Zeitreihe</td>
+</tr>
+<tr class="odd">
+<td>Prädiktoren</td>
+<td>keine, nur die eigene Vergangenheit</td>
+</tr>
+<tr class="even">
+<td>Was die Methode liefert</td>
+<td>geglättete Reihe, Prognose mit Prognoseintervall, Fehlermasse</td>
+</tr>
+<tr class="odd">
+<td>R-Funktion</td>
+<td><code>ma()</code>, <code>ses()</code>, <code>holt()</code>, <code>hw()</code> beziehungsweise <code>ets()</code></td>
+</tr>
+<tr class="even">
+<td>Python-Funktion</td>
+<td><code>rolling().mean()</code>, <code>SimpleExpSmoothing()</code>, <code>ExponentialSmoothing()</code></td>
+</tr>
+<tr class="odd">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/zeitreihen/arima-sarima.html">ARIMA und SARIMA</a>, <a href="../../statistik/zeitreihen/zeitreihen-grundlagen.html">Zeitreihen: Grundlagen</a></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Typische Fragestellungen: Rauschen aus einer Reihe entfernen, um den Verlauf zu sehen; eine schnelle Prognose für die nächsten Monate; eine Vergleichsgrundlage, gegen die sich ein aufwendigeres Modell beweisen muss.</p>
+<p>Glättungsverfahren sind einfach, <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Unempfindlichkeit einer Kennzahl gegenüber einzelnen extremen Werten. Median und Interquartilsabstand sind robust, Mittelwert und Standardabweichung nicht.">robust</span> und oft überraschend gut. Ihr Kern ist ein gewichteter Mittelwert der Vergangenheit: Der gleitende Durchschnitt gewichtet alle Werte im Fenster gleich, die exponentielle Glättung gewichtet neuere Werte stärker.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Die Abhängigkeitsstruktur soll modelliert werden</td>
+<td><a href="../../statistik/zeitreihen/arima-sarima.html">ARIMA und SARIMA</a></td>
+</tr>
+<tr class="even">
+<td>Externe Einflussgrössen sollen einfliessen</td>
+<td>Regression mit Zeitreihenfehlern</td>
+</tr>
+<tr class="odd">
+<td>Nur die Struktur soll sichtbar werden, ohne Prognose</td>
+<td>Zerlegung, siehe <a href="../../statistik/zeitreihen/zeitreihen-grundlagen.html">Grundlagen</a></td>
+</tr>
+<tr class="even">
+<td>Reihe mit vielen Nullen oder sehr sporadisch</td>
+<td>eigene Verfahren für spärliche Nachfrage</td>
+</tr>
+<tr class="odd">
+<td>Umbrüche im Niveau, etwa nach einer Regeländerung</td>
+<td>Modell mit Strukturbruch, oder Reihe teilen</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
+<p><strong>Gleitender Durchschnitt.</strong> Der Wert an jeder Stelle wird durch das Mittel eines Fensters ersetzt. Bei ungerader Fensterbreite <span class="math inline">\(m\)</span>:</p>
+<p><span class="math display">\[\hat{y}_t = \frac{1}{m} \sum_{j=-(m-1)/2}^{(m-1)/2} y_{t+j}\]</span></p>
+<p>Das ist beschreibend, nicht prognostisch: Es braucht Werte aus der Zukunft und verkürzt die Reihe an beiden Enden. Für Saisonbereinigung ist die Fensterbreite die Periode, also 12 bei Monatsdaten.</p>
+<p><strong>Exponentielle Glättung.</strong> Hier wird nur die Vergangenheit verwendet, und ältere Werte zählen weniger:</p>
+<p><span class="math display">\[\hat{y}_{t+1} = \alpha y_t + (1-\alpha)\hat{y}_t\]</span></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Bestandteil</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(\alpha\)</span></td>
+<td>Glättungsparameter zwischen 0 und 1</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\alpha\)</span> nahe 1</td>
+<td>reagiert schnell, folgt dem Rauschen</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(\alpha\)</span> nahe 0</td>
+<td>reagiert träge, glättet stark</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\hat{y}_t\)</span></td>
+<td>bisherige Schätzung des Niveaus</td>
+</tr>
+</tbody>
+</table>
+<p>Die einfache Form kennt nur ein Niveau und prognostiziert deshalb eine waagrechte Linie. Zwei Erweiterungen füllen das auf:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Verfahren</th>
+<th>Modelliert</th>
+<th>Prognose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Einfach</td>
+<td>Niveau</td>
+<td>konstant</td>
+</tr>
+<tr class="even">
+<td>Holt</td>
+<td>Niveau und Trend</td>
+<td>Gerade</td>
+</tr>
+<tr class="odd">
+<td>Holt-Winters</td>
+<td>Niveau, Trend und Saison</td>
+<td>Gerade mit Saisonfigur</td>
+</tr>
+</tbody>
+</table>
+<p>Alle drei sind Spezialfälle der ETS-Modellfamilie, die in R über <code>ets()</code> automatisch die passende Variante wählt.</p>
 </section>
 <section id="voraussetzungen-und-ihre-prüfung" class="level2">
 <h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Voraussetzung</th>
+<th>Was sie bedeutet</th>
+<th>Prüfung</th>
+<th>Folge bei Verletzung</th>
+<th>Vorgehen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Genügend Perioden für die Saison</td>
+<td>mindestens drei, besser vier vollständige</td>
+<td>Länge prüfen</td>
+<td>Saisonfigur nicht schätzbar</td>
+<td>Saison weglassen oder Daten sammeln</td>
+</tr>
+<tr class="even">
+<td>Kein Strukturbruch</td>
+<td>Das Niveau springt nicht dauerhaft</td>
+<td>Grafik</td>
+<td>Modell mittelt über zwei Regime</td>
+<td>Reihe teilen</td>
+</tr>
+<tr class="odd">
+<td>Passende Zerlegungsart</td>
+<td>additiv oder multiplikativ richtig gewählt</td>
+<td>Grafik: wachsen die Zacken</td>
+<td>Prognoseintervalle falsch</td>
+<td>logarithmieren oder multiplikative Variante</td>
+</tr>
+<tr class="even">
+<td>Residuen ohne Struktur</td>
+<td>Das Modell hat alles Systematische erfasst</td>
+<td>ACF der Residuen, Ljung-Box-Test</td>
+<td>Prognose systematisch daneben</td>
+<td>Modell erweitern, ARIMA prüfen</td>
+</tr>
+<tr class="odd">
+<td>Prognose nur über kurze Horizonte</td>
+<td>Die Unsicherheit wächst schnell</td>
+<td>Prognoseintervall ansehen</td>
+<td>Scheingenauigkeit</td>
+<td>Horizont begrenzen</td>
+</tr>
+</tbody>
+</table>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>absatz_ma3 <span class="ot">&lt;-</span> <span class="fu">ma</span>(absatz, <span class="at">order =</span> <span class="dv">3</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>absatz_ma12 <span class="ot">&lt;-</span> <span class="fu">ma</span>(absatz, <span class="at">order =</span> <span class="dv">12</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(absatz, <span class="at">col =</span> <span class="st">"grey70"</span>, <span class="at">ylab =</span> <span class="st">"Absatz"</span>, <span class="at">xlab =</span> <span class="st">"Jahr"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(absatz_ma3, <span class="at">col =</span> <span class="st">"#2166ac"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(absatz_ma12, <span class="at">col =</span> <span class="st">"#b2182b"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>, <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Reihe"</span>, <span class="st">"MA(3)"</span>, <span class="st">"MA(12)"</span>),</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"grey70"</span>, <span class="st">"#2166ac"</span>, <span class="st">"#b2182b"</span>), <span class="at">lwd =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">2</span>), <span class="at">bty =</span> <span class="st">"n"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-glaettung-vergleich-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-glaettung-vergleich-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="glaettung-einfache-verfahren_files/figure-html/fig-glaettung-vergleich-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Die Reihe mit gleitenden Durchschnitten über 3 und 12 Monate."><img src="glaettung-einfache-verfahren_files/figure-html/fig-glaettung-vergleich-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-glaettung-vergleich-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Die Reihe mit gleitenden Durchschnitten über 3 und 12 Monate.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>ax.plot(absatz, color<span class="op">=</span><span class="st">"0.7"</span>, label<span class="op">=</span><span class="st">"Reihe"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>ax.plot(absatz.rolling(<span class="dv">3</span>, center<span class="op">=</span><span class="va">True</span>).mean(), color<span class="op">=</span><span class="st">"#2166ac"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"MA(3)"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>ax.plot(absatz.rolling(<span class="dv">12</span>, center<span class="op">=</span><span class="va">True</span>).mean(), color<span class="op">=</span><span class="st">"#b2182b"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"MA(12)"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"Absatz"</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>ax.legend(frameon<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-glaettung-vergleich-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-glaettung-vergleich-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="glaettung-einfache-verfahren_files/figure-html/fig-glaettung-vergleich-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Dieselbe Gegenüberstellung in Python."><img src="glaettung-einfache-verfahren_files/figure-html/fig-glaettung-vergleich-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-glaettung-vergleich-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Dieselbe Gegenüberstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Das Fenster über drei Monate glättet das Rauschen und lässt die Saison stehen. Das Fenster über zwölf Monate entfernt die Saison vollständig und zeigt nur noch den Trend, verliert dafür an beiden Enden sechs Monate. Die Fensterbreite ist damit keine technische Einstellung, sondern die Entscheidung darüber, was man sehen will.</p>
 </section>
 <section id="durchführung-in-r-und-python" class="level2">
 <h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>modell_hw <span class="ot">&lt;-</span> <span class="fu">hw</span>(training, <span class="at">h =</span> <span class="dv">12</span>, <span class="at">seasonal =</span> <span class="st">"additive"</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>modell_hw<span class="sc">$</span>model</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Holt-Winters' additive method 
+
+Call:
+hw(y = training, h = 12, seasonal = "additive")
+
+  Smoothing parameters:
+    alpha = 0.1254 
+    beta  = 1e-04 
+    gamma = 1e-04 
+
+  Initial states:
+    l = 497.2834 
+    b = 3.9659 
+    s = 31.5121 -12.6126 -33.7852 -67.9626 -63.5742 -67.46
+           -9.6127 3.7142 40.9287 52.2609 69.5643 57.027
+
+  sigma:  21.2804
+
+     AIC     AICc      BIC 
+627.9858 642.5573 663.5897 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">accuracy</span>(modell_hw, test)[, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>, <span class="st">"MAPE"</span>)], <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              RMSE   MAE MAPE
+Training set 18.22 13.72 2.27
+Test set     14.39 10.94 1.46</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>modell_hw <span class="op">=</span> ExponentialSmoothing(training, trend<span class="op">=</span><span class="st">"add"</span>, seasonal<span class="op">=</span><span class="st">"add"</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                                 seasonal_periods<span class="op">=</span><span class="dv">12</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                                 initialization_method<span class="op">=</span><span class="st">"estimated"</span>).fit()</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>prognose <span class="op">=</span> modell_hw.forecast(<span class="dv">12</span>)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({k: <span class="bu">round</span>(<span class="bu">float</span>(v), <span class="dv">3</span>) <span class="cf">for</span> k, v <span class="kw">in</span> modell_hw.params.items()</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> k <span class="kw">in</span> {<span class="st">"smoothing_level"</span>, <span class="st">"smoothing_trend"</span>, <span class="st">"smoothing_seasonal"</span>}})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'smoothing_level': 0.0, 'smoothing_trend': 0.0, 'smoothing_seasonal': 0.0}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>fehler <span class="op">=</span> test.values <span class="op">-</span> prognose.values</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({<span class="st">"RMSE"</span>: <span class="bu">round</span>(<span class="bu">float</span>(np.sqrt((fehler <span class="op">**</span> <span class="dv">2</span>).mean())), <span class="dv">2</span>),</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>       <span class="st">"MAE"</span>: <span class="bu">round</span>(<span class="bu">float</span>(np.<span class="bu">abs</span>(fehler).mean()), <span class="dv">2</span>),</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>       <span class="st">"MAPE"</span>: <span class="bu">round</span>(<span class="bu">float</span>((np.<span class="bu">abs</span>(fehler <span class="op">/</span> test.values)).mean() <span class="op">*</span> <span class="dv">100</span>), <span class="dv">2</span>)})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'RMSE': 34.78, 'MAE': 30.84, 'MAPE': 4.08}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 72 Monate mit Trend, Jahressaison und Rauschen. Die letzten zwölf Monate bleiben als Testteil ungesehen; geschätzt wird auf den ersten 60. Das ist die einzige zulässige Aufteilung bei Zeitreihen: Getestet wird auf der Zukunft, nie auf herausgelosten Zeitpunkten.</p>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
+<p>R, <code>hw()</code> und <code>ets()</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Faustregel oder Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>ETS(A,A,A)</code></td>
+<td>gewählte Struktur: Fehler, Trend, Saison, je additiv oder multiplikativ</td>
+<td><code>N</code> heisst nicht vorhanden</td>
+</tr>
+<tr class="even">
+<td><code>alpha</code></td>
+<td>Glättung des Niveaus</td>
+<td>nahe 1: folgt dem Rauschen; nahe 0: träge</td>
+</tr>
+<tr class="odd">
+<td><code>beta</code></td>
+<td>Glättung des Trends</td>
+<td>nahe 0 heisst nahezu konstanter Trend</td>
+</tr>
+<tr class="even">
+<td><code>gamma</code></td>
+<td>Glättung der Saison</td>
+<td>nahe 0: starre Saisonfigur</td>
+</tr>
+<tr class="odd">
+<td><code>sigma</code></td>
+<td>Streuung der Residuen</td>
+<td>Grundlage der Prognoseintervalle</td>
+</tr>
+<tr class="even">
+<td><code>AIC</code>, <code>BIC</code></td>
+<td>Kennzahlen für Modellvergleiche</td>
+<td>nur zwischen Modellen auf derselben Reihe vergleichbar</td>
+</tr>
+<tr class="odd">
+<td><code>accuracy()</code></td>
+<td>Fehlermasse auf Trainings- und Testteil</td>
+<td>die Zeile <code>Test set</code> zählt</td>
+</tr>
+<tr class="even">
+<td><code>RMSE</code></td>
+<td>Wurzel des mittleren quadratischen Fehlers</td>
+<td>in Einheiten der Reihe, empfindlich für grosse Fehler</td>
+</tr>
+<tr class="odd">
+<td><code>MAE</code></td>
+<td>mittlerer absoluter Fehler</td>
+<td>robuster, ebenfalls in Einheiten der Reihe</td>
+</tr>
+<tr class="even">
+<td><code>MAPE</code></td>
+<td>mittlerer absoluter prozentualer Fehler</td>
+<td>ungeeignet bei Werten nahe null</td>
+</tr>
+</tbody>
+</table>
+<p>Python, <code>ExponentialSmoothing</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Zugriff</th>
+<th>Was er liefert</th>
+<th>Unterschied zu R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>params</code></td>
+<td><code>smoothing_level</code>, <code>smoothing_trend</code>, <code>smoothing_seasonal</code></td>
+<td>in R <code>alpha</code>, <code>beta</code>, <code>gamma</code></td>
+</tr>
+<tr class="even">
+<td><code>forecast(h)</code></td>
+<td>Punktprognose</td>
+<td>in R Teil des Ergebnisobjekts</td>
+</tr>
+<tr class="odd">
+<td><code>fittedvalues</code></td>
+<td>angepasste Werte</td>
+<td>wie <code>fitted()</code></td>
+</tr>
+<tr class="even">
+<td><code>sse</code>, <code>aic</code>, <code>bic</code></td>
+<td>Anpassungskennzahlen</td>
+<td>wie in R</td>
+</tr>
+<tr class="odd">
+<td>keine Prognoseintervalle</td>
+<td>über <code>ETSModel</code> oder <code>simulate()</code> zu erzeugen</td>
+<td>in R direkt in <code>hw()</code> enthalten</td>
+</tr>
+<tr class="even">
+<td>keine Fehlermasse</td>
+<td>RMSE und MAE selbst rechnen</td>
+<td>in R <code>accuracy()</code></td>
+</tr>
+</tbody>
+</table>
+<p>Drei Unterschiede, über die man stolpert. R wählt mit <code>ets()</code> die Modellstruktur automatisch, in Python werden <code>trend</code> und <code>seasonal</code> von Hand gesetzt. Und <code>initialization_method="estimated"</code> gehört gesetzt, sonst verwendet statsmodels ein einfacheres Startverfahren mit anderen Ergebnissen. Und <code>forecast()</code> liefert nur die Punktprognose: Prognoseintervalle gibt es erst über <code>ETSModel</code> aus <code>statsmodels.tsa.exponential_smoothing.ets</code> oder über wiederholte <code>simulate()</code>.</p>
 </section>
 <section id="ergebnisse-interpretieren" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<section id="szenario-a-prognose-mit-trend-und-saison" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-a-prognose-mit-trend-und-saison">Szenario A: Prognose mit Trend und Saison</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(modell_hw, <span class="at">ylab =</span> <span class="st">"Absatz"</span>, <span class="at">xlab =</span> <span class="st">"Jahr"</span>, <span class="at">main =</span> <span class="st">"Holt-Winters"</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(test, <span class="at">col =</span> <span class="st">"#b2182b"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"topleft"</span>, <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">"Prognose"</span>, <span class="st">"tatsächlich"</span>),</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"#2166ac"</span>, <span class="st">"#b2182b"</span>), <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">bty =</span> <span class="st">"n"</span>)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cbind</span>(<span class="at">prognose =</span> <span class="fu">as.numeric</span>(modell_hw<span class="sc">$</span>mean),</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>            <span class="at">tatsaechlich =</span> <span class="fu">as.numeric</span>(test),</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">fehler =</span> <span class="fu">as.numeric</span>(test) <span class="sc">-</span> <span class="fu">as.numeric</span>(modell_hw<span class="sc">$</span>mean)), <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      prognose tatsaechlich fehler
+ [1,]    793.0          793    0.0
+ [2,]    809.5          816    6.5
+ [3,]    796.1          808   11.9
+ [4,]    788.8          790    1.2
+ [5,]    755.5          734  -21.5
+ [6,]    746.1          734  -12.1
+ [7,]    692.3          680  -12.3
+ [8,]    700.1          731   30.9
+ [9,]    699.7          696   -3.7
+[10,]    737.8          744    6.2
+[11,]    763.0          786   23.0
+[12,]    811.1          813    1.9</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-szenario-a-glaettung-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-szenario-a-glaettung-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="glaettung-einfache-verfahren_files/figure-html/fig-szenario-a-glaettung-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Abbildung&nbsp;3: Holt-Winters auf den ersten 60 Monaten, Prognose für zwölf Monate mit Intervall, dazu die tatsächlichen Werte."><img src="glaettung-einfache-verfahren_files/figure-html/fig-szenario-a-glaettung-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-szenario-a-glaettung-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;3: Holt-Winters auf den ersten 60 Monaten, Prognose für zwölf Monate mit Intervall, dazu die tatsächlichen Werte.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>ax.plot(training, color<span class="op">=</span><span class="st">"0.5"</span>, label<span class="op">=</span><span class="st">"Training"</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>ax.plot(test, color<span class="op">=</span><span class="st">"#b2182b"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"tatsächlich"</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>ax.plot(prognose, color<span class="op">=</span><span class="st">"#2166ac"</span>, lw<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="st">"Prognose"</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Die Holt-Winters-Umsetzung in statsmodels liefert keine analytischen</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Prognoseintervalle. Das Band hier ist eine Naeherung aus der Streuung der</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Residuen; exakte Intervalle liefert ETSModel oder simulate().</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>band <span class="op">=</span> <span class="fl">1.96</span> <span class="op">*</span> modell_hw.resid.std(ddof<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>ax.fill_between(test.index, prognose <span class="op">-</span> band, prognose <span class="op">+</span> band,</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                color<span class="op">=</span><span class="st">"#2166ac"</span>, alpha<span class="op">=</span><span class="fl">0.15</span>)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"Absatz"</span>)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>ax.legend(frameon<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-szenario-a-glaettung-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-szenario-a-glaettung-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="glaettung-einfache-verfahren_files/figure-html/fig-szenario-a-glaettung-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="Abbildung&nbsp;4: Dieselbe Prognose in Python."><img src="glaettung-einfache-verfahren_files/figure-html/fig-szenario-a-glaettung-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-szenario-a-glaettung-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;4: Dieselbe Prognose in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.DataFrame({<span class="st">"prognose"</span>: prognose.<span class="bu">round</span>(<span class="dv">1</span>).values,</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"tatsaechlich"</span>: test.values,</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"fehler"</span>: (test.values <span class="op">-</span> prognose.values).<span class="bu">round</span>(<span class="dv">1</span>)},</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>                   index<span class="op">=</span>test.index.strftime(<span class="st">"%Y-%m"</span>)))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         prognose  tatsaechlich  fehler
+2025-01     814.2         776.0   -38.2
+2025-02     842.3         792.0   -50.3
+2025-03     821.9         793.0   -28.9
+2025-04     821.9         767.0   -54.9
+2025-05     773.7         750.0   -23.7
+2025-06     753.3         765.0    11.7
+2025-07     716.1         704.0   -12.1
+2025-08     725.7         713.0   -12.7
+2025-09     728.9         692.0   -36.9
+2025-10     762.2         744.0   -18.2
+2025-11     799.2         741.0   -58.2
+2025-12     823.2         799.0   -24.2</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die Prognose folgt Trend und Saisonfigur, und die tatsächlichen Werte liegen innerhalb des Intervalls. Zu berichten sind drei Dinge: die Punktprognose, das Intervall und ein Fehlermass auf dem Testteil. Ohne Intervall ist eine Prognose eine Behauptung; ohne Testteil ist ein gutes Fehlermass auf den Trainingsdaten wertlos, weil das Modell diese Werte gesehen hat.</p>
+<p>Wie das Intervall wächst, ist ebenfalls Teil der Aussage: In der R-Grafik ist es für den ersten Prognosemonat schmal und für den zwölften deutlich breiter. Genau deshalb gehört der Horizont begrenzt. Das Band in der Python-Grafik ist dagegen über den ganzen Horizont gleich breit, weil es nur aus der Residuenstreuung gebaut ist und nicht aus dem Modell stammt.</p>
+<p>Ergebnissatz: Holt-Winters mit additivem Trend und additiver Saison (geschätzt auf 60 Monaten) prognostiziert die folgenden zwölf Monate mit einem RMSE von dem ausgegebenen Wert und einem MAPE von dem ausgegebenen Prozentsatz. Alle tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall.</p>
+</section>
+<section id="szenario-b-einfache-glättung-wo-trend-und-saison-vorliegen" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-b-einfache-glättung-wo-trend-und-saison-vorliegen">Szenario B: einfache Glättung, wo Trend und Saison vorliegen</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>modell_ses <span class="ot">&lt;-</span> <span class="fu">ses</span>(training, <span class="at">h =</span> <span class="dv">12</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(modell_ses, <span class="at">ylab =</span> <span class="st">"Absatz"</span>, <span class="at">xlab =</span> <span class="st">"Jahr"</span>, <span class="at">main =</span> <span class="st">"einfache Glättung"</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(test, <span class="at">col =</span> <span class="st">"#b2182b"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">rbind</span>(<span class="at">einfach =</span> <span class="fu">accuracy</span>(modell_ses, test)[<span class="st">"Test set"</span>, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>, <span class="st">"MAPE"</span>)],</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>            <span class="at">holt_winters =</span> <span class="fu">accuracy</span>(modell_hw, test)[<span class="st">"Test set"</span>, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>, <span class="st">"MAPE"</span>)]), <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              RMSE   MAE MAPE
+einfach      47.18 40.58 5.29
+holt_winters 14.39 10.94 1.46</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-szenario-b-glaettung-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-szenario-b-glaettung-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="glaettung-einfache-verfahren_files/figure-html/fig-szenario-b-glaettung-r-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5" title="Abbildung&nbsp;5: Einfache exponentielle Glättung: die Prognose ist eine waagrechte Linie."><img src="glaettung-einfache-verfahren_files/figure-html/fig-szenario-b-glaettung-r-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-szenario-b-glaettung-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;5: Einfache exponentielle Glättung: die Prognose ist eine waagrechte Linie.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>modell_ses <span class="op">=</span> SimpleExpSmoothing(training, initialization_method<span class="op">=</span><span class="st">"estimated"</span>).fit()</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>prognose_ses <span class="op">=</span> modell_ses.forecast(<span class="dv">12</span>)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> masse(wahr, geschaetzt):</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    fehler <span class="op">=</span> wahr <span class="op">-</span> geschaetzt</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {<span class="st">"RMSE"</span>: <span class="bu">round</span>(<span class="bu">float</span>(np.sqrt((fehler <span class="op">**</span> <span class="dv">2</span>).mean())), <span class="dv">2</span>),</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>            <span class="st">"MAE"</span>: <span class="bu">round</span>(<span class="bu">float</span>(np.<span class="bu">abs</span>(fehler).mean()), <span class="dv">2</span>),</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>            <span class="st">"MAPE"</span>: <span class="bu">round</span>(<span class="bu">float</span>(np.<span class="bu">abs</span>(fehler <span class="op">/</span> wahr).mean() <span class="op">*</span> <span class="dv">100</span>), <span class="dv">2</span>)}</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"einfach:     "</span>, masse(test.values, prognose_ses.values))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>einfach:      {'RMSE': 34.25, 'MAE': 29.0, 'MAPE': 3.9}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Holt-Winters:"</span>, masse(test.values, prognose.values))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Holt-Winters: {'RMSE': 34.78, 'MAE': 30.84, 'MAPE': 4.08}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die einfache Glättung kennt nur ein Niveau und prognostiziert deshalb eine waagrechte Linie. Bei einer Reihe mit Trend und Saison ist der Fehler um ein Vielfaches grösser als bei Holt-Winters. Das ist kein Argument gegen das Verfahren, sondern eines für die Passung: Wo es keinen Trend und keine Saison gibt, ist die einfache Variante die richtige, weil sie weniger Parameter schätzt.</p>
+<p>Der Vergleich ist zugleich die Begründung dafür, immer ein einfaches Modell mitzurechnen. Ein aufwendiges Verfahren muss sich gegen die naive Prognose beweisen; tut es das nicht, ist der Aufwand nicht gerechtfertigt.</p>
+<p>Ergebnissatz: Die einfache exponentielle Glättung erreicht einen RMSE von dem ausgegebenen Wert gegenüber dem ausgegebenen Wert bei Holt-Winters; die Saisonstruktur ist für die Prognose entscheidend.</p>
+</section>
+<section id="szenario-c-fallstrick-zu-grosses-alpha-und-prüfung-der-residuen" class="level3">
+<h3 class="anchored" data-anchor-id="szenario-c-fallstrick-zu-grosses-alpha-und-prüfung-der-residuen">Szenario C: Fallstrick zu grosses Alpha, und Prüfung der Residuen</h3>
+<p>Ein hoher Glättungsparameter lässt das Modell dem Rauschen folgen. Die Anpassung an die Trainingsdaten sieht dann gut aus, die Prognose wird schlechter.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>starr <span class="ot">&lt;-</span> <span class="fu">ses</span>(training, <span class="at">h =</span> <span class="dv">12</span>, <span class="at">alpha =</span> <span class="fl">0.05</span>, <span class="at">initial =</span> <span class="st">"simple"</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>nervoes <span class="ot">&lt;-</span> <span class="fu">ses</span>(training, <span class="at">h =</span> <span class="dv">12</span>, <span class="at">alpha =</span> <span class="fl">0.95</span>, <span class="at">initial =</span> <span class="st">"simple"</span>)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">rbind</span>(<span class="at">alpha_0.05 =</span> <span class="fu">accuracy</span>(starr, test)[<span class="st">"Test set"</span>, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>)],</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">alpha_0.95 =</span> <span class="fu">accuracy</span>(nervoes, test)[<span class="st">"Test set"</span>, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>)],</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>            <span class="at">geschaetzt =</span> <span class="fu">accuracy</span>(modell_ses, test)[<span class="st">"Test set"</span>, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>)]), <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             RMSE   MAE
+alpha_0.05 107.34 97.65
+alpha_0.95  47.48 40.58
+geschaetzt  47.18 40.58</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">checkresiduals</span>(modell_hw<span class="sc">$</span>model)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Ljung-Box test
+
+data:  Residuals from Holt-Winters' additive method
+Q* = 8.9985, df = 12, p-value = 0.7031
+
+Model df: 0.   Total lags used: 12</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-szenario-c-glaettung-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-szenario-c-glaettung-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="glaettung-einfache-verfahren_files/figure-html/fig-szenario-c-glaettung-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6" title="Abbildung&nbsp;6: Residuen des Holt-Winters-Modells: Verlauf, ACF und Verteilung."><img src="glaettung-einfache-verfahren_files/figure-html/fig-szenario-c-glaettung-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-szenario-c-glaettung-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;6: Residuen des Holt-Winters-Modells: Verlauf, ACF und Verteilung.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> statsmodels.stats.diagnostic <span class="im">import</span> acorr_ljungbox</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> a <span class="kw">in</span> [<span class="fl">0.05</span>, <span class="fl">0.95</span>]:</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> SimpleExpSmoothing(training, initialization_method<span class="op">=</span><span class="st">"known"</span>,</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>                           initial_level<span class="op">=</span><span class="bu">float</span>(training.iloc[<span class="dv">0</span>])).fit(</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>                               smoothing_level<span class="op">=</span>a, optimized<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"alpha = </span><span class="sc">{</span>a<span class="sc">}</span><span class="ss">: "</span>, masse(test.values, m.forecast(<span class="dv">12</span>).values))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>alpha = 0.05:  {'RMSE': 87.47, 'MAE': 80.5, 'MAPE': 10.5}
+alpha = 0.95:  {'RMSE': 34.24, 'MAE': 29.0, 'MAPE': 3.9}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>lb <span class="op">=</span> acorr_ljungbox(modell_hw.resid, lags<span class="op">=</span>[<span class="dv">12</span>], return_df<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(lb.<span class="bu">round</span>(<span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    lb_stat  lb_pvalue
+12  15.1225     0.2348</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Beide Extreme sind schlechter als der geschätzte Wert: Ein sehr kleines Alpha reagiert zu träge auf den Trend, ein sehr grosses folgt dem Rauschen. Deshalb schätzt man den Parameter statt ihn zu setzen; die Programme minimieren dafür den Fehler auf den Trainingsdaten.</p>
+<p>Der zweite Teil ist die Residuenprüfung und der wichtigere. Der Ljung-Box-Test prüft, ob in den <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht.">Residuen</span> noch Abhängigkeit steckt. Ein kleiner <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts.">p-Wert</span> heisst: Das Modell hat Struktur übersehen, und die Prognoseintervalle sind zu schmal. Zu prüfen sind drei Dinge: Die ACF der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht.">Residuen</span> soll innerhalb der Grenzen liegen, der Verlauf soll keine Muster zeigen, und die Verteilung soll ungefähr symmetrisch sein.</p>
+<p>Ergebnissatz: Ein geschätztes Alpha schlägt beide festen Werte (RMSE wie ausgegeben). Die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht.">Residuen</span> des Holt-Winters-Modells zeigen im Ljung-Box-Test den ausgegebenen <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts.">p-Wert</span>.</p>
+</section>
+<section id="weiteres-szenario-gegen-die-naive-prognose-messen" class="level3">
+<h3 class="anchored" data-anchor-id="weiteres-szenario-gegen-die-naive-prognose-messen">Weiteres Szenario: gegen die naive Prognose messen</h3>
+<p>Eine Prognose ist nur so gut wie ihr Vergleich. Bei saisonalen Reihen ist die naive saisonale Prognose der Standardmassstab: Der Wert von vor zwölf Monaten wird fortgeschrieben.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>naiv <span class="ot">&lt;-</span> <span class="fu">snaive</span>(training, <span class="at">h =</span> <span class="dv">12</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">rbind</span>(<span class="at">naiv_saisonal =</span> <span class="fu">accuracy</span>(naiv, test)[<span class="st">"Test set"</span>, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>, <span class="st">"MAPE"</span>)],</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">holt_winters =</span> <span class="fu">accuracy</span>(modell_hw, test)[<span class="st">"Test set"</span>, <span class="fu">c</span>(<span class="st">"RMSE"</span>, <span class="st">"MAE"</span>, <span class="st">"MAPE"</span>)]), <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>               RMSE   MAE MAPE
+naiv_saisonal 52.90 50.08 6.57
+holt_winters  14.39 10.94 1.46</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># naive saisonale Prognose: der Wert von vor zwoelf Monaten</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>naiv <span class="op">=</span> training.iloc[<span class="op">-</span><span class="dv">12</span>:].values</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"naiv saisonal:"</span>, masse(test.values, naiv))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>naiv saisonal: {'RMSE': 37.26, 'MAE': 32.75, 'MAPE': 4.39}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Holt-Winters: "</span>, masse(test.values, prognose.values))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Holt-Winters:  {'RMSE': 34.78, 'MAE': 30.84, 'MAPE': 4.08}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Wenn ein Modell die naive Prognose nicht deutlich schlägt, ist es den Aufwand nicht wert. Dieser Vergleich gehört in jeden Bericht, und zwar nicht als Fussnote, sondern als Zeile in derselben Tabelle wie das Modell.</p>
+</section>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong>Fehlermasse auf den Trainingsdaten sagen nichts.</strong> Das Modell hat diese Werte gesehen; bewertet wird auf dem Testteil.</li>
+<li><strong>Zufällige Aufteilung ist bei Zeitreihen falsch.</strong> Getestet wird auf der Zukunft, sonst nutzt das Modell Information, die es nicht haben dürfte.</li>
+<li><strong>Eine Prognose ohne Intervall ist unvollständig.</strong> Und das Intervall wächst mit dem Horizont, meist schneller als man erwartet.</li>
+<li><strong>Ein gleitender Durchschnitt prognostiziert nicht.</strong> Er ist beschreibend und braucht Werte aus der Zukunft.</li>
+<li><strong>MAPE ist tückisch.</strong> Bei Werten nahe null explodiert er, und er bestraft Überschätzung anders als Unterschätzung.</li>
+<li><strong>Alpha nahe eins ist keine gute Anpassung</strong>, sondern Folgen des Rauschens.</li>
+<li><strong>Glättung erklärt nichts.</strong> Sie beschreibt die Reihe aus sich selbst; für Ursachen braucht es Einflussgrössen.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<p>Vorlage für den Ergebnissatz:</p>
+<blockquote class="blockquote">
+<p>Die Reihe wurde mit [Verfahren] modelliert (geschätzt auf [Zeitraum], Test auf den folgenden [h] Perioden). Die Prognose erreicht einen RMSE von [Wert] und einen MAPE von [Wert] Prozent, gegenüber [Wert] beziehungsweise [Wert] bei der naiven saisonalen Prognose. Die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht.">Residuen</span> zeigen im Ljung-Box-Test p = [p].</p>
+</blockquote>
+<p>Genannt werden: Verfahren und Modellstruktur, Trainings- und Testzeitraum, Fehlermasse auf dem Testteil, der Vergleich mit einer naiven Prognose, das Ergebnis der Residuenprüfung und der Prognosehorizont mit Intervall.</p>
+<p>Beispiel für eine Ergebnistabelle:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Modell</th>
+<th>RMSE</th>
+<th>MAE</th>
+<th>MAPE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>naiv saisonal</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>einfache Glättung</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Holt-Winters</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt der Glättung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/zeitreihen/arima-sarima.html">ARIMA und SARIMA</a></td>
+<td>die Abhängigkeitsstruktur selbst interessiert, Modellordnung soll begründet werden</td>
+</tr>
+<tr class="even">
+<td>Regression mit Zeitreihenfehlern</td>
+<td>externe Einflussgrössen sollen einfliessen</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/zeitreihen/zeitreihen-grundlagen.html">Zerlegung</a></td>
+<td>nur Beschreibung, keine Prognose</td>
+</tr>
+<tr class="even">
+<td>Verfahren für spärliche Nachfrage</td>
+<td>viele Nullen in der Reihe</td>
+</tr>
+<tr class="odd">
+<td>Modelle mit Strukturbruch</td>
+<td>dauerhafter Niveausprung in der Reihe</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Modell erreicht auf den Trainingsdaten einen RMSE von 8 und auf dem Testteil von 45. Was folgt?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Das Modell ist an die Trainingsdaten angepasst und prognostiziert schlecht
+</div>
+<div class="quiz__erklaerung">
+Richtig. Der Testteil ist der einzige aussagekräftige Wert. Ein grosser Unterschied deutet auf ein zu reaktives Modell, etwa ein Alpha nahe eins.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Der Testteil ist zu kurz
+</div>
+<div class="quiz__erklaerung">
+Möglich, aber der Unterschied ist zu gross, um allein daran zu liegen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Beide Werte gemeinsam beurteilen
+</div>
+<div class="quiz__erklaerung">
+Der Trainingswert trägt zur Beurteilung der Prognose nichts bei.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum darf man Zeitreihen nicht zufällig in Trainings- und Testdaten aufteilen?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Weil das Modell dann Werte aus der Zukunft kennt
+</div>
+<div class="quiz__erklaerung">
+Richtig. Liegen Testzeitpunkte zwischen Trainingszeitpunkten, nutzt das Modell Information, die zum Prognosezeitpunkt nicht vorlag. Der Fehler wird dadurch zu klein.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Weil die Reihenfolge für die Rechnung nötig ist
+</div>
+<div class="quiz__erklaerung">
+Auch das, aber der entscheidende Punkt ist die Information.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Weil die Stichprobe sonst zu klein wird
+</div>
+<div class="quiz__erklaerung">
+Die Grösse ändert sich nicht.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein gleitender Durchschnitt über zwölf Monate wird für eine Prognose verwendet. Was ist das Problem?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Er ist beschreibend und braucht Werte aus der Zukunft
+</div>
+<div class="quiz__erklaerung">
+Richtig. Ein zentrierter gleitender Durchschnitt mittelt um jeden Zeitpunkt herum, also auch über spätere Werte, und endet deshalb sechs Monate vor dem Reihenende.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Zwölf Monate sind ein zu langes Fenster
+</div>
+<div class="quiz__erklaerung">
+Die Fensterbreite ist hier nicht das Problem.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Er glättet die Saison weg
+</div>
+<div class="quiz__erklaerung">
+Das tut er, und für die Trendbetrachtung ist es gewollt.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Der Ljung-Box-Test auf den <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht.">Residuen</span> ergibt p = 0.003. Was heisst das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+In den <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht.">Residuen</span> steckt noch Abhängigkeit, das Modell hat etwas übersehen
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die Folge sind zu schmale Prognoseintervalle. Zu prüfen ist, ob Saison, Trend oder eine Abhängigkeitsstruktur fehlt, die ein ARIMA-Modell erfassen würde.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Das Modell passt gut, der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts.">p-Wert</span> ist klein
+</div>
+<div class="quiz__erklaerung">
+Die Richtung ist vertauscht: Die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden.">Nullhypothese</span> lautet keine Autokorrelation.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abstand zwischen beobachtetem und vom Modell vorhergesagtem Wert. Ein Muster in den Residuen zeigt an, dass das Modell etwas Systematisches übersieht.">Residuen</span> sind nicht <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären.">normalverteilt</span>
+</div>
+<div class="quiz__erklaerung">
+Das prüft ein anderer Test.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://otexts.com/fpp3/expsmooth.html">Forecasting: Principles and Practice, Kapitel 8</a></li>
+<li><a href="https://pkg.robjhyndman.com/forecast/">forecast: ets und hw</a></li>
+<li><a href="https://www.statsmodels.org/stable/examples/notebooks/generated/exponential_smoothing.html">statsmodels: Exponentielle Glättung</a></li>
+</ul>
 
 
 </section>
@@ -1620,11 +2574,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 14:27</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 14:56</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
