@@ -4,29 +4,571 @@ description: "Verknüpfungsverfahren, Dendrogramm und dessen Deutung."
 categories: ["Clustering", "Distanzmasse", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 50
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(cluster)
+
+set.seed(2026)
+
+gruppe_wahr <- rep(c("A", "B", "C"), times = c(120, 90, 60))
+kunden <- data.frame(
+  besuche = round(c(rnorm(120, 14, 2.5), rnorm(90, 6, 1.8), rnorm(60, 3, 1.2)), 1),
+  umsatz  = round(c(rnorm(120, 1400, 220), rnorm(90, 900, 160), rnorm(60, 2200, 300)), 0)
+)
+skaliert <- scale(kunden)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster, cophenet
+from scipy.spatial.distance import pdist
+from sklearn.preprocessing import StandardScaler
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+rng = np.random.default_rng(2026)
+
+gruppe_wahr = np.repeat(["A", "B", "C"], [120, 90, 60])
+kunden = pd.DataFrame({
+    "besuche": np.concatenate([rng.normal(14, 2.5, 120), rng.normal(6, 1.8, 90),
+                               rng.normal(3, 1.2, 60)]).round(1),
+    "umsatz": np.concatenate([rng.normal(1400, 220, 120), rng.normal(900, 160, 90),
+                              rng.normal(2200, 300, 60)]).round(0),
+})
+skaliert = StandardScaler().fit_transform(kunden)
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Welche Gruppenstruktur zeigt sich, wenn man ähnliche Objekte schrittweise zusammenfasst, ohne die Anzahl vorher festzulegen? |
+| Zielvariable | keine, das Verfahren ist unüberwacht |
+| Eingang | eine Distanzmatrix, also beliebige Datentypen, sofern ein Distanzmass definiert ist |
+| Was die Methode liefert | Dendrogramm, Gruppenzuordnung bei gewählter Schnitthöhe, Verschmelzungshöhen |
+| R-Funktion | `hclust(dist(skaliert), method = "ward.D2")`, geschnitten mit `cutree()` |
+| Python-Funktion | `linkage(skaliert, method="ward")`, geschnitten mit `fcluster()` |
+| Verwandte Methoden | [k-Means](k-means.qmd), [Clustergüte](clusterguete.qmd), [Distanzmasse](distanzmasse.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Wie viele Gruppen stecken überhaupt in den Daten,
+welche Objekte gehören am engsten zusammen, wie sieht die Struktur zwischen den
+Gruppen aus.
+
+Der Unterschied zu [k-Means](k-means.qmd) ist grundlegend: Hier wird die Anzahl
+Gruppen nicht vorgegeben, sondern nachträglich durch einen Schnitt im
+Dendrogramm gewählt. Ausserdem arbeitet das Verfahren auf einer Distanzmatrix,
+also auch mit gemischten Datentypen über die Gower-Distanz.
+
+| Situation | Stattdessen |
+|---|---|
+| Sehr viele Beobachtungen, etwa über zehntausend | [k-Means](k-means.qmd); die Distanzmatrix wächst quadratisch |
+| k ist bekannt und die Gruppen sind kompakt | [k-Means](k-means.qmd), schneller und stabiler |
+| Gruppen beliebiger Form, Ausreisser als eigene Kategorie | DBSCAN |
+| Die Wahl der Gruppenzahl soll begründet werden | zusätzlich [Clustergüte](clusterguete.qmd) |
+| Nur Dimensionen sollen verdichtet werden | [Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) |
+
 ## Grundidee und Modell
+
+Das gebräuchliche Vorgehen ist agglomerativ, also von unten nach oben: Jede
+Beobachtung beginnt als eigene Gruppe, und in jedem Schritt werden die beiden
+Gruppen mit der kleinsten Distanz verschmolzen, bis alles in einer Gruppe ist.
+Aufgezeichnet wird die Höhe, bei der jede Verschmelzung geschieht, und daraus
+entsteht das Dendrogramm.
+
+Der entscheidende Freiheitsgrad ist die **Verknüpfungsmethode**: Wie wird die
+Distanz zwischen zwei Gruppen aus den Distanzen ihrer Mitglieder gebildet?
+
+| Methode | Distanz zwischen Gruppen | Neigung |
+|---|---|---|
+| Single | kleinster Abstand zwischen zwei Mitgliedern | Ketten, langgezogene Gruppen; empfindlich für Brücken |
+| Complete | grösster Abstand zwischen zwei Mitgliedern | kompakte, ähnlich grosse Gruppen |
+| Average | Mittelwert aller paarweisen Abstände | Kompromiss zwischen beiden |
+| Ward | Zuwachs an Streuung innerhalb der Gruppen | kompakte, ähnlich grosse Gruppen; das übliche Standardverfahren |
+| Centroid | Abstand der Gruppenzentren | kann zu Umkehrungen im Dendrogramm führen |
+
+Ward ist mit k-Means verwandt: Beide minimieren die Streuung innerhalb der
+Gruppen, Ward schrittweise und ohne Startwertproblem, k-Means iterativ mit
+vorgegebenem k. Deshalb liefern die beiden auf kompakten Daten meist ähnliche
+Ergebnisse.
+
+Ein Hinweis zur Umsetzung: Ward setzt quadrierte euklidische Distanzen voraus. In
+R heisst die korrekte Variante `ward.D2` und erwartet gewöhnliche Distanzen; in
+Python erwartet `linkage(..., method="ward")` die Datenmatrix, nicht die
+Distanzmatrix.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Sinnvolles Distanzmass | Das Mass passt zu den Datentypen | [Distanzmasse](distanzmasse.qmd) | Struktur beschreibt Artefakte | Gower bei gemischten Typen |
+| Standardisierung bei metrischen Daten | Keine Variable dominiert | Varianzen vergleichen | Gruppierung folgt der grössten Variablen | `scale()` beziehungsweise `StandardScaler` |
+| Passende Verknüpfung | Die Neigung des Verfahrens passt zur erwarteten Form | mehrere Methoden vergleichen | Ketten statt Gruppen, oder Gruppen zerschnitten | Ward oder Average als Ausgangspunkt |
+| Handhabbare Anzahl Beobachtungen | Distanzmatrix wächst quadratisch | n prüfen | Speicherbedarf, unlesbares Dendrogramm | k-Means, oder Stichprobe ziehen |
+| Keine extremen Ausreisser | Einzelne Punkte bilden keine eigenen Äste | Dendrogramm ansehen | Ein Ast mit einem Objekt | Ausreisser prüfen und begründen |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-verknuepfung-r
+#| fig-cap: "Dieselben Daten, drei Verknüpfungsmethoden. Single erzeugt Ketten, Complete und Ward kompakte Gruppen."
+#| fig-height: 3.6
+distanzen <- dist(skaliert)
+
+par(mfrow = c(1, 3), mar = c(2, 4, 3, 1))
+for (methode in c("single", "complete", "ward.D2")) {
+  baum <- hclust(distanzen, method = methode)
+  plot(baum, labels = FALSE, hang = -1, main = methode, xlab = "", sub = "")
+}
+par(mfrow = c(1, 1))
+```
+
+## Python
+
+```{python}
+#| label: fig-verknuepfung-py
+#| fig-cap: "Dieselben drei Methoden in Python."
+#| fig-height: 3.6
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3.6))
+for ax, methode in zip(achsen, ["single", "complete", "ward"]):
+    if methode == "ward":
+        verbund = linkage(skaliert, method="ward")
+    else:
+        verbund = linkage(pdist(skaliert), method=methode)
+    dendrogram(verbund, ax=ax, no_labels=True, color_threshold=0)
+    ax.set_title(methode)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+Der Unterschied ist deutlich. Bei Single wächst ein langer Ast, an den einzelne
+Objekte angehängt werden: der Kettenbildungseffekt. Bei Complete und Ward
+entstehen klar getrennte Blöcke auf ähnlicher Höhe. Welche Methode passt, hängt
+von der erwarteten Form ab; für kompakte Gruppen ist Ward der übliche
+Ausgangspunkt.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-hc-r
+baum <- hclust(distanzen, method = "ward.D2")
+
+gruppen <- cutree(baum, k = 3)
+table(gruppen)
+
+# Verschmelzungshoehen der letzten Schritte: wo wird der Sprung gross?
+round(rev(baum$height)[1:8], 3)
+
+# Wie gut gibt der Baum die Distanzen wieder
+round(cor(distanzen, cophenetic(baum)), 3)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-hc-py
+verbund = linkage(skaliert, method="ward")
+
+gruppen = fcluster(verbund, t=3, criterion="maxclust")
+print(np.bincount(gruppen)[1:])
+
+print(np.round(verbund[-8:, 2][::-1], 3))
+
+korrelation, _ = cophenet(verbund, pdist(skaliert))
+print("kophenetische Korrelation:", round(float(korrelation), 3))
+```
+
+:::
+
+Die Daten sind dieselben wie unter [k-Means](k-means.qmd): 270 Kunden in drei
+eingebauten Gruppen, beschrieben durch Besuche und Umsatz, standardisiert.
 
 ## Output lesen
 
+R, `hclust()` und `cutree()`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `height` | Verschmelzungshöhen in der Reihenfolge der Schritte | ein grosser Sprung heisst: hier werden unähnliche Gruppen vereint |
+| `merge` | welche Gruppen in welchem Schritt verschmelzen | negative Zahlen sind einzelne Objekte |
+| `order` | Reihenfolge der Blätter im Dendrogramm | nur für die Darstellung, keine Rangfolge |
+| `cutree(baum, k =)` | Zuordnung bei k Gruppen | schneidet waagrecht; die Nummerierung ist beliebig |
+| `cutree(baum, h =)` | Zuordnung bei einer Höhe | nützlich, wenn die Höhe inhaltlich begründet ist |
+| `cophenetic()` | Distanzen, wie der Baum sie darstellt | Korrelation mit den echten Distanzen misst die Treue der Darstellung |
+
+Python, `scipy.cluster.hierarchy`:
+
+| Zugriff | Was er liefert | Unterschied zu R |
+|---|---|---|
+| `linkage(...)` | Matrix mit vier Spalten: zwei Gruppen, Höhe, Grösse | in R getrennt in `merge` und `height` |
+| `fcluster(..., criterion="maxclust")` | Zuordnung bei k Gruppen | wie `cutree(k =)`; Nummerierung beginnt bei 1 |
+| `fcluster(..., criterion="distance")` | Zuordnung bei einer Höhe | wie `cutree(h =)` |
+| `dendrogram(...)` | Zeichnung, optional gefärbt | in R `plot()` |
+| `cophenet(...)` | Korrelation und kophenetische Distanzen | in R `cophenetic()` plus `cor()` |
+| Datenmatrix bei Ward | `linkage(X, method="ward")` erwartet die Daten | in R erwartet `hclust` immer eine Distanzmatrix |
+
+Die kophenetische Korrelation ist ein nützliches, oft übersehenes Mass: Sie sagt,
+wie gut das Dendrogramm die tatsächlichen Distanzen abbildet. Werte über etwa 0.75
+gelten als brauchbar; sie eignet sich zum Vergleich von Verknüpfungsmethoden, nicht
+zur Wahl der Gruppenzahl.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: drei Gruppen im Dendrogramm
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-a-hc-r
+#| fig-cap: "Dendrogramm mit Schnitt bei drei Gruppen und die Gruppen im Streudiagramm."
+#| fig-height: 3.6
+par(mfrow = c(1, 2), mar = c(2, 4, 3, 1))
+plot(baum, labels = FALSE, hang = -1, main = "Ward", xlab = "", sub = "")
+rect.hclust(baum, k = 3, border = c("#2166ac", "#b2182b", "#1b7837"))
+
+par(mar = c(4, 4, 3, 1))
+plot(skaliert[, 1], skaliert[, 2], pch = 16, cex = 0.7,
+     col = c("#2166ac", "#b2182b", "#1b7837")[gruppen],
+     xlab = "Besuche (z)", ylab = "Umsatz (z)", main = "Schnitt bei k = 3")
+par(mfrow = c(1, 1))
+
+aggregate(kunden, by = list(gruppe = gruppen), FUN = mean) |>
+  (\(x) round(x, 1))()
+```
+
+## Python
+
+```{python}
+#| label: fig-szenario-a-hc-py
+#| fig-cap: "Dieselbe Darstellung in Python."
+#| fig-height: 3.6
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.6))
+dendrogram(verbund, ax=achsen[0], no_labels=True, color_threshold=verbund[-2, 2])
+achsen[0].set_title("Ward")
+for nummer, farbe in zip([1, 2, 3], ["#2166ac", "#b2182b", "#1b7837"]):
+    teil = skaliert[gruppen == nummer]
+    achsen[1].scatter(teil[:, 0], teil[:, 1], s=10, color=farbe)
+achsen[1].set_xlabel("Besuche (z)")
+achsen[1].set_ylabel("Umsatz (z)")
+achsen[1].set_title("Schnitt bei k = 3")
+plt.tight_layout()
+plt.show()
+
+print(kunden.assign(gruppe=gruppen).groupby("gruppe").mean().round(1))
+```
+
+:::
+
+Im Dendrogramm sind drei Blöcke erkennbar, die auf ähnlicher Höhe zusammenlaufen;
+darüber folgt ein deutlicher Sprung. Genau dort wird geschnitten. Die
+Verschmelzungshöhen aus der Durchführung bestätigen das: Die letzten beiden
+Sprünge sind gross, die davor deutlich kleiner.
+
+Für die Deutung zählen die Gruppenmittelwerte in den ursprünglichen Einheiten,
+nicht die Bildposition. Eine Gruppe mit vielen Besuchen und mittlerem Umsatz ist
+etwas anderes als eine mit wenigen Besuchen und hohem Umsatz, und genau daraus
+entstehen die Namen der Segmente.
+
+Ergebnissatz: Ein hierarchisches Clustering (Ward, euklidische Distanz auf
+standardisierten Merkmalen, n = 270) zeigt drei Gruppen; geschnitten wurde
+oberhalb der drei kompakten Blöcke und unterhalb des deutlichen Sprungs in den
+Verschmelzungshöhen. Die Gruppen umfassen die ausgegebenen Grössen mit den
+ausgegebenen Mittelwerten.
+
+### Szenario B: keine klare Gruppenzahl
+
+Wenn die Daten keine Gruppen enthalten, wächst das Dendrogramm gleichmässig, und
+jeder Schnitt ist gleich willkürlich.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-b-hc-r
+#| fig-cap: "Dendrogramm zu Daten ohne Gruppenstruktur: gleichmässiges Wachstum, kein Sprung."
+#| fig-height: 3.2
+set.seed(13)
+ohne_struktur <- matrix(rnorm(200 * 2), ncol = 2)
+
+baum_b <- hclust(dist(scale(ohne_struktur)), method = "ward.D2")
+plot(baum_b, labels = FALSE, hang = -1, main = "ohne Struktur", xlab = "", sub = "")
+
+round(rev(baum_b$height)[1:8], 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-hc-py
+rng_b = np.random.default_rng(13)
+ohne_struktur = rng_b.normal(size=(200, 2))
+
+verbund_b = linkage(StandardScaler().fit_transform(ohne_struktur), method="ward")
+print(np.round(verbund_b[-8:, 2][::-1], 3))
+```
+
+:::
+
+Die Verschmelzungshöhen fallen gleichmässig ab, ohne einen ausgezeichneten
+Sprung. Aussage: Es gibt keine natürliche Gruppenzahl. Ein Schnitt ist trotzdem
+möglich, und das ist die Falle: Man erhält Gruppen, die keine sind, und sie lassen
+sich hinterher sogar beschreiben, weil jede Aufteilung Mittelwertunterschiede
+erzeugt.
+
+Das Vorgehen: Vor jeder Interpretation prüfen, ob überhaupt Struktur vorliegt,
+über den Verlauf der Verschmelzungshöhen, die Silhouette und die Gap-Statistik,
+siehe [Clustergüte](clusterguete.qmd).
+
+Ergebnissatz: Die Verschmelzungshöhen zeigen keinen ausgezeichneten Sprung; die
+Daten geben keine Gruppenstruktur her.
+
+### Szenario C: Fallstrick Kettenbildung bei Single-Linkage
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-c-hc-r
+#| fig-cap: "Zwei kompakte Wolken mit einer dünnen Brücke. Single verbindet über die Brücke, Ward trennt korrekt."
+#| fig-height: 3.6
+set.seed(3)
+wolke_a <- cbind(rnorm(80, -2, 0.4), rnorm(80, 0, 0.4))
+wolke_b <- cbind(rnorm(80, 2, 0.4), rnorm(80, 0, 0.4))
+bruecke <- cbind(seq(-1.6, 1.6, length.out = 12), rnorm(12, 0, 0.05))
+brueckendaten <- rbind(wolke_a, wolke_b, bruecke)
+
+baum_single <- hclust(dist(brueckendaten), method = "single")
+baum_ward <- hclust(dist(brueckendaten), method = "ward.D2")
+
+g_single <- cutree(baum_single, k = 2)
+g_ward <- cutree(baum_ward, k = 2)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(brueckendaten, pch = 16, cex = 0.6, col = c("#2166ac", "#b2182b")[g_single],
+     xlab = "x", ylab = "y", main = "Single, k = 2")
+plot(brueckendaten, pch = 16, cex = 0.6, col = c("#2166ac", "#b2182b")[g_ward],
+     xlab = "x", ylab = "y", main = "Ward, k = 2")
+par(mfrow = c(1, 1))
+
+table(single = g_single)
+table(ward = g_ward)
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-hc-py
+rng_c = np.random.default_rng(3)
+wolke_a = np.column_stack([rng_c.normal(-2, 0.4, 80), rng_c.normal(0, 0.4, 80)])
+wolke_b = np.column_stack([rng_c.normal(2, 0.4, 80), rng_c.normal(0, 0.4, 80)])
+bruecke = np.column_stack([np.linspace(-1.6, 1.6, 12), rng_c.normal(0, 0.05, 12)])
+brueckendaten = np.vstack([wolke_a, wolke_b, bruecke])
+
+g_single = fcluster(linkage(pdist(brueckendaten), method="single"), 2, "maxclust")
+g_ward = fcluster(linkage(brueckendaten, method="ward"), 2, "maxclust")
+
+print("Single:", np.bincount(g_single)[1:].tolist())
+print("Ward:  ", np.bincount(g_ward)[1:].tolist())
+```
+
+:::
+
+Bei Single-Linkage entsteht eine Aufteilung, in der eine Gruppe fast alle Punkte
+enthält und die andere nur wenige: Die zwölf Brückenpunkte genügen, um die beiden
+Wolken über eine Kette von kurzen Abständen zu verbinden. Ward trennt die Wolken
+dagegen wie erwartet.
+
+Erkennbar ist der Fall an den Gruppengrössen und am Dendrogramm, in dem ein
+langer Ast mit einzeln angehängten Objekten wächst. Das Vorgehen: Single-Linkage
+nur verwenden, wenn langgezogene Strukturen gesucht sind; sonst Ward oder Average.
+Und immer die Gruppengrössen ansehen, bevor man deutet.
+
+Ergebnissatz: Single-Linkage verbindet die beiden Wolken über wenige
+Zwischenpunkte (Gruppengrössen wie ausgegeben); berichtet wird die Lösung mit
+Ward.
+
+### Weiteres Szenario: gemischte Datentypen
+
+Der praktische Vorteil des Verfahrens ist, dass es mit jeder Distanzmatrix
+arbeitet, also auch mit Gower für gemischte Typen.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-d-hc-r
+gemischt <- data.frame(
+  umsatz = kunden$umsatz[1:60],
+  besuche = kunden$besuche[1:60],
+  segment = factor(rep(c("Privat", "Gewerbe"), 30)),
+  zufriedenheit = factor(rep(c("niedrig", "mittel", "hoch"), 20),
+                         levels = c("niedrig", "mittel", "hoch"), ordered = TRUE)
+)
+
+baum_gower <- hclust(daisy(gemischt, metric = "gower"), method = "average")
+table(cutree(baum_gower, k = 3))
+```
+
+## Python
+
+```{python}
+#| label: szenario-d-hc-py
+# Python bringt Gower nicht mit; hier die Distanzmatrix von Hand
+gemischt = pd.DataFrame({
+    "umsatz": kunden["umsatz"][:60].values,
+    "besuche": kunden["besuche"][:60].values,
+    "segment": np.tile(["Privat", "Gewerbe"], 30),
+    "zufriedenheit": np.tile([0, 1, 2], 20),
+})
+
+def gower(df):
+    teile = []
+    for name in df.columns:
+        s = df[name]
+        if s.dtype.kind in "if":
+            spanne = s.max() - s.min()
+            teile.append(np.abs(s.values[:, None] - s.values[None, :]) / spanne)
+        else:
+            teile.append((s.values[:, None] != s.values[None, :]).astype(float))
+    return np.mean(teile, axis=0)
+
+matrix = gower(gemischt)
+verbund_g = linkage(matrix[np.triu_indices_from(matrix, k=1)], method="average")
+print(np.bincount(fcluster(verbund_g, 3, "maxclust"))[1:].tolist())
+```
+
+:::
+
+Weil nur die Distanzmatrix nötig ist, lässt sich hier clustern, wo k-Means gar
+nicht anwendbar wäre. Der Preis ist die Deutung: Bei gemischten Merkmalen ist
+weniger offensichtlich, welche Variable eine Gruppe ausmacht, weshalb die
+Gruppenprofile umso wichtiger werden.
 
 ## Interpretationsfallen
 
+- **Ein Dendrogramm zeigt immer eine Hierarchie**, auch wenn keine Gruppen
+  existieren. Der Verlauf der Verschmelzungshöhen sagt, ob es welche gibt.
+- **Die Reihenfolge der Blätter bedeutet nichts.** Sie ist eine
+  Darstellungsentscheidung; benachbarte Blätter müssen nicht ähnlich sein.
+- **Die Höhe ist Distanz, nicht Wahrscheinlichkeit.** Sie hängt am gewählten
+  Distanzmass und der Verknüpfungsmethode.
+- **Der Schnitt ist eine Entscheidung.** Er gehört begründet, über den Sprung in
+  den Höhen, ein Gütemass oder eine inhaltliche Vorgabe.
+- **Die Verknüpfungsmethode formt das Ergebnis.** Single erzeugt Ketten, Ward
+  kompakte Gruppen ähnlicher Grösse. Wer die Methode wechselt, bis das Ergebnis
+  gefällt, hat nichts gezeigt.
+- **Einmal verschmolzen, immer verschmolzen.** Das Verfahren korrigiert frühe
+  Zusammenfassungen nie; ein Fehler am Anfang bleibt im Baum.
+- **Gruppennummern sind beliebig**, wie bei [k-Means](k-means.qmd).
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> Ein hierarchisches Clustering ([Distanzmass], [Verknüpfung], n = [n]) ergibt
+> bei einem Schnitt auf [Höhe oder k] Gruppen der Grössen [Grössen]. Der Schnitt
+> ist begründet durch [Sprung in den Verschmelzungshöhen, Silhouette,
+> inhaltliche Vorgabe]. Die kophenetische Korrelation beträgt [Wert].
+
+Genannt werden: Distanzmass und Standardisierung, Verknüpfungsmethode, n,
+Kriterium und Höhe des Schnitts, Gruppengrössen, Gruppenprofile in
+Originaleinheiten und ein Mass für die Treue der Darstellung.
+
+Beispiel für eine Ergebnistabelle:
+
+| Gruppe | n | Besuche (Mittel) | Umsatz (Mittel) | Beschreibung |
+|---|---|---|---|---|
+| 1 | | | | |
+| 2 | | | | |
+| 3 | | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt des hierarchischen Verfahrens |
+|---|---|
+| [k-Means](k-means.qmd) | viele Beobachtungen, k bekannt, kompakte Gruppen |
+| [Clustergüte](clusterguete.qmd) | die Wahl der Gruppenzahl soll begründet werden |
+| DBSCAN | Gruppen beliebiger Form, Ausreisser als eigene Kategorie |
+| Gaussian-Mixture-Modelle | Zuordnung mit Wahrscheinlichkeit, verschiedene Gruppenformen |
+| [Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) | Variablen verdichten statt Beobachtungen gruppieren |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Ein Dendrogramm mit Single-Linkage zeigt einen langen Ast, an dem einzelne
+Objekte hängen. Was bedeutet das?
+
+- [x] Kettenbildung: Objekte werden über kurze Einzelabstände angehängt ~ Richtig.
+      Single verbindet Gruppen über ihren kleinsten Abstand, weshalb wenige
+      Zwischenpunkte zwei Wolken verbinden können. Für kompakte Gruppen ist Ward
+      oder Average die passende Wahl.
+- [ ] Die Daten haben viele Ausreisser ~ Möglich, aber das Muster entsteht auch
+      ohne Ausreisser.
+- [ ] Der Baum wurde falsch gezeichnet ~ Die Darstellung ist korrekt, sie zeigt
+      die Eigenschaft des Verfahrens.
+:::
+
+::: {.quiz}
+Die Verschmelzungshöhen fallen gleichmässig ab, ohne Sprung. Was folgt für die
+Gruppenzahl?
+
+- [x] Es gibt keine natürliche Gruppenzahl in diesen Daten ~ Richtig. Ein Schnitt
+      ist technisch möglich, liefert aber Gruppen ohne Substanz. Vor der Deutung
+      wird geprüft, ob überhaupt Struktur vorliegt.
+- [ ] Man nimmt die Zahl, bei der die Gruppen gleich gross sind ~ Gleiche Grösse
+      ist kein Kriterium für Struktur.
+- [ ] Man schneidet in der Mitte des Baums ~ Das ist genau die willkürliche
+      Entscheidung, die man vermeiden will.
+:::
+
+::: {.quiz}
+Warum liefern Ward und k-Means auf kompakten Daten oft ähnliche Ergebnisse?
+
+- [x] Beide minimieren die Streuung innerhalb der Gruppen ~ Richtig. Ward tut es
+      schrittweise beim Verschmelzen, k-Means iterativ bei vorgegebenem k. Die
+      Unterschiede liegen im Vorgehen, nicht im Ziel.
+- [ ] Beide verwenden dieselbe Anzahl Startwerte ~ Ward hat kein
+      Startwertproblem.
+- [ ] Beide setzen normalverteilte Daten voraus ~ Keines der beiden Verfahren
+      setzt eine Verteilung voraus.
+:::
+
+::: {.quiz}
+Was misst die kophenetische Korrelation?
+
+- [x] Wie gut das Dendrogramm die tatsächlichen Distanzen wiedergibt ~ Richtig.
+      Sie vergleicht die Distanzen aus dem Baum mit den ursprünglichen und eignet
+      sich zum Vergleich von Verknüpfungsmethoden.
+- [ ] Wie gut die Gruppen getrennt sind ~ Dafür ist die Silhouette zuständig.
+- [ ] Wie viele Gruppen es gibt ~ Zur Wahl der Gruppenzahl trägt sie nichts bei.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 12.4](https://www.statlearning.com/)
+- [R-Dokumentation zu `hclust`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/hclust.html)
+- [scipy: hierarchisches Clustering](https://docs.scipy.org/doc/scipy/reference/cluster.hierarchy.html)

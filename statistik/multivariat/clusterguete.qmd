@@ -4,29 +4,528 @@ description: "Silhouette, Ellbogen und Gap-Statistik zur Beurteilung einer Lösu
 categories: ["Clustering", "Modellvalidierung", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 60
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(cluster)
+
+set.seed(2026)
+
+kunden <- data.frame(
+  besuche = round(c(rnorm(120, 14, 2.5), rnorm(90, 6, 1.8), rnorm(60, 3, 1.2)), 1),
+  umsatz  = round(c(rnorm(120, 1400, 220), rnorm(90, 900, 160), rnorm(60, 2200, 300)), 0)
+)
+skaliert <- scale(kunden)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score, silhouette_samples
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+rng = np.random.default_rng(2026)
+
+kunden = pd.DataFrame({
+    "besuche": np.concatenate([rng.normal(14, 2.5, 120), rng.normal(6, 1.8, 90),
+                               rng.normal(3, 1.2, 60)]).round(1),
+    "umsatz": np.concatenate([rng.normal(1400, 220, 120), rng.normal(900, 160, 90),
+                              rng.normal(2200, 300, 60)]).round(0),
+})
+skaliert = StandardScaler().fit_transform(kunden)
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie viele Gruppen sind angemessen, und ist die gefundene Aufteilung mehr als eine Zerlegung von Rauschen? |
+| Zielvariable | keine |
+| Eingang | Daten samt einer oder mehreren Clusterlösungen |
+| Was die Methode liefert | Silhouettenwerte je Beobachtung und Gruppe, Verlauf der Streuung über k, Vergleich mit Zufallsdaten |
+| R-Funktion | `cluster::silhouette()`, `clusGap()` |
+| Python-Funktion | `silhouette_score()`, `silhouette_samples()` |
+| Verwandte Methoden | [k-Means](k-means.qmd), [hierarchisches Clustering](hierarchisches-clustering.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Jede Clusteranalyse endet mit zwei Fragen, die das Verfahren selbst nicht
+beantwortet: Wie viele Gruppen, und gibt es überhaupt Gruppen? Diese Seite
+behandelt die Werkzeuge dafür.
+
+Wichtig ist die Grenze: Alle Masse hier sind **innere** Gütemasse. Sie
+beurteilen, wie gut die Aufteilung zur Geometrie der Daten passt, nicht ob sie
+inhaltlich sinnvoll ist. Ein Clustering mit ausgezeichneter Silhouette kann
+fachlich wertlos sein, und eine mittelmässige Aufteilung kann genau die Segmente
+liefern, mit denen man arbeiten will.
+
+| Situation | Stattdessen |
+|---|---|
+| Es gibt bekannte Gruppen zum Abgleich | äussere Masse wie der bereinigte Rand-Index |
+| Die Gruppen sollen vorhergesagt werden | [Klassifikation](../regression/klassifikationsguete.qmd) mit Kreuzvalidierung |
+| Es geht um die Stabilität der Lösung | Wiederholung auf Teilstichproben, Bootstrap |
+| Die Gruppenzahl ist inhaltlich vorgegeben | keine Suche nötig, aber Beurteilung der Lösung trotzdem sinnvoll |
+
 ## Grundidee und Modell
+
+Drei Werkzeuge, die verschiedene Fragen beantworten.
+
+**Silhouette** beurteilt jede Beobachtung einzeln:
+
+$$s_i = \frac{b_i - a_i}{\max(a_i, b_i)}$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $a_i$ | mittlere Distanz zu den übrigen Mitgliedern der eigenen Gruppe |
+| $b_i$ | mittlere Distanz zur nächstgelegenen fremden Gruppe |
+| $s_i$ | Wert zwischen minus eins und eins |
+
+Werte nahe eins heissen: eigene Gruppe deutlich näher als die nächste fremde.
+Werte um null heissen: die Beobachtung liegt auf der Grenze. Negative Werte
+heissen: sie wäre in einer anderen Gruppe besser aufgehoben. Der Mittelwert über
+alle Beobachtungen ist ein Gesamtmass, das sich über verschiedene k vergleichen
+lässt.
+
+**Ellbogen** betrachtet die Streuung innerhalb der Gruppen über k. Diese sinkt
+immer, aber der Zugewinn wird ab einem Punkt klein. Der Knick ist der Kandidat.
+Das Verfahren ist verbreitet und schwach: Der Knick ist oft nicht eindeutig.
+
+**Gap-Statistik** vergleicht die erreichte Streuung mit der, die sich in
+Zufallsdaten gleicher Ausdehnung ergibt. Der Vorteil: Sie kann als einzige der
+drei die Antwort "eine Gruppe", also keine Struktur, überhaupt liefern.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Dieselbe Distanz wie beim Clustering | Gütemass und Verfahren beurteilen dasselbe | Distanzmass prüfen | Bewertung passt nicht zur Lösung | dasselbe Mass verwenden |
+| Standardisierte Daten | Kein Merkmal dominiert | Varianzen vergleichen | Silhouette misst nur die grösste Variable | vor dem Clustering standardisieren |
+| Kompakte Gruppenform | Silhouette bevorzugt kugelige Gruppen | Streudiagramm | Ringe und Ketten werden abgestraft, obwohl sie Gruppen sind | dichtebasierte Masse, oder Beurteilung im Bild |
+| Genügend Beobachtungen je Gruppe | Kleine Gruppen haben instabile Werte | Gruppengrössen | Silhouette schwankt stark | k verkleinern |
+| Mehrere Kriterien | Ein Mass allein entscheidet nicht | Silhouette, Ellbogen, Gap zusammen ansehen | Scheingenauigkeit | mindestens zwei Kriterien plus Inhalt |
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-cg-r
+distanzen <- dist(skaliert)
+
+kennzahlen <- t(sapply(2:7, function(k) {
+  lauf <- kmeans(skaliert, centers = k, nstart = 25)
+  sil <- silhouette(lauf$cluster, distanzen)
+  c(k = k,
+    within = round(lauf$tot.withinss, 1),
+    silhouette = round(mean(sil[, "sil_width"]), 3),
+    kleinste_gruppe = min(lauf$size))
+}))
+
+kennzahlen
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-cg-py
+zeilen = []
+for k in range(2, 8):
+    lauf = KMeans(n_clusters=k, n_init=25, random_state=2026).fit(skaliert)
+    zeilen.append({
+        "k": k,
+        "within": round(float(lauf.inertia_), 1),
+        "silhouette": round(float(silhouette_score(skaliert, lauf.labels_)), 3),
+        "kleinste_gruppe": int(np.bincount(lauf.labels_).min()),
+    })
+
+print(pd.DataFrame(zeilen).to_string(index=False))
+```
+
+:::
+
+Die Daten sind dieselben wie unter [k-Means](k-means.qmd) und
+[hierarchischem Clustering](hierarchisches-clustering.qmd): 270 Kunden in drei
+eingebauten Gruppen. Die Tabelle stellt für jedes k die Streuung innerhalb der
+Gruppen, die mittlere Silhouette und die kleinste Gruppengrösse nebeneinander.
 
 ## Output lesen
 
+R:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `silhouette(...)[, "sil_width"]` | Silhouettenwert je Beobachtung | negative Werte markieren falsch zugeordnete Fälle |
+| Mittelwert der Silhouette | Gesamtmass für ein k | über 0.5 gilt als deutliche Struktur, unter 0.25 als kaum vorhanden |
+| `summary(silhouette(...))$clus.avg.widths` | Mittelwert je Gruppe | eine schwache Gruppe unter guten fällt hier auf |
+| `tot.withinss` | Streuung innerhalb der Gruppen | sinkt immer mit k, taugt nur für den Verlauf |
+| `clusGap(...)` | Gap-Statistik je k mit Standardfehler | `maxSE` liefert die empfohlene Gruppenzahl |
+| `Tab` in `clusGap` | Spalten `logW`, `E.logW`, `gap`, `SE.sim` | `gap` ist die Differenz zum Zufallsniveau |
+
+Python:
+
+| Zugriff | Was er liefert | Unterschied zu R |
+|---|---|---|
+| `silhouette_score(X, labels)` | Mittelwert über alle Beobachtungen | in R der Mittelwert der Spalte `sil_width` |
+| `silhouette_samples(X, labels)` | Werte je Beobachtung | wie die Spalte in R |
+| `inertia_` | Streuung innerhalb | wie `tot.withinss` |
+| keine Gap-Statistik | selbst implementieren oder auf R ausweichen | in R über `clusGap` enthalten |
+
+Die Faustregeln zur Silhouette sind Konvention, keine Grenzwerte mit
+statistischer Bedeutung. Sie helfen beim Einordnen, ersetzen aber nicht den Blick
+auf die Gruppen.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: die drei Kriterien stimmen überein
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-a-cg-r
+#| fig-cap: "Links der Verlauf der Streuung innerhalb der Gruppen, rechts die mittlere Silhouette je k."
+#| fig-height: 3.4
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(kennzahlen[, "k"], kennzahlen[, "within"], type = "b", pch = 16,
+     xlab = "k", ylab = "Streuung innerhalb", main = "Ellbogen")
+plot(kennzahlen[, "k"], kennzahlen[, "silhouette"], type = "b", pch = 16,
+     xlab = "k", ylab = "mittlere Silhouette", main = "Silhouette")
+par(mfrow = c(1, 1))
+
+gap <- clusGap(skaliert, FUN = kmeans, nstart = 25, K.max = 7, B = 30)
+round(gap$Tab[, c("gap", "SE.sim")], 3)
+maxSE(gap$Tab[, "gap"], gap$Tab[, "SE.sim"], method = "Tibs2001SEmax")
+```
+
+## Python
+
+```{python}
+#| label: fig-szenario-a-cg-py
+#| fig-cap: "Dieselben beiden Verläufe in Python."
+#| fig-height: 3.4
+tabelle = pd.DataFrame(zeilen)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+achsen[0].plot(tabelle["k"], tabelle["within"], "o-", color="#2166ac")
+achsen[0].set_xlabel("k")
+achsen[0].set_ylabel("Streuung innerhalb")
+achsen[0].set_title("Ellbogen")
+achsen[1].plot(tabelle["k"], tabelle["silhouette"], "o-", color="#b2182b")
+achsen[1].set_xlabel("k")
+achsen[1].set_ylabel("mittlere Silhouette")
+achsen[1].set_title("Silhouette")
+plt.tight_layout()
+plt.show()
+
+print("bestes k nach Silhouette:",
+      int(tabelle.loc[tabelle["silhouette"].idxmax(), "k"]))
+```
+
+:::
+
+Der Verlauf der Streuung fällt bis zu einem Punkt steil und danach flach: das ist
+der Ellbogen. Die mittlere Silhouette hat ihr Maximum an derselben Stelle, und die
+Gap-Statistik empfiehlt dieselbe Gruppenzahl. Wenn drei verschiedene Kriterien
+übereinstimmen, ist die Wahl gut abgestützt.
+
+Wichtig bleibt der vierte Blick: die kleinste Gruppengrösse aus der Tabelle und
+die inhaltliche Beschreibbarkeit. Eine Lösung, die eine Gruppe mit vier
+Beobachtungen erzeugt, ist unabhängig von den Kennzahlen unbrauchbar.
+
+Ergebnissatz: Ellbogen, mittlere Silhouette und Gap-Statistik sprechen für die
+ausgegebene Gruppenzahl (n = 270, k-Means mit 25 Startwerten, standardisierte
+Merkmale). Die mittlere Silhouette beträgt den ausgegebenen Wert.
+
+### Szenario B: die Silhouette im Detail
+
+Der Mittelwert verdeckt, welche Gruppen gut und welche schlecht getrennt sind.
+Das Silhouettendiagramm zeigt es je Beobachtung.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-b-cg-r
+#| fig-cap: "Silhouettendiagramm für k = 3. Jeder Balken ist eine Beobachtung, gruppiert und absteigend sortiert."
+#| fig-height: 4
+km3 <- kmeans(skaliert, centers = 3, nstart = 25)
+sil3 <- silhouette(km3$cluster, distanzen)
+
+plot(sil3, col = c("#2166ac", "#b2182b", "#1b7837"), border = NA,
+     main = "Silhouette, k = 3")
+
+round(summary(sil3)$clus.avg.widths, 3)
+sum(sil3[, "sil_width"] < 0)
+```
+
+## Python
+
+```{python}
+#| label: fig-szenario-b-cg-py
+#| fig-cap: "Dasselbe Diagramm in Python, von Hand gezeichnet."
+#| fig-height: 4
+km3 = KMeans(n_clusters=3, n_init=25, random_state=2026).fit(skaliert)
+werte = silhouette_samples(skaliert, km3.labels_)
+
+fig, ax = plt.subplots(figsize=(7, 4))
+unten = 0
+for nummer, farbe in zip(range(3), ["#2166ac", "#b2182b", "#1b7837"]):
+    teil = np.sort(werte[km3.labels_ == nummer])
+    ax.barh(range(unten, unten + len(teil)), teil, height=1.0, color=farbe)
+    unten += len(teil) + 8
+ax.axvline(werte.mean(), linestyle="--", color="black", linewidth=0.8)
+ax.set_xlabel("Silhouettenwert")
+ax.set_ylabel("Beobachtungen, nach Gruppe")
+plt.show()
+
+print({f"Gruppe {i+1}": round(float(werte[km3.labels_ == i].mean()), 3)
+       for i in range(3)})
+print("negative Werte:", int((werte < 0).sum()))
+```
+
+:::
+
+Ablesen lässt sich dreierlei. Erstens die Breite der Blöcke: sie zeigt die
+Gruppengrössen. Zweitens die mittlere Höhe je Gruppe: eine Gruppe mit deutlich
+niedrigeren Werten ist schlecht abgegrenzt, auch wenn der Gesamtmittelwert gut
+aussieht. Drittens die negativen Werte: Beobachtungen, die einer anderen Gruppe
+näher sind als ihrer eigenen. Wenige davon sind normal, viele ein Hinweis auf
+eine schlechte Aufteilung.
+
+Ergebnissatz: Die mittlere Silhouette liegt bei dem ausgegebenen Wert; je Gruppe
+ergeben sich die ausgegebenen Mittelwerte, und die ausgegebene Anzahl
+Beobachtungen hat einen negativen Wert.
+
+### Szenario C: Fallstrick Daten ohne Struktur
+
+Der wichtigste Fall. Silhouette und Ellbogen beantworten die Frage nach der
+besten Gruppenzahl, nicht die Frage, ob es Gruppen gibt. In reinem Rauschen
+liefern sie trotzdem ein Optimum.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-c-cg-r
+set.seed(17)
+rauschen <- scale(matrix(rnorm(270 * 2), ncol = 2))
+d_rauschen <- dist(rauschen)
+
+t(sapply(2:6, function(k) {
+  lauf <- kmeans(rauschen, centers = k, nstart = 25)
+  c(k = k,
+    silhouette = round(mean(silhouette(lauf$cluster, d_rauschen)[, "sil_width"]), 3))
+}))
+
+gap_rauschen <- clusGap(rauschen, FUN = kmeans, nstart = 25, K.max = 6, B = 30)
+maxSE(gap_rauschen$Tab[, "gap"], gap_rauschen$Tab[, "SE.sim"],
+      method = "Tibs2001SEmax")
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-cg-py
+rng_c = np.random.default_rng(17)
+rauschen = StandardScaler().fit_transform(rng_c.normal(size=(270, 2)))
+
+for k in range(2, 7):
+    lauf = KMeans(n_clusters=k, n_init=25, random_state=17).fit(rauschen)
+    print(f"k = {k} | Silhouette: {silhouette_score(rauschen, lauf.labels_):.3f}")
+```
+
+:::
+
+Auch in strukturlosen Daten gibt es ein bestes k, und die Silhouette dort liegt
+deutlich über null. Der Unterschied zu echten Gruppen ist die Höhe: Bei der
+Kundenstruktur liegt sie klar höher als hier. Absolute Grenzwerte sind aber
+unzuverlässig, weil die Silhouette auch von der Dimensionszahl abhängt.
+
+Die Gap-Statistik ist deshalb das entscheidende Werkzeug: Sie vergleicht mit
+Zufallsdaten derselben Ausdehnung und kann als einzige "eine Gruppe" empfehlen,
+also die Antwort "keine Struktur". Genau das tut sie hier.
+
+Das Vorgehen: Bei jeder Clusteranalyse zuerst prüfen, ob überhaupt Struktur
+vorliegt, und erst danach nach der Gruppenzahl fragen. Wer diese Reihenfolge
+umdreht, findet immer Segmente, und sie lassen sich hinterher sogar beschreiben,
+weil jede Aufteilung Mittelwertunterschiede erzeugt.
+
+Ergebnissatz: In den Vergleichsdaten empfiehlt die Gap-Statistik eine einzige
+Gruppe; die Silhouettenwerte liegen trotz vorhandener Optima deutlich unter denen
+der Kundendaten. Es liegt keine Gruppenstruktur vor.
+
+### Weiteres Szenario: Stabilität prüfen
+
+Ein Gütemass sagt nichts darüber, ob dieselbe Aufteilung bei etwas anderen Daten
+wieder entstünde. Das prüft man durch Wiederholung auf Teilstichproben.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-d-cg-r
+set.seed(5)
+stabilitaet <- replicate(20, {
+  auswahl <- sample(nrow(skaliert), size = 0.8 * nrow(skaliert))
+  lauf <- kmeans(skaliert[auswahl, ], centers = 3, nstart = 25)
+  mean(silhouette(lauf$cluster, dist(skaliert[auswahl, ]))[, "sil_width"])
+})
+
+round(c(mittel = mean(stabilitaet), min = min(stabilitaet),
+        max = max(stabilitaet), sd = sd(stabilitaet)), 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-d-cg-py
+rng_d = np.random.default_rng(5)
+werte_stab = []
+for _ in range(20):
+    auswahl = rng_d.choice(len(skaliert), size=int(0.8 * len(skaliert)), replace=False)
+    teil = skaliert[auswahl]
+    lauf = KMeans(n_clusters=3, n_init=25, random_state=5).fit(teil)
+    werte_stab.append(silhouette_score(teil, lauf.labels_))
+
+werte_stab = np.array(werte_stab)
+print({"mittel": round(float(werte_stab.mean()), 3),
+       "min": round(float(werte_stab.min()), 3),
+       "max": round(float(werte_stab.max()), 3),
+       "sd": round(float(werte_stab.std(ddof=1)), 3)})
+```
+
+:::
+
+Bleibt die Silhouette über die Teilstichproben hinweg auf ähnlichem Niveau, ist
+die Lösung stabil. Schwankt sie stark, hängt die Aufteilung an einzelnen
+Beobachtungen, und dann gehört das in den Bericht, auch wenn der Wert auf den
+vollen Daten gut aussieht.
 
 ## Interpretationsfallen
 
+- **Ein Optimum ist kein Beleg für Struktur.** Silhouette und Ellbogen liefern
+  immer ein bestes k, auch in Rauschen. Nur die Gap-Statistik kann "eine Gruppe"
+  empfehlen.
+- **Die Streuung innerhalb taugt nicht als Gütemass.** Sie sinkt zwangsläufig mit
+  k; brauchbar ist nur ihr Verlauf.
+- **Der Ellbogen ist oft nicht eindeutig.** Wo drei Personen drei verschiedene
+  Knicke sehen, trägt das Kriterium nichts.
+- **Der Silhouettenmittelwert verdeckt Unterschiede.** Eine schlecht abgegrenzte
+  Gruppe fällt nur im Diagramm oder in den Gruppenmittelwerten auf.
+- **Silhouette bevorzugt kugelige Gruppen.** Bei ringförmigen oder langgezogenen
+  Strukturen bestraft sie richtige Lösungen.
+- **Innere Masse sagen nichts über Nutzen.** Ob Segmente brauchbar sind,
+  entscheidet die Sache, nicht die Geometrie.
+- **Grenzwerte sind Konvention.** 0.5 als Schwelle für deutliche Struktur ist
+  eine Faustregel, die von Dimensionszahl und Datenlage abhängt.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> Die Gruppenzahl wurde anhand von [Kriterien] auf k = [k] festgelegt (n = [n],
+> [Verfahren], standardisierte Merkmale). Die mittlere Silhouette beträgt [Wert],
+> je Gruppe [Werte]; [Anzahl] Beobachtungen haben einen negativen Wert. Die
+> Gap-Statistik empfiehlt [k]. Auf Teilstichproben bleibt die Silhouette bei
+> [Bereich].
+
+Genannt werden: alle herangezogenen Kriterien und ihre Ergebnisse, nicht nur das
+gewählte; die mittlere Silhouette gesamt und je Gruppe; Anzahl negativer Werte;
+Gruppengrössen; und die Feststellung, dass überhaupt Struktur vorliegt.
+
+Beispiel für eine Ergebnistabelle:
+
+| k | Streuung innerhalb | mittlere Silhouette | kleinste Gruppe | Gap |
+|---|---|---|---|---|
+| 2 | | | | |
+| 3 | | | | |
+| 4 | | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt der inneren Gütemasse |
+|---|---|
+| Bereinigter Rand-Index | es gibt bekannte Gruppen zum Abgleich |
+| Stabilitätsanalyse auf Teilstichproben | die Frage ist, ob die Lösung reproduzierbar ist |
+| [Klassifikationsgüte](../regression/klassifikationsguete.qmd) | die Gruppen sind bekannt und werden vorhergesagt |
+| Informationskriterien | modellbasiertes Clustering, etwa Gaussian-Mixture |
+| Inhaltliche Beurteilung | immer zusätzlich, nie ersetzbar |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Die mittlere Silhouette ist bei k = 4 maximal, aber die kleinste Gruppe hat fünf
+Beobachtungen. Was ist zu tun?
+
+- [ ] k = 4 nehmen, das Mass ist eindeutig ~ Eine Gruppe mit fünf Fällen lässt
+      sich nicht beschreiben und ist nicht stabil.
+- [x] Die Lösung verwerfen und k kleiner wählen ~ Richtig. Gütemasse sind ein
+      Kriterium unter mehreren; Gruppengrösse und inhaltliche Beschreibbarkeit
+      gehören dazu.
+- [ ] Die fünf Beobachtungen entfernen ~ Damit verändert man die Daten, um ein
+      Kriterium zu retten.
+:::
+
+::: {.quiz}
+In reinem Rauschen liefert die Silhouette bei k = 2 den Wert 0.42. Was folgt?
+
+- [x] Nichts über Struktur; das Mass hat immer ein Optimum ~ Richtig. Silhouette
+      und Ellbogen beantworten nur, welches k relativ am besten ist. Ob es
+      Gruppen gibt, beantwortet der Vergleich mit Zufallsdaten, also die
+      Gap-Statistik.
+- [ ] Es gibt zwei Gruppen, der Wert ist ordentlich ~ Der Wert entsteht auch ohne
+      jede Struktur.
+- [ ] Das Verfahren wurde falsch angewendet ~ Angewendet wurde es korrekt, nur
+      die Frage war die falsche.
+:::
+
+::: {.quiz}
+Zwölf von 270 Beobachtungen haben einen negativen Silhouettenwert. Wie ist das zu
+deuten?
+
+- [x] Diese Fälle liegen näher an einer anderen Gruppe; wenige sind normal ~
+      Richtig. Randfälle gibt es bei jeder Aufteilung. Auffällig wäre ein
+      grösserer Anteil oder eine Häufung in einer Gruppe.
+- [ ] Die Aufteilung ist falsch und muss verworfen werden ~ Zwölf von 270 sind
+      unauffällig.
+- [ ] Diese Fälle sind Ausreisser ~ Möglich, aber der Silhouettenwert misst die
+      Zuordnung, nicht die Extremität.
+:::
+
+::: {.quiz}
+Warum ist die Gap-Statistik den beiden anderen Kriterien in einem Punkt
+überlegen?
+
+- [x] Sie kann eine einzige Gruppe empfehlen, also keine Struktur ~ Richtig. Sie
+      vergleicht mit Zufallsdaten gleicher Ausdehnung. Silhouette und Ellbogen
+      setzen mindestens zwei Gruppen voraus und können diese Antwort gar nicht
+      geben.
+- [ ] Sie ist unabhängig vom Distanzmass ~ Ist sie nicht; sie beruht ebenfalls
+      darauf.
+- [ ] Sie braucht keine Standardisierung ~ Auch sie beurteilt, was das
+      Distanzmass vorgibt.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 12.4](https://www.statlearning.com/)
+- [cluster: silhouette und clusGap](https://cran.r-project.org/web/packages/cluster/cluster.pdf)
+- [scikit-learn: Bewertung von Clusterlösungen](https://scikit-learn.org/stable/modules/clustering.html#clustering-evaluation)
+- [Tibshirani, Walther, Hastie: Gap-Statistik](https://hastie.su.domains/Papers/gap.pdf)
