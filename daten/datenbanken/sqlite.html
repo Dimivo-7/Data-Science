@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Shapiro und Kolmogorow-Smirnow, und warum Plots oft mehr zeigen.">
+<meta name="description" content="Die Datenbank als einzelne Datei: ohne Server, ideal für Auswertungen und Prototypen.">
 
-<title>Normalitätstests – Data Science Notizen</title>
+<title>SQLite – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -279,7 +314,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/index.html">Tests</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/normalitaetstests.html">Normalitätstests</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../daten/index.html">Daten</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/sqlite.html">SQLite</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -339,7 +374,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." tabindex="0" data-topic="Programmierung">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +422,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0" data-topic="Programmierung">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -396,11 +431,11 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../daten/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Daten</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/datenimport-formate.html" class="sidebar-item-text sidebar-link">
@@ -410,7 +445,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung" tabindex="0">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." tabindex="0" data-topic="Programmierung">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -441,11 +476,11 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../daten/datenbanken/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Datenbanken</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/datenbanken/datenmodellierung.html" class="sidebar-item-text sidebar-link">
@@ -466,7 +501,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/sqlite.html" class="sidebar-item-text sidebar-link">
+  <a href="../../daten/datenbanken/sqlite.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">SQLite</span></a>
   </div>
 </li>
@@ -510,7 +545,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge" tabindex="0">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." tabindex="0" data-topic="Werkzeuge">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -531,11 +566,11 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../statistik/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Statistik</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/fragen.html" class="sidebar-item-text sidebar-link">
@@ -554,7 +589,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik" tabindex="0">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." tabindex="0" data-topic="Statistik">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -595,19 +630,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik" tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." tabindex="0" data-topic="Statistik">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik" tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik" tabindex="0">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." tabindex="0" data-topic="Statistik">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." tabindex="0" data-topic="Statistik">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik" tabindex="0">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." tabindex="0" data-topic="Statistik">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -625,13 +660,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik" tabindex="0">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0" data-topic="Statistik">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." tabindex="0" data-topic="Statistik">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik" tabindex="0">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." tabindex="0" data-topic="Statistik">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -648,7 +683,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0" data-topic="Statistik">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -666,7 +701,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0" data-topic="Statistik">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -687,27 +722,27 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../statistik/tests/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Tests</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth2 show">  
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0" data-topic="Statistik">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0" data-topic="Statistik">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0" data-topic="Statistik">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -719,7 +754,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik" tabindex="0">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." tabindex="0" data-topic="Statistik">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -736,7 +771,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/normalitaetstests.html" class="sidebar-item-text sidebar-link active">
+  <a href="../../statistik/tests/normalitaetstests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Normalitätstests</span></a>
   </div>
 </li>
@@ -1090,7 +1125,13 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
-  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#was-sqlite-ist" id="toc-was-sqlite-ist" class="nav-link" data-scroll-target="#was-sqlite-ist">Was SQLite ist</a></li>
+  <li><a href="#typen-sind-empfehlungen" id="toc-typen-sind-empfehlungen" class="nav-link" data-scroll-target="#typen-sind-empfehlungen">Typen sind Empfehlungen</a></li>
+  <li><a href="#wo-sie-in-der-datenarbeit-glänzt" id="toc-wo-sie-in-der-datenarbeit-glänzt" class="nav-link" data-scroll-target="#wo-sie-in-der-datenarbeit-glänzt">Wo sie in der Datenarbeit glänzt</a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -1099,13 +1140,12 @@ ul.task-list li input[type="checkbox"] {
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/index.html">Tests</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/normalitaetstests.html">Normalitätstests</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../daten/index.html">Daten</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/sqlite.html">SQLite</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Normalitätstests</h1>
+<h1 class="title">SQLite</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Hypothesentests</div>
-    <div class="quarto-category">Verteilungen</div>
-    <div class="quarto-category">Interpretation</div>
+    <div class="quarto-category">Datenbanken</div>
+    <div class="quarto-category">SQL</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
   </div>
@@ -1113,7 +1153,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Shapiro und Kolmogorow-Smirnow, und warum Plots oft mehr zeigen.
+    Die Datenbank als einzelne Datei: ohne Server, ideal für Auswertungen und Prototypen.
   </div>
 </div>
 
@@ -1131,16 +1171,165 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
 <section id="kernideen" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Eine Datenbank ist eine einzige Datei, es läuft kein Server</li>
+<li>In R und Python ohne Installation verfügbar, die Treiber bringen sie mit</li>
+<li>Typen sind Empfehlungen, keine Vorschriften: SQLite speichert, was kommt</li>
+<li>Ideal für Auswertungen, Prototypen und Datensätze, die nicht in den Speicher passen</li>
+<li>Grenze ist der gleichzeitige Schreibzugriff, nicht die Datenmenge</li>
+<li>Alles, was hier an SQL geübt wird, gilt in den Serversystemen weiter</li>
+</ul>
 </section>
 <section id="erklärung" class="level2">
 <h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
+<div class="note-box">
+<p><strong>Vorwissen:</strong> <a href="../../daten/datenbanken/sql.html">SQL</a> für die Abfragen und <a href="../../daten/datenbanken/datenmodellierung.html">Datenmodellierung</a> für den Tabellenentwurf. Welches System wann passt, steht in der <a href="../../daten/datenbanken/index.html">Übersicht</a>.</p>
+</div>
+<section id="was-sqlite-ist" class="level3">
+<h3 class="anchored" data-anchor-id="was-sqlite-ist">Was SQLite ist</h3>
+<p>SQLite ist eine Programmbibliothek, keine Serveranwendung. Die gesamte Datenbank steht in einer Datei, und das Programm, das sie benutzt, spricht direkt mit dieser Datei. Es gibt keinen Dienst, keinen Port, keine Benutzer und keine Rechteverwaltung. Genau das macht sie für die Datenarbeit so praktisch: Eine Auswertung braucht keine Infrastruktur, und die Datenbank lässt sich kopieren, versionieren und weitergeben wie jede andere Datei.</p>
+<p>Der Preis dafür ist das Schreibmodell. Lesen können viele Prozesse gleichzeitig, schreiben nur einer. Für eine Anwendung mit vielen gleichzeitigen Benutzern ist das die falsche Wahl; für eine Auswertung, die eine Person ausführt, spielt es keine Rolle.</p>
+</section>
+<section id="typen-sind-empfehlungen" class="level3">
+<h3 class="anchored" data-anchor-id="typen-sind-empfehlungen">Typen sind Empfehlungen</h3>
+<p>SQLite ist dynamisch typisiert. Eine als <code>INTEGER</code> deklarierte Spalte nimmt klaglos den Text <code>"k.A."</code> auf, weil der deklarierte Typ nur eine Affinität ist. Das ist bequem beim Einlesen roher Daten und eine Fehlerquelle bei allem, was danach kommt.</p>
+<p>Die praktische Folge: Prüfungen gehören ins eigene Vorgehen, nicht in die Erwartung an das System. Wer sicher sein will, setzt beim Anlegen Bedingungen:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> messung (</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  messung_id <span class="dt">INTEGER</span> <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  wert       <span class="dt">REAL</span>    <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">CHECK</span> (wert <span class="op">&gt;=</span> <span class="dv">0</span>),</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  gemessen   TEXT    <span class="kw">NOT</span> <span class="kw">NULL</span>,          <span class="co">-- ISO-8601 als Text</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  geraet_id  <span class="dt">INTEGER</span> <span class="kw">NOT</span> <span class="kw">NULL</span> <span class="kw">REFERENCES</span> geraet(geraet_id)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Zwei Eigenheiten sind dabei zu kennen. Erstens kennt SQLite keinen eigenen Datums- und Zeittyp; Zeitstempel werden als Text im Format <code>YYYY-MM-DD</code> oder als Zahl abgelegt, siehe <a href="../../daten/datum-zeit.html">Datum und Zeit</a>. Zweitens sind <span class="glossary-term" data-def="Verweis auf den Primärschlüssel einer anderen Tabelle. Die Datenbank erzwingt dabei, dass das Ziel existiert, und verhindert so widersprüchliche Zustände." tabindex="0" data-topic="Daten">Fremdschlüssel</span> standardmässig ausgeschaltet und müssen je Verbindung eingeschaltet werden.</p>
+</section>
+<section id="wo-sie-in-der-datenarbeit-glänzt" class="level3">
+<h3 class="anchored" data-anchor-id="wo-sie-in-der-datenarbeit-glänzt">Wo sie in der Datenarbeit glänzt</h3>
+<p>Der häufigste Fall ist eine Datei, die für den Arbeitsspeicher zu gross ist. Statt sie ganz zu laden, legt man sie einmal in eine SQLite-Datei und fragt danach nur noch das ab, was gebraucht wird. Der zweite Fall ist der Zwischenstand einer längeren Auswertung: eine Tabelle, die mehrere Skripte gemeinsam nutzen, ohne dass jemand eine CSV-Datei hin- und herkopiert.</p>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Eine Spalte ist als <code>INTEGER</code> angelegt, und beim Import landen dort Texte wie <code>"k.A."</code>. Was ist passiert?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Der Import ist fehlerhaft und muss wiederholt werden
+</div>
+<div class="quiz__erklaerung">
+Der Import hat getan, was er sollte; SQLite hat den Wert angenommen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+SQLite behandelt den deklarierten Typ als Empfehlung
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die Typaffinität wandelt um, wo möglich, und speichert sonst wie geliefert. Wer das ausschliessen will, setzt beim Anlegen eine <code>CHECK</code>-Bedingung oder prüft beim Import.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Die Spalte war in Wahrheit als <code>TEXT</code> deklariert
+</div>
+<div class="quiz__erklaerung">
+Auch bei <code>INTEGER</code> passiert genau das.
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Verbinden, abfragen, schliessen</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbConnect</span>(RSQLite<span class="sc">::</span><span class="fu">SQLite</span>(), <span class="st">"laden.sqlite"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbExecute</span>(con, <span class="st">"PRAGMA foreign_keys = ON"</span>)   <span class="co"># Fremdschluessel aktivieren</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbGetQuery</span>(con, <span class="st">"SELECT * FROM artikel WHERE preis &gt; ?"</span>, <span class="at">params =</span> <span class="fu">list</span>(<span class="dv">100</span>))</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbDisconnect</span>(con)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sqlite3</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> sqlite3.<span class="ex">connect</span>(<span class="st">"laden.sqlite"</span>) <span class="im">as</span> verbindung:</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    verbindung.execute(<span class="st">"PRAGMA foreign_keys = ON"</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> pd.read_sql_query(<span class="st">"SELECT * FROM artikel WHERE preis &gt; ?"</span>, verbindung,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>                           params<span class="op">=</span>(<span class="dv">100</span>,))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p><strong>Eine grosse CSV-Datei in eine Datenbank überführen</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbConnect</span>(RSQLite<span class="sc">::</span><span class="fu">SQLite</span>(), <span class="st">"gross.sqlite"</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>readr<span class="sc">::</span><span class="fu">read_csv_chunked</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"gross.csv"</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">callback =</span> readr<span class="sc">::</span>DataFrameCallback<span class="sc">$</span><span class="fu">new</span>(<span class="cf">function</span>(teil, pos) {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    DBI<span class="sc">::</span><span class="fu">dbWriteTable</span>(con, <span class="st">"messung"</span>, teil, <span class="at">append =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  }),</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">chunk_size =</span> <span class="dv">100000</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sqlite3</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> sqlite3.<span class="ex">connect</span>(<span class="st">"gross.sqlite"</span>) <span class="im">as</span> verbindung:</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> teil <span class="kw">in</span> pd.read_csv(<span class="st">"gross.csv"</span>, chunksize<span class="op">=</span><span class="dv">100_000</span>):</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        teil.to_sql(<span class="st">"messung"</span>, verbindung, if_exists<span class="op">=</span><span class="st">"append"</span>, index<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p><strong>Nachsehen, was in der Datei liegt</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> name <span class="kw">FROM</span> sqlite_master <span class="kw">WHERE</span> <span class="kw">type</span> <span class="op">=</span> <span class="st">'table'</span>;   <span class="co">-- Tabellen</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>PRAGMA table_info(artikel);                            <span class="co">-- Spalten und Typen</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">FROM</span> artikel;                          <span class="co">-- Zeilen</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Eine Abfrage beschleunigen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">EXPLAIN</span> <span class="kw">QUERY</span> <span class="kw">PLAN</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> bestellung <span class="kw">WHERE</span> artikel_id <span class="op">=</span> <span class="dv">3</span>;</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> idx_bestellung_artikel <span class="kw">ON</span> bestellung(artikel_id);</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Steht im Plan <code>SCAN</code>, wird die ganze Tabelle gelesen; nach dem <span class="glossary-term" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt." tabindex="0" data-topic="Programmierung">Index</span> steht dort <code>SEARCH</code>. Bei kleinen Tabellen ist beides gleich schnell, ab einigen Hunderttausend Zeilen ist es der Unterschied zwischen Sekunden und Minuten.</p>
+<p><strong>Wartung und Grösse</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ANALYZE</span>;    <span class="co">-- Statistiken fuer den Abfrageplaner auffrischen</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>VACUUM;     <span class="co">-- geloeschten Platz zurueckgeben, Datei verkleinern</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Mit der Kommandozeile arbeiten</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">sqlite3</span> laden.sqlite               <span class="co"># interaktive Konsole</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="ex">.tables</span>                            <span class="co"># Tabellen auflisten</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="ex">.schema</span> artikel                    <span class="co"># Definition einer Tabelle</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="ex">.headers</span> on</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="ex">.mode</span> csv</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="ex">.import</span> daten.csv artikel          <span class="co"># CSV importieren</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="ex">.output</span> ergebnis.csv               <span class="co"># Ausgabe umleiten</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Eine Datenbank im Arbeitsspeicher, etwa für Tests</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbConnect</span>(RSQLite<span class="sc">::</span><span class="fu">SQLite</span>(), <span class="st">":memory:"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>verbindung <span class="op">=</span> sqlite3.<span class="ex">connect</span>(<span class="st">":memory:"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://www.sqlite.org/docs.html">SQLite: offizielle Dokumentation</a></li>
+<li><a href="https://www.sqlite.org/whentouse.html">Wann SQLite passt und wann nicht</a></li>
+<li><a href="https://www.sqlite.org/datatype3.html">Typaffinität in SQLite</a></li>
+</ul>
 
 
 </section>
@@ -1585,9 +1774,42 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 11:54</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 11:53</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 

@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Shapiro und Kolmogorow-Smirnow, und warum Plots oft mehr zeigen.">
+<meta name="description" content="Dokumentdatenbank ohne festes Schema: wann sie passt und wie man sie abfragt.">
 
-<title>Normalitätstests – Data Science Notizen</title>
+<title>MongoDB – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -279,7 +314,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/index.html">Tests</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/normalitaetstests.html">Normalitätstests</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../daten/index.html">Daten</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/mongodb.html">MongoDB</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -339,7 +374,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren.">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +422,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -396,11 +431,11 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../daten/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Daten</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/datenimport-formate.html" class="sidebar-item-text sidebar-link">
@@ -410,7 +445,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung" tabindex="0">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus.">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -441,11 +476,11 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../daten/datenbanken/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Datenbanken</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/datenbanken/datenmodellierung.html" class="sidebar-item-text sidebar-link">
@@ -490,7 +525,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/mongodb.html" class="sidebar-item-text sidebar-link">
+  <a href="../../daten/datenbanken/mongodb.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">MongoDB</span></a>
   </div>
 </li>
@@ -510,7 +545,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge" tabindex="0">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-topic="Werkzeuge" tabindex="0" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht.">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -531,11 +566,11 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../statistik/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Statistik</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/fragen.html" class="sidebar-item-text sidebar-link">
@@ -554,7 +589,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik" tabindex="0">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse.">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -595,19 +630,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik" tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit.">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik" tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik" tabindex="0">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft.">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis.">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik" tabindex="0">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden.">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -625,13 +660,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik" tabindex="0">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären.">Normalverteilung</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind.">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik" tabindex="0">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder.">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -648,7 +683,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -666,7 +701,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -687,27 +722,27 @@ ul.task-list li input[type="checkbox"] {
       <div class="sidebar-item-container"> 
             <a href="../../statistik/tests/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Tests</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth2 show">  
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -719,7 +754,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik" tabindex="0">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus.">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -736,7 +771,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/normalitaetstests.html" class="sidebar-item-text sidebar-link active">
+  <a href="../../statistik/tests/normalitaetstests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Normalitätstests</span></a>
   </div>
 </li>
@@ -1090,7 +1125,14 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
-  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#dokumente-statt-zeilen" id="toc-dokumente-statt-zeilen" class="nav-link" data-scroll-target="#dokumente-statt-zeilen">Dokumente statt Zeilen</a></li>
+  <li><a href="#kein-schema-heisst-nicht-keine-struktur" id="toc-kein-schema-heisst-nicht-keine-struktur" class="nav-link" data-scroll-target="#kein-schema-heisst-nicht-keine-struktur">Kein Schema heisst nicht keine Struktur</a></li>
+  <li><a href="#abfragen-ohne-sql" id="toc-abfragen-ohne-sql" class="nav-link" data-scroll-target="#abfragen-ohne-sql">Abfragen ohne SQL</a></li>
+  <li><a href="#wann-eine-dokumentdatenbank-passt" id="toc-wann-eine-dokumentdatenbank-passt" class="nav-link" data-scroll-target="#wann-eine-dokumentdatenbank-passt">Wann eine Dokumentdatenbank passt</a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -1099,13 +1141,12 @@ ul.task-list li input[type="checkbox"] {
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/index.html">Tests</a></li><li class="breadcrumb-item"><a href="../../statistik/tests/normalitaetstests.html">Normalitätstests</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../daten/index.html">Daten</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/mongodb.html">MongoDB</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Normalitätstests</h1>
+<h1 class="title">MongoDB</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Hypothesentests</div>
-    <div class="quarto-category">Verteilungen</div>
-    <div class="quarto-category">Interpretation</div>
+    <div class="quarto-category">Datenbanken</div>
+    <div class="quarto-category">Data Wrangling</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
   </div>
@@ -1113,7 +1154,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Shapiro und Kolmogorow-Smirnow, und warum Plots oft mehr zeigen.
+    Dokumentdatenbank ohne festes Schema: wann sie passt und wie man sie abfragt.
   </div>
 </div>
 
@@ -1131,16 +1172,248 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
 <section id="kernideen" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Speichert Dokumente statt Zeilen, ohne festes Schema</li>
+<li>Verschachtelte Strukturen bleiben erhalten, statt auf Tabellen verteilt zu werden</li>
+<li>Abgefragt wird nicht mit SQL, sondern über Filterdokumente und eine Pipeline</li>
+<li>Kein Schema heisst nicht keine Struktur, sondern Struktur ohne Prüfung</li>
+<li>Für die Auswertung wird meist flach gemacht, was verschachtelt gespeichert ist</li>
+<li>Relationale Systeme können JSON inzwischen auch; der Vergleich lohnt sich</li>
+</ul>
 </section>
 <section id="erklärung" class="level2">
 <h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
+<div class="note-box">
+<p><strong>Vorwissen:</strong> <a href="../../daten/datenbanken/datenmodellierung.html">Datenmodellierung</a> als Gegenpol und <a href="../../daten/datenimport-formate.html">Datenimport und Formate</a> für JSON. Welches System wann passt, steht in der <a href="../../daten/datenbanken/index.html">Übersicht</a>.</p>
+</div>
+<section id="dokumente-statt-zeilen" class="level3">
+<h3 class="anchored" data-anchor-id="dokumente-statt-zeilen">Dokumente statt Zeilen</h3>
+<p>Ein Dokument ist eine JSON-ähnliche Struktur, die auch Listen und Unterdokumente enthalten darf. Eine Bestellung liegt damit als Ganzes an einem Ort, statt auf mehrere Tabellen verteilt zu sein:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"bestell_id"</span><span class="fu">:</span> <span class="dv">4711</span><span class="fu">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"kunde"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Meier AG"</span><span class="fu">,</span> <span class="dt">"ort"</span><span class="fu">:</span> <span class="st">"Chur"</span> <span class="fu">},</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"positionen"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"artikel"</span><span class="fu">:</span> <span class="st">"Ventil 3/2"</span><span class="fu">,</span> <span class="dt">"menge"</span><span class="fu">:</span> <span class="dv">10</span><span class="fu">,</span> <span class="dt">"preis"</span><span class="fu">:</span> <span class="fl">24.0</span> <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"artikel"</span><span class="fu">:</span> <span class="st">"Sensor induktiv"</span><span class="fu">,</span> <span class="dt">"menge"</span><span class="fu">:</span> <span class="dv">2</span><span class="fu">,</span> <span class="dt">"preis"</span><span class="fu">:</span> <span class="fl">128.0</span> <span class="fu">}</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"datum"</span><span class="fu">:</span> <span class="st">"2026-03-15"</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Der Vorteil ist der Zugriff: Wer die Bestellung liest, hat alles beisammen, ohne zu verbinden. Der Nachteil zeigt sich, sobald man quer auswerten will, etwa den Umsatz je Artikel über alle Bestellungen. Dann muss die Struktur aufgebrochen werden, und das ist genau die Arbeit, die ein relationales Modell einem abnimmt.</p>
+</section>
+<section id="kein-schema-heisst-nicht-keine-struktur" class="level3">
+<h3 class="anchored" data-anchor-id="kein-schema-heisst-nicht-keine-struktur">Kein Schema heisst nicht keine Struktur</h3>
+<p>Ohne Schemaprüfung nimmt die Datenbank jedes Dokument an, auch eines mit fehlendem Feld, falschem Typ oder abweichender Schreibweise. Die Struktur existiert trotzdem, sie steht nur nicht mehr in der Datenbank, sondern verteilt in allen Programmen, die darauf zugreifen.</p>
+<p>Für die Datenarbeit hat das eine unmittelbare Folge: Die erste Frage an eine unbekannte Sammlung ist nicht “was steht drin”, sondern “welche Felder gibt es überhaupt, und in welchen Typen”. Prüfungen, die bei <a href="../../daten/datenbanken/postgresql.html">PostgreSQL</a> die Datenbank übernimmt, gehören hier ins eigene Vorgehen, siehe <a href="../../daten/datenqualitaet.html">Datenqualität</a>.</p>
+<p>MongoDB kann eine Schemaprüfung erzwingen; genutzt wird sie in gewachsenen Beständen selten.</p>
+</section>
+<section id="abfragen-ohne-sql" class="level3">
+<h3 class="anchored" data-anchor-id="abfragen-ohne-sql">Abfragen ohne SQL</h3>
+<p>Gefiltert wird mit einem Dokument, das die Bedingungen beschreibt. Aggregationen laufen über eine Pipeline aus Stufen, die nacheinander angewendet werden; jede Stufe entspricht ungefähr einer SQL-Klausel.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>SQL</th>
+<th>MongoDB</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>WHERE</code></td>
+<td><code>$match</code></td>
+</tr>
+<tr class="even">
+<td><code>GROUP BY</code></td>
+<td><code>$group</code></td>
+</tr>
+<tr class="odd">
+<td><code>SELECT</code> Spalten</td>
+<td><code>$project</code></td>
+</tr>
+<tr class="even">
+<td><code>ORDER BY</code></td>
+<td><code>$sort</code></td>
+</tr>
+<tr class="odd">
+<td><code>LIMIT</code></td>
+<td><code>$limit</code></td>
+</tr>
+<tr class="even">
+<td><code>JOIN</code></td>
+<td><code>$lookup</code></td>
+</tr>
+<tr class="odd">
+<td>Liste aufbrechen</td>
+<td><code>$unwind</code></td>
+</tr>
+</tbody>
+</table>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>pipeline <span class="op">=</span> [</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$match"</span>: {<span class="st">"datum"</span>: {<span class="st">"$gte"</span>: <span class="st">"2026-01-01"</span>}}},</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$unwind"</span>: <span class="st">"$positionen"</span>},</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$group"</span>: {<span class="st">"_id"</span>: <span class="st">"$positionen.artikel"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>                <span class="st">"umsatz"</span>: {<span class="st">"$sum"</span>: {<span class="st">"$multiply"</span>: [<span class="st">"$positionen.menge"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>                                                  <span class="st">"$positionen.preis"</span>]}}}},</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$sort"</span>: {<span class="st">"umsatz"</span>: <span class="op">-</span><span class="dv">1</span>}},</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$limit"</span>: <span class="dv">10</span>},</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Die Stufe <code>$unwind</code> hat kein direktes Gegenstück in SQL: Sie macht aus einem Dokument mit einer Liste von drei Positionen drei Dokumente. Erst danach lässt sich über Positionen gruppieren.</p>
+</section>
+<section id="wann-eine-dokumentdatenbank-passt" class="level3">
+<h3 class="anchored" data-anchor-id="wann-eine-dokumentdatenbank-passt">Wann eine Dokumentdatenbank passt</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Fall</th>
+<th>Passend</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Struktur variiert je Datensatz und ändert sich häufig</td>
+<td>MongoDB</td>
+</tr>
+<tr class="even">
+<td>Verschachtelte Objekte werden als Ganzes gelesen und geschrieben</td>
+<td>MongoDB</td>
+</tr>
+<tr class="odd">
+<td>Querauswertungen über viele Datensätze sind der Normalfall</td>
+<td>Relationale Systeme</td>
+</tr>
+<tr class="even">
+<td>Fremdschlüssel und Konsistenz sollen erzwungen werden</td>
+<td><a href="../../daten/datenbanken/postgresql.html">PostgreSQL</a></td>
+</tr>
+<tr class="odd">
+<td>Nur ein paar Felder sind halbstrukturiert</td>
+<td>PostgreSQL mit JSON-Spalte</td>
+</tr>
+<tr class="even">
+<td>Grosse Auswertungen über Dateien</td>
+<td><a href="../../daten/datenbanken/duckdb.html">DuckDB</a></td>
+</tr>
+</tbody>
+</table>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Eine Sammlung enthält Bestellungen mit einer Liste von Positionen. Gesucht ist der Umsatz je Artikel. Was ist der erste Schritt in der Pipeline?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="1">
+<code>$group</code> über den Artikel
+</div>
+<div class="quiz__erklaerung">
+Das geht noch nicht: Der Artikel steckt in einer Liste, und die Gruppierung sähe ganze Dokumente.
+</div>
+</div>
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="2">
+<code>$unwind</code> auf die Positionen
+</div>
+<div class="quiz__erklaerung">
+Richtig. Erst wird aus jedem Dokument je Position ein eigenes Dokument, danach lässt sich gruppieren. Das ist der Schritt, den SQL nicht braucht, weil dort Positionen ohnehin eigene Zeilen sind.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" tabindex="0" data-nummer="3">
+<code>$lookup</code> auf die Artikeltabelle
+</div>
+<div class="quiz__erklaerung">
+Das verbindet mit einer anderen Sammlung und löst das Problem der Liste nicht.
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Verbinden</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mongolite)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>sammlung <span class="ot">&lt;-</span> <span class="fu">mongo</span>(<span class="at">collection =</span> <span class="st">"bestellung"</span>, <span class="at">db =</span> <span class="st">"shop"</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">url =</span> <span class="fu">Sys.getenv</span>(<span class="st">"MONGO_URL"</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pymongo <span class="im">import</span> MongoClient</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>klient <span class="op">=</span> MongoClient(os.environ[<span class="st">"MONGO_URL"</span>])</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>sammlung <span class="op">=</span> klient[<span class="st">"shop"</span>][<span class="st">"bestellung"</span>]</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p><strong>Sich einen Überblick verschaffen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(klient.list_database_names())</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(klient[<span class="st">"shop"</span>].list_collection_names())</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sammlung.estimated_document_count())</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>sammlung.find_one()                       <span class="co"># ein Beispieldokument</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Welche Felder überhaupt vorkommen, verrät eine kleine Auszählung, weil es kein Schema gibt, das man ansehen könnte:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> collections <span class="im">import</span> Counter</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>felder <span class="op">=</span> Counter()</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> dok <span class="kw">in</span> sammlung.find().limit(<span class="dv">1000</span>):</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    felder.update(dok.keys())</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(felder.most_common())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Filtern und in einen <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale.">Data Frame</span> holen</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> sammlung<span class="sc">$</span><span class="fu">find</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">query =</span> <span class="st">'{"datum": {"$gte": "2026-01-01"}}'</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">fields =</span> <span class="st">'{"bestell_id": 1, "kunde.ort": 1, "datum": 1, "_id": 0}'</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame(sammlung.find(</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"datum"</span>: {<span class="st">"$gte"</span>: <span class="st">"2026-01-01"</span>}},</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"bestell_id"</span>: <span class="dv">1</span>, <span class="st">"kunde.ort"</span>: <span class="dv">1</span>, <span class="st">"datum"</span>: <span class="dv">1</span>, <span class="st">"_id"</span>: <span class="dv">0</span>},</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p><strong>Verschachtelte Felder flach machen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.json_normalize(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    sammlung.find({}, {<span class="st">"_id"</span>: <span class="dv">0</span>}),</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    record_path<span class="op">=</span><span class="st">"positionen"</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    meta<span class="op">=</span>[<span class="st">"bestell_id"</span>, <span class="st">"datum"</span>, [<span class="st">"kunde"</span>, <span class="st">"ort"</span>]],</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Damit entsteht die Tabelle, mit der sich weiterarbeiten lässt, siehe <a href="../../daten/tidy-data.html">Tidy Data</a>.</p>
+<p><strong>Aggregieren in der Datenbank</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>ergebnis <span class="op">=</span> <span class="bu">list</span>(sammlung.aggregate([</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$unwind"</span>: <span class="st">"$positionen"</span>},</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$group"</span>: {<span class="st">"_id"</span>: <span class="st">"$positionen.artikel"</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>                <span class="st">"umsatz"</span>: {<span class="st">"$sum"</span>: {<span class="st">"$multiply"</span>: [<span class="st">"$positionen.menge"</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>                                                  <span class="st">"$positionen.preis"</span>]}}}},</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    {<span class="st">"$sort"</span>: {<span class="st">"umsatz"</span>: <span class="op">-</span><span class="dv">1</span>}},</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>]))</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame(ergebnis).rename(columns<span class="op">=</span>{<span class="st">"_id"</span>: <span class="st">"artikel"</span>})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> anlegen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>sammlung.create_index(<span class="st">"datum"</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>sammlung.create_index([(<span class="st">"kunde.ort"</span>, <span class="dv">1</span>), (<span class="st">"datum"</span>, <span class="op">-</span><span class="dv">1</span>)])</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sammlung.index_information())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Zum Ausprobieren aus einem <span class="glossary-term" data-topic="Werkzeuge" tabindex="0" data-def="Gekapselte Ausführungsumgebung, die sich den Betriebssystemkern mit dem Host teilt. Enthält im Unterschied zur virtuellen Umgebung auch Systembibliotheken und Sprachversion.">Container</span></strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--name</span> mongo <span class="at">-p</span> 27017:27017 <span class="at">-d</span> mongo</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> exec <span class="at">-it</span> mongo mongosh</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://www.mongodb.com/docs/manual/">MongoDB: Dokumentation</a></li>
+<li><a href="https://www.mongodb.com/docs/manual/core/aggregation-pipeline/">Aggregation Pipeline</a></li>
+<li><a href="https://pymongo.readthedocs.io/en/stable/">pymongo: Handbuch</a></li>
+</ul>
 
 
 </section>
@@ -1585,9 +1858,42 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 11:54</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 11:52</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 

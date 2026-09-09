@@ -3126,61 +3126,6 @@
     ]
   },
   {
-    "objectID": "daten/datenimport-formate.html",
-    "href": "daten/datenimport-formate.html",
-    "title": "Datenimport und Formate",
-    "section": "",
-    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
-    "crumbs": [
-      "Daten",
-      "Datenimport und Formate"
-    ]
-  },
-  {
-    "objectID": "daten/datenimport-formate.html#kernideen",
-    "href": "daten/datenimport-formate.html#kernideen",
-    "title": "Datenimport und Formate",
-    "section": "Kernideen",
-    "text": "Kernideen\n\nDer erste Blick nach dem Import gehört den Spaltentypen\nTrennzeichen, Dezimaltrennzeichen und Kodierung sind explizit anzugeben\nDatumsangaben werden beim Import umgewandelt, nicht später\nText, der Zahl sein sollte, verrät fast immer ein Problem in den Rohdaten\nJedes Format hat seinen Zweck: CSV zum Austausch, Parquet für Grösse, JSON für Verschachtelung",
-    "crumbs": [
-      "Daten",
-      "Datenimport und Formate"
-    ]
-  },
-  {
-    "objectID": "daten/datenimport-formate.html#erklärung",
-    "href": "daten/datenimport-formate.html#erklärung",
-    "title": "Datenimport und Formate",
-    "section": "Erklärung",
-    "text": "Erklärung\n\nVorwissen: R-Grundlagen oder pandas. Was danach kommt, ist die Prüfung auf Datenqualität und das Umformen im Data Wrangling.\n\n\nImport: der erste Blick gehört den Spaltentypen\nDer häufigste Importfehler im deutschsprachigen Raum ist das Dezimalkomma. Werkzeuge gehen vom angelsächsischen Format aus, die Datei kommt aber mit Semikolon als Trennzeichen und Komma als Dezimalzeichen. Das Ergebnis sieht auf den ersten Blick brauchbar aus und ist es nicht.\nDie folgende Datei entsteht im Chunk selbst, damit das Beispiel ohne Fremddatei nachvollziehbar bleibt:\n\nRPython\n\n\n\ninhalt &lt;- c(\"datum;typ;verbrauch\",\n            \"01.03.2026;A;12,4\",\n            \"02.03.2026;B;9,8\",\n            \"03.03.2026;A;14,1\")\n\npfad &lt;- tempfile(fileext = \".csv\")\nwriteLines(inhalt, pfad)\n\n# Standardannahme: Komma trennt Spalten. Passt hier nicht.\nfalsch &lt;- read_csv(pfad, show_col_types = FALSE)\nncol(falsch)          # alles in einer einzigen Spalte\n\n[1] 1\n\n# read_csv2 erwartet Semikolon als Trenn- und Komma als Dezimalzeichen\nrichtig &lt;- read_csv2(pfad, show_col_types = FALSE)\nstr(richtig)\n\nspc_tbl_ [3 × 3] (S3: spec_tbl_df/tbl_df/tbl/data.frame)\n $ datum    : chr [1:3] \"01.03.2026\" \"02.03.2026\" \"03.03.2026\"\n $ typ      : chr [1:3] \"A\" \"B\" \"A\"\n $ verbrauch: num [1:3] 12.4 9.8 14.1\n - attr(*, \"spec\")=\n  .. cols(\n  ..   datum = col_character(),\n  ..   typ = col_character(),\n  ..   verbrauch = col_double()\n  .. )\n - attr(*, \"problems\")=&lt;pointer: 0x55da9b4a43b0&gt; \n\n\n\n\n\nimport tempfile, pathlib\n\ninhalt = \"\\n\".join([\"datum;typ;verbrauch\",\n                    \"01.03.2026;A;12,4\",\n                    \"02.03.2026;B;9,8\",\n                    \"03.03.2026;A;14,1\"])\npfad = pathlib.Path(tempfile.mkdtemp()) / \"messung.csv\"\npfad.write_text(inhalt, encoding=\"utf-8\")\n\n72\n\nfalsch = pd.read_csv(pfad)                          # Standardannahme\nprint(\"Spalten:\", falsch.shape[1])\n\nSpalten: 1\n\nrichtig = pd.read_csv(pfad, sep=\";\", decimal=\",\")   # passend eingestellt\nprint(richtig.dtypes)\n\ndatum            str\ntyp              str\nverbrauch    float64\ndtype: object\n\n\n\n\n\nEntscheidend ist, dass verbrauch erst mit der richtigen Einstellung numerisch wird. Ohne sie bliebe die Spalte Text, und jede spätere Rechnung würde entweder abbrechen oder, schlimmer, stillschweigend etwas Falsches liefern.\nDie Spalte datum ist auch jetzt noch Text. Datumsangaben im europäischen Format erkennt kein Import von selbst:\n\nRPython\n\n\n\nmit_datum &lt;- richtig |&gt;\n  mutate(datum = dmy(datum))        # Tag-Monat-Jahr\nstr(mit_datum)\n\ntibble [3 × 3] (S3: tbl_df/tbl/data.frame)\n $ datum    : Date[1:3], format: \"2026-03-01\" \"2026-03-02\" ...\n $ typ      : chr [1:3] \"A\" \"B\" \"A\"\n $ verbrauch: num [1:3] 12.4 9.8 14.1\n\n\n\n\n\nrichtig[\"datum\"] = pd.to_datetime(richtig[\"datum\"], format=\"%d.%m.%Y\")\nprint(richtig.dtypes)\n\ndatum        datetime64[us]\ntyp                     str\nverbrauch           float64\ndtype: object\n\n\n\n\n\nWarum das wichtig ist, zeigt ein Sortierversuch. Als Text stünde der 1. März vor dem 2. Februar, weil verglichen wird, was vorne steht. Als Datum stimmt die Reihenfolge, und Differenzen zwischen zwei Zeitpunkten lassen sich überhaupt erst rechnen.\n\n\nEine Spalte kommt beim Import als Text an, obwohl nur Zahlen darin stehen. Das Dezimalzeichen ist bereits richtig eingestellt. Was ist die nächstliegende Ursache?\n\n\n\n\nEin einzelner Platzhalter für fehlende Werte, etwa ein Strich\n\n\nRichtig. Ein einziger solcher Eintrag genügt, weil der Vektor nur einen Typ tragen kann. Dasselbe gilt für Tausendertrennung oder angehängte Einheiten.\n\n\n\n\nDie Datei ist zu gross\n\n\nDie Grösse beeinflusst den erkannten Typ nicht.\n\n\n\n\nR kann Zahlen nur aus Excel-Dateien lesen\n\n\nDer Import aus Text funktioniert, er muss nur richtig eingestellt sein.\n\n\n\n\n\n\nWarum sollte das Datum direkt beim Import umgewandelt werden und nicht erst kurz vor der Grafik?\n\n\n\n\nWeil die Umwandlung später länger dauert\n\n\nDie Rechenzeit ist nicht das Problem.\n\n\n\n\nWeil jeder Schritt dazwischen sonst mit Text arbeitet und falsch sortiert oder gruppiert\n\n\nRichtig. Wer nach Monat gruppiert, bevor das Datum ein Datum ist, gruppiert nach Zeichenketten und merkt es erst am Ergebnis.\n\n\n\n\nWeil ggplot2 keine Datumsangaben darstellen kann\n\n\nKann es sehr wohl, sofern der Typ stimmt.",
-    "crumbs": [
-      "Daten",
-      "Datenimport und Formate"
-    ]
-  },
-  {
-    "objectID": "daten/datenimport-formate.html#typische-aufgaben",
-    "href": "daten/datenimport-formate.html#typische-aufgaben",
-    "title": "Datenimport und Formate",
-    "section": "Typische Aufgaben",
-    "text": "Typische Aufgaben\nCSV mit europäischen Konventionen lesen\n\nRPython\n\n\nreadr::read_delim(\"daten.csv\", delim = \";\", locale = readr::locale(decimal_mark = \",\"))\n\n\npd.read_csv(\"daten.csv\", sep=\";\", decimal=\",\", encoding=\"utf-8\")\n\n\n\nSpaltentypen selbst festlegen statt raten lassen\n\nRPython\n\n\nreadr::read_csv(\"daten.csv\", col_types = readr::cols(\n  id = readr::col_integer(),\n  datum = readr::col_date(format = \"%d.%m.%Y\"),\n  wert = readr::col_double()\n))\n\n\npd.read_csv(\"daten.csv\", dtype={\"id\": \"Int64\", \"wert\": \"float64\"},\n            parse_dates=[\"datum\"], dayfirst=True)\n\n\n\nExcel, JSON und Parquet\n\nRPython\n\n\nreadxl::read_excel(\"mappe.xlsx\", sheet = \"Daten\", skip = 2)\njsonlite::fromJSON(\"antwort.json\")\narrow::read_parquet(\"gross.parquet\")\n\n\npd.read_excel(\"mappe.xlsx\", sheet_name=\"Daten\", skiprows=2)\npd.read_json(\"antwort.json\")\npd.read_parquet(\"gross.parquet\")\n\n\n\nNur einen Teil einlesen, um die Struktur zu prüfen\n\nRPython\n\n\nreadr::read_csv(\"gross.csv\", n_max = 1000)\n\n\npd.read_csv(\"gross.csv\", nrows=1000)\n\n\n\nSchreiben\n\nRPython\n\n\nreadr::write_csv(df, \"ergebnis.csv\")\nsaveRDS(df, \"ergebnis.rds\")\n\n\ndf.to_csv(\"ergebnis.csv\", index=False)\ndf.to_parquet(\"ergebnis.parquet\")\n\n\n\nCSV verliert die Typinformation, RDS und Parquet behalten sie. Für Zwischenstände einer Auswertung ist das der wichtigere Punkt als die Dateigrösse.",
-    "crumbs": [
-      "Daten",
-      "Datenimport und Formate"
-    ]
-  },
-  {
-    "objectID": "daten/datenimport-formate.html#verlinkte-ressourcen",
-    "href": "daten/datenimport-formate.html#verlinkte-ressourcen",
-    "title": "Datenimport und Formate",
-    "section": "Verlinkte Ressourcen",
-    "text": "Verlinkte Ressourcen\n\nreadr: Import in R\npandas: Ein- und Ausgabe",
-    "crumbs": [
-      "Daten",
-      "Datenimport und Formate"
-    ]
-  },
-  {
     "objectID": "daten/datum-zeit.html",
     "href": "daten/datum-zeit.html",
     "title": "Datum und Zeit",
@@ -3236,47 +3181,254 @@
     ]
   },
   {
-    "objectID": "daten/tidy-data.html",
-    "href": "daten/tidy-data.html",
-    "title": "Tidy Data",
+    "objectID": "daten/datenbanken/sql.html",
+    "href": "daten/datenbanken/sql.html",
+    "title": "SQL",
     "section": "",
     "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
     "crumbs": [
       "Daten",
-      "Tidy Data"
+      "Datenbanken",
+      "SQL"
     ]
   },
   {
-    "objectID": "daten/tidy-data.html#kernideen",
-    "href": "daten/tidy-data.html#kernideen",
-    "title": "Tidy Data",
+    "objectID": "daten/datenbanken/sql.html#kernideen",
+    "href": "daten/datenbanken/sql.html#kernideen",
+    "title": "SQL",
     "section": "Kernideen",
-    "text": "Kernideen\n\nEine Zeile je Beobachtung, eine Spalte je Merkmal, eine Zelle je Wert\nDieselben Daten lassen sich in vielen Formen ablegen, nur eine passt zu den Werkzeugen\nLanges Format für die Auswertung, breites Format für die Anzeige\nWer die Form richtig wählt, spart sich Sonderfälle in jedem Schritt\nUntidy erkennt man an Werten in Spaltennamen und an mehreren Werten in einer Zelle",
+    "text": "Kernideen\n\nSELECT, WHERE, JOIN, GROUP BY, HAVING, ORDER BY\nDie Auswertungsreihenfolge weicht von der Schreibreihenfolge ab\nWHERE filtert Zeilen, HAVING filtert Gruppen\nEin Join verbindet über Schlüssel, die Art des Joins entscheidet über Verluste\nAggregate ohne GROUP BY fassen die ganze Tabelle zusammen",
     "crumbs": [
       "Daten",
-      "Tidy Data"
+      "Datenbanken",
+      "SQL"
     ]
   },
   {
-    "objectID": "daten/tidy-data.html#erklärung",
-    "href": "daten/tidy-data.html#erklärung",
-    "title": "Tidy Data",
+    "objectID": "daten/datenbanken/sql.html#erklärung",
+    "href": "daten/datenbanken/sql.html#erklärung",
+    "title": "SQL",
     "section": "Erklärung",
-    "text": "Erklärung\n\nVorwissen: R-Grundlagen oder pandas für den Data Frame. Wie man Daten in diese Form bringt, steht unter Data Wrangling.\n\n\nWarum die Aufbereitung den grössten Teil der Zeit frisst\nDaten kommen so, wie sie irgendwo entstanden sind, und nicht so, wie eine Auswertung sie braucht. Eine Exportdatei aus einer Maschinensteuerung hat Datumsangaben als Text, Messwerte mit Dezimalkomma, Kategorien mit Tippfehlern und irgendwo einen Strich für einen fehlenden Wert. Nichts davon ist ein Fehler der Daten; es ist der Normalzustand.\nDas Werkzeug dagegen erwartet eine bestimmte Form. Wird sie hergestellt, läuft alles Weitere glatt. Wird sie nicht hergestellt, kostet jeder einzelne Schritt Sonderbehandlung, und diese Sonderbehandlungen summieren sich zu genau dem Aufwand, der in Projektplänen fehlt.\n\n\nTidy data: die Form, auf die alles passt\nDas Prinzip klingt banal und ist es nicht. Eine Tabelle heisst aufgeräumt, wenn jede Zeile eine Beobachtung ist, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt.\nDer Unterschied wird sichtbar, sobald dieselben Zahlen in beiden Formen nebeneinander stehen. Diese Tabelle ist nicht aufgeräumt, weil die Spaltennamen selbst eine Information tragen, nämlich das Jahr:\n\nbreit &lt;- data.frame(\n  standort  = c(\"Bern\", \"Chur\", \"Sion\"),\n  jahr_2024 = c(120, 95, 143),\n  jahr_2025 = c(131, 92, 150)\n)\nbreit\n\n  standort jahr_2024 jahr_2025\n1     Bern       120       131\n2     Chur        95        92\n3     Sion       143       150\n\n\nAufgeräumt sieht dasselbe so aus:\n\nlang &lt;- breit |&gt;\n  pivot_longer(cols = starts_with(\"jahr_\"),\n               names_to = \"jahr\", values_to = \"menge\",\n               names_prefix = \"jahr_\")\nlang\n\n# A tibble: 6 × 3\n  standort jahr  menge\n  &lt;chr&gt;    &lt;chr&gt; &lt;dbl&gt;\n1 Bern     2024    120\n2 Bern     2025    131\n3 Chur     2024     95\n4 Chur     2025     92\n5 Sion     2024    143\n6 Sion     2025    150\n\n\nJetzt ist das Jahr ein Merkmal wie jedes andere, und damit lässt sich danach filtern, gruppieren und gruppenweise zeichnen. In der breiten Form ginge das nur über Spaltennamen, also über Umwege.\n\nMerkhilfe für den Zweifelsfall: Steht in einem Spaltennamen eine Information, die eigentlich ein Wert ist, etwa ein Jahr, ein Monat oder ein Gerätename, dann ist die Tabelle breit und die Auswertung will sie lang.\n\n\n\nEine Tabelle hat die Spalten patient, blutdruck_vorher, blutdruck_nachher. Warum ist sie nicht aufgeräumt?\n\n\n\n\nDer Messzeitpunkt steckt im Spaltennamen, ist aber ein Merkmal\n\n\nRichtig. Aufgeräumt hiessen die Spalten patient, zeitpunkt und blutdruck. Jede Zeile wäre dann eine Messung statt eines Patienten.\n\n\n\n\nSie enthält zu wenige Spalten\n\n\nDie Anzahl ist nicht das Kriterium, sondern was in den Spaltennamen steht.\n\n\n\n\nBlutdruck gehört in zwei getrennte Tabellen\n\n\nEine Tabelle genügt, sie muss nur lang statt breit vorliegen.\n\n\n\n\n\n\nWann ist die breite Form trotzdem die richtige?\n\n\n\n\nImmer, sie ist kompakter\n\n\nKompakter ja, aber für Filtern, Gruppieren und Zeichnen unbrauchbar.\n\n\n\n\nFür eine Berichtstabelle, die ein Mensch liest\n\n\nRichtig. Der Vergleich fällt zeilenweise ins Auge. Die Umformung ins Breite ist deshalb typischerweise der letzte Schritt, nicht der erste.\n\n\n\n\nWenn viele fehlende Werte vorliegen\n\n\nDamit hat die Form nichts zu tun, fehlende Werte gibt es in beiden.",
+    "text": "Erklärung\n\nVorwissen: Datenmodellierung für Schlüssel und Beziehungen. Wer Data Wrangling oder pandas kennt, findet dieselben Operationen wieder: WHERE ist filter, GROUP BY ist groupby, JOIN ist merge. Die Abfragen dieser Seite laufen beim Bauen der Website gegen eine echte SQLite-Datenbank.\n\n\nAbfragen\nSQL ist deklarativ. Man beschreibt das gewünschte Ergebnis, nicht den Weg dorthin.\nDie folgenden Abfragen laufen beim Bauen der Seite gegen die Beispieldatenbank; unter jedem Block steht das tatsächliche Ergebnis. Wie man dieselbe Abfrage aus R oder Python absetzt, steht unter Datenbankzugriff.\nSELECT bezeichnung, kategorie\nFROM artikel\nWHERE kategorie = 'Pneumatik'\n\n\n\n\n\nbezeichnung\nkategorie\n\n\n\n\nVentil 3/8\nPneumatik\n\n\nZylinder 40\nPneumatik\n\n\n\n\n\nVerbinden zweier Tabellen über den Schlüssel:\nSELECT b.datum, a.bezeichnung, b.menge, b.betrag\nFROM bestellung b\nJOIN artikel a ON a.artikel_id = b.artikel_id\nORDER BY b.datum\nLIMIT 5\n\n\n\n\n\ndatum\nbezeichnung\nmenge\nbetrag\n\n\n\n\n2026-01-14\nVentil 3/8\n10\n240\n\n\n2026-01-22\nZylinder 40\n4\n512\n\n\n2026-01-30\nDichtring\n200\n180\n\n\n2026-02-03\nVentil 3/8\n25\n600\n\n\n2026-02-11\nKugellager 608\n100\n350\n\n\n\n\n\nGruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:\nSELECT a.kategorie,\n       COUNT(*)                AS anzahl,\n       SUM(b.betrag)           AS umsatz,\n       ROUND(AVG(b.betrag), 2) AS mittel\nFROM bestellung b\nJOIN artikel a ON a.artikel_id = b.artikel_id\nGROUP BY a.kategorie\nHAVING COUNT(*) &gt;= 2\nORDER BY umsatz DESC\n\n\n\n\n\nkategorie\nanzahl\numsatz\nmittel\n\n\n\n\nElektronik\n2\n2400\n1200.00\n\n\nPneumatik\n5\n1968\n393.60\n\n\nMechanik\n3\n740\n246.67\n\n\n\n\n\n\n\nDie Auswertungsreihenfolge\nSie erklärt die häufigste Verwirrung von Einsteigern, nämlich warum sich ein Aggregat nicht in WHERE prüfen lässt:\n\n\n\nReihenfolge\nKlausel\nwas passiert\n\n\n\n\n1\nFROM, JOIN\nTabellen zusammenstellen\n\n\n2\nWHERE\neinzelne Zeilen filtern\n\n\n3\nGROUP BY\nZeilen zu Gruppen zusammenfassen\n\n\n4\nHAVING\nGruppen filtern\n\n\n5\nSELECT\nSpalten auswählen und berechnen\n\n\n6\nORDER BY\nsortieren\n\n\n\nWHERE läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht. HAVING läuft danach.\n-- WHERE filtert einzelne Zeilen, und zwar vor der Gruppierung\nSELECT a.kategorie, SUM(b.betrag) AS umsatz\nFROM bestellung b\nJOIN artikel a ON a.artikel_id = b.artikel_id\nWHERE b.datum &gt;= '2026-02-01'\nGROUP BY a.kategorie\nORDER BY umsatz DESC\n\n\n\n\n\nkategorie\numsatz\n\n\n\n\nElektronik\n2400\n\n\nPneumatik\n1216\n\n\nMechanik\n560\n\n\n\n\n\n\n\nWarum lässt sich WHERE SUM(betrag) &gt; 500 nicht schreiben?\n\n\n\n\nWHERE wird vor der Gruppierung ausgewertet, es gibt dort noch keine Summen\n\n\nRichtig. Bedingungen auf Aggregaten gehören in HAVING, das nach der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.\n\n\n\n\nSUM ist in einer Bedingung generell nicht erlaubt\n\n\nIn HAVING ist es erlaubt, es hängt allein am Zeitpunkt.\n\n\n\n\nEs fehlt ein GROUP BY\n\n\nAuch mit GROUP BY bliebe die Zeile falsch, denn WHERE läuft trotzdem vorher.\n\n\n\n\n\n\nEin Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?\n\n\n\n\nDer Schlüssel war auf der rechten Seite nicht eindeutig\n\n\nRichtig. Jede linke Zeile wird mit jeder passenden rechten kombiniert. Es ist dieselbe Falle wie beim merge in pandas, und die Prüfung ist dieselbe: vorher die Eindeutigkeit des Schlüssels sicherstellen.\n\n\n\n\nEs wurde ein LEFT JOIN statt eines INNER JOIN verwendet\n\n\nEin LEFT JOIN behält alle linken Zeilen, vervielfacht sie aber nicht von sich aus.\n\n\n\n\nDie Verknüpfungsbedingung fehlt\n\n\nDann entstünde das Kreuzprodukt, also ungleich mehr Zeilen. Der häufigere und unauffälligere Fall ist der mehrdeutige Schlüssel.",
     "crumbs": [
       "Daten",
-      "Tidy Data"
+      "Datenbanken",
+      "SQL"
     ]
   },
   {
-    "objectID": "daten/tidy-data.html#verlinkte-ressourcen",
-    "href": "daten/tidy-data.html#verlinkte-ressourcen",
-    "title": "Tidy Data",
-    "section": "Verlinkte Ressourcen",
-    "text": "Verlinkte Ressourcen\n\nTidy Data, das Kapitel in R for Data Science",
+    "objectID": "daten/datenbanken/sql.html#typische-aufgaben",
+    "href": "daten/datenbanken/sql.html#typische-aufgaben",
+    "title": "SQL",
+    "section": "Typische Aufgaben",
+    "text": "Typische Aufgaben\nZeilen auswählen und filtern\nSELECT bezeichnung, preis\nFROM artikel\nWHERE preis &gt; 100 AND bezeichnung LIKE 'A%'\nORDER BY preis DESC\nLIMIT 10;\nGruppieren und die Gruppen filtern\nSELECT artikel_id, COUNT(*) AS anzahl, SUM(menge) AS menge_total\nFROM bestellung\nGROUP BY artikel_id\nHAVING COUNT(*) &gt;= 2;\nWHERE wirkt vor der Gruppierung auf einzelne Zeilen, HAVING danach auf die gebildeten Gruppen. Die Verwechslung ist der häufigste Fehler beim Aggregieren.\nTabellen verbinden\nSELECT b.bestell_id, a.bezeichnung, b.menge\nFROM bestellung AS b\nJOIN artikel AS a ON a.artikel_id = b.artikel_id;\nEin LEFT JOIN behält alle Zeilen der linken Tabelle, auch wenn rechts nichts passt; ein INNER JOIN verwirft sie. Wer nach einem Join weniger Zeilen hat als erwartet, hat meist den falschen Typ gewählt.\nFehlende Werte und Fallunterscheidungen\nSELECT bezeichnung,\n       COALESCE(rabatt, 0) AS rabatt,\n       CASE WHEN preis &gt; 500 THEN 'teuer' ELSE 'guenstig' END AS klasse\nFROM artikel;\nZwischenergebnis benennen statt verschachteln\nWITH umsatz AS (\n  SELECT artikel_id, SUM(menge * preis) AS summe\n  FROM bestellung\n  GROUP BY artikel_id\n)\nSELECT a.bezeichnung, u.summe\nFROM umsatz AS u\nJOIN artikel AS a ON a.artikel_id = u.artikel_id\nORDER BY u.summe DESC;\nDoppelte Werte finden\nSELECT bezeichnung, COUNT(*) AS anzahl\nFROM artikel\nGROUP BY bezeichnung\nHAVING COUNT(*) &gt; 1;",
     "crumbs": [
       "Daten",
-      "Tidy Data"
+      "Datenbanken",
+      "SQL"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/sql.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/sql.html#verlinkte-ressourcen",
+    "title": "SQL",
+    "section": "Verlinkte Ressourcen",
+    "text": "Verlinkte Ressourcen\n\nSQLite: SQL-Referenz\nUse The Index, Luke: SQL-Performance erklärt",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "SQL"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/sqlite.html",
+    "href": "daten/datenbanken/sqlite.html",
+    "title": "SQLite",
+    "section": "",
+    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "SQLite"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/sqlite.html#kernideen",
+    "href": "daten/datenbanken/sqlite.html#kernideen",
+    "title": "SQLite",
+    "section": "Kernideen",
+    "text": "Kernideen\n\nEine Datenbank ist eine einzige Datei, es läuft kein Server\nIn R und Python ohne Installation verfügbar, die Treiber bringen sie mit\nTypen sind Empfehlungen, keine Vorschriften: SQLite speichert, was kommt\nIdeal für Auswertungen, Prototypen und Datensätze, die nicht in den Speicher passen\nGrenze ist der gleichzeitige Schreibzugriff, nicht die Datenmenge\nAlles, was hier an SQL geübt wird, gilt in den Serversystemen weiter",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "SQLite"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/sqlite.html#erklärung",
+    "href": "daten/datenbanken/sqlite.html#erklärung",
+    "title": "SQLite",
+    "section": "Erklärung",
+    "text": "Erklärung\n\nVorwissen: SQL für die Abfragen und Datenmodellierung für den Tabellenentwurf. Welches System wann passt, steht in der Übersicht.\n\n\nWas SQLite ist\nSQLite ist eine Programmbibliothek, keine Serveranwendung. Die gesamte Datenbank steht in einer Datei, und das Programm, das sie benutzt, spricht direkt mit dieser Datei. Es gibt keinen Dienst, keinen Port, keine Benutzer und keine Rechteverwaltung. Genau das macht sie für die Datenarbeit so praktisch: Eine Auswertung braucht keine Infrastruktur, und die Datenbank lässt sich kopieren, versionieren und weitergeben wie jede andere Datei.\nDer Preis dafür ist das Schreibmodell. Lesen können viele Prozesse gleichzeitig, schreiben nur einer. Für eine Anwendung mit vielen gleichzeitigen Benutzern ist das die falsche Wahl; für eine Auswertung, die eine Person ausführt, spielt es keine Rolle.\n\n\nTypen sind Empfehlungen\nSQLite ist dynamisch typisiert. Eine als INTEGER deklarierte Spalte nimmt klaglos den Text \"k.A.\" auf, weil der deklarierte Typ nur eine Affinität ist. Das ist bequem beim Einlesen roher Daten und eine Fehlerquelle bei allem, was danach kommt.\nDie praktische Folge: Prüfungen gehören ins eigene Vorgehen, nicht in die Erwartung an das System. Wer sicher sein will, setzt beim Anlegen Bedingungen:\nCREATE TABLE messung (\n  messung_id INTEGER PRIMARY KEY,\n  wert       REAL    NOT NULL CHECK (wert &gt;= 0),\n  gemessen   TEXT    NOT NULL,          -- ISO-8601 als Text\n  geraet_id  INTEGER NOT NULL REFERENCES geraet(geraet_id)\n);\nZwei Eigenheiten sind dabei zu kennen. Erstens kennt SQLite keinen eigenen Datums- und Zeittyp; Zeitstempel werden als Text im Format YYYY-MM-DD oder als Zahl abgelegt, siehe Datum und Zeit. Zweitens sind Fremdschlüssel standardmässig ausgeschaltet und müssen je Verbindung eingeschaltet werden.\n\n\nWo sie in der Datenarbeit glänzt\nDer häufigste Fall ist eine Datei, die für den Arbeitsspeicher zu gross ist. Statt sie ganz zu laden, legt man sie einmal in eine SQLite-Datei und fragt danach nur noch das ab, was gebraucht wird. Der zweite Fall ist der Zwischenstand einer längeren Auswertung: eine Tabelle, die mehrere Skripte gemeinsam nutzen, ohne dass jemand eine CSV-Datei hin- und herkopiert.\n\n\nEine Spalte ist als INTEGER angelegt, und beim Import landen dort Texte wie \"k.A.\". Was ist passiert?\n\n\n\n\nDer Import ist fehlerhaft und muss wiederholt werden\n\n\nDer Import hat getan, was er sollte; SQLite hat den Wert angenommen.\n\n\n\n\nSQLite behandelt den deklarierten Typ als Empfehlung\n\n\nRichtig. Die Typaffinität wandelt um, wo möglich, und speichert sonst wie geliefert. Wer das ausschliessen will, setzt beim Anlegen eine CHECK-Bedingung oder prüft beim Import.\n\n\n\n\nDie Spalte war in Wahrheit als TEXT deklariert\n\n\nAuch bei INTEGER passiert genau das.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "SQLite"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/sqlite.html#typische-aufgaben",
+    "href": "daten/datenbanken/sqlite.html#typische-aufgaben",
+    "title": "SQLite",
+    "section": "Typische Aufgaben",
+    "text": "Typische Aufgaben\nVerbinden, abfragen, schliessen\n\nRPython\n\n\ncon &lt;- DBI::dbConnect(RSQLite::SQLite(), \"laden.sqlite\")\nDBI::dbExecute(con, \"PRAGMA foreign_keys = ON\")   # Fremdschluessel aktivieren\ndf &lt;- DBI::dbGetQuery(con, \"SELECT * FROM artikel WHERE preis &gt; ?\", params = list(100))\nDBI::dbDisconnect(con)\n\n\nimport sqlite3\nimport pandas as pd\n\nwith sqlite3.connect(\"laden.sqlite\") as verbindung:\n    verbindung.execute(\"PRAGMA foreign_keys = ON\")\n    df = pd.read_sql_query(\"SELECT * FROM artikel WHERE preis &gt; ?\", verbindung,\n                           params=(100,))\n\n\n\nEine grosse CSV-Datei in eine Datenbank überführen\n\nRPython\n\n\ncon &lt;- DBI::dbConnect(RSQLite::SQLite(), \"gross.sqlite\")\nreadr::read_csv_chunked(\n  \"gross.csv\",\n  callback = readr::DataFrameCallback$new(function(teil, pos) {\n    DBI::dbWriteTable(con, \"messung\", teil, append = TRUE)\n  }),\n  chunk_size = 100000\n)\n\n\nimport sqlite3\nimport pandas as pd\n\nwith sqlite3.connect(\"gross.sqlite\") as verbindung:\n    for teil in pd.read_csv(\"gross.csv\", chunksize=100_000):\n        teil.to_sql(\"messung\", verbindung, if_exists=\"append\", index=False)\n\n\n\nNachsehen, was in der Datei liegt\nSELECT name FROM sqlite_master WHERE type = 'table';   -- Tabellen\nPRAGMA table_info(artikel);                            -- Spalten und Typen\nSELECT COUNT(*) FROM artikel;                          -- Zeilen\nEine Abfrage beschleunigen\nEXPLAIN QUERY PLAN\nSELECT * FROM bestellung WHERE artikel_id = 3;\n\nCREATE INDEX idx_bestellung_artikel ON bestellung(artikel_id);\nSteht im Plan SCAN, wird die ganze Tabelle gelesen; nach dem Index steht dort SEARCH. Bei kleinen Tabellen ist beides gleich schnell, ab einigen Hunderttausend Zeilen ist es der Unterschied zwischen Sekunden und Minuten.\nWartung und Grösse\nANALYZE;    -- Statistiken fuer den Abfrageplaner auffrischen\nVACUUM;     -- geloeschten Platz zurueckgeben, Datei verkleinern\nMit der Kommandozeile arbeiten\nsqlite3 laden.sqlite               # interaktive Konsole\n.tables                            # Tabellen auflisten\n.schema artikel                    # Definition einer Tabelle\n.headers on\n.mode csv\n.import daten.csv artikel          # CSV importieren\n.output ergebnis.csv               # Ausgabe umleiten\nEine Datenbank im Arbeitsspeicher, etwa für Tests\n\nRPython\n\n\ncon &lt;- DBI::dbConnect(RSQLite::SQLite(), \":memory:\")\n\n\nverbindung = sqlite3.connect(\":memory:\")",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "SQLite"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/sqlite.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/sqlite.html#verlinkte-ressourcen",
+    "title": "SQLite",
+    "section": "Verlinkte Ressourcen",
+    "text": "Verlinkte Ressourcen\n\nSQLite: offizielle Dokumentation\nWann SQLite passt und wann nicht\nTypaffinität in SQLite",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "SQLite"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/postgresql.html",
+    "href": "daten/datenbanken/postgresql.html",
+    "title": "PostgreSQL",
+    "section": "",
+    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "PostgreSQL"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/postgresql.html#kernideen",
+    "href": "daten/datenbanken/postgresql.html#kernideen",
+    "title": "PostgreSQL",
+    "section": "Kernideen",
+    "text": "Kernideen\n\nServerdatenbank für viele gleichzeitige Zugriffe, mit Benutzern und Rechten\nStrenge Typen und echte Prüfungen: falsche Daten kommen gar nicht erst hinein\nStarke analytische Fähigkeiten, insbesondere Fenster- und Aggregatfunktionen\nKennt JSON als eigenen Typ, damit auch halbstrukturierte Daten\nErweiterbar, etwa um Zeitreihen, Geodaten oder Vektorsuche\nFür die Datenarbeit meist das Zielsystem, aus dem gelesen wird",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "PostgreSQL"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/postgresql.html#erklärung",
+    "href": "daten/datenbanken/postgresql.html#erklärung",
+    "title": "PostgreSQL",
+    "section": "Erklärung",
+    "text": "Erklärung\n\nVorwissen: SQL und Datenmodellierung. Der Zugriff aus R und Python steht unter Datenbankzugriff, die Wahl des Systems in der Übersicht.\n\n\nWas PostgreSQL von SQLite unterscheidet\nDer offensichtliche Unterschied ist der Server: Es läuft ein Dienst, zu dem sich Programme über das Netz verbinden, mit Benutzern, Passwörtern und Rechten. Der wichtigere Unterschied für die tägliche Arbeit ist die Strenge. Typen werden durchgesetzt, Fremdschlüssel gelten immer, und eine Transaktion, die eine Bedingung verletzt, wird abgelehnt statt teilweise geschrieben.\nFür die Datenarbeit heisst das: Was aus PostgreSQL kommt, hat eine verlässliche Struktur. Die Prüfungen, die man bei einer CSV-Datei selbst schreiben muss, hat die Datenbank bereits erledigt.\n\n\nWas analytisch nützlich ist\nDrei Sprachmittel begegnen einem bei Auswertungen ständig:\nFensterfunktionen rechnen über eine Menge von Zeilen, ohne sie zu Gruppen zusammenzufassen. Damit lassen sich laufende Summen, Ränge und Vorperiodenvergleiche direkt in der Datenbank bilden:\nSELECT datum,\n       betrag,\n       SUM(betrag) OVER (ORDER BY datum)                    AS kumuliert,\n       betrag - LAG(betrag) OVER (ORDER BY datum)           AS veraenderung,\n       RANK() OVER (PARTITION BY kategorie ORDER BY betrag DESC) AS rang\nFROM bestellung;\nGemeinsame Tabellenausdrücke benennen Zwischenergebnisse und machen lange Abfragen lesbar:\nWITH monatlich AS (\n  SELECT date_trunc('month', datum) AS monat, SUM(betrag) AS umsatz\n  FROM bestellung\n  GROUP BY 1\n)\nSELECT monat, umsatz, umsatz - LAG(umsatz) OVER (ORDER BY monat) AS delta\nFROM monatlich\nORDER BY monat;\nJSON als Typ erlaubt halbstrukturierte Felder, ohne das relationale Modell aufzugeben:\nSELECT eigenschaften -&gt;&gt; 'hersteller' AS hersteller\nFROM artikel\nWHERE eigenschaften @&gt; '{\"kategorie\": \"Pneumatik\"}';\nDamit deckt PostgreSQL viele Fälle ab, für die sonst eine Dokumentdatenbank herangezogen würde, siehe MongoDB.\n\n\nWas beim Zugriff zu beachten ist\nVerbindungen sind teurer als bei einer Dateidatenbank, und sie sind begrenzt. Wer in einer Schleife verbindet, erschöpft den Server; wer eine Verbindung offenlässt, blockiert sie. In Auswertungen gilt deshalb: einmal verbinden, alles Nötige holen, schliessen. Für Anwendungen mit vielen kurzen Zugriffen übernimmt ein Verbindungspool diese Aufgabe.\nDer zweite Punkt ist die Arbeitsteilung. Aggregieren, Filtern und Verbinden gehören in die Datenbank, weil sie das schneller kann und weil dann weniger Daten über das Netz gehen. In R oder Python landet, was ausgewertet und dargestellt wird.\n\n\nEine Auswertung liest 20 Millionen Zeilen nach Python und gruppiert sie dort mit pandas. Was ist daran falsch?\n\n\n\n\nNichts, pandas ist schnell genug\n\n\nEs ist nicht die Geschwindigkeit von pandas, die hier das Problem ist.\n\n\n\n\nDie Gruppierung gehört in die Datenbank\n\n\nRichtig. Der Server aggregiert auf indizierten Spalten deutlich schneller und überträgt statt Millionen Zeilen nur das Ergebnis. Das spart Netz, Speicher und Zeit.\n\n\n\n\nMan hätte SQLite nehmen sollen\n\n\nDas ändert nichts daran, wo aggregiert wird.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "PostgreSQL"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/postgresql.html#typische-aufgaben",
+    "href": "daten/datenbanken/postgresql.html#typische-aufgaben",
+    "title": "PostgreSQL",
+    "section": "Typische Aufgaben",
+    "text": "Typische Aufgaben\nVerbinden\n\nRPython\n\n\ncon &lt;- DBI::dbConnect(\n  RPostgres::Postgres(),\n  host = \"db.example.org\", port = 5432, dbname = \"produktion\",\n  user = Sys.getenv(\"PGUSER\"), password = Sys.getenv(\"PGPASSWORD\")\n)\n\n\nfrom sqlalchemy import create_engine\nimport os\n\nmotor = create_engine(\n    f\"postgresql+psycopg://{os.environ['PGUSER']}:{os.environ['PGPASSWORD']}\"\n    \"@db.example.org:5432/produktion\"\n)\n\n\n\nZugangsdaten gehören in Umgebungsvariablen oder in eine .pgpass-Datei, nie in den Code und schon gar nicht in die Versionsverwaltung.\nNachsehen, was es gibt\n\\dt                                    -- Tabellen (in psql)\n\\d artikel                             -- Definition einer Tabelle\n\nSELECT table_name FROM information_schema.tables WHERE table_schema = 'public';\nSELECT column_name, data_type FROM information_schema.columns\nWHERE table_name = 'artikel';\nGrosse Ergebnisse in Portionen lesen\nfor teil in pd.read_sql_query(\"SELECT * FROM messung\", motor, chunksize=100_000):\n    verarbeite(teil)\nDaten schreiben\n\nRPython\n\n\nDBI::dbWriteTable(con, \"ergebnis\", df, overwrite = TRUE)\n\n\ndf.to_sql(\"ergebnis\", motor, if_exists=\"replace\", index=False, method=\"multi\")\n\n\n\nFür grosse Mengen ist COPY um ein Vielfaches schneller als einzelne INSERT-Anweisungen:\nCOPY messung (geraet_id, wert, gemessen) FROM '/pfad/daten.csv' CSV HEADER;\nEine langsame Abfrage untersuchen\nEXPLAIN ANALYZE\nSELECT kategorie, SUM(betrag) FROM bestellung GROUP BY kategorie;\n\nCREATE INDEX idx_bestellung_datum ON bestellung(datum);\nSeq Scan auf einer grossen Tabelle ist der häufigste Befund, und ein Index auf der Filterspalte die häufigste Abhilfe.\nSicherung und Wiederherstellung\npg_dump -h host -U benutzer -d produktion -F c -f sicherung.dump\npg_restore -h host -U benutzer -d produktion sicherung.dump",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "PostgreSQL"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/postgresql.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/postgresql.html#verlinkte-ressourcen",
+    "title": "PostgreSQL",
+    "section": "Verlinkte Ressourcen",
+    "text": "Verlinkte Ressourcen\n\nPostgreSQL: Dokumentation\nFensterfunktionen erklärt\nUse The Index, Luke: SQL-Performance",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "PostgreSQL"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mongodb.html",
+    "href": "daten/datenbanken/mongodb.html",
+    "title": "MongoDB",
+    "section": "",
+    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MongoDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mongodb.html#kernideen",
+    "href": "daten/datenbanken/mongodb.html#kernideen",
+    "title": "MongoDB",
+    "section": "Kernideen",
+    "text": "Kernideen\n\nSpeichert Dokumente statt Zeilen, ohne festes Schema\nVerschachtelte Strukturen bleiben erhalten, statt auf Tabellen verteilt zu werden\nAbgefragt wird nicht mit SQL, sondern über Filterdokumente und eine Pipeline\nKein Schema heisst nicht keine Struktur, sondern Struktur ohne Prüfung\nFür die Auswertung wird meist flach gemacht, was verschachtelt gespeichert ist\nRelationale Systeme können JSON inzwischen auch; der Vergleich lohnt sich",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MongoDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mongodb.html#erklärung",
+    "href": "daten/datenbanken/mongodb.html#erklärung",
+    "title": "MongoDB",
+    "section": "Erklärung",
+    "text": "Erklärung\n\nVorwissen: Datenmodellierung als Gegenpol und Datenimport und Formate für JSON. Welches System wann passt, steht in der Übersicht.\n\n\nDokumente statt Zeilen\nEin Dokument ist eine JSON-ähnliche Struktur, die auch Listen und Unterdokumente enthalten darf. Eine Bestellung liegt damit als Ganzes an einem Ort, statt auf mehrere Tabellen verteilt zu sein:\n{\n  \"bestell_id\": 4711,\n  \"kunde\": { \"name\": \"Meier AG\", \"ort\": \"Chur\" },\n  \"positionen\": [\n    { \"artikel\": \"Ventil 3/2\", \"menge\": 10, \"preis\": 24.0 },\n    { \"artikel\": \"Sensor induktiv\", \"menge\": 2, \"preis\": 128.0 }\n  ],\n  \"datum\": \"2026-03-15\"\n}\nDer Vorteil ist der Zugriff: Wer die Bestellung liest, hat alles beisammen, ohne zu verbinden. Der Nachteil zeigt sich, sobald man quer auswerten will, etwa den Umsatz je Artikel über alle Bestellungen. Dann muss die Struktur aufgebrochen werden, und das ist genau die Arbeit, die ein relationales Modell einem abnimmt.\n\n\nKein Schema heisst nicht keine Struktur\nOhne Schemaprüfung nimmt die Datenbank jedes Dokument an, auch eines mit fehlendem Feld, falschem Typ oder abweichender Schreibweise. Die Struktur existiert trotzdem, sie steht nur nicht mehr in der Datenbank, sondern verteilt in allen Programmen, die darauf zugreifen.\nFür die Datenarbeit hat das eine unmittelbare Folge: Die erste Frage an eine unbekannte Sammlung ist nicht “was steht drin”, sondern “welche Felder gibt es überhaupt, und in welchen Typen”. Prüfungen, die bei PostgreSQL die Datenbank übernimmt, gehören hier ins eigene Vorgehen, siehe Datenqualität.\nMongoDB kann eine Schemaprüfung erzwingen; genutzt wird sie in gewachsenen Beständen selten.\n\n\nAbfragen ohne SQL\nGefiltert wird mit einem Dokument, das die Bedingungen beschreibt. Aggregationen laufen über eine Pipeline aus Stufen, die nacheinander angewendet werden; jede Stufe entspricht ungefähr einer SQL-Klausel.\n\n\n\nSQL\nMongoDB\n\n\n\n\nWHERE\n$match\n\n\nGROUP BY\n$group\n\n\nSELECT Spalten\n$project\n\n\nORDER BY\n$sort\n\n\nLIMIT\n$limit\n\n\nJOIN\n$lookup\n\n\nListe aufbrechen\n$unwind\n\n\n\npipeline = [\n    {\"$match\": {\"datum\": {\"$gte\": \"2026-01-01\"}}},\n    {\"$unwind\": \"$positionen\"},\n    {\"$group\": {\"_id\": \"$positionen.artikel\",\n                \"umsatz\": {\"$sum\": {\"$multiply\": [\"$positionen.menge\",\n                                                  \"$positionen.preis\"]}}}},\n    {\"$sort\": {\"umsatz\": -1}},\n    {\"$limit\": 10},\n]\nDie Stufe $unwind hat kein direktes Gegenstück in SQL: Sie macht aus einem Dokument mit einer Liste von drei Positionen drei Dokumente. Erst danach lässt sich über Positionen gruppieren.\n\n\nWann eine Dokumentdatenbank passt\n\n\n\nFall\nPassend\n\n\n\n\nStruktur variiert je Datensatz und ändert sich häufig\nMongoDB\n\n\nVerschachtelte Objekte werden als Ganzes gelesen und geschrieben\nMongoDB\n\n\nQuerauswertungen über viele Datensätze sind der Normalfall\nRelationale Systeme\n\n\nFremdschlüssel und Konsistenz sollen erzwungen werden\nPostgreSQL\n\n\nNur ein paar Felder sind halbstrukturiert\nPostgreSQL mit JSON-Spalte\n\n\nGrosse Auswertungen über Dateien\nDuckDB\n\n\n\n\n\nEine Sammlung enthält Bestellungen mit einer Liste von Positionen. Gesucht ist der Umsatz je Artikel. Was ist der erste Schritt in der Pipeline?\n\n\n\n\n$group über den Artikel\n\n\nDas geht noch nicht: Der Artikel steckt in einer Liste, und die Gruppierung sähe ganze Dokumente.\n\n\n\n\n$unwind auf die Positionen\n\n\nRichtig. Erst wird aus jedem Dokument je Position ein eigenes Dokument, danach lässt sich gruppieren. Das ist der Schritt, den SQL nicht braucht, weil dort Positionen ohnehin eigene Zeilen sind.\n\n\n\n\n$lookup auf die Artikeltabelle\n\n\nDas verbindet mit einer anderen Sammlung und löst das Problem der Liste nicht.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MongoDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mongodb.html#typische-aufgaben",
+    "href": "daten/datenbanken/mongodb.html#typische-aufgaben",
+    "title": "MongoDB",
+    "section": "Typische Aufgaben",
+    "text": "Typische Aufgaben\nVerbinden\n\nRPython\n\n\nlibrary(mongolite)\nsammlung &lt;- mongo(collection = \"bestellung\", db = \"shop\",\n                  url = Sys.getenv(\"MONGO_URL\"))\n\n\nfrom pymongo import MongoClient\nimport os\n\nklient = MongoClient(os.environ[\"MONGO_URL\"])\nsammlung = klient[\"shop\"][\"bestellung\"]\n\n\n\nSich einen Überblick verschaffen\nprint(klient.list_database_names())\nprint(klient[\"shop\"].list_collection_names())\nprint(sammlung.estimated_document_count())\nsammlung.find_one()                       # ein Beispieldokument\nWelche Felder überhaupt vorkommen, verrät eine kleine Auszählung, weil es kein Schema gibt, das man ansehen könnte:\nfrom collections import Counter\n\nfelder = Counter()\nfor dok in sammlung.find().limit(1000):\n    felder.update(dok.keys())\nprint(felder.most_common())\nFiltern und in einen Data Frame holen\n\nRPython\n\n\ndf &lt;- sammlung$find(\n  query = '{\"datum\": {\"$gte\": \"2026-01-01\"}}',\n  fields = '{\"bestell_id\": 1, \"kunde.ort\": 1, \"datum\": 1, \"_id\": 0}'\n)\n\n\nimport pandas as pd\n\ndf = pd.DataFrame(sammlung.find(\n    {\"datum\": {\"$gte\": \"2026-01-01\"}},\n    {\"bestell_id\": 1, \"kunde.ort\": 1, \"datum\": 1, \"_id\": 0},\n))\n\n\n\nVerschachtelte Felder flach machen\ndf = pd.json_normalize(\n    sammlung.find({}, {\"_id\": 0}),\n    record_path=\"positionen\",\n    meta=[\"bestell_id\", \"datum\", [\"kunde\", \"ort\"]],\n)\nDamit entsteht die Tabelle, mit der sich weiterarbeiten lässt, siehe Tidy Data.\nAggregieren in der Datenbank\nergebnis = list(sammlung.aggregate([\n    {\"$unwind\": \"$positionen\"},\n    {\"$group\": {\"_id\": \"$positionen.artikel\",\n                \"umsatz\": {\"$sum\": {\"$multiply\": [\"$positionen.menge\",\n                                                  \"$positionen.preis\"]}}}},\n    {\"$sort\": {\"umsatz\": -1}},\n]))\ndf = pd.DataFrame(ergebnis).rename(columns={\"_id\": \"artikel\"})\nIndex anlegen\nsammlung.create_index(\"datum\")\nsammlung.create_index([(\"kunde.ort\", 1), (\"datum\", -1)])\nprint(sammlung.index_information())\nZum Ausprobieren aus einem Container\ndocker run --name mongo -p 27017:27017 -d mongo\ndocker exec -it mongo mongosh",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MongoDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mongodb.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/mongodb.html#verlinkte-ressourcen",
+    "title": "MongoDB",
+    "section": "Verlinkte Ressourcen",
+    "text": "Verlinkte Ressourcen\n\nMongoDB: Dokumentation\nAggregation Pipeline\npymongo: Handbuch",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MongoDB"
+    ]
+  },
+  {
+    "objectID": "daten/fragen.html",
+    "href": "daten/fragen.html",
+    "title": "Fragen zu Daten",
+    "section": "",
+    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.\n\nDiese Fragen prüfen die Verbindungen zwischen Import, Aufbereitung, Qualität und Datenbanken. Die Sammlung wächst mit jeder fertigen Themenseite.\n\nDatenbanken und SQL\n\n\nWarum lässt sich in SQL nicht WHERE SUM(betrag) &gt; 500 schreiben?\n\n\n\n\nWHERE wird vor der Gruppierung ausgewertet, es gibt dort noch keine Summen\n\n\nRichtig. Bedingungen auf Aggregaten gehören in HAVING, das nach GROUP BY läuft. Beides in einer Abfrage ist möglich und üblich.\n\n\n\n\nSUM darf nur im SELECT stehen\n\n\nEs darf auch in HAVING und in ORDER BY stehen. Die Einschränkung betrifft nur WHERE.\n\n\n\n\nDie Klammern fehlen\n\n\nEs ist kein Syntaxproblem, sondern eine Folge der Auswertungsreihenfolge.\n\n\n\n\n\n\nAufbereitung und Qualität\n\n\nNach einem Join hat die Tabelle mehr Zeilen als vorher. Was ist die wahrscheinlichste Ursache?\n\n\n\n\nEin Fehler in der Join-Bedingung, es fehlt eine Klammer\n\n\nSyntaxfehler führen zu einer Fehlermeldung, nicht zu zusätzlichen Zeilen.\n\n\n\n\nDer Schlüssel ist auf der rechten Seite nicht eindeutig\n\n\nRichtig. Zu jeder linken Zeile passen mehrere rechte, und jede Kombination wird eine eigene Zeile. Prüfen lässt sich das mit einer Zählung der Schlüsselwerte vor dem Join.\n\n\n\n\nEin LEFT JOIN statt eines INNER JOIN\n\n\nDer behält Zeilen, er vervielfacht sie aber nicht.\n\n\n\n\n\n\nEine CSV-Datei wird eingelesen, und eine Spalte mit Messwerten landet als Text. Was ist zu tun?\n\n\n\n\nDie Spalte nachträglich in Zahlen umwandeln und weiterarbeiten\n\n\nDas behebt das Symptom und verdeckt die Ursache.\n\n\n\n\nNachsehen, welche Werte die Umwandlung verhindern\n\n\nRichtig. Fast immer steckt etwas darin, das keine Zahl ist: ein Dezimalkomma, ein Tausendertrennzeichen, ein Platzhalter wie “k.A.” oder eine Fussnote. Der Fund gehört in die Bereinigung, nicht in eine stille Umwandlung.\n\n\n\n\nDie Datei in Excel öffnen und speichern\n\n\nDamit kommen weitere stille Umwandlungen dazu, etwa Zahlen, die zu Datumsangaben werden.",
+    "crumbs": [
+      "Daten",
+      "Fragen zu Daten"
     ]
   },
   {
@@ -3284,7 +3436,17 @@
     "href": "daten/index.html",
     "title": "Daten",
     "section": "",
-    "text": "Der Weg der Daten, bevor irgendeine Methode auf sie angewendet wird. Zuerst das Einlesen mit seinen Formaten und Kodierungsfallen, dann die Frage, welche Form Daten haben sollen, dann das Umformen selbst. Datenqualität steht bewusst vor der Statistik: Kennzahlen aus Daten mit stillen Duplikaten oder falsch behandelten fehlenden Werten sind präzise und falsch.\nDer zweite Teil betrifft Daten, die nicht als Datei kommen: relationale Modellierung, SQL und der Zugriff aus R und Python.\n\n\n\n\nDatenimport und Formate\n\n\nCSV, Excel, JSON und Pickle lesen und schreiben, Kodierung beachten.\n\n\nEntwurf\n\n\n\n\nTidy Data\n\n\nEine Zeile je Beobachtung, eine Spalte je Variable, und warum das trägt.\n\n\nEntwurf\n\n\n\n\nData Wrangling\n\n\nFiltern, sortieren, gruppieren, umformen und verbinden in beiden Sprachen.\n\n\nEntwurf\n\n\n\n\nDatum und Zeit\n\n\nZeitstempel parsen, rechnen, Zeitzonen und typische Stolpersteine.\n\n\nEntwurf\n\n\n\n\nDatenqualität\n\n\nFehlende Werte, Duplikate und Plausibilität systematisch prüfen.\n\n\nEntwurf\n\n\n\n\nDatenmodellierung\n\n\nRelationales Modell, Schlüssel, Beziehungen und Normalisierung.\n\n\nEntwurf\n\n\n\n\nSQL\n\n\nAbfragen, Joins, Aggregation und Unterabfragen.\n\n\nEntwurf\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\nDBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.\n\n\nEntwurf\n\n\n\n\nFragen zu Daten\n\n\nÜbergreifende Fragen zu Import, Wrangling, Datenqualität und SQL.\n\n\nEntwurf\n\n\n\nKeine Treffer\n\nDie Fragen zu diesem Bereich prüfen die Verbindungen zwischen den Themen.",
+    "text": "Der Weg der Daten, bevor irgendeine Methode auf sie angewendet wird. Zuerst das Einlesen mit seinen Formaten und Kodierungsfallen, dann die Frage, welche Form Daten haben sollen, dann das Umformen selbst. Datenqualität steht bewusst vor der Statistik: Kennzahlen aus Daten mit stillen Duplikaten oder falsch behandelten fehlenden Werten sind präzise und falsch.\nDer zweite Teil betrifft Daten, die nicht als Datei kommen: relationale Modellierung, SQL und der Zugriff aus R und Python.",
+    "crumbs": [
+      "Daten"
+    ]
+  },
+  {
+    "objectID": "daten/index.html#datenbanken",
+    "href": "daten/index.html#datenbanken",
+    "title": "Daten",
+    "section": "Datenbanken",
+    "text": "Datenbanken\nDaten, die nicht als Datei kommen: relationale Modellierung, SQL, der Zugriff aus R und Python sowie die gängigen Systeme von SQLite über PostgreSQL bis MongoDB.\n\n\n\n\nDatenbanken\n\n\nModellierung, SQL, Zugriff aus R und Python sowie die gängigen Systeme im Vergleich.\n\n\n\nKeine Treffer\n\nDie Fragen zu diesem Bereich prüfen die Verbindungen zwischen den Themen.",
     "crumbs": [
       "Daten"
     ]
@@ -3545,7 +3707,7 @@
     "href": "stand.html",
     "title": "Stand der Seite",
     "section": "",
-    "text": "Diese Übersicht entsteht aus dem Frontmatter der Seiten und ist damit immer aktuell. geruest heisst: die Abschnitte stehen, der Inhalt fehlt. entwurf heisst: der Inhalt steht, ist aber noch nicht durchgeprüft. fertig heisst: geprüft.\nDie Spalte Herkunft hält fest, aus welchem Zusammenhang der Stoff stammt. Sie ist der einzige Ort, an dem diese Information steht; auf den Seiten selbst erscheint sie nicht.\n\n\n   \n    \n    \n      Sortieren nach\n      Voreinstellung\n      \n        Seite\n      \n    \n  \n    \n      \n      \n    \n\n\n\n\n\n\nSeite\n\n\n\nTyp\n\n\n\nStand\n\n\n\nHerkunft\n\n\n\nTags\n\n\n\n\n\n\n\n\nBausteine eines Prompts\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Kommunikation\n\n\n\n\n\n\nBedingte Wahrscheinlichkeit und Bayes\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nWahrscheinlichkeit, Bayes, Interpretation, R, Python\n\n\n\n\n\n\nChi-Quadrat-Tests\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nData Wrangling\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR, ESDS\n\n\nData Wrangling, pandas, tidyverse, R, Python\n\n\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nDatenbanken, SQL, R, Python\n\n\n\n\n\n\nDatenimport und Formate\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR, ESDS\n\n\nData Wrangling, R, Python\n\n\n\n\n\n\nDatenmodellierung\n\n\nkonzept\n\n\nentwurf\n\n\nPYFR\n\n\nDatenbanken, SQL\n\n\n\n\n\n\nDatenqualität\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nDatenqualität, Data Wrangling, R, Python\n\n\n\n\n\n\nDatum und Zeit\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS, PYFR\n\n\nData Wrangling, R, Python\n\n\n\n\n\n\nDenkführende Patterns\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nDiskrete Verteilungen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Wahrscheinlichkeit, R, Python\n\n\n\n\n\n\nDocker und Virtualisierung\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nTooling, Deployment, Reproduzierbarkeit\n\n\n\n\n\n\nEinfache lineare Regression\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nRegression, Modelldiagnostik, Interpretation, R, Python\n\n\n\n\n\n\nExplorative Datenanalyse\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nEDA, Visualisierung, R, Python\n\n\n\n\n\n\nFehlerbehandlung und Dateizugriff\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python, Tooling\n\n\n\n\n\n\nFragen zu Daten\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nData Wrangling, Datenqualität, SQL\n\n\n\n\n\n\nFragen zu KI\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nFragen zur Programmierung\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nProgrammiergrundlagen, Tooling, R, Python\n\n\n\n\n\n\nFragen zur Statistik\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nHypothesentests, Regression, Interpretation\n\n\n\n\n\n\nFunktionen und Module in Python\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python\n\n\n\n\n\n\nGepaarter t-Test\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Effektstärke, Interpretation, R, Python\n\n\n\n\n\n\nGit\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nTooling, Reproduzierbarkeit\n\n\n\n\n\n\nGrundlegende Patterns\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Kommunikation\n\n\n\n\n\n\nHypothesentests: Grundlagen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Schätzen, Interpretation, R, Python\n\n\n\n\n\n\nHäufigkeiten\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nDeskriptive Statistik, EDA, R, Python\n\n\n\n\n\n\nKI-Entwürfe überarbeiten\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nSprachmodelle, Kommunikation, Prompting\n\n\n\n\n\n\nKombinatorik und Wahrscheinlichkeit\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nWahrscheinlichkeit, R, Python\n\n\n\n\n\n\nKorrelation\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nKorrelation, Deskriptive Statistik, Interpretation, R, Python\n\n\n\n\n\n\nLage- und Streuungsmasse\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nDeskriptive Statistik, Interpretation, R, Python\n\n\n\n\n\n\nLinux und Shell\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nLinux, Tooling\n\n\n\n\n\n\nModelle und ihre Grenzen\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nSprachmodelle, Prompting, Interpretation\n\n\n\n\n\n\nMultiple lineare Regression\n\n\nmethode\n\n\nentwurf\n\n\nSTATDA, ESDS\n\n\nRegression, Modelldiagnostik, Interpretation, R, Python\n\n\n\n\n\n\nNormalverteilung und zentraler Grenzwertsatz\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Wahrscheinlichkeit, Interpretation, R, Python\n\n\n\n\n\n\nNumPy und SciPy\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nNumPy, Python, Programmiergrundlagen\n\n\n\n\n\n\nObjektorientierung in Python\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python\n\n\n\n\n\n\nPakete und Umgebungen\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR, ESDS\n\n\nTooling, Reproduzierbarkeit, R, Python\n\n\n\n\n\n\nPrompts für die Datenarbeit\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Data Wrangling, Interpretation\n\n\n\n\n\n\nPrüfende Patterns\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nPython-Grundlagen\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python\n\n\n\n\n\n\nQQ-Plots\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Visualisierung, Interpretation, R, Python\n\n\n\n\n\n\nR-Grundlagen\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nProgrammiergrundlagen, R\n\n\n\n\n\n\nReproduzierbarkeit\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nReproduzierbarkeit, Tooling, R, Python\n\n\n\n\n\n\nSQL\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nSQL, Datenbanken, R, Python\n\n\n\n\n\n\nSchätzen und Konfidenzintervalle\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nSchätzen, Interpretation, R, Python\n\n\n\n\n\n\nSkalenniveaus\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nDeskriptive Statistik, EDA, Interpretation, R, Python\n\n\n\n\n\n\nStetige Verteilungen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Wahrscheinlichkeit, R, Python\n\n\n\n\n\n\nTidy Data\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nData Wrangling, Datenqualität\n\n\n\n\n\n\nVom Prompt zum Kontext\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nSprachmodelle, Prompting, Reproduzierbarkeit\n\n\n\n\n\n\nWann was verwenden\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nZufallsvariablen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nWahrscheinlichkeit, Verteilungen, R, Python\n\n\n\n\n\n\nggplot2\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nggplot2, Visualisierung, R\n\n\n\n\n\n\nmatplotlib\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nmatplotlib, Visualisierung, Python\n\n\n\n\n\n\npandas\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\npandas, Python, Data Wrangling\n\n\n\n\n\n\nt-Test für eine Stichprobe\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Effektstärke, Interpretation, R, Python\n\n\n\n\n\n\nt-Test für zwei Stichproben\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Effektstärke, Interpretation, R, Python\n\n\n\n\n\n\nARIMA und SARIMA\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Prognose, Interpretation, R, Python\n\n\n\n\n\n\nBefehlsreferenz Python\n\n\nreferenz\n\n\ngeruest\n\n\n \n\n\nPython, pandas\n\n\n\n\n\n\nBefehlsreferenz R\n\n\nreferenz\n\n\ngeruest\n\n\n \n\n\nR, tidyverse\n\n\n\n\n\n\nBootstrap und Resampling\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nResampling, Schätzen, Interpretation, R, Python\n\n\n\n\n\n\nClustergüte\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nClustering, Modellvalidierung, Interpretation, R, Python\n\n\n\n\n\n\nCox-Modell\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Regression, Interpretation, R, Python\n\n\n\n\n\n\nDashboards und Interaktivität\n\n\nwerkzeug\n\n\ngeruest\n\n\nDAVI\n\n\nDashboards, Interaktivität, Visualisierung\n\n\n\n\n\n\nDiagrammtyp wählen\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nVisualisierung, Wahrnehmung\n\n\n\n\n\n\nDistanzmasse\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nDistanzmasse, Clustering, R, Python\n\n\n\n\n\n\nEffektstärken\n\n\nkonzept\n\n\ngeruest\n\n\nESDS\n\n\nEffektstärke, Interpretation, R, Python\n\n\n\n\n\n\nFaktorenanalyse\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nFaktorenanalyse, Dimensionsreduktion, Interpretation, R, Python\n\n\n\n\n\n\nFarbe\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nFarbe, Wahrnehmung, Visualisierung\n\n\n\n\n\n\nFragen zur Visualisierung\n\n\nkonzept\n\n\ngeruest\n\n\n \n\n\nVisualisierung, Wahrnehmung, Visualisierungsethik\n\n\n\n\n\n\nGlättung\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Prognose, R, Python\n\n\n\n\n\n\nHauptkomponentenanalyse\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nDimensionsreduktion, Interpretation, R, Python\n\n\n\n\n\n\nHierarchisches Clustering\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nClustering, Distanzmasse, Interpretation, R, Python\n\n\n\n\n\n\nIrreführende Darstellungen\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nVisualisierungsethik, Visualisierung, Wahrnehmung\n\n\n\n\n\n\nKaplan-Meier-Schätzer\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Interpretation, R, Python\n\n\n\n\n\n\nKlassifikationsgüte\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nKlassifikation, Modellvalidierung, Interpretation, R, Python\n\n\n\n\n\n\nKorrelationstests\n\n\nmethode\n\n\ngeruest\n\n\nESDS\n\n\nKorrelation, Hypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nLog-Rank-Test\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Hypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nLogistische Regression\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nLogistische Regression, Klassifikation, Interpretation, R, Python\n\n\n\n\n\n\nModellauswahl\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nModellvalidierung, Regression, Interpretation, R, Python\n\n\n\n\n\n\nMultiples Testen\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nNichtparametrische Tests\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nNormalitätstests\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Verteilungen, Interpretation, R, Python\n\n\n\n\n\n\nPower und Stichprobenumfang\n\n\nmethode\n\n\ngeruest\n\n\n\n\n\nPower, Versuchsplanung, Interpretation, R, Python\n\n\n\n\n\n\nRegressionsdiagnostik\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nRegression, Modelldiagnostik, Interpretation, R, Python\n\n\n\n\n\n\nStationarität, ACF und PACF\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Interpretation, R, Python\n\n\n\n\n\n\nStorytelling mit Daten\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nStorytelling, Kommunikation, Visualisierung\n\n\n\n\n\n\nVarianzanalyse\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Regression, Interpretation, R, Python\n\n\n\n\n\n\nWahrnehmung und Kodierung\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nWahrnehmung, Visualisierung\n\n\n\n\n\n\nZeitreihen: Grundlagen\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Interpretation, R, Python\n\n\n\n\n\n\nZensierung und Überlebensfunktion\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Interpretation, R, Python\n\n\n\n\n\n\nZielbild und Publikum\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nVisualisierung, Kommunikation\n\n\n\n\n\n\nk-Means\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nClustering, Interpretation, R, Python\n\n\n\n\n\n\nseaborn und plotly\n\n\nwerkzeug\n\n\ngeruest\n\n\nPYFR, DAVI\n\n\nseaborn, plotly, Visualisierung, Python\n\n\n\n\n\n\nKeine Treffer",
+    "text": "Diese Übersicht entsteht aus dem Frontmatter der Seiten und ist damit immer aktuell. geruest heisst: die Abschnitte stehen, der Inhalt fehlt. entwurf heisst: der Inhalt steht, ist aber noch nicht durchgeprüft. fertig heisst: geprüft.\nDie Spalte Herkunft hält fest, aus welchem Zusammenhang der Stoff stammt. Sie ist der einzige Ort, an dem diese Information steht; auf den Seiten selbst erscheint sie nicht.\n\n\n   \n    \n    \n      Sortieren nach\n      Voreinstellung\n      \n        Seite\n      \n    \n  \n    \n      \n      \n    \n\n\n\n\n\n\nSeite\n\n\n\nTyp\n\n\n\nStand\n\n\n\nHerkunft\n\n\n\nTags\n\n\n\n\n\n\n\n\nBausteine eines Prompts\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Kommunikation\n\n\n\n\n\n\nBedingte Wahrscheinlichkeit und Bayes\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nWahrscheinlichkeit, Bayes, Interpretation, R, Python\n\n\n\n\n\n\nChi-Quadrat-Tests\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nData Wrangling\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR, ESDS\n\n\nData Wrangling, pandas, tidyverse, R, Python\n\n\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nDatenbanken, SQL, R, Python\n\n\n\n\n\n\nDatenimport und Formate\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR, ESDS\n\n\nData Wrangling, R, Python\n\n\n\n\n\n\nDatenmodellierung\n\n\nkonzept\n\n\nentwurf\n\n\nPYFR\n\n\nDatenbanken, SQL\n\n\n\n\n\n\nDatenqualität\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nDatenqualität, Data Wrangling, R, Python\n\n\n\n\n\n\nDatum und Zeit\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS, PYFR\n\n\nData Wrangling, R, Python\n\n\n\n\n\n\nDenkführende Patterns\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nDiskrete Verteilungen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Wahrscheinlichkeit, R, Python\n\n\n\n\n\n\nDocker und Virtualisierung\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nTooling, Deployment, Reproduzierbarkeit\n\n\n\n\n\n\nDuckDB\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nDatenbanken, SQL, R, Python\n\n\n\n\n\n\nEinfache lineare Regression\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nRegression, Modelldiagnostik, Interpretation, R, Python\n\n\n\n\n\n\nExplorative Datenanalyse\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nEDA, Visualisierung, R, Python\n\n\n\n\n\n\nFehlerbehandlung und Dateizugriff\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python, Tooling\n\n\n\n\n\n\nFragen zu Daten\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nData Wrangling, Datenqualität, SQL\n\n\n\n\n\n\nFragen zu KI\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nFragen zur Programmierung\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nProgrammiergrundlagen, Tooling, R, Python\n\n\n\n\n\n\nFragen zur Statistik\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nHypothesentests, Regression, Interpretation\n\n\n\n\n\n\nFunktionen und Module in Python\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python\n\n\n\n\n\n\nGepaarter t-Test\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Effektstärke, Interpretation, R, Python\n\n\n\n\n\n\nGit\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nTooling, Reproduzierbarkeit\n\n\n\n\n\n\nGrundlegende Patterns\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Kommunikation\n\n\n\n\n\n\nHypothesentests: Grundlagen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Schätzen, Interpretation, R, Python\n\n\n\n\n\n\nHäufigkeiten\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nDeskriptive Statistik, EDA, R, Python\n\n\n\n\n\n\nKI-Entwürfe überarbeiten\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nSprachmodelle, Kommunikation, Prompting\n\n\n\n\n\n\nKombinatorik und Wahrscheinlichkeit\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nWahrscheinlichkeit, R, Python\n\n\n\n\n\n\nKorrelation\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nKorrelation, Deskriptive Statistik, Interpretation, R, Python\n\n\n\n\n\n\nLage- und Streuungsmasse\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nDeskriptive Statistik, Interpretation, R, Python\n\n\n\n\n\n\nLinux und Shell\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nLinux, Tooling\n\n\n\n\n\n\nModelle und ihre Grenzen\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nSprachmodelle, Prompting, Interpretation\n\n\n\n\n\n\nMongoDB\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nDatenbanken, Data Wrangling, R, Python\n\n\n\n\n\n\nMultiple lineare Regression\n\n\nmethode\n\n\nentwurf\n\n\nSTATDA, ESDS\n\n\nRegression, Modelldiagnostik, Interpretation, R, Python\n\n\n\n\n\n\nMySQL und MariaDB\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nDatenbanken, SQL, R, Python\n\n\n\n\n\n\nNormalverteilung und zentraler Grenzwertsatz\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Wahrscheinlichkeit, Interpretation, R, Python\n\n\n\n\n\n\nNumPy und SciPy\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nNumPy, Python, Programmiergrundlagen\n\n\n\n\n\n\nObjektorientierung in Python\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python\n\n\n\n\n\n\nPakete und Umgebungen\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR, ESDS\n\n\nTooling, Reproduzierbarkeit, R, Python\n\n\n\n\n\n\nPostgreSQL\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nDatenbanken, SQL, R, Python\n\n\n\n\n\n\nPrompts für die Datenarbeit\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Data Wrangling, Interpretation\n\n\n\n\n\n\nPrüfende Patterns\n\n\nwerkzeug\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nPython-Grundlagen\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nProgrammiergrundlagen, Python\n\n\n\n\n\n\nQQ-Plots\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Visualisierung, Interpretation, R, Python\n\n\n\n\n\n\nR-Grundlagen\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nProgrammiergrundlagen, R\n\n\n\n\n\n\nReproduzierbarkeit\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nReproduzierbarkeit, Tooling, R, Python\n\n\n\n\n\n\nSQL\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nSQL, Datenbanken, R, Python\n\n\n\n\n\n\nSQLite\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nDatenbanken, SQL, R, Python\n\n\n\n\n\n\nSchätzen und Konfidenzintervalle\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nSchätzen, Interpretation, R, Python\n\n\n\n\n\n\nSkalenniveaus\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nDeskriptive Statistik, EDA, Interpretation, R, Python\n\n\n\n\n\n\nStetige Verteilungen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nVerteilungen, Wahrscheinlichkeit, R, Python\n\n\n\n\n\n\nTidy Data\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nData Wrangling, Datenqualität\n\n\n\n\n\n\nVom Prompt zum Kontext\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nSprachmodelle, Prompting, Reproduzierbarkeit\n\n\n\n\n\n\nWann was verwenden\n\n\nkonzept\n\n\nentwurf\n\n\n \n\n\nPrompting, Sprachmodelle, Interpretation\n\n\n\n\n\n\nZufallsvariablen\n\n\nkonzept\n\n\nentwurf\n\n\nESDS\n\n\nWahrscheinlichkeit, Verteilungen, R, Python\n\n\n\n\n\n\nggplot2\n\n\nwerkzeug\n\n\nentwurf\n\n\nESDS\n\n\nggplot2, Visualisierung, R\n\n\n\n\n\n\nmatplotlib\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\nmatplotlib, Visualisierung, Python\n\n\n\n\n\n\npandas\n\n\nwerkzeug\n\n\nentwurf\n\n\nPYFR\n\n\npandas, Python, Data Wrangling\n\n\n\n\n\n\nt-Test für eine Stichprobe\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Effektstärke, Interpretation, R, Python\n\n\n\n\n\n\nt-Test für zwei Stichproben\n\n\nmethode\n\n\nentwurf\n\n\nESDS\n\n\nHypothesentests, Effektstärke, Interpretation, R, Python\n\n\n\n\n\n\nARIMA und SARIMA\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Prognose, Interpretation, R, Python\n\n\n\n\n\n\nBefehlsreferenz Python\n\n\nreferenz\n\n\ngeruest\n\n\n \n\n\nPython, pandas\n\n\n\n\n\n\nBefehlsreferenz R\n\n\nreferenz\n\n\ngeruest\n\n\n \n\n\nR, tidyverse\n\n\n\n\n\n\nBootstrap und Resampling\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nResampling, Schätzen, Interpretation, R, Python\n\n\n\n\n\n\nClustergüte\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nClustering, Modellvalidierung, Interpretation, R, Python\n\n\n\n\n\n\nCox-Modell\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Regression, Interpretation, R, Python\n\n\n\n\n\n\nDashboards und Interaktivität\n\n\nwerkzeug\n\n\ngeruest\n\n\nDAVI\n\n\nDashboards, Interaktivität, Visualisierung\n\n\n\n\n\n\nDiagrammtyp wählen\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nVisualisierung, Wahrnehmung\n\n\n\n\n\n\nDistanzmasse\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nDistanzmasse, Clustering, R, Python\n\n\n\n\n\n\nEffektstärken\n\n\nkonzept\n\n\ngeruest\n\n\nESDS\n\n\nEffektstärke, Interpretation, R, Python\n\n\n\n\n\n\nFaktorenanalyse\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nFaktorenanalyse, Dimensionsreduktion, Interpretation, R, Python\n\n\n\n\n\n\nFarbe\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nFarbe, Wahrnehmung, Visualisierung\n\n\n\n\n\n\nFragen zur Visualisierung\n\n\nkonzept\n\n\ngeruest\n\n\n \n\n\nVisualisierung, Wahrnehmung, Visualisierungsethik\n\n\n\n\n\n\nGlättung\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Prognose, R, Python\n\n\n\n\n\n\nHauptkomponentenanalyse\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nDimensionsreduktion, Interpretation, R, Python\n\n\n\n\n\n\nHierarchisches Clustering\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nClustering, Distanzmasse, Interpretation, R, Python\n\n\n\n\n\n\nIrreführende Darstellungen\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nVisualisierungsethik, Visualisierung, Wahrnehmung\n\n\n\n\n\n\nKaplan-Meier-Schätzer\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Interpretation, R, Python\n\n\n\n\n\n\nKlassifikationsgüte\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nKlassifikation, Modellvalidierung, Interpretation, R, Python\n\n\n\n\n\n\nKorrelationstests\n\n\nmethode\n\n\ngeruest\n\n\nESDS\n\n\nKorrelation, Hypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nLog-Rank-Test\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Hypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nLogistische Regression\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nLogistische Regression, Klassifikation, Interpretation, R, Python\n\n\n\n\n\n\nModellauswahl\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nModellvalidierung, Regression, Interpretation, R, Python\n\n\n\n\n\n\nMultiples Testen\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nNichtparametrische Tests\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Interpretation, R, Python\n\n\n\n\n\n\nNormalitätstests\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Verteilungen, Interpretation, R, Python\n\n\n\n\n\n\nPower und Stichprobenumfang\n\n\nmethode\n\n\ngeruest\n\n\n\n\n\nPower, Versuchsplanung, Interpretation, R, Python\n\n\n\n\n\n\nRegressionsdiagnostik\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nRegression, Modelldiagnostik, Interpretation, R, Python\n\n\n\n\n\n\nStationarität, ACF und PACF\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Interpretation, R, Python\n\n\n\n\n\n\nStorytelling mit Daten\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nStorytelling, Kommunikation, Visualisierung\n\n\n\n\n\n\nVarianzanalyse\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nHypothesentests, Regression, Interpretation, R, Python\n\n\n\n\n\n\nWahrnehmung und Kodierung\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nWahrnehmung, Visualisierung\n\n\n\n\n\n\nZeitreihen: Grundlagen\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nZeitreihen, Interpretation, R, Python\n\n\n\n\n\n\nZensierung und Überlebensfunktion\n\n\nkonzept\n\n\ngeruest\n\n\nSTATDA\n\n\nSurvival-Analyse, Interpretation, R, Python\n\n\n\n\n\n\nZielbild und Publikum\n\n\nkonzept\n\n\ngeruest\n\n\nDAVI\n\n\nVisualisierung, Kommunikation\n\n\n\n\n\n\nk-Means\n\n\nmethode\n\n\ngeruest\n\n\nSTATDA\n\n\nClustering, Interpretation, R, Python\n\n\n\n\n\n\nseaborn und plotly\n\n\nwerkzeug\n\n\ngeruest\n\n\nPYFR, DAVI\n\n\nseaborn, plotly, Visualisierung, Python\n\n\n\n\n\n\nKeine Treffer",
     "crumbs": [
       "Stand der Seite"
     ]
@@ -3585,7 +3747,7 @@
     "href": "index.html#daten",
     "title": "Data Science Notizen",
     "section": "Daten",
-    "text": "Daten\nVon der Rohdatei über Tidy Data und Wrangling bis zu SQL und Datenbanken. Zur Bereichsübersicht.\n\n\n\n\nDatenimport und Formate\n\n\nCSV, Excel, JSON und Pickle lesen und schreiben, Kodierung beachten.\n\n\nEntwurf\n\n\n\n\nTidy Data\n\n\nEine Zeile je Beobachtung, eine Spalte je Variable, und warum das trägt.\n\n\nEntwurf\n\n\n\n\nData Wrangling\n\n\nFiltern, sortieren, gruppieren, umformen und verbinden in beiden Sprachen.\n\n\nEntwurf\n\n\n\n\nDatum und Zeit\n\n\nZeitstempel parsen, rechnen, Zeitzonen und typische Stolpersteine.\n\n\nEntwurf\n\n\n\n\nDatenqualität\n\n\nFehlende Werte, Duplikate und Plausibilität systematisch prüfen.\n\n\nEntwurf\n\n\n\n\nDatenmodellierung\n\n\nRelationales Modell, Schlüssel, Beziehungen und Normalisierung.\n\n\nEntwurf\n\n\n\n\nSQL\n\n\nAbfragen, Joins, Aggregation und Unterabfragen.\n\n\nEntwurf\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\nDBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.\n\n\nEntwurf\n\n\n\n\nFragen zu Daten\n\n\nÜbergreifende Fragen zu Import, Wrangling, Datenqualität und SQL.\n\n\nEntwurf\n\n\n\nKeine Treffer",
+    "text": "Daten\nVon der Rohdatei über Tidy Data und Wrangling bis zu SQL und Datenbanken. Zur Bereichsübersicht.\n\n\n\n\nDatenimport und Formate\n\n\nCSV, Excel, JSON und Pickle lesen und schreiben, Kodierung beachten.\n\n\nEntwurf\n\n\n\n\nDatenmodellierung\n\n\nRelationales Modell, Schlüssel, Beziehungen und Normalisierung.\n\n\nEntwurf\n\n\n\n\nTidy Data\n\n\nEine Zeile je Beobachtung, eine Spalte je Variable, und warum das trägt.\n\n\nEntwurf\n\n\n\n\nSQL\n\n\nAbfragen, Joins, Aggregation und Unterabfragen.\n\n\nEntwurf\n\n\n\n\nData Wrangling\n\n\nFiltern, sortieren, gruppieren, umformen und verbinden in beiden Sprachen.\n\n\nEntwurf\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\nDBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.\n\n\nEntwurf\n\n\n\n\nDatum und Zeit\n\n\nZeitstempel parsen, rechnen, Zeitzonen und typische Stolpersteine.\n\n\nEntwurf\n\n\n\n\nSQLite\n\n\nDie Datenbank als einzelne Datei: ohne Server, ideal für Auswertungen und Prototypen.\n\n\nEntwurf\n\n\n\n\nDatenqualität\n\n\nFehlende Werte, Duplikate und Plausibilität systematisch prüfen.\n\n\nEntwurf\n\n\n\n\nDuckDB\n\n\nSQL für analytische Auswertungen im eigenen Prozess, direkt auf Dateien.\n\n\nEntwurf\n\n\n\n\nPostgreSQL\n\n\nDer Standard unter den offenen Serverdatenbanken, mit Fensterfunktionen, JSON und Erweiterungen.\n\n\nEntwurf\n\n\n\n\nMySQL und MariaDB\n\n\nWeit verbreitete Serverdatenbanken, ihre Eigenheiten und der Zugriff aus R und Python.\n\n\nEntwurf\n\n\n\n\nMongoDB\n\n\nDokumentdatenbank ohne festes Schema: wann sie passt und wie man sie abfragt.\n\n\nEntwurf\n\n\n\n\nFragen zu Daten\n\n\nÜbergreifende Fragen zu Import, Wrangling, Datenqualität und SQL.\n\n\nEntwurf\n\n\n\nKeine Treffer",
     "crumbs": [
       "Übersicht"
     ]
@@ -3645,7 +3807,7 @@
     "href": "tags.html",
     "title": "Tags",
     "section": "",
-    "text": "Jede Themenseite trägt Tags. Über die Wolke rechts lässt sich nach einem Tag filtern, das Suchfeld durchsucht Titel, Tags und Beschreibung.\n\n\n    \n      \n      \n    \n\n\n\n\n\nARIMA und SARIMA\n\n\n\nZeitreihen\n\nPrognose\n\nInterpretation\n\nR\n\nPython\n\n\n\nModellordnung wählen, schätzen, Residuen prüfen und prognostizieren.\n\n\n\n\n\n\n\n\n\n\nBausteine eines Prompts\n\n\n\nPrompting\n\nSprachmodelle\n\nKommunikation\n\n\n\nRolle, Aufgabe, Kontext, Format und Randbedingungen, mit Vorlage zum Kopieren.\n\n\n\n\n\n\n\n\n\n\nBedingte Wahrscheinlichkeit und Bayes\n\n\n\nWahrscheinlichkeit\n\nBayes\n\nInterpretation\n\nR\n\nPython\n\n\n\nBedingung, Unabhängigkeit, Satz von Bayes und der Basisratenfehler.\n\n\n\n\n\n\n\n\n\n\nBootstrap und Resampling\n\n\n\nResampling\n\nSchätzen\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerteilung einer Schätzung simulieren statt herleiten.\n\n\n\n\n\n\n\n\n\n\nChi-Quadrat-Tests\n\n\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nUnabhängigkeit und Anpassung bei kategorialen Daten prüfen.\n\n\n\n\n\n\n\n\n\n\nClustergüte\n\n\n\nClustering\n\nModellvalidierung\n\nInterpretation\n\nR\n\nPython\n\n\n\nSilhouette, Ellbogen und Gap-Statistik zur Beurteilung einer Lösung.\n\n\n\n\n\n\n\n\n\n\nCox-Modell\n\n\n\nSurvival-Analyse\n\nRegression\n\nInterpretation\n\nR\n\nPython\n\n\n\nHazard Ratio, proportionale Hazards und die Deutung mehrerer Einflussgrössen.\n\n\n\n\n\n\n\n\n\n\nDashboards und Interaktivität\n\n\n\nDashboards\n\nInteraktivität\n\nVisualisierung\n\n\n\nWas Interaktion bringt, was sie kostet, und wie man Dashboards ordnet.\n\n\n\n\n\n\n\n\n\n\nData Wrangling\n\n\n\nData Wrangling\n\npandas\n\ntidyverse\n\nR\n\nPython\n\n\n\nFiltern, sortieren, gruppieren, umformen und verbinden in beiden Sprachen.\n\n\n\n\n\n\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\n\nDatenbanken\n\nSQL\n\nR\n\nPython\n\n\n\nDBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.\n\n\n\n\n\n\n\n\n\n\nDatenimport und Formate\n\n\n\nData Wrangling\n\nR\n\nPython\n\n\n\nCSV, Excel, JSON und Pickle lesen und schreiben, Kodierung beachten.\n\n\n\n\n\n\n\n\n\n\nDatenmodellierung\n\n\n\nDatenbanken\n\nSQL\n\n\n\nRelationales Modell, Schlüssel, Beziehungen und Normalisierung.\n\n\n\n\n\n\n\n\n\n\nDatenqualität\n\n\n\nDatenqualität\n\nData Wrangling\n\nR\n\nPython\n\n\n\nFehlende Werte, Duplikate und Plausibilität systematisch prüfen.\n\n\n\n\n\n\n\n\n\n\nDatum und Zeit\n\n\n\nData Wrangling\n\nR\n\nPython\n\n\n\nZeitstempel parsen, rechnen, Zeitzonen und typische Stolpersteine.\n\n\n\n\n\n\n\n\n\n\nDenkführende Patterns\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nSchrittweises Denken, Abstraktion, Zerlegung und Code als Denkwerkzeug.\n\n\n\n\n\n\n\n\n\n\nDiagrammtyp wählen\n\n\n\nVisualisierung\n\nWahrnehmung\n\n\n\nVom Datentyp und der Botschaft zur passenden Darstellung.\n\n\n\n\n\n\n\n\n\n\nDiskrete Verteilungen\n\n\n\nVerteilungen\n\nWahrscheinlichkeit\n\nR\n\nPython\n\n\n\nBinomial, Poisson und geometrisch, mit ihren Anwendungsfällen.\n\n\n\n\n\n\n\n\n\n\nDistanzmasse\n\n\n\nDistanzmasse\n\nClustering\n\nR\n\nPython\n\n\n\nEuklidisch, Manhattan, Gower und warum Skalierung entscheidend ist.\n\n\n\n\n\n\n\n\n\n\nDocker und Virtualisierung\n\n\n\nTooling\n\nDeployment\n\nReproduzierbarkeit\n\n\n\nImages, Container, Volumes und wann sich der Aufwand lohnt.\n\n\n\n\n\n\n\n\n\n\nEffektstärken\n\n\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nCohens d, Korrelation als Effektmass und warum sie neben dem p-Wert stehen.\n\n\n\n\n\n\n\n\n\n\nEinfache lineare Regression\n\n\n\nRegression\n\nModelldiagnostik\n\nInterpretation\n\nR\n\nPython\n\n\n\nEin Prädiktor, Steigung und Achsenabschnitt, Bestimmtheitsmass und Residuen.\n\n\n\n\n\n\n\n\n\n\nExplorative Datenanalyse\n\n\n\nEDA\n\nVisualisierung\n\nR\n\nPython\n\n\n\nVerteilungen, Ausreisser und Zusammenhänge systematisch sichten.\n\n\n\n\n\n\n\n\n\n\nFaktorenanalyse\n\n\n\nFaktorenanalyse\n\nDimensionsreduktion\n\nInterpretation\n\nR\n\nPython\n\n\n\nLatente Faktoren schätzen, Rotation und Abgrenzung zur PCA.\n\n\n\n\n\n\n\n\n\n\nFarbe\n\n\n\nFarbe\n\nWahrnehmung\n\nVisualisierung\n\n\n\nPaletten nach Datentyp, Kontrast und Farbfehlsichtigkeit.\n\n\n\n\n\n\n\n\n\n\nFehlerbehandlung und Dateizugriff\n\n\n\nProgrammiergrundlagen\n\nPython\n\nTooling\n\n\n\nExceptions gezielt abfangen, Dateien lesen und schreiben.\n\n\n\n\n\n\n\n\n\n\nFragen zu Daten\n\n\n\nData Wrangling\n\nDatenqualität\n\nSQL\n\n\n\nÜbergreifende Fragen zu Import, Wrangling, Datenqualität und SQL.\n\n\n\n\n\n\n\n\n\n\nFragen zu KI\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nÜbergreifende Fragen zu Einordnung, Patterns, Grenzen und Prüfung.\n\n\n\n\n\n\n\n\n\n\nFragen zur Programmierung\n\n\n\nProgrammiergrundlagen\n\nTooling\n\nR\n\nPython\n\n\n\nÜbergreifende Fragen zu Python, R, Paketen und reproduzierbarem Arbeiten.\n\n\n\n\n\n\n\n\n\n\nFragen zur Statistik\n\n\n\nHypothesentests\n\nRegression\n\nInterpretation\n\n\n\nÜbergreifende Fragen zu Verbindungen und Verwechslungen zwischen den Methoden.\n\n\n\n\n\n\n\n\n\n\nFragen zur Visualisierung\n\n\n\nVisualisierung\n\nWahrnehmung\n\nVisualisierungsethik\n\n\n\nÜbergreifende Fragen zu Wahrnehmung, Diagrammwahl und Darstellungsethik.\n\n\n\n\n\n\n\n\n\n\nFunktionen und Module in Python\n\n\n\nProgrammiergrundlagen\n\nPython\n\n\n\nEigene Funktionen, Gültigkeitsbereiche, Import und Modulstruktur.\n\n\n\n\n\n\n\n\n\n\nGepaarter t-Test\n\n\n\nHypothesentests\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerbundene Messungen über die Differenzen prüfen.\n\n\n\n\n\n\n\n\n\n\nGit\n\n\n\nTooling\n\nReproduzierbarkeit\n\n\n\nCommits, Branches, Merge-Konflikte und der Umgang mit Remotes.\n\n\n\n\n\n\n\n\n\n\nGlättung\n\n\n\nZeitreihen\n\nPrognose\n\nR\n\nPython\n\n\n\nGleitender Durchschnitt und exponentielle Glättung als erste Modelle.\n\n\n\n\n\n\n\n\n\n\nGrundlegende Patterns\n\n\n\nPrompting\n\nSprachmodelle\n\nKommunikation\n\n\n\nPersona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts.\n\n\n\n\n\n\n\n\n\n\nHauptkomponentenanalyse\n\n\n\nDimensionsreduktion\n\nInterpretation\n\nR\n\nPython\n\n\n\nDimensionen reduzieren, Ladungen und erklärte Varianz lesen.\n\n\n\n\n\n\n\n\n\n\nHierarchisches Clustering\n\n\n\nClustering\n\nDistanzmasse\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerknüpfungsverfahren, Dendrogramm und dessen Deutung.\n\n\n\n\n\n\n\n\n\n\nHypothesentests: Grundlagen\n\n\n\nHypothesentests\n\nSchätzen\n\nInterpretation\n\nR\n\nPython\n\n\n\nTestlogik, Fehler erster und zweiter Art, p-Wert und was er nicht bedeutet.\n\n\n\n\n\n\n\n\n\n\nHäufigkeiten\n\n\n\nDeskriptive Statistik\n\nEDA\n\nR\n\nPython\n\n\n\nAbsolute und relative Häufigkeiten, Kreuztabellen und ihre Darstellung.\n\n\n\n\n\n\n\n\n\n\nIrreführende Darstellungen\n\n\n\nVisualisierungsethik\n\nVisualisierung\n\nWahrnehmung\n\n\n\nAbgeschnittene Achsen, falsche Flächen und andere Verzerrungen.\n\n\n\n\n\n\n\n\n\n\nKI-Entwürfe überarbeiten\n\n\n\nSprachmodelle\n\nKommunikation\n\nPrompting\n\n\n\nTypische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.\n\n\n\n\n\n\n\n\n\n\nKaplan-Meier-Schätzer\n\n\n\nSurvival-Analyse\n\nInterpretation\n\nR\n\nPython\n\n\n\nÜberlebenskurven schätzen, Median und Konfidenzband richtig deuten.\n\n\n\n\n\n\n\n\n\n\nKlassifikationsgüte\n\n\n\nKlassifikation\n\nModellvalidierung\n\nInterpretation\n\nR\n\nPython\n\n\n\nKonfusionsmatrix, Sensitivität, ROC, AUC und die Wahl des Schwellenwerts.\n\n\n\n\n\n\n\n\n\n\nKombinatorik und Wahrscheinlichkeit\n\n\n\nWahrscheinlichkeit\n\nR\n\nPython\n\n\n\nZählprinzipien, Laplace-Wahrscheinlichkeit und die Rechenregeln.\n\n\n\n\n\n\n\n\n\n\nKorrelation\n\n\n\nKorrelation\n\nDeskriptive Statistik\n\nInterpretation\n\nR\n\nPython\n\n\n\nPearson, Spearman und Kendall als Masse, ihre Grenzen und Fallstricke.\n\n\n\n\n\n\n\n\n\n\nKorrelationstests\n\n\n\nKorrelation\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nPearson, Spearman und Kendall als Test mit Intervall und p-Wert.\n\n\n\n\n\n\n\n\n\n\nLage- und Streuungsmasse\n\n\n\nDeskriptive Statistik\n\nInterpretation\n\nR\n\nPython\n\n\n\nMittelwert, Median, Quartile, Standardabweichung und ihre Robustheit.\n\n\n\n\n\n\n\n\n\n\nLinux und Shell\n\n\n\nLinux\n\nTooling\n\n\n\nDateien, Rechte, Pipes und die Befehle, die man täglich braucht.\n\n\n\n\n\n\n\n\n\n\nLog-Rank-Test\n\n\n\nSurvival-Analyse\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nVergleich von Überlebenskurven zwischen Gruppen und seine Voraussetzungen.\n\n\n\n\n\n\n\n\n\n\nLogistische Regression\n\n\n\nLogistische Regression\n\nKlassifikation\n\nInterpretation\n\nR\n\nPython\n\n\n\nBinäre Zielvariable, Odds Ratio, Deviance und die Deutung der Koeffizienten.\n\n\n\n\n\n\n\n\n\n\nModellauswahl\n\n\n\nModellvalidierung\n\nRegression\n\nInterpretation\n\nR\n\nPython\n\n\n\nAIC, adjustiertes R², Modellvergleich und Validierung an neuen Daten.\n\n\n\n\n\n\n\n\n\n\nModelle und ihre Grenzen\n\n\n\nSprachmodelle\n\nPrompting\n\nInterpretation\n\n\n\nWie Sprachmodelle antworten, welche Kategorien es gibt und wo sie zuverlässig scheitern.\n\n\n\n\n\n\n\n\n\n\nMultiple lineare Regression\n\n\n\nRegression\n\nModelldiagnostik\n\nInterpretation\n\nR\n\nPython\n\n\n\nMehrere Prädiktoren, adjustiertes R², Multikollinearität und wie man den Output liest.\n\n\n\n\n\n\n\n\n\n\nMultiples Testen\n\n\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nBonferroni, Holm und FDR, und wann eine Korrektur nötig ist.\n\n\n\n\n\n\n\n\n\n\nNichtparametrische Tests\n\n\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nWilcoxon, Mann-Whitney und Kruskal-Wallis als Ausweichverfahren.\n\n\n\n\n\n\n\n\n\n\nNormalitätstests\n\n\n\nHypothesentests\n\nVerteilungen\n\nInterpretation\n\nR\n\nPython\n\n\n\nShapiro und Kolmogorow-Smirnow, und warum Plots oft mehr zeigen.\n\n\n\n\n\n\n\n\n\n\nNormalverteilung und zentraler Grenzwertsatz\n\n\n\nVerteilungen\n\nWahrscheinlichkeit\n\nInterpretation\n\nR\n\nPython\n\n\n\nWarum so viele Verfahren auf der Normalverteilung aufbauen.\n\n\n\n\n\n\n\n\n\n\nNumPy und SciPy\n\n\n\nNumPy\n\nPython\n\nProgrammiergrundlagen\n\n\n\nArrays, Vektorisierung und die wichtigsten numerischen Werkzeuge.\n\n\n\n\n\n\n\n\n\n\nObjektorientierung in Python\n\n\n\nProgrammiergrundlagen\n\nPython\n\n\n\nKlassen, Instanzen, Vererbung und wann sich der Aufwand lohnt.\n\n\n\n\n\n\n\n\n\n\nPakete und Umgebungen\n\n\n\nTooling\n\nReproduzierbarkeit\n\nR\n\nPython\n\n\n\npip, conda, venv und renv, und warum Umgebungen getrennt gehören.\n\n\n\n\n\n\n\n\n\n\nPower und Stichprobenumfang\n\n\n\nPower\n\nVersuchsplanung\n\nInterpretation\n\nR\n\nPython\n\n\n\nPower-Analyse vor der Erhebung und die Planung von n.\n\n\n\n\n\n\n\n\n\n\nPrompts für die Datenarbeit\n\n\n\nPrompting\n\nSprachmodelle\n\nData Wrangling\n\nInterpretation\n\n\n\nFertige Prompts für Import, Aufbereitung, Analyse, Grafik und Bericht.\n\n\n\n\n\n\n\n\n\n\nPrüfende Patterns\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nAntworten gegenprüfen, mehrfach rechnen lassen und gezielt überarbeiten.\n\n\n\n\n\n\n\n\n\n\nPython-Grundlagen\n\n\n\nProgrammiergrundlagen\n\nPython\n\n\n\nDatentypen, Kontrollfluss, Listen und Dictionaries als Arbeitsbasis.\n\n\n\n\n\n\n\n\n\n\nQQ-Plots\n\n\n\nVerteilungen\n\nVisualisierung\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerteilungen grafisch vergleichen und typische Muster deuten.\n\n\n\n\n\n\n\n\n\n\nR-Grundlagen\n\n\n\nProgrammiergrundlagen\n\nR\n\n\n\nVektoren, Data Frames, Funktionen und die Eigenheiten von R.\n\n\n\n\n\n\n\n\n\n\nRegressionsdiagnostik\n\n\n\nRegression\n\nModelldiagnostik\n\nInterpretation\n\nR\n\nPython\n\n\n\nResiduen, Hebelwerte, Ausreisser, VIF und was man bei Verletzungen tut.\n\n\n\n\n\n\n\n\n\n\nReproduzierbarkeit\n\n\n\nReproduzierbarkeit\n\nTooling\n\nR\n\nPython\n\n\n\nProjekte, Notebooks, Seeds und Quarto als durchgehender Arbeitsweg.\n\n\n\n\n\n\n\n\n\n\nSQL\n\n\n\nSQL\n\nDatenbanken\n\nR\n\nPython\n\n\n\nAbfragen, Joins, Aggregation und Unterabfragen.\n\n\n\n\n\n\n\n\n\n\nSchätzen und Konfidenzintervalle\n\n\n\nSchätzen\n\nInterpretation\n\nR\n\nPython\n\n\n\nPunktschätzung, Standardfehler und die korrekte Deutung eines Intervalls.\n\n\n\n\n\n\n\n\n\n\nSkalenniveaus\n\n\n\nDeskriptive Statistik\n\nEDA\n\nInterpretation\n\nR\n\nPython\n\n\n\nNominal, ordinal, metrisch und was daraus für die Methodenwahl folgt.\n\n\n\n\n\n\n\n\n\n\nStationarität, ACF und PACF\n\n\n\nZeitreihen\n\nInterpretation\n\nR\n\nPython\n\n\n\nDifferenzieren, ADF-Test und wie man Korrelogramme liest.\n\n\n\n\n\n\n\n\n\n\nStetige Verteilungen\n\n\n\nVerteilungen\n\nWahrscheinlichkeit\n\nR\n\nPython\n\n\n\nDichte, Verteilungsfunktion und die wichtigsten stetigen Modelle.\n\n\n\n\n\n\n\n\n\n\nStorytelling mit Daten\n\n\n\nStorytelling\n\nKommunikation\n\nVisualisierung\n\n\n\nAufbau, Betonung und Text als Teil der Grafik.\n\n\n\n\n\n\n\n\n\n\nTidy Data\n\n\n\nData Wrangling\n\nDatenqualität\n\n\n\nEine Zeile je Beobachtung, eine Spalte je Variable, und warum das trägt.\n\n\n\n\n\n\n\n\n\n\nVarianzanalyse\n\n\n\nHypothesentests\n\nRegression\n\nInterpretation\n\nR\n\nPython\n\n\n\nMehr als zwei Gruppen vergleichen, Post-hoc und Bezug zur Regression.\n\n\n\n\n\n\n\n\n\n\nVom Prompt zum Kontext\n\n\n\nSprachmodelle\n\nPrompting\n\nReproduzierbarkeit\n\n\n\nWenn die Formulierung nicht mehr reicht: Kontext, Wissensanbindung und Agenten.\n\n\n\n\n\n\n\n\n\n\nWahrnehmung und Kodierung\n\n\n\nWahrnehmung\n\nVisualisierung\n\n\n\nWelche visuellen Kanäle genau abgelesen werden und welche nicht.\n\n\n\n\n\n\n\n\n\n\nWann was verwenden\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nEntscheidungshilfe: welches Vorgehen, welches Pattern und welches Modell für welche Aufgabe.\n\n\n\n\n\n\n\n\n\n\nZeitreihen: Grundlagen\n\n\n\nZeitreihen\n\nInterpretation\n\nR\n\nPython\n\n\n\nTrend, Saison und Rest, Zerlegung und was daran ablesbar ist.\n\n\n\n\n\n\n\n\n\n\nZensierung und Überlebensfunktion\n\n\n\nSurvival-Analyse\n\nInterpretation\n\nR\n\nPython\n\n\n\nWas Zensierung bedeutet und wie die Überlebensfunktion zu lesen ist.\n\n\n\n\n\n\n\n\n\n\nZielbild und Publikum\n\n\n\nVisualisierung\n\nKommunikation\n\n\n\nZweck, Publikum und der Unterschied zwischen explorativ und erklärend.\n\n\n\n\n\n\n\n\n\n\nZufallsvariablen\n\n\n\nWahrscheinlichkeit\n\nVerteilungen\n\nR\n\nPython\n\n\n\nErwartungswert, Varianz und Verteilungsfunktion als Grundbegriffe.\n\n\n\n\n\n\n\n\n\n\nggplot2\n\n\n\nggplot2\n\nVisualisierung\n\nR\n\n\n\nGrammatik der Grafik, Ebenen, Skalen und Facetten in R.\n\n\n\n\n\n\n\n\n\n\nk-Means\n\n\n\nClustering\n\nInterpretation\n\nR\n\nPython\n\n\n\nObjekte in k Gruppen teilen, Startwerte und Wahl von k.\n\n\n\n\n\n\n\n\n\n\nmatplotlib\n\n\n\nmatplotlib\n\nVisualisierung\n\nPython\n\n\n\nFigure und Axes, Achsen, Beschriftung und Export in Python.\n\n\n\n\n\n\n\n\n\n\npandas\n\n\n\npandas\n\nPython\n\nData Wrangling\n\n\n\nSeries und DataFrame, Auswahl, Aggregation und Zusammenführen.\n\n\n\n\n\n\n\n\n\n\nseaborn und plotly\n\n\n\nseaborn\n\nplotly\n\nVisualisierung\n\nPython\n\n\n\nStatistische Standardgrafiken und interaktive Darstellungen.\n\n\n\n\n\n\n\n\n\n\nt-Test für eine Stichprobe\n\n\n\nHypothesentests\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nMittelwert gegen einen festen Wert prüfen und das Ergebnis deuten.\n\n\n\n\n\n\n\n\n\n\nt-Test für zwei Stichproben\n\n\n\nHypothesentests\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nZwei unabhängige Gruppen vergleichen, Welch als Standardfall.\n\n\n\n\n\n\n\n\nKeine Treffer",
+    "text": "Jede Themenseite trägt Tags. Über die Wolke rechts lässt sich nach einem Tag filtern, das Suchfeld durchsucht Titel, Tags und Beschreibung.\n\n\n    \n      \n      \n    \n\n\n\n\n\nARIMA und SARIMA\n\n\n\nZeitreihen\n\nPrognose\n\nInterpretation\n\nR\n\nPython\n\n\n\nModellordnung wählen, schätzen, Residuen prüfen und prognostizieren.\n\n\n\n\n\n\n\n\n\n\nBausteine eines Prompts\n\n\n\nPrompting\n\nSprachmodelle\n\nKommunikation\n\n\n\nRolle, Aufgabe, Kontext, Format und Randbedingungen, mit Vorlage zum Kopieren.\n\n\n\n\n\n\n\n\n\n\nBedingte Wahrscheinlichkeit und Bayes\n\n\n\nWahrscheinlichkeit\n\nBayes\n\nInterpretation\n\nR\n\nPython\n\n\n\nBedingung, Unabhängigkeit, Satz von Bayes und der Basisratenfehler.\n\n\n\n\n\n\n\n\n\n\nBootstrap und Resampling\n\n\n\nResampling\n\nSchätzen\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerteilung einer Schätzung simulieren statt herleiten.\n\n\n\n\n\n\n\n\n\n\nChi-Quadrat-Tests\n\n\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nUnabhängigkeit und Anpassung bei kategorialen Daten prüfen.\n\n\n\n\n\n\n\n\n\n\nClustergüte\n\n\n\nClustering\n\nModellvalidierung\n\nInterpretation\n\nR\n\nPython\n\n\n\nSilhouette, Ellbogen und Gap-Statistik zur Beurteilung einer Lösung.\n\n\n\n\n\n\n\n\n\n\nCox-Modell\n\n\n\nSurvival-Analyse\n\nRegression\n\nInterpretation\n\nR\n\nPython\n\n\n\nHazard Ratio, proportionale Hazards und die Deutung mehrerer Einflussgrössen.\n\n\n\n\n\n\n\n\n\n\nDashboards und Interaktivität\n\n\n\nDashboards\n\nInteraktivität\n\nVisualisierung\n\n\n\nWas Interaktion bringt, was sie kostet, und wie man Dashboards ordnet.\n\n\n\n\n\n\n\n\n\n\nData Wrangling\n\n\n\nData Wrangling\n\npandas\n\ntidyverse\n\nR\n\nPython\n\n\n\nFiltern, sortieren, gruppieren, umformen und verbinden in beiden Sprachen.\n\n\n\n\n\n\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\n\nDatenbanken\n\nSQL\n\nR\n\nPython\n\n\n\nDBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.\n\n\n\n\n\n\n\n\n\n\nDatenimport und Formate\n\n\n\nData Wrangling\n\nR\n\nPython\n\n\n\nCSV, Excel, JSON und Pickle lesen und schreiben, Kodierung beachten.\n\n\n\n\n\n\n\n\n\n\nDatenmodellierung\n\n\n\nDatenbanken\n\nSQL\n\n\n\nRelationales Modell, Schlüssel, Beziehungen und Normalisierung.\n\n\n\n\n\n\n\n\n\n\nDatenqualität\n\n\n\nDatenqualität\n\nData Wrangling\n\nR\n\nPython\n\n\n\nFehlende Werte, Duplikate und Plausibilität systematisch prüfen.\n\n\n\n\n\n\n\n\n\n\nDatum und Zeit\n\n\n\nData Wrangling\n\nR\n\nPython\n\n\n\nZeitstempel parsen, rechnen, Zeitzonen und typische Stolpersteine.\n\n\n\n\n\n\n\n\n\n\nDenkführende Patterns\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nSchrittweises Denken, Abstraktion, Zerlegung und Code als Denkwerkzeug.\n\n\n\n\n\n\n\n\n\n\nDiagrammtyp wählen\n\n\n\nVisualisierung\n\nWahrnehmung\n\n\n\nVom Datentyp und der Botschaft zur passenden Darstellung.\n\n\n\n\n\n\n\n\n\n\nDiskrete Verteilungen\n\n\n\nVerteilungen\n\nWahrscheinlichkeit\n\nR\n\nPython\n\n\n\nBinomial, Poisson und geometrisch, mit ihren Anwendungsfällen.\n\n\n\n\n\n\n\n\n\n\nDistanzmasse\n\n\n\nDistanzmasse\n\nClustering\n\nR\n\nPython\n\n\n\nEuklidisch, Manhattan, Gower und warum Skalierung entscheidend ist.\n\n\n\n\n\n\n\n\n\n\nDocker und Virtualisierung\n\n\n\nTooling\n\nDeployment\n\nReproduzierbarkeit\n\n\n\nImages, Container, Volumes und wann sich der Aufwand lohnt.\n\n\n\n\n\n\n\n\n\n\nDuckDB\n\n\n\nDatenbanken\n\nSQL\n\nR\n\nPython\n\n\n\nSQL für analytische Auswertungen im eigenen Prozess, direkt auf Dateien.\n\n\n\n\n\n\n\n\n\n\nEffektstärken\n\n\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nCohens d, Korrelation als Effektmass und warum sie neben dem p-Wert stehen.\n\n\n\n\n\n\n\n\n\n\nEinfache lineare Regression\n\n\n\nRegression\n\nModelldiagnostik\n\nInterpretation\n\nR\n\nPython\n\n\n\nEin Prädiktor, Steigung und Achsenabschnitt, Bestimmtheitsmass und Residuen.\n\n\n\n\n\n\n\n\n\n\nExplorative Datenanalyse\n\n\n\nEDA\n\nVisualisierung\n\nR\n\nPython\n\n\n\nVerteilungen, Ausreisser und Zusammenhänge systematisch sichten.\n\n\n\n\n\n\n\n\n\n\nFaktorenanalyse\n\n\n\nFaktorenanalyse\n\nDimensionsreduktion\n\nInterpretation\n\nR\n\nPython\n\n\n\nLatente Faktoren schätzen, Rotation und Abgrenzung zur PCA.\n\n\n\n\n\n\n\n\n\n\nFarbe\n\n\n\nFarbe\n\nWahrnehmung\n\nVisualisierung\n\n\n\nPaletten nach Datentyp, Kontrast und Farbfehlsichtigkeit.\n\n\n\n\n\n\n\n\n\n\nFehlerbehandlung und Dateizugriff\n\n\n\nProgrammiergrundlagen\n\nPython\n\nTooling\n\n\n\nExceptions gezielt abfangen, Dateien lesen und schreiben.\n\n\n\n\n\n\n\n\n\n\nFragen zu Daten\n\n\n\nData Wrangling\n\nDatenqualität\n\nSQL\n\n\n\nÜbergreifende Fragen zu Import, Wrangling, Datenqualität und SQL.\n\n\n\n\n\n\n\n\n\n\nFragen zu KI\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nÜbergreifende Fragen zu Einordnung, Patterns, Grenzen und Prüfung.\n\n\n\n\n\n\n\n\n\n\nFragen zur Programmierung\n\n\n\nProgrammiergrundlagen\n\nTooling\n\nR\n\nPython\n\n\n\nÜbergreifende Fragen zu Python, R, Paketen und reproduzierbarem Arbeiten.\n\n\n\n\n\n\n\n\n\n\nFragen zur Statistik\n\n\n\nHypothesentests\n\nRegression\n\nInterpretation\n\n\n\nÜbergreifende Fragen zu Verbindungen und Verwechslungen zwischen den Methoden.\n\n\n\n\n\n\n\n\n\n\nFragen zur Visualisierung\n\n\n\nVisualisierung\n\nWahrnehmung\n\nVisualisierungsethik\n\n\n\nÜbergreifende Fragen zu Wahrnehmung, Diagrammwahl und Darstellungsethik.\n\n\n\n\n\n\n\n\n\n\nFunktionen und Module in Python\n\n\n\nProgrammiergrundlagen\n\nPython\n\n\n\nEigene Funktionen, Gültigkeitsbereiche, Import und Modulstruktur.\n\n\n\n\n\n\n\n\n\n\nGepaarter t-Test\n\n\n\nHypothesentests\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerbundene Messungen über die Differenzen prüfen.\n\n\n\n\n\n\n\n\n\n\nGit\n\n\n\nTooling\n\nReproduzierbarkeit\n\n\n\nCommits, Branches, Merge-Konflikte und der Umgang mit Remotes.\n\n\n\n\n\n\n\n\n\n\nGlättung\n\n\n\nZeitreihen\n\nPrognose\n\nR\n\nPython\n\n\n\nGleitender Durchschnitt und exponentielle Glättung als erste Modelle.\n\n\n\n\n\n\n\n\n\n\nGrundlegende Patterns\n\n\n\nPrompting\n\nSprachmodelle\n\nKommunikation\n\n\n\nPersona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts.\n\n\n\n\n\n\n\n\n\n\nHauptkomponentenanalyse\n\n\n\nDimensionsreduktion\n\nInterpretation\n\nR\n\nPython\n\n\n\nDimensionen reduzieren, Ladungen und erklärte Varianz lesen.\n\n\n\n\n\n\n\n\n\n\nHierarchisches Clustering\n\n\n\nClustering\n\nDistanzmasse\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerknüpfungsverfahren, Dendrogramm und dessen Deutung.\n\n\n\n\n\n\n\n\n\n\nHypothesentests: Grundlagen\n\n\n\nHypothesentests\n\nSchätzen\n\nInterpretation\n\nR\n\nPython\n\n\n\nTestlogik, Fehler erster und zweiter Art, p-Wert und was er nicht bedeutet.\n\n\n\n\n\n\n\n\n\n\nHäufigkeiten\n\n\n\nDeskriptive Statistik\n\nEDA\n\nR\n\nPython\n\n\n\nAbsolute und relative Häufigkeiten, Kreuztabellen und ihre Darstellung.\n\n\n\n\n\n\n\n\n\n\nIrreführende Darstellungen\n\n\n\nVisualisierungsethik\n\nVisualisierung\n\nWahrnehmung\n\n\n\nAbgeschnittene Achsen, falsche Flächen und andere Verzerrungen.\n\n\n\n\n\n\n\n\n\n\nKI-Entwürfe überarbeiten\n\n\n\nSprachmodelle\n\nKommunikation\n\nPrompting\n\n\n\nTypische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.\n\n\n\n\n\n\n\n\n\n\nKaplan-Meier-Schätzer\n\n\n\nSurvival-Analyse\n\nInterpretation\n\nR\n\nPython\n\n\n\nÜberlebenskurven schätzen, Median und Konfidenzband richtig deuten.\n\n\n\n\n\n\n\n\n\n\nKlassifikationsgüte\n\n\n\nKlassifikation\n\nModellvalidierung\n\nInterpretation\n\nR\n\nPython\n\n\n\nKonfusionsmatrix, Sensitivität, ROC, AUC und die Wahl des Schwellenwerts.\n\n\n\n\n\n\n\n\n\n\nKombinatorik und Wahrscheinlichkeit\n\n\n\nWahrscheinlichkeit\n\nR\n\nPython\n\n\n\nZählprinzipien, Laplace-Wahrscheinlichkeit und die Rechenregeln.\n\n\n\n\n\n\n\n\n\n\nKorrelation\n\n\n\nKorrelation\n\nDeskriptive Statistik\n\nInterpretation\n\nR\n\nPython\n\n\n\nPearson, Spearman und Kendall als Masse, ihre Grenzen und Fallstricke.\n\n\n\n\n\n\n\n\n\n\nKorrelationstests\n\n\n\nKorrelation\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nPearson, Spearman und Kendall als Test mit Intervall und p-Wert.\n\n\n\n\n\n\n\n\n\n\nLage- und Streuungsmasse\n\n\n\nDeskriptive Statistik\n\nInterpretation\n\nR\n\nPython\n\n\n\nMittelwert, Median, Quartile, Standardabweichung und ihre Robustheit.\n\n\n\n\n\n\n\n\n\n\nLinux und Shell\n\n\n\nLinux\n\nTooling\n\n\n\nDateien, Rechte, Pipes und die Befehle, die man täglich braucht.\n\n\n\n\n\n\n\n\n\n\nLog-Rank-Test\n\n\n\nSurvival-Analyse\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nVergleich von Überlebenskurven zwischen Gruppen und seine Voraussetzungen.\n\n\n\n\n\n\n\n\n\n\nLogistische Regression\n\n\n\nLogistische Regression\n\nKlassifikation\n\nInterpretation\n\nR\n\nPython\n\n\n\nBinäre Zielvariable, Odds Ratio, Deviance und die Deutung der Koeffizienten.\n\n\n\n\n\n\n\n\n\n\nModellauswahl\n\n\n\nModellvalidierung\n\nRegression\n\nInterpretation\n\nR\n\nPython\n\n\n\nAIC, adjustiertes R², Modellvergleich und Validierung an neuen Daten.\n\n\n\n\n\n\n\n\n\n\nModelle und ihre Grenzen\n\n\n\nSprachmodelle\n\nPrompting\n\nInterpretation\n\n\n\nWie Sprachmodelle antworten, welche Kategorien es gibt und wo sie zuverlässig scheitern.\n\n\n\n\n\n\n\n\n\n\nMongoDB\n\n\n\nDatenbanken\n\nData Wrangling\n\nR\n\nPython\n\n\n\nDokumentdatenbank ohne festes Schema: wann sie passt und wie man sie abfragt.\n\n\n\n\n\n\n\n\n\n\nMultiple lineare Regression\n\n\n\nRegression\n\nModelldiagnostik\n\nInterpretation\n\nR\n\nPython\n\n\n\nMehrere Prädiktoren, adjustiertes R², Multikollinearität und wie man den Output liest.\n\n\n\n\n\n\n\n\n\n\nMultiples Testen\n\n\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nBonferroni, Holm und FDR, und wann eine Korrektur nötig ist.\n\n\n\n\n\n\n\n\n\n\nMySQL und MariaDB\n\n\n\nDatenbanken\n\nSQL\n\nR\n\nPython\n\n\n\nWeit verbreitete Serverdatenbanken, ihre Eigenheiten und der Zugriff aus R und Python.\n\n\n\n\n\n\n\n\n\n\nNichtparametrische Tests\n\n\n\nHypothesentests\n\nInterpretation\n\nR\n\nPython\n\n\n\nWilcoxon, Mann-Whitney und Kruskal-Wallis als Ausweichverfahren.\n\n\n\n\n\n\n\n\n\n\nNormalitätstests\n\n\n\nHypothesentests\n\nVerteilungen\n\nInterpretation\n\nR\n\nPython\n\n\n\nShapiro und Kolmogorow-Smirnow, und warum Plots oft mehr zeigen.\n\n\n\n\n\n\n\n\n\n\nNormalverteilung und zentraler Grenzwertsatz\n\n\n\nVerteilungen\n\nWahrscheinlichkeit\n\nInterpretation\n\nR\n\nPython\n\n\n\nWarum so viele Verfahren auf der Normalverteilung aufbauen.\n\n\n\n\n\n\n\n\n\n\nNumPy und SciPy\n\n\n\nNumPy\n\nPython\n\nProgrammiergrundlagen\n\n\n\nArrays, Vektorisierung und die wichtigsten numerischen Werkzeuge.\n\n\n\n\n\n\n\n\n\n\nObjektorientierung in Python\n\n\n\nProgrammiergrundlagen\n\nPython\n\n\n\nKlassen, Instanzen, Vererbung und wann sich der Aufwand lohnt.\n\n\n\n\n\n\n\n\n\n\nPakete und Umgebungen\n\n\n\nTooling\n\nReproduzierbarkeit\n\nR\n\nPython\n\n\n\npip, conda, venv und renv, und warum Umgebungen getrennt gehören.\n\n\n\n\n\n\n\n\n\n\nPostgreSQL\n\n\n\nDatenbanken\n\nSQL\n\nR\n\nPython\n\n\n\nDer Standard unter den offenen Serverdatenbanken, mit Fensterfunktionen, JSON und Erweiterungen.\n\n\n\n\n\n\n\n\n\n\nPower und Stichprobenumfang\n\n\n\nPower\n\nVersuchsplanung\n\nInterpretation\n\nR\n\nPython\n\n\n\nPower-Analyse vor der Erhebung und die Planung von n.\n\n\n\n\n\n\n\n\n\n\nPrompts für die Datenarbeit\n\n\n\nPrompting\n\nSprachmodelle\n\nData Wrangling\n\nInterpretation\n\n\n\nFertige Prompts für Import, Aufbereitung, Analyse, Grafik und Bericht.\n\n\n\n\n\n\n\n\n\n\nPrüfende Patterns\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nAntworten gegenprüfen, mehrfach rechnen lassen und gezielt überarbeiten.\n\n\n\n\n\n\n\n\n\n\nPython-Grundlagen\n\n\n\nProgrammiergrundlagen\n\nPython\n\n\n\nDatentypen, Kontrollfluss, Listen und Dictionaries als Arbeitsbasis.\n\n\n\n\n\n\n\n\n\n\nQQ-Plots\n\n\n\nVerteilungen\n\nVisualisierung\n\nInterpretation\n\nR\n\nPython\n\n\n\nVerteilungen grafisch vergleichen und typische Muster deuten.\n\n\n\n\n\n\n\n\n\n\nR-Grundlagen\n\n\n\nProgrammiergrundlagen\n\nR\n\n\n\nVektoren, Data Frames, Funktionen und die Eigenheiten von R.\n\n\n\n\n\n\n\n\n\n\nRegressionsdiagnostik\n\n\n\nRegression\n\nModelldiagnostik\n\nInterpretation\n\nR\n\nPython\n\n\n\nResiduen, Hebelwerte, Ausreisser, VIF und was man bei Verletzungen tut.\n\n\n\n\n\n\n\n\n\n\nReproduzierbarkeit\n\n\n\nReproduzierbarkeit\n\nTooling\n\nR\n\nPython\n\n\n\nProjekte, Notebooks, Seeds und Quarto als durchgehender Arbeitsweg.\n\n\n\n\n\n\n\n\n\n\nSQL\n\n\n\nSQL\n\nDatenbanken\n\nR\n\nPython\n\n\n\nAbfragen, Joins, Aggregation und Unterabfragen.\n\n\n\n\n\n\n\n\n\n\nSQLite\n\n\n\nDatenbanken\n\nSQL\n\nR\n\nPython\n\n\n\nDie Datenbank als einzelne Datei: ohne Server, ideal für Auswertungen und Prototypen.\n\n\n\n\n\n\n\n\n\n\nSchätzen und Konfidenzintervalle\n\n\n\nSchätzen\n\nInterpretation\n\nR\n\nPython\n\n\n\nPunktschätzung, Standardfehler und die korrekte Deutung eines Intervalls.\n\n\n\n\n\n\n\n\n\n\nSkalenniveaus\n\n\n\nDeskriptive Statistik\n\nEDA\n\nInterpretation\n\nR\n\nPython\n\n\n\nNominal, ordinal, metrisch und was daraus für die Methodenwahl folgt.\n\n\n\n\n\n\n\n\n\n\nStationarität, ACF und PACF\n\n\n\nZeitreihen\n\nInterpretation\n\nR\n\nPython\n\n\n\nDifferenzieren, ADF-Test und wie man Korrelogramme liest.\n\n\n\n\n\n\n\n\n\n\nStetige Verteilungen\n\n\n\nVerteilungen\n\nWahrscheinlichkeit\n\nR\n\nPython\n\n\n\nDichte, Verteilungsfunktion und die wichtigsten stetigen Modelle.\n\n\n\n\n\n\n\n\n\n\nStorytelling mit Daten\n\n\n\nStorytelling\n\nKommunikation\n\nVisualisierung\n\n\n\nAufbau, Betonung und Text als Teil der Grafik.\n\n\n\n\n\n\n\n\n\n\nTidy Data\n\n\n\nData Wrangling\n\nDatenqualität\n\n\n\nEine Zeile je Beobachtung, eine Spalte je Variable, und warum das trägt.\n\n\n\n\n\n\n\n\n\n\nVarianzanalyse\n\n\n\nHypothesentests\n\nRegression\n\nInterpretation\n\nR\n\nPython\n\n\n\nMehr als zwei Gruppen vergleichen, Post-hoc und Bezug zur Regression.\n\n\n\n\n\n\n\n\n\n\nVom Prompt zum Kontext\n\n\n\nSprachmodelle\n\nPrompting\n\nReproduzierbarkeit\n\n\n\nWenn die Formulierung nicht mehr reicht: Kontext, Wissensanbindung und Agenten.\n\n\n\n\n\n\n\n\n\n\nWahrnehmung und Kodierung\n\n\n\nWahrnehmung\n\nVisualisierung\n\n\n\nWelche visuellen Kanäle genau abgelesen werden und welche nicht.\n\n\n\n\n\n\n\n\n\n\nWann was verwenden\n\n\n\nPrompting\n\nSprachmodelle\n\nInterpretation\n\n\n\nEntscheidungshilfe: welches Vorgehen, welches Pattern und welches Modell für welche Aufgabe.\n\n\n\n\n\n\n\n\n\n\nZeitreihen: Grundlagen\n\n\n\nZeitreihen\n\nInterpretation\n\nR\n\nPython\n\n\n\nTrend, Saison und Rest, Zerlegung und was daran ablesbar ist.\n\n\n\n\n\n\n\n\n\n\nZensierung und Überlebensfunktion\n\n\n\nSurvival-Analyse\n\nInterpretation\n\nR\n\nPython\n\n\n\nWas Zensierung bedeutet und wie die Überlebensfunktion zu lesen ist.\n\n\n\n\n\n\n\n\n\n\nZielbild und Publikum\n\n\n\nVisualisierung\n\nKommunikation\n\n\n\nZweck, Publikum und der Unterschied zwischen explorativ und erklärend.\n\n\n\n\n\n\n\n\n\n\nZufallsvariablen\n\n\n\nWahrscheinlichkeit\n\nVerteilungen\n\nR\n\nPython\n\n\n\nErwartungswert, Varianz und Verteilungsfunktion als Grundbegriffe.\n\n\n\n\n\n\n\n\n\n\nggplot2\n\n\n\nggplot2\n\nVisualisierung\n\nR\n\n\n\nGrammatik der Grafik, Ebenen, Skalen und Facetten in R.\n\n\n\n\n\n\n\n\n\n\nk-Means\n\n\n\nClustering\n\nInterpretation\n\nR\n\nPython\n\n\n\nObjekte in k Gruppen teilen, Startwerte und Wahl von k.\n\n\n\n\n\n\n\n\n\n\nmatplotlib\n\n\n\nmatplotlib\n\nVisualisierung\n\nPython\n\n\n\nFigure und Axes, Achsen, Beschriftung und Export in Python.\n\n\n\n\n\n\n\n\n\n\npandas\n\n\n\npandas\n\nPython\n\nData Wrangling\n\n\n\nSeries und DataFrame, Auswahl, Aggregation und Zusammenführen.\n\n\n\n\n\n\n\n\n\n\nseaborn und plotly\n\n\n\nseaborn\n\nplotly\n\nVisualisierung\n\nPython\n\n\n\nStatistische Standardgrafiken und interaktive Darstellungen.\n\n\n\n\n\n\n\n\n\n\nt-Test für eine Stichprobe\n\n\n\nHypothesentests\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nMittelwert gegen einen festen Wert prüfen und das Ergebnis deuten.\n\n\n\n\n\n\n\n\n\n\nt-Test für zwei Stichproben\n\n\n\nHypothesentests\n\nEffektstärke\n\nInterpretation\n\nR\n\nPython\n\n\n\nZwei unabhängige Gruppen vergleichen, Welch als Standardfall.\n\n\n\n\n\n\n\n\nKeine Treffer",
     "crumbs": [
       "Tags"
     ]
@@ -4001,168 +4163,352 @@
     ]
   },
   {
-    "objectID": "daten/datenbanken-zugriff.html",
-    "href": "daten/datenbanken-zugriff.html",
+    "objectID": "daten/tidy-data.html",
+    "href": "daten/tidy-data.html",
+    "title": "Tidy Data",
+    "section": "",
+    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
+    "crumbs": [
+      "Daten",
+      "Tidy Data"
+    ]
+  },
+  {
+    "objectID": "daten/tidy-data.html#kernideen",
+    "href": "daten/tidy-data.html#kernideen",
+    "title": "Tidy Data",
+    "section": "Kernideen",
+    "text": "Kernideen\n\nEine Zeile je Beobachtung, eine Spalte je Merkmal, eine Zelle je Wert\nDieselben Daten lassen sich in vielen Formen ablegen, nur eine passt zu den Werkzeugen\nLanges Format für die Auswertung, breites Format für die Anzeige\nWer die Form richtig wählt, spart sich Sonderfälle in jedem Schritt\nUntidy erkennt man an Werten in Spaltennamen und an mehreren Werten in einer Zelle",
+    "crumbs": [
+      "Daten",
+      "Tidy Data"
+    ]
+  },
+  {
+    "objectID": "daten/tidy-data.html#erklärung",
+    "href": "daten/tidy-data.html#erklärung",
+    "title": "Tidy Data",
+    "section": "Erklärung",
+    "text": "Erklärung\n\nVorwissen: R-Grundlagen oder pandas für den Data Frame. Wie man Daten in diese Form bringt, steht unter Data Wrangling.\n\n\nWarum die Aufbereitung den grössten Teil der Zeit frisst\nDaten kommen so, wie sie irgendwo entstanden sind, und nicht so, wie eine Auswertung sie braucht. Eine Exportdatei aus einer Maschinensteuerung hat Datumsangaben als Text, Messwerte mit Dezimalkomma, Kategorien mit Tippfehlern und irgendwo einen Strich für einen fehlenden Wert. Nichts davon ist ein Fehler der Daten; es ist der Normalzustand.\nDas Werkzeug dagegen erwartet eine bestimmte Form. Wird sie hergestellt, läuft alles Weitere glatt. Wird sie nicht hergestellt, kostet jeder einzelne Schritt Sonderbehandlung, und diese Sonderbehandlungen summieren sich zu genau dem Aufwand, der in Projektplänen fehlt.\n\n\nTidy data: die Form, auf die alles passt\nDas Prinzip klingt banal und ist es nicht. Eine Tabelle heisst aufgeräumt, wenn jede Zeile eine Beobachtung ist, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt.\nDer Unterschied wird sichtbar, sobald dieselben Zahlen in beiden Formen nebeneinander stehen. Diese Tabelle ist nicht aufgeräumt, weil die Spaltennamen selbst eine Information tragen, nämlich das Jahr:\n\nbreit &lt;- data.frame(\n  standort  = c(\"Bern\", \"Chur\", \"Sion\"),\n  jahr_2024 = c(120, 95, 143),\n  jahr_2025 = c(131, 92, 150)\n)\nbreit\n\n  standort jahr_2024 jahr_2025\n1     Bern       120       131\n2     Chur        95        92\n3     Sion       143       150\n\n\nAufgeräumt sieht dasselbe so aus:\n\nlang &lt;- breit |&gt;\n  pivot_longer(cols = starts_with(\"jahr_\"),\n               names_to = \"jahr\", values_to = \"menge\",\n               names_prefix = \"jahr_\")\nlang\n\n# A tibble: 6 × 3\n  standort jahr  menge\n  &lt;chr&gt;    &lt;chr&gt; &lt;dbl&gt;\n1 Bern     2024    120\n2 Bern     2025    131\n3 Chur     2024     95\n4 Chur     2025     92\n5 Sion     2024    143\n6 Sion     2025    150\n\n\nJetzt ist das Jahr ein Merkmal wie jedes andere, und damit lässt sich danach filtern, gruppieren und gruppenweise zeichnen. In der breiten Form ginge das nur über Spaltennamen, also über Umwege.\n\nMerkhilfe für den Zweifelsfall: Steht in einem Spaltennamen eine Information, die eigentlich ein Wert ist, etwa ein Jahr, ein Monat oder ein Gerätename, dann ist die Tabelle breit und die Auswertung will sie lang.\n\n\n\nEine Tabelle hat die Spalten patient, blutdruck_vorher, blutdruck_nachher. Warum ist sie nicht aufgeräumt?\n\n\n\n\nDer Messzeitpunkt steckt im Spaltennamen, ist aber ein Merkmal\n\n\nRichtig. Aufgeräumt hiessen die Spalten patient, zeitpunkt und blutdruck. Jede Zeile wäre dann eine Messung statt eines Patienten.\n\n\n\n\nSie enthält zu wenige Spalten\n\n\nDie Anzahl ist nicht das Kriterium, sondern was in den Spaltennamen steht.\n\n\n\n\nBlutdruck gehört in zwei getrennte Tabellen\n\n\nEine Tabelle genügt, sie muss nur lang statt breit vorliegen.\n\n\n\n\n\n\nWann ist die breite Form trotzdem die richtige?\n\n\n\n\nImmer, sie ist kompakter\n\n\nKompakter ja, aber für Filtern, Gruppieren und Zeichnen unbrauchbar.\n\n\n\n\nFür eine Berichtstabelle, die ein Mensch liest\n\n\nRichtig. Der Vergleich fällt zeilenweise ins Auge. Die Umformung ins Breite ist deshalb typischerweise der letzte Schritt, nicht der erste.\n\n\n\n\nWenn viele fehlende Werte vorliegen\n\n\nDamit hat die Form nichts zu tun, fehlende Werte gibt es in beiden.",
+    "crumbs": [
+      "Daten",
+      "Tidy Data"
+    ]
+  },
+  {
+    "objectID": "daten/tidy-data.html#verlinkte-ressourcen",
+    "href": "daten/tidy-data.html#verlinkte-ressourcen",
+    "title": "Tidy Data",
+    "section": "Verlinkte Ressourcen",
+    "text": "Verlinkte Ressourcen\n\nTidy Data, das Kapitel in R for Data Science",
+    "crumbs": [
+      "Daten",
+      "Tidy Data"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/index.html",
+    "href": "daten/datenbanken/index.html",
+    "title": "Datenbanken",
+    "section": "",
+    "text": "Daten liegen selten als Datei bereit. Sie kommen aus einem System, das sie laufend fortschreibt, und die Auswertung beginnt mit der Frage, wie man sie von dort holt, ohne alles zu laden.\nDer Weg durch diesen Bereich: Zuerst die Datenmodellierung, weil sie erklärt, warum Daten auf mehrere Tabellen verteilt sind. Dann SQL als Sprache, die für alle relationalen Systeme gilt, und der Zugriff aus R und Python. Danach die einzelnen Systeme mit ihren Eigenheiten.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/index.html#welches-system-wann",
+    "href": "daten/datenbanken/index.html#welches-system-wann",
+    "title": "Datenbanken",
+    "section": "Welches System wann",
+    "text": "Welches System wann\n\n\n\nSituation\nPassend\nWarum\n\n\n\n\nAuswertung auf dem eigenen Rechner, Daten als Datei\nDuckDB\nFragt CSV und Parquet direkt ab, spaltenweise und schnell\n\n\nKleine Datenbank ohne Server, auch zum Weitergeben\nSQLite\nEine Datei, keine Installation, überall lesbar\n\n\nMehrere Personen oder Programme schreiben gleichzeitig\nPostgreSQL\nTransaktionen, Rechte, erzwungene Konsistenz\n\n\nBestehende Anwendung, oft im Web\nMySQL und MariaDB\nSehr verbreitet, meist als Quellsystem vorgefunden\n\n\nStruktur variiert je Datensatz, verschachtelte Objekte\nMongoDB\nDokumente ohne festes Schema\n\n\nNur einzelne Felder sind halbstrukturiert\nPostgreSQL\nJSON als Typ, ohne das relationale Modell aufzugeben\n\n\n\nZwei Fragen genügen für die meisten Fälle. Erstens: Schreiben mehrere gleichzeitig? Wenn ja, braucht es einen Server. Zweitens: Geht es um viele einzelne Zugriffe oder um Auswertungen über viele Zeilen? Ersteres ist der Fall für die zeilenweise organisierten Systeme, Letzteres für DuckDB.\n\nWas hier an SQL geübt wird, gilt in allen relationalen Systemen. Die Unterschiede liegen in Details: Datums- und Zeitfunktionen, Zeichensätze, Fensterfunktionen, und wie streng Typen genommen werden. Die Systemseiten nennen jeweils die Eigenheit, über die man in der Praxis stolpert.\n\n\n\n\n\nDatenmodellierung\n\n\nRelationales Modell, Schlüssel, Beziehungen und Normalisierung.\n\n\nEntwurf\n\n\n\n\nSQL\n\n\nAbfragen, Joins, Aggregation und Unterabfragen.\n\n\nEntwurf\n\n\n\n\nDatenbankzugriff aus R und Python\n\n\nDBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.\n\n\nEntwurf\n\n\n\n\nSQLite\n\n\nDie Datenbank als einzelne Datei: ohne Server, ideal für Auswertungen und Prototypen.\n\n\nEntwurf\n\n\n\n\nDuckDB\n\n\nSQL für analytische Auswertungen im eigenen Prozess, direkt auf Dateien.\n\n\nEntwurf\n\n\n\n\nPostgreSQL\n\n\nDer Standard unter den offenen Serverdatenbanken, mit Fensterfunktionen, JSON und Erweiterungen.\n\n\nEntwurf\n\n\n\n\nMySQL und MariaDB\n\n\nWeit verbreitete Serverdatenbanken, ihre Eigenheiten und der Zugriff aus R und Python.\n\n\nEntwurf\n\n\n\n\nMongoDB\n\n\nDokumentdatenbank ohne festes Schema: wann sie passt und wie man sie abfragt.\n\n\nEntwurf\n\n\n\nKeine Treffer\n\nDie Fragen zum Bereich Daten enthalten auch die Fragen zu Datenbanken und SQL.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/datenbanken-zugriff.html",
+    "href": "daten/datenbanken/datenbanken-zugriff.html",
     "title": "Datenbankzugriff aus R und Python",
     "section": "",
     "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenbankzugriff aus R und Python"
     ]
   },
   {
-    "objectID": "daten/datenbanken-zugriff.html#kernideen",
-    "href": "daten/datenbanken-zugriff.html#kernideen",
+    "objectID": "daten/datenbanken/datenbanken-zugriff.html#kernideen",
+    "href": "daten/datenbanken/datenbanken-zugriff.html#kernideen",
     "title": "Datenbankzugriff aus R und Python",
     "section": "Kernideen",
     "text": "Kernideen\n\nVerbindung aufbauen, Abfrage senden, Ergebnis als Data Frame entgegennehmen\nParameter statt zusammengebauter Zeichenketten, sonst droht SQL-Injektion\nVerbindungen gehören geschlossen, am besten im Kontextmanager\nSQLite als Datei ohne Server, MySQL und PostgreSQL mit Server\nAggregieren gehört in die Datenbank, nicht in den Arbeitsspeicher",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenbankzugriff aus R und Python"
     ]
   },
   {
-    "objectID": "daten/datenbanken-zugriff.html#erklärung",
-    "href": "daten/datenbanken-zugriff.html#erklärung",
+    "objectID": "daten/datenbanken/datenbanken-zugriff.html#erklärung",
+    "href": "daten/datenbanken/datenbanken-zugriff.html#erklärung",
     "title": "Datenbankzugriff aus R und Python",
     "section": "Erklärung",
     "text": "Erklärung\n\nVorwissen: SQL für die Abfragen selbst und Datenmodellierung für den Aufbau der Tabellen.\n\n\nZugriff aus beiden Sprachen\n\nRPython\n\n\n\nergebnis &lt;- dbGetQuery(con, \"\n  SELECT a.kategorie, SUM(b.betrag) AS umsatz\n  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id\n  GROUP BY a.kategorie\")\n\nstr(ergebnis)      # ein gewoehnlicher Data Frame\n\n'data.frame':   3 obs. of  2 variables:\n $ kategorie: chr  \"Elektronik\" \"Mechanik\" \"Pneumatik\"\n $ umsatz   : num  2400 740 1968\n\n\n\n\n\ndf = pd.read_sql_query(\"\"\"\n  SELECT a.kategorie, SUM(b.betrag) AS umsatz\n  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id\n  GROUP BY a.kategorie\n\"\"\", verbindung)\n\nprint(df)\n\n    kategorie  umsatz\n0  Elektronik  2400.0\n1    Mechanik   740.0\n2   Pneumatik  1968.0\n\nprint(df.dtypes)\n\nkategorie        str\numsatz       float64\ndtype: object\n\n\n\n\n\nDas Ergebnis ist in beiden Fällen die vertraute Tabelle, mit der weitergearbeitet wird wie mit jedem anderen Data Frame.\n\nWieviel gehört in die Datenbank, wieviel in die Auswertung? Meine Regel: Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte Datenmenge über die Leitung geht. Modellierung, Grafik und alles Iterative danach in R oder Python. Eine Million Zeilen zu laden, um daraus fünf Gruppensummen zu bilden, ist die häufigste vermeidbare Wartezeit.\n\n\n\nParameter statt Zeichenkettenbau\nEine Abfrage aus Nutzereingaben zusammenzukleben ist die klassische Sicherheitslücke und erzeugt ausserdem Fehler bei Anführungszeichen. Beide Sprachen bieten Platzhalter:\n\nRPython\n\n\n\ndbGetQuery(con,\n  \"SELECT bezeichnung FROM artikel WHERE kategorie = ?\",\n  params = list(\"Mechanik\"))\n\n     bezeichnung\n1 Kugellager 608\n2      Dichtring\n\n\n\n\n\nprint(pd.read_sql_query(\n    \"SELECT bezeichnung FROM artikel WHERE kategorie = ?\",\n    verbindung, params=(\"Mechanik\",)))\n\n      bezeichnung\n0  Kugellager 608\n1       Dichtring\n\n\n\n\n\n\n\nSQLite oder MySQL\nSQLite braucht keinen Server und liegt als einzelne Datei vor, oder wie hier nur im Arbeitsspeicher. Zum Üben, für Zwischenstände und für kleine Projekte ist es ideal. MySQL und PostgreSQL sind der Serverfall mit Nutzerverwaltung, gleichzeitigen Zugriffen und Rechtevergabe. Die SQL-Grundlagen sind dieselben, die Unterschiede liegen in Datentypen und Erweiterungen.",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenbankzugriff aus R und Python"
     ]
   },
   {
-    "objectID": "daten/datenbanken-zugriff.html#typische-aufgaben",
-    "href": "daten/datenbanken-zugriff.html#typische-aufgaben",
+    "objectID": "daten/datenbanken/datenbanken-zugriff.html#typische-aufgaben",
+    "href": "daten/datenbanken/datenbanken-zugriff.html#typische-aufgaben",
     "title": "Datenbankzugriff aus R und Python",
     "section": "Typische Aufgaben",
     "text": "Typische Aufgaben\nVerbinden, abfragen, schliessen\n\nRPython\n\n\ncon &lt;- DBI::dbConnect(RSQLite::SQLite(), \"laden.sqlite\")\ndf &lt;- DBI::dbGetQuery(con, \"SELECT * FROM artikel\")\nDBI::dbDisconnect(con)\n\n\nimport sqlite3\nimport pandas as pd\n\nwith sqlite3.connect(\"laden.sqlite\") as verbindung:\n    df = pd.read_sql_query(\"SELECT * FROM artikel\", verbindung)\n\n\n\nWerte als Parameter übergeben\n\nRPython\n\n\nDBI::dbGetQuery(con, \"SELECT * FROM artikel WHERE preis &gt; ?\", params = list(100))\n\n\npd.read_sql_query(\"SELECT * FROM artikel WHERE preis &gt; ?\", verbindung, params=(100,))\n\n\n\nZeichenketten selbst zusammenzubauen ist die Ursache von SQL-Injektion und zusätzlich fehleranfällig bei Anführungszeichen und Datumsformaten.\nEinen Data Frame in eine Tabelle schreiben\n\nRPython\n\n\nDBI::dbWriteTable(con, \"ergebnis\", df, overwrite = TRUE)\n\n\ndf.to_sql(\"ergebnis\", verbindung, if_exists=\"replace\", index=False)\n\n\n\nNachsehen, was in der Datenbank liegt\n\nRPython\n\n\nDBI::dbListTables(con)\nDBI::dbListFields(con, \"artikel\")\n\n\npd.read_sql_query(\"SELECT name FROM sqlite_master WHERE type = 'table'\", verbindung)\n\n\n\nGrosse Tabellen in Portionen lesen\nfor teil in pd.read_sql_query(\"SELECT * FROM bestellung\", verbindung, chunksize=10_000):\n    verarbeite(teil)\nBesser noch: aggregieren lassen, wo die Daten liegen, und nur das Ergebnis holen. Eine Datenbank ist darin schneller als jede Schleife im Arbeitsspeicher.\nVerbindung zu einem Server statt zu einer Datei\nfrom sqlalchemy import create_engine\nmotor = create_engine(\"postgresql+psycopg://benutzer:passwort@host:5432/datenbank\")\ndf = pd.read_sql_query(\"SELECT * FROM artikel\", motor)",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenbankzugriff aus R und Python"
     ]
   },
   {
-    "objectID": "daten/datenbanken-zugriff.html#verlinkte-ressourcen",
-    "href": "daten/datenbanken-zugriff.html#verlinkte-ressourcen",
+    "objectID": "daten/datenbanken/datenbanken-zugriff.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/datenbanken-zugriff.html#verlinkte-ressourcen",
     "title": "Datenbankzugriff aus R und Python",
     "section": "Verlinkte Ressourcen",
     "text": "Verlinkte Ressourcen\n\nSQLite: SQL-Referenz\nUse The Index, Luke: SQL-Performance erklärt",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenbankzugriff aus R und Python"
     ]
   },
   {
-    "objectID": "daten/fragen.html",
-    "href": "daten/fragen.html",
-    "title": "Fragen zu Daten",
-    "section": "",
-    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.\n\nDiese Fragen prüfen die Verbindungen zwischen Import, Aufbereitung, Qualität und Datenbanken. Die Sammlung wächst mit jeder fertigen Themenseite.\n\nDatenbanken und SQL\n\n\nWarum lässt sich in SQL nicht WHERE SUM(betrag) &gt; 500 schreiben?\n\n\n\n\nWHERE wird vor der Gruppierung ausgewertet, es gibt dort noch keine Summen\n\n\nRichtig. Bedingungen auf Aggregaten gehören in HAVING, das nach GROUP BY läuft. Beides in einer Abfrage ist möglich und üblich.\n\n\n\n\nSUM darf nur im SELECT stehen\n\n\nEs darf auch in HAVING und in ORDER BY stehen. Die Einschränkung betrifft nur WHERE.\n\n\n\n\nDie Klammern fehlen\n\n\nEs ist kein Syntaxproblem, sondern eine Folge der Auswertungsreihenfolge.\n\n\n\n\n\n\nAufbereitung und Qualität\n\n\nNach einem Join hat die Tabelle mehr Zeilen als vorher. Was ist die wahrscheinlichste Ursache?\n\n\n\n\nEin Fehler in der Join-Bedingung, es fehlt eine Klammer\n\n\nSyntaxfehler führen zu einer Fehlermeldung, nicht zu zusätzlichen Zeilen.\n\n\n\n\nDer Schlüssel ist auf der rechten Seite nicht eindeutig\n\n\nRichtig. Zu jeder linken Zeile passen mehrere rechte, und jede Kombination wird eine eigene Zeile. Prüfen lässt sich das mit einer Zählung der Schlüsselwerte vor dem Join.\n\n\n\n\nEin LEFT JOIN statt eines INNER JOIN\n\n\nDer behält Zeilen, er vervielfacht sie aber nicht.\n\n\n\n\n\n\nEine CSV-Datei wird eingelesen, und eine Spalte mit Messwerten landet als Text. Was ist zu tun?\n\n\n\n\nDie Spalte nachträglich in Zahlen umwandeln und weiterarbeiten\n\n\nDas behebt das Symptom und verdeckt die Ursache.\n\n\n\n\nNachsehen, welche Werte die Umwandlung verhindern\n\n\nRichtig. Fast immer steckt etwas darin, das keine Zahl ist: ein Dezimalkomma, ein Tausendertrennzeichen, ein Platzhalter wie “k.A.” oder eine Fussnote. Der Fund gehört in die Bereinigung, nicht in eine stille Umwandlung.\n\n\n\n\nDie Datei in Excel öffnen und speichern\n\n\nDamit kommen weitere stille Umwandlungen dazu, etwa Zahlen, die zu Datumsangaben werden.",
-    "crumbs": [
-      "Daten",
-      "Fragen zu Daten"
-    ]
-  },
-  {
-    "objectID": "daten/datenmodellierung.html",
-    "href": "daten/datenmodellierung.html",
+    "objectID": "daten/datenbanken/datenmodellierung.html",
+    "href": "daten/datenbanken/datenmodellierung.html",
     "title": "Datenmodellierung",
     "section": "",
     "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenmodellierung"
     ]
   },
   {
-    "objectID": "daten/datenmodellierung.html#kernideen",
-    "href": "daten/datenmodellierung.html#kernideen",
+    "objectID": "daten/datenbanken/datenmodellierung.html#kernideen",
+    "href": "daten/datenbanken/datenmodellierung.html#kernideen",
     "title": "Datenmodellierung",
     "section": "Kernideen",
     "text": "Kernideen\n\nRelation, Attribut, Primär- und Fremdschlüssel\nRedundanz erzeugt Anomalien beim Einfügen, Ändern und Löschen\nEntity-Relationship-Modell und Kardinalitäten\nNormalformen als Regeln gegen genau diese Anomalien\nDer Weg vom Modell zu Tabellen ist eine Entwurfsentscheidung",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenmodellierung"
     ]
   },
   {
-    "objectID": "daten/datenmodellierung.html#erklärung",
-    "href": "daten/datenmodellierung.html#erklärung",
+    "objectID": "daten/datenbanken/datenmodellierung.html#erklärung",
+    "href": "daten/datenbanken/datenmodellierung.html#erklärung",
     "title": "Datenmodellierung",
     "section": "Erklärung",
     "text": "Erklärung\n\nVorwissen: keines. Hilfreich ist pandas, weil eine Tabelle dort dasselbe ist wie eine Relation hier. Wie man die entworfenen Tabellen abfragt, steht unter SQL, der Zugriff aus R und Python unter Datenbankzugriff.\n\n\nWarum nicht einfach eine grosse Tabelle\nEine Tabelle, die alles enthält, sieht bequem aus:\n\n\n\nbestell_id\nartikel\nkategorie\ndatum\nbetrag\n\n\n\n\n1\nVentil 3/8\nPneumatik\n2026-01-14\n240.00\n\n\n2\nVentil 3/8\nPneumatik\n2026-02-03\n600.00\n\n\n\nDie Bezeichnung und die Kategorie stehen bei jeder Bestellung erneut. Daraus folgen drei Probleme, die zusammen Anomalien heissen:\n\nÄnderung: Wird der Artikel umbenannt, muss das an jeder Stelle geschehen. Wird eine übersehen, widersprechen sich die Daten.\nEinfügen: Ein neuer Artikel ohne Bestellung lässt sich gar nicht erfassen, weil es keine Zeile gäbe.\nLöschen: Wird die letzte Bestellung eines Artikels gelöscht, verschwindet der Artikel mit.\n\nDie Aufteilung auf zwei Tabellen, verbunden über einen Schlüssel, löst alle drei. Genau das ist die Idee des relationalen Modells.\n\n\nSchlüssel\nDer Primärschlüssel identifiziert eine Zeile eindeutig. Der Fremdschlüssel verweist auf eine Zeile einer anderen Tabelle und erzwingt dabei, dass das Ziel existiert. Diese referentielle Integrität ist der Hauptunterschied zu einer Sammlung von CSV-Dateien: Die Datenbank verhindert widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme sich benehmen.\n\n# Verweis auf einen nicht existierenden Artikel\ndbExecute(con, \"PRAGMA foreign_keys = ON\")\n\n[1] 0\n\nversuch &lt;- try(\n  dbExecute(con, \"INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 1, 10.0)\"),\n  silent = TRUE)\ncat(if (inherits(versuch, \"try-error\")) \"abgelehnt, Artikel 999 existiert nicht\"\n    else \"durchgelassen\")\n\nabgelehnt, Artikel 999 existiert nicht\n\n\nDie Datenbank weist den Datensatz zurück. In einer CSV-Datei stünde er kommentarlos drin und würde beim nächsten Join stillschweigend verschwinden.\n\n\nVom ER-Modell zu Tabellen\nDie Modellierung beginnt bei der Frage, welche Gegenstände es gibt und wie sie zusammenhängen. Die Kardinalität entscheidet über die Umsetzung:\n\n\n\n\n\n\n\n\nBeziehung\nBeispiel\nUmsetzung\n\n\n\n\neins zu viele\nein Artikel hat viele Bestellungen\nFremdschlüssel auf der Viele-Seite\n\n\nviele zu viele\nArtikel gehören zu mehreren Lieferanten und umgekehrt\neigene Verbindungstabelle\n\n\neins zu eins\nselten, meist Auslagerung optionaler Felder\nFremdschlüssel mit Eindeutigkeit\n\n\n\nHier liegt der erste Fall vor: Der Fremdschlüssel steht in bestellung, weil dort die viele-Seite ist.",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenmodellierung"
     ]
   },
   {
-    "objectID": "daten/datenmodellierung.html#verlinkte-ressourcen",
-    "href": "daten/datenmodellierung.html#verlinkte-ressourcen",
+    "objectID": "daten/datenbanken/datenmodellierung.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/datenmodellierung.html#verlinkte-ressourcen",
     "title": "Datenmodellierung",
     "section": "Verlinkte Ressourcen",
     "text": "Verlinkte Ressourcen\n\nEinführung in relationale Datenbanken (SQLite)",
     "crumbs": [
       "Daten",
+      "Datenbanken",
       "Datenmodellierung"
     ]
   },
   {
-    "objectID": "daten/sql.html",
-    "href": "daten/sql.html",
-    "title": "SQL",
+    "objectID": "daten/datenbanken/duckdb.html",
+    "href": "daten/datenbanken/duckdb.html",
+    "title": "DuckDB",
     "section": "",
     "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
     "crumbs": [
       "Daten",
-      "SQL"
+      "Datenbanken",
+      "DuckDB"
     ]
   },
   {
-    "objectID": "daten/sql.html#kernideen",
-    "href": "daten/sql.html#kernideen",
-    "title": "SQL",
+    "objectID": "daten/datenbanken/duckdb.html#kernideen",
+    "href": "daten/datenbanken/duckdb.html#kernideen",
+    "title": "DuckDB",
     "section": "Kernideen",
-    "text": "Kernideen\n\nSELECT, WHERE, JOIN, GROUP BY, HAVING, ORDER BY\nDie Auswertungsreihenfolge weicht von der Schreibreihenfolge ab\nWHERE filtert Zeilen, HAVING filtert Gruppen\nEin Join verbindet über Schlüssel, die Art des Joins entscheidet über Verluste\nAggregate ohne GROUP BY fassen die ganze Tabelle zusammen",
+    "text": "Kernideen\n\nWie SQLite ohne Server, aber für Auswertungen statt für Einzelzugriffe gebaut\nFragt CSV- und Parquet-Dateien direkt ab, ohne sie vorher zu importieren\nSpaltenweise Speicherung: Aggregationen über viele Zeilen sind schnell\nArbeitet mit Data Frames aus R und Python zusammen, ohne Kopie\nVolles analytisches SQL, inklusive Fensterfunktionen\nFür vieles der bessere Zwischenschritt als eine Serverdatenbank",
     "crumbs": [
       "Daten",
-      "SQL"
+      "Datenbanken",
+      "DuckDB"
     ]
   },
   {
-    "objectID": "daten/sql.html#erklärung",
-    "href": "daten/sql.html#erklärung",
-    "title": "SQL",
+    "objectID": "daten/datenbanken/duckdb.html#erklärung",
+    "href": "daten/datenbanken/duckdb.html#erklärung",
+    "title": "DuckDB",
     "section": "Erklärung",
-    "text": "Erklärung\n\nVorwissen: Datenmodellierung für Schlüssel und Beziehungen. Wer Data Wrangling oder pandas kennt, findet dieselben Operationen wieder: WHERE ist filter, GROUP BY ist groupby, JOIN ist merge. Die Abfragen dieser Seite laufen beim Bauen der Website gegen eine echte SQLite-Datenbank.\n\n\nAbfragen\nSQL ist deklarativ. Man beschreibt das gewünschte Ergebnis, nicht den Weg dorthin.\n\nzeige(\"SELECT bezeichnung, kategorie FROM artikel WHERE kategorie = 'Pneumatik'\")\n\n\n\n\nbezeichnung\nkategorie\n\n\n\n\nVentil 3/8\nPneumatik\n\n\nZylinder 40\nPneumatik\n\n\n\n\n\nVerbinden zweier Tabellen über den Schlüssel:\n\nzeige(\"\n  SELECT b.datum, a.bezeichnung, b.menge, b.betrag\n  FROM bestellung b\n  JOIN artikel a ON a.artikel_id = b.artikel_id\n  ORDER BY b.datum\n  LIMIT 5\")\n\n\n\n\ndatum\nbezeichnung\nmenge\nbetrag\n\n\n\n\n2026-01-14\nVentil 3/8\n10\n240\n\n\n2026-01-22\nZylinder 40\n4\n512\n\n\n2026-01-30\nDichtring\n200\n180\n\n\n2026-02-03\nVentil 3/8\n25\n600\n\n\n2026-02-11\nKugellager 608\n100\n350\n\n\n\n\n\nGruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:\n\nzeige(\"\n  SELECT a.kategorie,\n         COUNT(*)         AS anzahl,\n         SUM(b.betrag)    AS umsatz,\n         ROUND(AVG(b.betrag), 2) AS mittel\n  FROM bestellung b\n  JOIN artikel a ON a.artikel_id = b.artikel_id\n  GROUP BY a.kategorie\n  HAVING COUNT(*) &gt;= 2\n  ORDER BY umsatz DESC\")\n\n\n\n\nkategorie\nanzahl\numsatz\nmittel\n\n\n\n\nElektronik\n2\n2400\n1200.00\n\n\nPneumatik\n5\n1968\n393.60\n\n\nMechanik\n3\n740\n246.67\n\n\n\n\n\n\n\nDie Auswertungsreihenfolge\nSie erklärt die häufigste Verwirrung von Einsteigern, nämlich warum sich ein Aggregat nicht in WHERE prüfen lässt:\n\n\n\nReihenfolge\nKlausel\nwas passiert\n\n\n\n\n1\nFROM, JOIN\nTabellen zusammenstellen\n\n\n2\nWHERE\neinzelne Zeilen filtern\n\n\n3\nGROUP BY\nZeilen zu Gruppen zusammenfassen\n\n\n4\nHAVING\nGruppen filtern\n\n\n5\nSELECT\nSpalten auswählen und berechnen\n\n\n6\nORDER BY\nsortieren\n\n\n\nWHERE läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht. HAVING läuft danach.\n\n# WHERE filtert Zeilen VOR der Gruppierung\nzeige(\"\n  SELECT a.kategorie, SUM(b.betrag) AS umsatz\n  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id\n  WHERE b.datum &gt;= '2026-02-01'\n  GROUP BY a.kategorie\n  ORDER BY umsatz DESC\")\n\n\n\n\nkategorie\numsatz\n\n\n\n\nElektronik\n2400\n\n\nPneumatik\n1216\n\n\nMechanik\n560\n\n\n\n\n\n\n\nWarum lässt sich WHERE SUM(betrag) &gt; 500 nicht schreiben?\n\n\n\n\nWHERE wird vor der Gruppierung ausgewertet, es gibt dort noch keine Summen\n\n\nRichtig. Bedingungen auf Aggregaten gehören in HAVING, das nach der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.\n\n\n\n\nSUM ist in einer Bedingung generell nicht erlaubt\n\n\nIn HAVING ist es erlaubt, es hängt allein am Zeitpunkt.\n\n\n\n\nEs fehlt ein GROUP BY\n\n\nAuch mit GROUP BY bliebe die Zeile falsch, denn WHERE läuft trotzdem vorher.\n\n\n\n\n\n\nEin Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?\n\n\n\n\nDer Schlüssel war auf der rechten Seite nicht eindeutig\n\n\nRichtig. Jede linke Zeile wird mit jeder passenden rechten kombiniert. Es ist dieselbe Falle wie beim merge in pandas, und die Prüfung ist dieselbe: vorher die Eindeutigkeit des Schlüssels sicherstellen.\n\n\n\n\nEs wurde ein LEFT JOIN statt eines INNER JOIN verwendet\n\n\nEin LEFT JOIN behält alle linken Zeilen, vervielfacht sie aber nicht von sich aus.\n\n\n\n\nDie Verknüpfungsbedingung fehlt\n\n\nDann entstünde das Kreuzprodukt, also ungleich mehr Zeilen. Der häufigere und unauffälligere Fall ist der mehrdeutige Schlüssel.",
+    "text": "Erklärung\n\nVorwissen: SQL für die Abfragen. Die Einordnung gegenüber den anderen Systemen steht in der Übersicht; die Formate CSV und Parquet behandelt Datenimport und Formate.\n\n\nWofür DuckDB gebaut ist\nSQLite und die Serverdatenbanken sind darauf ausgelegt, einzelne Zeilen zu lesen und zu schreiben: eine Bestellung anlegen, einen Kunden nachschlagen. DuckDB ist auf die andere Art von Frage ausgelegt, die in der Datenarbeit die übliche ist: über viele Zeilen hinweg aggregieren, gruppieren, verbinden.\nDer Unterschied liegt in der Speicherung. Zeilenweise organisierte Systeme lesen ganze Datensätze; DuckDB speichert spaltenweise und liest nur die Spalten, die in der Abfrage vorkommen. Bei einer Tabelle mit fünfzig Spalten, von denen drei gebraucht werden, ist das der Unterschied zwischen Sekunden und Minuten.\nWie SQLite läuft DuckDB im eigenen Prozess: kein Server, keine Installation über den Paketmanager der Sprache hinaus, keine Rechteverwaltung.\n\n\nDateien direkt abfragen\nDer praktischste Punkt im Alltag: Es braucht keinen Import. CSV- und Parquet-Dateien lassen sich unmittelbar als Tabelle ansprechen, auch mehrere auf einmal über ein Muster im Dateinamen.\nSELECT standort, COUNT(*) AS n, AVG(verbrauch) AS mittel\nFROM 'messungen/*.parquet'\nWHERE datum &gt;= '2026-01-01'\nGROUP BY standort\nORDER BY mittel DESC;\nDamit wird DuckDB zum Werkzeug für Dateien, die für den Arbeitsspeicher zu gross sind, ohne dass eine Datenbank aufgesetzt werden muss.\n\n\nZusammenspiel mit R und Python\nDuckDB kann Data Frames der jeweiligen Sprache direkt als Tabelle ansprechen und Ergebnisse wieder als Data Frame zurückgeben. Damit lässt sich SQL genau dort einsetzen, wo es klarer ist als eine lange Kette von Wrangling-Schritten, ohne die Umgebung zu verlassen.\n\nRPython\n\n\nlibrary(duckdb)\ncon &lt;- dbConnect(duckdb())\n\nduckdb_register(con, \"messung\", messung_df)      # Data Frame als Tabelle\nergebnis &lt;- dbGetQuery(con, \"\n  SELECT standort, AVG(verbrauch) AS mittel\n  FROM messung GROUP BY standort\")\n\n\nimport duckdb\n\nmessung = pd.read_parquet(\"messung.parquet\")\n\nergebnis = duckdb.sql(\"\"\"\n    SELECT standort, AVG(verbrauch) AS mittel\n    FROM messung GROUP BY standort\n\"\"\").df()\n\n\n\nIn Python wird der Data Frame messung einfach über seinen Namen angesprochen; eine Registrierung ist nicht nötig.\n\n\nWann DuckDB, wann etwas anderes\n\n\n\nFall\nPassend\n\n\n\n\nGrosse Dateien auswerten, einmal oder wiederholt\nDuckDB\n\n\nWenige Zeilen laufend lesen und schreiben\nSQLite oder Serverdatenbank\n\n\nMehrere Personen greifen gleichzeitig schreibend zu\nPostgreSQL\n\n\nDaten liegen bereits in einer Serverdatenbank\nDort aggregieren, siehe PostgreSQL\n\n\nErgebnisse langfristig aufbewahren und pflegen\nServerdatenbank\n\n\n\n\n\nEine Parquet-Datei mit 80 Millionen Zeilen und 60 Spalten soll nach Monat aggregiert werden; drei Spalten werden gebraucht. Was ist der schnellste Weg?\n\n\n\n\nDie Datei mit pandas laden und gruppieren\n\n\nDer Speicher reicht dafür selten, und geladen würden alle 60 Spalten.\n\n\n\n\nDie Datei direkt mit DuckDB abfragen\n\n\nRichtig. Gelesen werden nur die drei benötigten Spalten und nur die benötigten Abschnitte der Datei; ein Import entfällt.\n\n\n\n\nDie Datei in PostgreSQL importieren und dort aggregieren\n\n\nFunktioniert, kostet aber Importzeit und Infrastruktur für eine einmalige Auswertung.",
     "crumbs": [
       "Daten",
-      "SQL"
+      "Datenbanken",
+      "DuckDB"
     ]
   },
   {
-    "objectID": "daten/sql.html#typische-aufgaben",
-    "href": "daten/sql.html#typische-aufgaben",
-    "title": "SQL",
+    "objectID": "daten/datenbanken/duckdb.html#typische-aufgaben",
+    "href": "daten/datenbanken/duckdb.html#typische-aufgaben",
+    "title": "DuckDB",
     "section": "Typische Aufgaben",
-    "text": "Typische Aufgaben\nZeilen auswählen und filtern\nSELECT bezeichnung, preis\nFROM artikel\nWHERE preis &gt; 100 AND bezeichnung LIKE 'A%'\nORDER BY preis DESC\nLIMIT 10;\nGruppieren und die Gruppen filtern\nSELECT artikel_id, COUNT(*) AS anzahl, SUM(menge) AS menge_total\nFROM bestellung\nGROUP BY artikel_id\nHAVING COUNT(*) &gt;= 2;\nWHERE wirkt vor der Gruppierung auf einzelne Zeilen, HAVING danach auf die gebildeten Gruppen. Die Verwechslung ist der häufigste Fehler beim Aggregieren.\nTabellen verbinden\nSELECT b.bestell_id, a.bezeichnung, b.menge\nFROM bestellung AS b\nJOIN artikel AS a ON a.artikel_id = b.artikel_id;\nEin LEFT JOIN behält alle Zeilen der linken Tabelle, auch wenn rechts nichts passt; ein INNER JOIN verwirft sie. Wer nach einem Join weniger Zeilen hat als erwartet, hat meist den falschen Typ gewählt.\nFehlende Werte und Fallunterscheidungen\nSELECT bezeichnung,\n       COALESCE(rabatt, 0) AS rabatt,\n       CASE WHEN preis &gt; 500 THEN 'teuer' ELSE 'guenstig' END AS klasse\nFROM artikel;\nZwischenergebnis benennen statt verschachteln\nWITH umsatz AS (\n  SELECT artikel_id, SUM(menge * preis) AS summe\n  FROM bestellung\n  GROUP BY artikel_id\n)\nSELECT a.bezeichnung, u.summe\nFROM umsatz AS u\nJOIN artikel AS a ON a.artikel_id = u.artikel_id\nORDER BY u.summe DESC;\nDoppelte Werte finden\nSELECT bezeichnung, COUNT(*) AS anzahl\nFROM artikel\nGROUP BY bezeichnung\nHAVING COUNT(*) &gt; 1;",
+    "text": "Typische Aufgaben\nEine Datei ansehen, ohne sie zu laden\nSELECT * FROM 'daten.csv' LIMIT 10;\nDESCRIBE SELECT * FROM 'daten.csv';        -- Spalten und erkannte Typen\nSELECT COUNT(*) FROM 'daten.parquet';\nViele Dateien als eine Tabelle behandeln\nSELECT * FROM read_parquet('messungen/*.parquet');\nSELECT * FROM read_csv_auto('export_2026_*.csv', union_by_name = true);\nFormate umwandeln\nCOPY (SELECT * FROM 'gross.csv') TO 'gross.parquet' (FORMAT parquet);\nParquet ist spaltenweise, komprimiert und typsicher; als Zwischenformat für grosse Zwischenstände ist es CSV deutlich überlegen.\nErgebnis zurück in die Sprache holen\n\nRPython\n\n\ndf &lt;- dbGetQuery(con, \"SELECT * FROM 'gross.parquet' WHERE standort = 'Bern'\")\n\n\ndf = duckdb.sql(\"SELECT * FROM 'gross.parquet' WHERE standort = 'Bern'\").df()\n\n\n\nEine dauerhafte Datenbankdatei verwenden\n\nRPython\n\n\ncon &lt;- dbConnect(duckdb(), dbdir = \"analyse.duckdb\")\n\n\nverbindung = duckdb.connect(\"analyse.duckdb\")\n\n\n\nAus einer anderen Datenbank lesen\nINSTALL postgres; LOAD postgres;\nATTACH 'dbname=produktion host=db.example.org' AS pg (TYPE postgres);\nSELECT COUNT(*) FROM pg.public.bestellung;\nSo lassen sich Daten aus einer Serverdatenbank mit lokalen Dateien in einer einzigen Abfrage verbinden.",
     "crumbs": [
       "Daten",
-      "SQL"
+      "Datenbanken",
+      "DuckDB"
     ]
   },
   {
-    "objectID": "daten/sql.html#verlinkte-ressourcen",
-    "href": "daten/sql.html#verlinkte-ressourcen",
-    "title": "SQL",
+    "objectID": "daten/datenbanken/duckdb.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/duckdb.html#verlinkte-ressourcen",
+    "title": "DuckDB",
     "section": "Verlinkte Ressourcen",
-    "text": "Verlinkte Ressourcen\n\nSQLite: SQL-Referenz\nUse The Index, Luke: SQL-Performance erklärt",
+    "text": "Verlinkte Ressourcen\n\nDuckDB: Dokumentation\nDuckDB in Python\nParquet: Format und Werkzeuge",
     "crumbs": [
       "Daten",
-      "SQL"
+      "Datenbanken",
+      "DuckDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mysql-mariadb.html",
+    "href": "daten/datenbanken/mysql-mariadb.html",
+    "title": "MySQL und MariaDB",
+    "section": "",
+    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MySQL und MariaDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mysql-mariadb.html#kernideen",
+    "href": "daten/datenbanken/mysql-mariadb.html#kernideen",
+    "title": "MySQL und MariaDB",
+    "section": "Kernideen",
+    "text": "Kernideen\n\nServerdatenbank, sehr verbreitet in Webanwendungen und damit in vielen Datenquellen\nMariaDB ist aus MySQL hervorgegangen und weitgehend austauschbar\nDer Speicher-Engine entscheidet über Transaktionen und Fremdschlüssel\nZeichensatz und Sortierung sind eine echte Fehlerquelle, nicht eine Formalie\nAnalytisch schwächer als PostgreSQL, für den Lesezugriff aber unproblematisch\nIn der Datenarbeit meist Quellsystem, nicht Zielsystem",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MySQL und MariaDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mysql-mariadb.html#erklärung",
+    "href": "daten/datenbanken/mysql-mariadb.html#erklärung",
+    "title": "MySQL und MariaDB",
+    "section": "Erklärung",
+    "text": "Erklärung\n\nVorwissen: SQL. Der Zugriff aus R und Python steht unter Datenbankzugriff, die Einordnung gegenüber anderen Systemen in der Übersicht.\n\n\nMySQL, MariaDB und was sie unterscheidet\nMariaDB entstand als Abspaltung von MySQL und ist für den Lesezugriff praktisch identisch: dieselben Treiber, dieselben Abfragen, dieselben Werkzeuge. Für die Datenarbeit spielt der Unterschied selten eine Rolle; er wird erst beim Betrieb relevant, wo sich Funktionsumfang und Lizenzen unterscheiden.\nWichtiger als die Unterscheidung der beiden ist die Speicher-Engine. InnoDB ist heute der Standard und kann Transaktionen und Fremdschlüssel. Die ältere MyISAM kann beides nicht: Ein Fremdschlüssel wird dort ohne Fehlermeldung ignoriert, und ein abgebrochener Schreibvorgang hinterlässt einen halben Stand. In alten Beständen begegnet einem das gelegentlich, und man sieht es der Tabelle nicht an.\nSELECT table_name, engine FROM information_schema.tables\nWHERE table_schema = DATABASE();\n\n\nZeichensatz und Sortierung\nDie häufigste stille Fehlerquelle beim Lesen aus MySQL sind Umlaute, die als Fragezeichen oder als Buchstabensalat ankommen. Ursache ist ein Zeichensatz, der nicht durchgehend utf8mb4 ist. Historisch bedeutete utf8 in MySQL eine verkürzte Variante, die keine vier Byte langen Zeichen speichern konnte, also weder Emojis noch manche asiatische Schriftzeichen.\nDie zweite Eigenheit ist die Sortierung, die auch die Vergleiche steuert. Bei den üblichen Voreinstellungen unterscheidet MySQL in WHERE nicht zwischen Gross- und Kleinschreibung, PostgreSQL dagegen schon. Eine Abfrage, die auf dem einen System das Erwartete liefert, kann auf dem anderen leer bleiben.\nSHOW VARIABLES LIKE 'character_set%';\nSHOW VARIABLES LIKE 'collation%';\n\n\nEigenheiten, die beim Auswerten auffallen\n\nDatumsangaben mit Nullwerten: MySQL erlaubt 0000-00-00, was in R und Python zu NA beziehungsweise NaT wird oder den Treiber stört. In den Verbindungsoptionen lässt sich das Verhalten festlegen.\nGROUP BY mit nicht aggregierten Spalten: war lange erlaubt und lieferte einen beliebigen Wert der Gruppe. Neuere Versionen lehnen es ab, alte Abfragen brechen deshalb beim Umstieg.\nFensterfunktionen gibt es erst ab MySQL 8 und MariaDB 10.2; in älteren Beständen fehlen sie und werden durch Selbstverbindungen ersetzt.\nLIMIT ohne ORDER BY liefert keine definierte Auswahl, auch wenn es in der Praxis oft stabil aussieht.\n\n\n\nEine Abfrage WHERE bezeichnung = 'pneumatik' findet in MySQL Zeilen mit Pneumatik, in PostgreSQL nicht. Woran liegt das?\n\n\n\n\nAn der Sortierung, die in MySQL üblicherweise nicht zwischen Gross- und Kleinschreibung unterscheidet\n\n\nRichtig. Die Collation steuert Vergleiche mit. Wer portabel schreiben will, vergleicht ausdrücklich, etwa über LOWER(bezeichnung) = 'pneumatik'.\n\n\n\n\nAn unterschiedlichen Zeichensätzen\n\n\nDer Zeichensatz betrifft die Speicherung, nicht die Gross- und Kleinschreibung beim Vergleich.\n\n\n\n\nPostgreSQL hat den Index nicht genutzt\n\n\nDer Index ändert das Ergebnis nicht, nur die Geschwindigkeit.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MySQL und MariaDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mysql-mariadb.html#typische-aufgaben",
+    "href": "daten/datenbanken/mysql-mariadb.html#typische-aufgaben",
+    "title": "MySQL und MariaDB",
+    "section": "Typische Aufgaben",
+    "text": "Typische Aufgaben\nVerbinden\n\nRPython\n\n\ncon &lt;- DBI::dbConnect(\n  RMariaDB::MariaDB(),\n  host = \"db.example.org\", port = 3306, dbname = \"shop\",\n  user = Sys.getenv(\"MYSQL_USER\"), password = Sys.getenv(\"MYSQL_PASSWORD\")\n)\nDBI::dbExecute(con, \"SET NAMES utf8mb4\")\n\n\nfrom sqlalchemy import create_engine\nimport os\n\nmotor = create_engine(\n    f\"mysql+pymysql://{os.environ['MYSQL_USER']}:{os.environ['MYSQL_PASSWORD']}\"\n    \"@db.example.org:3306/shop?charset=utf8mb4\"\n)\n\n\n\nDer Zusatz zum Zeichensatz ist kein Detail: Ohne ihn kommen Umlaute je nach Servereinstellung falsch an, und zwar ohne Fehlermeldung.\nNachsehen, was es gibt\nSHOW DATABASES;\nSHOW TABLES;\nDESCRIBE artikel;\nSHOW CREATE TABLE artikel;      -- inklusive Engine und Zeichensatz\nLesen und weiterverarbeiten\n\nRPython\n\n\ndf &lt;- DBI::dbGetQuery(con, \"\n  SELECT a.bezeichnung, SUM(b.betrag) AS umsatz\n  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id\n  WHERE b.datum &gt;= ?\n  GROUP BY a.bezeichnung\", params = list(\"2026-01-01\"))\n\n\ndf = pd.read_sql_query(\n    \"\"\"SELECT a.bezeichnung, SUM(b.betrag) AS umsatz\n       FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id\n       WHERE b.datum &gt;= %(ab)s\n       GROUP BY a.bezeichnung\"\"\",\n    motor, params={\"ab\": \"2026-01-01\"})\n\n\n\nEine langsame Abfrage untersuchen\nEXPLAIN SELECT * FROM bestellung WHERE artikel_id = 3;\nSHOW INDEX FROM bestellung;\nCREATE INDEX idx_bestellung_artikel ON bestellung(artikel_id);\nSicherung und Wiederherstellung\nmysqldump -h host -u benutzer -p --single-transaction shop &gt; sicherung.sql\nmysql -h host -u benutzer -p shop &lt; sicherung.sql\n--single-transaction sorgt bei InnoDB für einen konsistenten Stand, ohne die Tabellen zu sperren.\nAus einem Container heraus ausprobieren\ndocker run --name mariadb -e MARIADB_ROOT_PASSWORD=geheim -p 3306:3306 -d mariadb\ndocker exec -it mariadb mariadb -uroot -pgeheim\nSiehe auch Docker und Virtualisierung.",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MySQL und MariaDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenbanken/mysql-mariadb.html#verlinkte-ressourcen",
+    "href": "daten/datenbanken/mysql-mariadb.html#verlinkte-ressourcen",
+    "title": "MySQL und MariaDB",
+    "section": "Verlinkte Ressourcen",
+    "text": "Verlinkte Ressourcen\n\nMySQL: Referenzhandbuch\nMariaDB: Dokumentation\nWarum utf8mb4 und nicht utf8",
+    "crumbs": [
+      "Daten",
+      "Datenbanken",
+      "MySQL und MariaDB"
+    ]
+  },
+  {
+    "objectID": "daten/datenimport-formate.html",
+    "href": "daten/datenimport-formate.html",
+    "title": "Datenimport und Formate",
+    "section": "",
+    "text": "Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.",
+    "crumbs": [
+      "Daten",
+      "Datenimport und Formate"
+    ]
+  },
+  {
+    "objectID": "daten/datenimport-formate.html#kernideen",
+    "href": "daten/datenimport-formate.html#kernideen",
+    "title": "Datenimport und Formate",
+    "section": "Kernideen",
+    "text": "Kernideen\n\nDer erste Blick nach dem Import gehört den Spaltentypen\nTrennzeichen, Dezimaltrennzeichen und Kodierung sind explizit anzugeben\nDatumsangaben werden beim Import umgewandelt, nicht später\nText, der Zahl sein sollte, verrät fast immer ein Problem in den Rohdaten\nJedes Format hat seinen Zweck: CSV zum Austausch, Parquet für Grösse, JSON für Verschachtelung",
+    "crumbs": [
+      "Daten",
+      "Datenimport und Formate"
+    ]
+  },
+  {
+    "objectID": "daten/datenimport-formate.html#erklärung",
+    "href": "daten/datenimport-formate.html#erklärung",
+    "title": "Datenimport und Formate",
+    "section": "Erklärung",
+    "text": "Erklärung\n\nVorwissen: R-Grundlagen oder pandas. Was danach kommt, ist die Prüfung auf Datenqualität und das Umformen im Data Wrangling.\n\n\nImport: der erste Blick gehört den Spaltentypen\nDer häufigste Importfehler im deutschsprachigen Raum ist das Dezimalkomma. Werkzeuge gehen vom angelsächsischen Format aus, die Datei kommt aber mit Semikolon als Trennzeichen und Komma als Dezimalzeichen. Das Ergebnis sieht auf den ersten Blick brauchbar aus und ist es nicht.\nDie folgende Datei entsteht im Chunk selbst, damit das Beispiel ohne Fremddatei nachvollziehbar bleibt:\n\nRPython\n\n\n\ninhalt &lt;- c(\"datum;typ;verbrauch\",\n            \"01.03.2026;A;12,4\",\n            \"02.03.2026;B;9,8\",\n            \"03.03.2026;A;14,1\")\n\npfad &lt;- tempfile(fileext = \".csv\")\nwriteLines(inhalt, pfad)\n\n# Standardannahme: Komma trennt Spalten. Passt hier nicht.\nfalsch &lt;- read_csv(pfad, show_col_types = FALSE)\nncol(falsch)          # alles in einer einzigen Spalte\n\n[1] 1\n\n# read_csv2 erwartet Semikolon als Trenn- und Komma als Dezimalzeichen\nrichtig &lt;- read_csv2(pfad, show_col_types = FALSE)\nstr(richtig)\n\nspc_tbl_ [3 × 3] (S3: spec_tbl_df/tbl_df/tbl/data.frame)\n $ datum    : chr [1:3] \"01.03.2026\" \"02.03.2026\" \"03.03.2026\"\n $ typ      : chr [1:3] \"A\" \"B\" \"A\"\n $ verbrauch: num [1:3] 12.4 9.8 14.1\n - attr(*, \"spec\")=\n  .. cols(\n  ..   datum = col_character(),\n  ..   typ = col_character(),\n  ..   verbrauch = col_double()\n  .. )\n - attr(*, \"problems\")=&lt;pointer: 0x55da9b4a43b0&gt; \n\n\n\n\n\nimport tempfile, pathlib\n\ninhalt = \"\\n\".join([\"datum;typ;verbrauch\",\n                    \"01.03.2026;A;12,4\",\n                    \"02.03.2026;B;9,8\",\n                    \"03.03.2026;A;14,1\"])\npfad = pathlib.Path(tempfile.mkdtemp()) / \"messung.csv\"\npfad.write_text(inhalt, encoding=\"utf-8\")\n\n72\n\nfalsch = pd.read_csv(pfad)                          # Standardannahme\nprint(\"Spalten:\", falsch.shape[1])\n\nSpalten: 1\n\nrichtig = pd.read_csv(pfad, sep=\";\", decimal=\",\")   # passend eingestellt\nprint(richtig.dtypes)\n\ndatum            str\ntyp              str\nverbrauch    float64\ndtype: object\n\n\n\n\n\nEntscheidend ist, dass verbrauch erst mit der richtigen Einstellung numerisch wird. Ohne sie bliebe die Spalte Text, und jede spätere Rechnung würde entweder abbrechen oder, schlimmer, stillschweigend etwas Falsches liefern.\nDie Spalte datum ist auch jetzt noch Text. Datumsangaben im europäischen Format erkennt kein Import von selbst:\n\nRPython\n\n\n\nmit_datum &lt;- richtig |&gt;\n  mutate(datum = dmy(datum))        # Tag-Monat-Jahr\nstr(mit_datum)\n\ntibble [3 × 3] (S3: tbl_df/tbl/data.frame)\n $ datum    : Date[1:3], format: \"2026-03-01\" \"2026-03-02\" ...\n $ typ      : chr [1:3] \"A\" \"B\" \"A\"\n $ verbrauch: num [1:3] 12.4 9.8 14.1\n\n\n\n\n\nrichtig[\"datum\"] = pd.to_datetime(richtig[\"datum\"], format=\"%d.%m.%Y\")\nprint(richtig.dtypes)\n\ndatum        datetime64[us]\ntyp                     str\nverbrauch           float64\ndtype: object\n\n\n\n\n\nWarum das wichtig ist, zeigt ein Sortierversuch. Als Text stünde der 1. März vor dem 2. Februar, weil verglichen wird, was vorne steht. Als Datum stimmt die Reihenfolge, und Differenzen zwischen zwei Zeitpunkten lassen sich überhaupt erst rechnen.\n\n\nEine Spalte kommt beim Import als Text an, obwohl nur Zahlen darin stehen. Das Dezimalzeichen ist bereits richtig eingestellt. Was ist die nächstliegende Ursache?\n\n\n\n\nEin einzelner Platzhalter für fehlende Werte, etwa ein Strich\n\n\nRichtig. Ein einziger solcher Eintrag genügt, weil der Vektor nur einen Typ tragen kann. Dasselbe gilt für Tausendertrennung oder angehängte Einheiten.\n\n\n\n\nDie Datei ist zu gross\n\n\nDie Grösse beeinflusst den erkannten Typ nicht.\n\n\n\n\nR kann Zahlen nur aus Excel-Dateien lesen\n\n\nDer Import aus Text funktioniert, er muss nur richtig eingestellt sein.\n\n\n\n\n\n\nWarum sollte das Datum direkt beim Import umgewandelt werden und nicht erst kurz vor der Grafik?\n\n\n\n\nWeil die Umwandlung später länger dauert\n\n\nDie Rechenzeit ist nicht das Problem.\n\n\n\n\nWeil jeder Schritt dazwischen sonst mit Text arbeitet und falsch sortiert oder gruppiert\n\n\nRichtig. Wer nach Monat gruppiert, bevor das Datum ein Datum ist, gruppiert nach Zeichenketten und merkt es erst am Ergebnis.\n\n\n\n\nWeil ggplot2 keine Datumsangaben darstellen kann\n\n\nKann es sehr wohl, sofern der Typ stimmt.",
+    "crumbs": [
+      "Daten",
+      "Datenimport und Formate"
+    ]
+  },
+  {
+    "objectID": "daten/datenimport-formate.html#typische-aufgaben",
+    "href": "daten/datenimport-formate.html#typische-aufgaben",
+    "title": "Datenimport und Formate",
+    "section": "Typische Aufgaben",
+    "text": "Typische Aufgaben\nCSV mit europäischen Konventionen lesen\n\nRPython\n\n\nreadr::read_delim(\"daten.csv\", delim = \";\", locale = readr::locale(decimal_mark = \",\"))\n\n\npd.read_csv(\"daten.csv\", sep=\";\", decimal=\",\", encoding=\"utf-8\")\n\n\n\nSpaltentypen selbst festlegen statt raten lassen\n\nRPython\n\n\nreadr::read_csv(\"daten.csv\", col_types = readr::cols(\n  id = readr::col_integer(),\n  datum = readr::col_date(format = \"%d.%m.%Y\"),\n  wert = readr::col_double()\n))\n\n\npd.read_csv(\"daten.csv\", dtype={\"id\": \"Int64\", \"wert\": \"float64\"},\n            parse_dates=[\"datum\"], dayfirst=True)\n\n\n\nExcel, JSON und Parquet\n\nRPython\n\n\nreadxl::read_excel(\"mappe.xlsx\", sheet = \"Daten\", skip = 2)\njsonlite::fromJSON(\"antwort.json\")\narrow::read_parquet(\"gross.parquet\")\n\n\npd.read_excel(\"mappe.xlsx\", sheet_name=\"Daten\", skiprows=2)\npd.read_json(\"antwort.json\")\npd.read_parquet(\"gross.parquet\")\n\n\n\nNur einen Teil einlesen, um die Struktur zu prüfen\n\nRPython\n\n\nreadr::read_csv(\"gross.csv\", n_max = 1000)\n\n\npd.read_csv(\"gross.csv\", nrows=1000)\n\n\n\nSchreiben\n\nRPython\n\n\nreadr::write_csv(df, \"ergebnis.csv\")\nsaveRDS(df, \"ergebnis.rds\")\n\n\ndf.to_csv(\"ergebnis.csv\", index=False)\ndf.to_parquet(\"ergebnis.parquet\")\n\n\n\nCSV verliert die Typinformation, RDS und Parquet behalten sie. Für Zwischenstände einer Auswertung ist das der wichtigere Punkt als die Dateigrösse.",
+    "crumbs": [
+      "Daten",
+      "Datenimport und Formate"
+    ]
+  },
+  {
+    "objectID": "daten/datenimport-formate.html#verlinkte-ressourcen",
+    "href": "daten/datenimport-formate.html#verlinkte-ressourcen",
+    "title": "Datenimport und Formate",
+    "section": "Verlinkte Ressourcen",
+    "text": "Verlinkte Ressourcen\n\nreadr: Import in R\npandas: Ein- und Ausgabe",
+    "crumbs": [
+      "Daten",
+      "Datenimport und Formate"
     ]
   },
   {
