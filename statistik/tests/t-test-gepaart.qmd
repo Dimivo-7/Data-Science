@@ -115,10 +115,13 @@ dürfen beliebig verteilt sein, solange ihre Differenzen es nicht sind.
 #| label: fig-voraussetzungen-ttp-r
 #| fig-cap: "Verlauf je Maschine und Verteilung der Differenzen."
 #| fig-height: 3.4
-n <- 20
-niveau  <- rnorm(n, mean = 100, sd = 12)     # grosse Unterschiede zwischen Maschinen
-vorher  <- niveau + rnorm(n, 0, 1)
-nachher <- niveau + 0.6 + rnorm(n, 0, 1)     # alle gewinnen 0.6
+# feste Beispieldaten: 20 Maschinen mit sehr unterschiedlichem Verbrauch,
+# jede gewinnt durch die Wartung etwas, im Mittel rund 0.75 Einheiten
+vorher <- c(101.2, 88.4, 112.7, 95.1, 120.3, 78.9, 103.6, 91.5, 108.2, 84.7,
+            99.8, 115.4, 82.3, 106.9, 93.2, 118.1, 87.6, 110.5, 97.4, 104.3)
+gewinn <- c(0.8, 1.1, 0.4, 0.9, 0.6, 1.3, 0.2, 0.7, 1.0, 0.5,
+            0.9, 0.3, 1.2, 0.6, 0.8, 0.4, 1.1, 0.7, 0.5, 0.9)
+nachher <- vorher + gewinn
 differenz <- nachher - vorher
 
 par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
@@ -139,12 +142,12 @@ par(mfrow = c(1, 1))
 #| fig-height: 3.4
 import statsmodels.api as sm
 
-rng = np.random.default_rng(2026)
-
-n = 20
-niveau = rng.normal(100, 12, n)
-vorher = niveau + rng.normal(0, 1, n)
-nachher = niveau + 0.6 + rng.normal(0, 1, n)
+vorher = np.array([101.2, 88.4, 112.7, 95.1, 120.3, 78.9, 103.6, 91.5, 108.2,
+                   84.7, 99.8, 115.4, 82.3, 106.9, 93.2, 118.1, 87.6, 110.5,
+                   97.4, 104.3])
+gewinn = np.array([0.8, 1.1, 0.4, 0.9, 0.6, 1.3, 0.2, 0.7, 1.0, 0.5,
+                   0.9, 0.3, 1.2, 0.6, 0.8, 0.4, 1.1, 0.7, 0.5, 0.9])
+nachher = vorher + gewinn
 differenz = nachher - vorher
 
 fig, axes = plt.subplots(1, 3, figsize=(7, 3.4))
@@ -192,11 +195,12 @@ print(pg.ttest(nachher, vorher, paired=True).round(4).T)
 
 :::
 
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 20
-Maschinen mit einem eigenen Niveau um 100 und einer Streuung von 12 zwischen
-den Maschinen, dazu ein Messrauschen von 1. Jede Maschine gewinnt durch die
-Wartung genau 0.6 Einheiten. Der Unterschied zwischen den Maschinen ist damit
-zwanzigmal grösser als der gesuchte Effekt.
+Die Daten sind fest vorgegeben und in beiden Sprachen identisch: 20 Maschinen
+mit Verbrauchswerten zwischen 79 und 121, und jede gewinnt durch die Wartung
+zwischen 0.2 und 1.3 Einheiten. Der Unterschied zwischen den Maschinen ist damit
+rund vierzigmal grösser als der gesuchte Effekt. Feste Daten statt Zufallszahlen
+haben hier einen Grund: die Aussage des Szenarios soll nicht davon abhängen,
+welche Stichprobe gerade gezogen wurde.
 
 ## Output lesen
 
@@ -257,8 +261,8 @@ print("ungepaart", round(pg_wert(u, "p-val"), 5), pg_wert(u, "ci95"))
 
 Der gepaarte Test findet den Effekt deutlich, der ungepaarte nicht, und das
 Konfidenzintervall des gepaarten Tests ist um ein Vielfaches schmaler. Der Grund
-steht in den Daten: die Streuung zwischen den Maschinen beträgt 12, die Streuung
-der Differenzen dagegen nur etwa 1.4. Wer die Paarung ignoriert, misst den
+steht in den Daten: die Streuung zwischen den Maschinen liegt bei etwa 12, die
+Streuung der Differenzen dagegen bei etwa 0.3. Wer die Paarung ignoriert, misst den
 Effekt an der falschen Streuung und übersieht ihn.
 
 Ergebnissatz: Nach der Wartung sinkt der Verbrauch im Mittel um den geschätzten
@@ -275,11 +279,12 @@ Dieselbe Struktur, aber die Massnahme wirkt nicht.
 
 ```{r}
 #| label: szenario-b-ttp-r
-set.seed(19)
-n_b <- 20
-niveau_b  <- rnorm(n_b, mean = 100, sd = 12)
-vorher_b  <- niveau_b + rnorm(n_b, 0, 1)
-nachher_b <- niveau_b + rnorm(n_b, 0, 1)     # kein Effekt
+# dieselben Maschinen, aber die Massnahme wirkt nicht: die Differenzen
+# streuen um null
+vorher_b <- vorher
+differenz_b <- c(0.3, -0.4, 0.1, -0.2, 0.5, -0.3, 0.2, -0.5, 0.0, 0.4,
+                 -0.1, 0.3, -0.4, 0.2, -0.2, 0.1, -0.3, 0.5, -0.1, 0.0)
+nachher_b <- vorher_b + differenz_b
 
 t.test(nachher_b, vorher_b, paired = TRUE)
 ```
@@ -288,11 +293,10 @@ t.test(nachher_b, vorher_b, paired = TRUE)
 
 ```{python}
 #| label: szenario-b-ttp-py
-rng_b = np.random.default_rng(19)
-n_b = 20
-niveau_b = rng_b.normal(100, 12, n_b)
-vorher_b = niveau_b + rng_b.normal(0, 1, n_b)
-nachher_b = niveau_b + rng_b.normal(0, 1, n_b)
+vorher_b = vorher
+differenz_b = np.array([0.3, -0.4, 0.1, -0.2, 0.5, -0.3, 0.2, -0.5, 0.0, 0.4,
+                        -0.1, 0.3, -0.4, 0.2, -0.2, 0.1, -0.3, 0.5, -0.1, 0.0])
+nachher_b = vorher_b + differenz_b
 
 print(pg.ttest(nachher_b, vorher_b, paired=True).round(4).T)
 ```
@@ -323,8 +327,7 @@ verbindet die falschen Werte.
 
 ```{r}
 #| label: szenario-c-ttp-r
-set.seed(3)
-falsch_sortiert <- nachher[sample(length(nachher))]   # Zuordnung zerstoert
+falsch_sortiert <- rev(nachher)     # Zuordnung zerstoert, hier durch Umdrehen
 
 round(c(richtig = t.test(nachher, vorher, paired = TRUE)$p.value,
         vertauscht = t.test(falsch_sortiert, vorher, paired = TRUE)$p.value), 5)
@@ -337,8 +340,7 @@ round(c(sd_differenz_richtig = sd(nachher - vorher),
 
 ```{python}
 #| label: szenario-c-ttp-py
-rng_c = np.random.default_rng(3)
-falsch_sortiert = rng_c.permutation(nachher)
+falsch_sortiert = nachher[::-1]     # Zuordnung zerstoert, hier durch Umdrehen
 
 print(round(pg_wert(pg.ttest(nachher, vorher, paired=True), "p-val"), 5),
       round(pg_wert(pg.ttest(falsch_sortiert, vorher, paired=True), "p-val"), 5))
@@ -349,7 +351,8 @@ print(round((nachher - vorher).std(ddof=1), 3),
 :::
 
 Erkennbar ist der Fehler an der Streuung der Differenzen: Sie springt von etwa
-1.4 auf die Grössenordnung der Streuung zwischen den Maschinen. Der Mittelwert
+0.3 auf die Grössenordnung der Streuung zwischen den Maschinen, also um mehr als
+das Vierzigfache. Der Mittelwert
 der Differenzen bleibt dabei nahezu unverändert, deshalb fällt der Fehler weder
 am Schätzwert noch an einer Fehlermeldung auf. Er zeigt sich nur daran, dass der
 Vorteil der Paarung plötzlich verschwunden ist.
@@ -417,8 +420,8 @@ Beispiel für eine Ergebnistabelle:
 ## Verständnisfragen
 
 ::: {.quiz}
-Der gepaarte Test liefert p = 0.002, der ungepaarte auf denselben Daten
-p = 0.31. Welche Zahl gilt?
+Der gepaarte Test liefert p < 0.001, der ungepaarte auf denselben Daten
+p = 0.85. Welche Zahl gilt?
 
 - [x] Die des gepaarten Tests, wenn die Daten tatsächlich gepaart erhoben wurden ~
       Richtig. Die Paarung entfernt die Streuung zwischen den Objekten. Der
@@ -432,11 +435,11 @@ p = 0.31. Welche Zahl gilt?
 
 ::: {.quiz}
 Nach dem Zusammenführen zweier Messreihen springt die Standardabweichung der
-Differenzen von 1.4 auf 12. Was ist zu prüfen?
+Differenzen von 0.3 auf 12. Was ist zu prüfen?
 
 - [x] Ob die Paarung noch stimmt ~ Richtig. Eine Streuung in der Grössenordnung
       der Unterschiede zwischen den Objekten deutet darauf hin, dass die
-      Zuordnung verloren ging und zufällige Paare gebildet wurden.
+      Zuordnung verloren ging und falsche Paare gebildet wurden.
 - [ ] Ob die Messgeräte kalibriert waren ~ Möglich, aber dann wäre auch der
       Mittelwert der Differenzen betroffen.
 - [ ] Nichts, das ist normal ~ Es ist das Gegenteil von normal: die Paarung

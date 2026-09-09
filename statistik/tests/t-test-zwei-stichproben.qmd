@@ -226,9 +226,9 @@ Python, `pg.ttest()` liefert eine Tabelle mit einer Zeile:
 | `T` | t-Statistik | wie `t` |
 | `dof` | Freiheitsgrade | wie `df` |
 | `alternative` | Richtung der Alternativhypothese | wie in R |
-| `p-val` | p-Wert | wie `p-value` |
-| `CI95%` | Konfidenzintervall der Differenz | in R eine eigene Zeile |
-| `cohen-d` | Effektstärke | in R nur über ein Zusatzpaket |
+| `p_val` | p-Wert | wie `p-value`; die Schreibweise hat sich zwischen den pingouin-Versionen geändert |
+| `CI95` | Konfidenzintervall der Differenz | in R eine eigene Zeile |
+| `cohen_d` | Effektstärke | in R nur über ein Zusatzpaket, dort mit Vorzeichen und gepoolter Streuung |
 | `BF10` | Bayes-Faktor | in R nicht enthalten; Werte über 3 gelten als Hinweis auf einen Unterschied |
 | `power` | erreichte Power für den beobachteten Effekt | in R nicht enthalten, und im Nachhinein nur eingeschränkt aussagekräftig |
 
@@ -280,7 +280,10 @@ Cohens d wie ausgegeben, n = 25 je Gruppe).
 
 ### Szenario B: kein Nachweis, aber auch kein Ausschluss
 
-Derselbe wahre Unterschied, nur zehn Werkstücke je Gruppe.
+Zehn Werkstücke je Gruppe, und die Mittelwerte liegen nur sechs Hundertstel
+Millimeter auseinander. Die Daten sind fest vorgegeben, damit beide Sprachen
+denselben Fall rechnen und die Aussage nicht von der gezogenen Stichprobe
+abhängt.
 
 ::: {.panel-tabset}
 
@@ -288,9 +291,9 @@ Derselbe wahre Unterschied, nur zehn Werkstücke je Gruppe.
 
 ```{r}
 #| label: szenario-b-tt2-r
-set.seed(17)
-klein_a <- rnorm(10, mean = 12.1, sd = 0.40)
-klein_b <- rnorm(10, mean = 12.5, sd = 0.55)
+# feste Beispieldaten: je zehn Werkstuecke, Mittelwerte 12.04 und 12.10
+klein_a <- c(12.05, 11.92, 12.18, 11.87, 12.10, 12.25, 11.95, 12.02, 12.15, 11.90)
+klein_b <- c(12.20, 11.85, 12.35, 12.00, 11.95, 12.40, 12.10, 11.80, 12.30, 12.05)
 
 t.test(klein_a, klein_b)
 ```
@@ -299,22 +302,24 @@ t.test(klein_a, klein_b)
 
 ```{python}
 #| label: szenario-b-tt2-py
-rng_b = np.random.default_rng(17)
-klein_a = rng_b.normal(12.1, 0.40, 10)
-klein_b = rng_b.normal(12.5, 0.55, 10)
+klein_a = np.array([12.05, 11.92, 12.18, 11.87, 12.10,
+                    12.25, 11.95, 12.02, 12.15, 11.90])
+klein_b = np.array([12.20, 11.85, 12.35, 12.00, 11.95,
+                    12.40, 12.10, 11.80, 12.30, 12.05])
 
 print(pg.ttest(klein_a, klein_b, correction=True).round(4).T)
 ```
 
 :::
 
-Der Punktschätzer der Differenz liegt weiterhin in derselben Grössenordnung,
-aber das Konfidenzintervall ist breit und schliesst die Null je nach Stichprobe
-ein. Ein nicht signifikantes Ergebnis heisst hier: die Daten reichen nicht aus,
-um den Unterschied nachzuweisen. Sie zeigen nicht, dass keiner besteht, und das
-Intervall macht das sichtbar, weil es klar von null verschiedene Werte weiterhin
-zulässt. Die ausgegebene Power beziffert, wie schlecht die Aussicht bei diesem
-Umfang war; geplant wird sie vorab, siehe
+Die Differenz ist klein gegenüber ihrem Standardfehler, der p-Wert liegt weit
+über 0.05, und das Konfidenzintervall reicht von einem negativen zu einem
+positiven Wert. Ein nicht signifikantes Ergebnis heisst hier: die Daten reichen
+nicht aus, um einen Unterschied nachzuweisen. Sie zeigen nicht, dass keiner
+besteht, und das Intervall macht das sichtbar, weil es Abweichungen bis in die
+Grössenordnung von zwei Zehnteln Millimeter weiterhin zulässt. Die ausgegebene
+Power beziffert, wie gering die Aussicht bei diesem Umfang und dieser
+Effektgrösse war; geplant wird sie vorab, siehe
 [Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd).
 
 Ergebnissatz: Ein Unterschied zwischen den Maschinen lässt sich nicht nachweisen
@@ -323,8 +328,9 @@ lässt Unterschiede in beide Richtungen zu.
 
 ### Szenario C: Fallstrick schiefe Verteilung und Ausreisser
 
-Zwei stark schiefe Gruppen mit kleinem Umfang. Der t-Test vergleicht Mittelwerte,
-und die reagieren empfindlich auf einzelne grosse Werte.
+Zwei stark schiefe Gruppen mit kleinem Umfang, wieder mit festen Daten. Der
+t-Test vergleicht Mittelwerte, und die reagieren empfindlich auf einzelne grosse
+Werte.
 
 ::: {.panel-tabset}
 
@@ -334,9 +340,10 @@ und die reagieren empfindlich auf einzelne grosse Werte.
 #| label: fig-szenario-c-tt2-r
 #| fig-cap: "Zwei schiefe Verteilungen: der Mittelwert liegt weit rechts vom Median."
 #| fig-height: 3.2
-set.seed(31)
-schief_a <- rexp(12, rate = 1)
-schief_b <- rexp(12, rate = 0.5)
+# feste Wartezeiten in Minuten, beide Gruppen rechtsschief, Gruppe B mit einem
+# einzelnen sehr grossen Wert
+schief_a <- c(0.2, 0.4, 0.5, 0.7, 0.9, 1.1, 1.4, 1.8, 2.3, 3.1, 4.2, 5.0)
+schief_b <- c(0.6, 0.9, 1.3, 1.7, 2.2, 2.8, 3.6, 4.6, 6.0, 8.0, 11.0, 30.0)
 
 par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
 boxplot(list(A = schief_a, B = schief_b), main = "Verteilungen",
@@ -353,9 +360,8 @@ signif(wilcox.test(schief_a, schief_b)$p.value, 3)
 
 ```{python}
 #| label: szenario-c-tt2-py
-rng_c = np.random.default_rng(31)
-schief_a = rng_c.exponential(1.0, 12)
-schief_b = rng_c.exponential(2.0, 12)
+schief_a = np.array([0.2, 0.4, 0.5, 0.7, 0.9, 1.1, 1.4, 1.8, 2.3, 3.1, 4.2, 5.0])
+schief_b = np.array([0.6, 0.9, 1.3, 1.7, 2.2, 2.8, 3.6, 4.6, 6.0, 8.0, 11.0, 30.0])
 
 print(round(pg_wert(pg.ttest(schief_a, schief_b, correction=True), "p-val"), 4))
 print(round(pg_wert(pg.mwu(schief_a, schief_b), "p-val"), 4))
@@ -365,10 +371,14 @@ print(round(pg_wert(pg.mwu(schief_a, schief_b), "p-val"), 4))
 
 Erkennbar ist das Problem an drei Stellen: der Boxplot zeigt eine deutliche
 Schiefe mit langem oberem Ausläufer, der QQ-Plot biegt an den Enden von der
-Geraden weg, und die beiden p-Werte fallen unterschiedlich aus. Bei zwölf
-Beobachtungen je Gruppe rettet der zentrale Grenzwertsatz nichts mehr. Verzerrt
-ist dabei nicht nur der p-Wert: der Mittelwert selbst beschreibt eine schiefe
-Verteilung schlecht, weil er weit rechts vom typischen Wert liegt.
+Geraden weg, und die beiden Verfahren kommen zu verschiedenen Schlüssen. Der
+Grund steht in Gruppe B: der einzelne Wert von 30 Minuten zieht den Mittelwert
+nach oben und die Standardabweichung noch stärker, und der Nenner der
+Teststatistik wächst dadurch schneller als der Zähler. Der Rangtest sieht nur die
+Reihenfolge und stört sich daran nicht. Bei zwölf Beobachtungen je Gruppe rettet
+der zentrale Grenzwertsatz nichts mehr. Verzerrt ist dabei nicht nur der p-Wert:
+der Mittelwert selbst beschreibt eine schiefe Verteilung schlecht, weil er weit
+rechts vom typischen Wert liegt.
 
 Das Vorgehen: entweder rangbasiert vergleichen und dann über die zentrale
 Tendenz statt über den Mittelwert sprechen, oder die Werte transformieren, oder
