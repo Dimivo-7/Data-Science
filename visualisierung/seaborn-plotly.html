@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Statistische Standardgrafiken und interaktive Darstellungen.">
+<meta name="description" content="Statistische Standardgrafiken und interaktive Darstellungen in Python.">
 
 <title>seaborn und plotly – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../site_libs/bootstrap/bootstrap-dark-b19535b873470a65c585fe6503f5eb6b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -1090,7 +1128,13 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
-  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#was-seaborn-abnimmt" id="toc-was-seaborn-abnimmt" class="nav-link" data-scroll-target="#was-seaborn-abnimmt">Was seaborn abnimmt</a></li>
+  <li><a href="#die-aufteilung-in-kleine-teilgrafiken" id="toc-die-aufteilung-in-kleine-teilgrafiken" class="nav-link" data-scroll-target="#die-aufteilung-in-kleine-teilgrafiken">Die Aufteilung in kleine Teilgrafiken</a></li>
+  <li><a href="#die-wichtigsten-funktionen" id="toc-die-wichtigsten-funktionen" class="nav-link" data-scroll-target="#die-wichtigsten-funktionen">Die wichtigsten Funktionen</a></li>
+  <li><a href="#plotly-wann-interaktivität-lohnt" id="toc-plotly-wann-interaktivität-lohnt" class="nav-link" data-scroll-target="#plotly-wann-interaktivität-lohnt">plotly: wann Interaktivität lohnt</a></li>
+  </ul></li>
   <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
@@ -1113,7 +1157,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Statistische Standardgrafiken und interaktive Darstellungen.
+    Statistische Standardgrafiken und interaktive Darstellungen in Python.
   </div>
 </div>
 
@@ -1131,19 +1175,251 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
 <section id="kernideen" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>seaborn baut auf matplotlib auf: jede seaborn-Grafik bleibt eine matplotlib-Figur</li>
+<li>Es erwartet Daten im langen Format, eine Zeile je Beobachtung</li>
+<li>Statistische Standardgrafiken entstehen mit einem Aufruf statt mit zehn</li>
+<li>Feinschliff macht man weiterhin über die matplotlib-Achse</li>
+<li>plotly erzeugt interaktive Grafiken für HTML, nicht für Papier</li>
+<li>Interaktivität lohnt sich nur, wenn sie eine Frage beantwortet</li>
+</ul>
 </section>
 <section id="erklärung" class="level2">
 <h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
+<div class="note-box">
+<p><strong>Vorwissen:</strong> <a href="../visualisierung/matplotlib.html">matplotlib</a> für <span class="glossary-term" data-topic="Programmierung" data-def="Das gesamte Bild in matplotlib, samt Grösse und Auflösung. Es kann mehrere Koordinatensysteme enthalten." tabindex="0">Figure</span> und <span class="glossary-term" data-topic="Programmierung" data-def="Ein einzelnes Koordinatensystem innerhalb einer Figure, also die eigentliche Zeichenfläche. Nicht zu verwechseln mit Axis, der einzelnen Achse darin." tabindex="0">Axes</span>, <a href="../programmierung/pandas.html">pandas</a> für die Datenstruktur und <a href="../daten/tidy-data.html">Tidy Data</a> für das lange Format. Welche Darstellung zur Aufgabe passt, klärt <a href="../visualisierung/diagrammtyp-waehlen.html">Diagrammtyp wählen</a>.</p>
+</div>
+<section id="was-seaborn-abnimmt" class="level3">
+<h3 class="anchored" data-anchor-id="was-seaborn-abnimmt">Was seaborn abnimmt</h3>
+<p>matplotlib zeichnet, seaborn fasst zusammen. Der Unterschied zeigt sich bei Standardaufgaben der Datenanalyse: Gruppen vergleichen, Verteilungen darstellen, Zusammenhänge mit Trend zeigen. Was in matplotlib mehrere Schritte braucht, ist ein Aufruf mit den Spaltennamen.</p>
+<p>Die Voraussetzung ist das lange Format: eine Zeile je Beobachtung, eine Spalte je Merkmal. Wer im breiten Format arbeitet, formt vorher um, siehe <a href="../daten/data-wrangling.html">Data Wrangling</a>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> <span class="dv">60</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>messung <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"standort"</span>: np.repeat([<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Sion"</span>], n),</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"verbrauch"</span>: np.concatenate([</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        rng.normal(<span class="dv">120</span>, <span class="dv">12</span>, n),</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        rng.normal(<span class="dv">95</span>, <span class="dv">9</span>, n),</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        rng.normal(<span class="dv">108</span>, <span class="dv">20</span>, n),</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    ]),</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.4</span>))</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>sns.boxplot(data<span class="op">=</span>messung, x<span class="op">=</span><span class="st">"standort"</span>, y<span class="op">=</span><span class="st">"verbrauch"</span>, color<span class="op">=</span><span class="st">"0.85"</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>            width<span class="op">=</span><span class="fl">0.5</span>, ax<span class="op">=</span>ax)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>sns.stripplot(data<span class="op">=</span>messung, x<span class="op">=</span><span class="st">"standort"</span>, y<span class="op">=</span><span class="st">"verbrauch"</span>, size<span class="op">=</span><span class="dv">3</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>              color<span class="op">=</span><span class="st">"#2166ac"</span>, alpha<span class="op">=</span><span class="fl">0.6</span>, jitter<span class="op">=</span><span class="fl">0.18</span>, ax<span class="op">=</span>ax)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>ax.set_xlabel(<span class="st">""</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>ax.set_ylabel(<span class="st">"Verbrauch (Liter)"</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Sion streut deutlich stärker als die übrigen Standorte"</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-seaborn-basis-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-seaborn-basis-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="seaborn-plotly_files/figure-html/fig-seaborn-basis-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Verteilung je Gruppe mit einem Aufruf, inklusive einzelner Beobachtungen."><img src="seaborn-plotly_files/figure-html/fig-seaborn-basis-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-seaborn-basis-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Verteilung je Gruppe mit einem Aufruf, inklusive einzelner Beobachtungen.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Zwei Dinge sind daran typisch. Erstens genügt die Angabe der Spaltennamen, seaborn übernimmt Gruppierung und Achsenbeschriftung. Zweitens ist das Ergebnis eine gewöhnliche matplotlib-Achse: Titel, Beschriftung und Feinschliff laufen weiter über <code>ax</code>.</p>
+</section>
+<section id="die-aufteilung-in-kleine-teilgrafiken" class="level3">
+<h3 class="anchored" data-anchor-id="die-aufteilung-in-kleine-teilgrafiken">Die Aufteilung in kleine Teilgrafiken</h3>
+<p>Der zweite grosse Gewinn ist das Aufteilen nach einer Variablen. Statt fünf Farben in einer Grafik entstehen fünf Teilgrafiken mit gemeinsamer <span class="glossary-term" data-topic="Programmierung" data-def="Richtung, entlang derer bei einem mehrdimensionalen Array gerechnet wird. Die angegebene Achse ist diejenige, die beim Zusammenfassen verschwindet." tabindex="0">Achse</span>, und das ist fast immer besser lesbar, siehe <a href="../visualisierung/wahrnehmung-kodierung.html">Wahrnehmung und Kodierung</a>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>messung[<span class="st">"laufzeit"</span>] <span class="op">=</span> np.concatenate([</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    rng.uniform(<span class="dv">3</span>, <span class="dv">18</span>, n), rng.uniform(<span class="dv">3</span>, <span class="dv">18</span>, n), rng.uniform(<span class="dv">3</span>, <span class="dv">18</span>, n)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>])</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>messung[<span class="st">"verbrauch"</span>] <span class="op">=</span> <span class="dv">60</span> <span class="op">+</span> <span class="fl">3.2</span> <span class="op">*</span> messung[<span class="st">"laufzeit"</span>] <span class="op">+</span> rng.normal(<span class="dv">0</span>, <span class="dv">8</span>, <span class="dv">3</span> <span class="op">*</span> n)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>raster <span class="op">=</span> sns.relplot(data<span class="op">=</span>messung, x<span class="op">=</span><span class="st">"laufzeit"</span>, y<span class="op">=</span><span class="st">"verbrauch"</span>, col<span class="op">=</span><span class="st">"standort"</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>                     kind<span class="op">=</span><span class="st">"scatter"</span>, height<span class="op">=</span><span class="fl">2.6</span>, aspect<span class="op">=</span><span class="fl">0.95</span>, s<span class="op">=</span><span class="dv">18</span>, color<span class="op">=</span><span class="st">"#2166ac"</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>raster.set_axis_labels(<span class="st">"Laufzeit (Stunden)"</span>, <span class="st">"Verbrauch (Liter)"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-seaborn-facets-py-1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-seaborn-facets-py-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="seaborn-plotly_files/figure-html/fig-seaborn-facets-py-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Derselbe Zusammenhang, aufgeteilt nach Standort, mit gemeinsamer Achse."><img src="seaborn-plotly_files/figure-html/fig-seaborn-facets-py-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-seaborn-facets-py-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Derselbe Zusammenhang, aufgeteilt nach Standort, mit gemeinsamer Achse.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>raster.set_titles(<span class="st">"</span><span class="sc">{col_name}</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-seaborn-facets-py-2" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-seaborn-facets-py-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="seaborn-plotly_files/figure-html/fig-seaborn-facets-py-4.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Abbildung&nbsp;3: Derselbe Zusammenhang, aufgeteilt nach Standort, mit gemeinsamer Achse."><img src="seaborn-plotly_files/figure-html/fig-seaborn-facets-py-4.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-seaborn-facets-py-2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;3: Derselbe Zusammenhang, aufgeteilt nach Standort, mit gemeinsamer Achse.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-seaborn-facets-py-3" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-seaborn-facets-py-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="seaborn-plotly_files/figure-html/fig-seaborn-facets-py-5.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="Abbildung&nbsp;4: Derselbe Zusammenhang, aufgeteilt nach Standort, mit gemeinsamer Achse."><img src="seaborn-plotly_files/figure-html/fig-seaborn-facets-py-5.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-seaborn-facets-py-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;4: Derselbe Zusammenhang, aufgeteilt nach Standort, mit gemeinsamer Achse.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="die-wichtigsten-funktionen" class="level3">
+<h3 class="anchored" data-anchor-id="die-wichtigsten-funktionen">Die wichtigsten Funktionen</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Aufgabe</th>
+<th>Funktion</th>
+<th>Bemerkung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Verteilung</td>
+<td><code>sns.histplot</code>, <code>sns.kdeplot</code>, <code>sns.ecdfplot</code></td>
+<td><code>ecdfplot</code> zeigt alle Daten ohne Bandbreitenwahl</td>
+</tr>
+<tr class="even">
+<td>Gruppen vergleichen</td>
+<td><code>sns.boxplot</code>, <code>sns.violinplot</code>, <code>sns.stripplot</code></td>
+<td>Box und Punkte kombinieren</td>
+</tr>
+<tr class="odd">
+<td>Zusammenhang</td>
+<td><code>sns.scatterplot</code>, <code>sns.regplot</code>, <code>sns.lmplot</code></td>
+<td><code>regplot</code> zeichnet Gerade samt Konfidenzband</td>
+</tr>
+<tr class="even">
+<td>Mengen</td>
+<td><code>sns.barplot</code>, <code>sns.countplot</code></td>
+<td><code>barplot</code> aggregiert selbst und zeigt Unsicherheit</td>
+</tr>
+<tr class="odd">
+<td>Verlauf</td>
+<td><code>sns.lineplot</code></td>
+<td>aggregiert mehrere Werte je x automatisch</td>
+</tr>
+<tr class="even">
+<td>Matrix</td>
+<td><code>sns.heatmap</code></td>
+<td>für Korrelationen, mit <code>annot=True</code> beschriftet</td>
+</tr>
+<tr class="odd">
+<td>Aufteilen</td>
+<td><code>sns.relplot</code>, <code>sns.displot</code>, <code>sns.catplot</code></td>
+<td>die Varianten mit eingebauter Facettierung</td>
+</tr>
+</tbody>
+</table>
+<p>Eine Eigenheit, über die man einmal stolpert: Die Funktionen auf <code>ax</code>-Ebene (<code>boxplot</code>, <code>scatterplot</code>) zeichnen in eine bestehende <span class="glossary-term" data-topic="Programmierung" data-def="Richtung, entlang derer bei einem mehrdimensionalen Array gerechnet wird. Die angegebene Achse ist diejenige, die beim Zusammenfassen verschwindet." tabindex="0">Achse</span>; die Funktionen auf Raster-Ebene (<code>relplot</code>, <code>catplot</code>, <code>lmplot</code>) erzeugen eine eigene Figur und nehmen deshalb kein <code>ax</code>-Argument.</p>
+</section>
+<section id="plotly-wann-interaktivität-lohnt" class="level3">
+<h3 class="anchored" data-anchor-id="plotly-wann-interaktivität-lohnt">plotly: wann Interaktivität lohnt</h3>
+<p>plotly erzeugt Grafiken, die im Browser reagieren: Werte beim Überfahren, Zoomen, Serien ein- und ausblenden. Das ist nützlich, wenn die Grafik eine Frage beantwortet, die man nicht vorher kennt, etwa beim eigenen Erkunden oder in einem Dashboard.</p>
+<p>Für Bericht und Druck bleibt die statische Grafik die richtige Wahl: Sie hat eine Aussage, und die steht im Titel. Eine interaktive Grafik verschiebt die Arbeit zum Publikum, und das ist genau dann falsch, wenn die Aussage feststeht.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> plotly.express <span class="im">as</span> px</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>abb <span class="op">=</span> px.scatter(messung, x<span class="op">=</span><span class="st">"laufzeit"</span>, y<span class="op">=</span><span class="st">"verbrauch"</span>, color<span class="op">=</span><span class="st">"standort"</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>                 hover_data<span class="op">=</span>[<span class="st">"standort"</span>],</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>                 labels<span class="op">=</span>{<span class="st">"laufzeit"</span>: <span class="st">"Laufzeit (h)"</span>, <span class="st">"verbrauch"</span>: <span class="st">"Verbrauch (l)"</span>},</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                 title<span class="op">=</span><span class="st">"Verbrauch nach Laufzeit"</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>abb.update_layout(template<span class="op">=</span><span class="st">"simple_white"</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>abb.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Die Beispiele hier sind Listings: plotly ist in der Rechenumgebung dieser Seite nicht installiert, und eine interaktive Grafik gehört ohnehin dorthin, wo man sie bedienen kann.</p>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein seaborn-Aufruf mit <code>relplot</code> soll in eine vorbereitete <span class="glossary-term" data-topic="Programmierung" data-def="Richtung, entlang derer bei einem mehrdimensionalen Array gerechnet wird. Die angegebene Achse ist diejenige, die beim Zusammenfassen verschwindet." tabindex="0">Achse</span> gezeichnet werden, aber <code>ax=</code> wird nicht akzeptiert. Warum?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+<code>relplot</code> arbeitet auf Rasterebene und erzeugt eine eigene Figur
+</div>
+<div class="quiz__erklaerung">
+Richtig. Für das Zeichnen in eine bestehende <span class="glossary-term" data-topic="Programmierung" data-def="Richtung, entlang derer bei einem mehrdimensionalen Array gerechnet wird. Die angegebene Achse ist diejenige, die beim Zusammenfassen verschwindet." tabindex="0">Achse</span> nimmt man die Funktion auf Achsenebene, hier <code>scatterplot</code> oder <code>lineplot</code>.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Das Argument heisst in seaborn anders
+</div>
+<div class="quiz__erklaerung">
+Es heisst überall <code>ax</code>, existiert aber nur auf Achsenebene.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Die Figur muss vorher geschlossen werden
+</div>
+<div class="quiz__erklaerung">
+Das ändert nichts.
+</div>
+</div>
+</div>
+</div>
+</section>
 </section>
 <section id="typische-aufgaben" class="level2">
 <h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Verteilung je Gruppe, mit den Einzelwerten</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots()</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>sns.boxplot(data<span class="op">=</span>df, x<span class="op">=</span><span class="st">"gruppe"</span>, y<span class="op">=</span><span class="st">"wert"</span>, color<span class="op">=</span><span class="st">"0.85"</span>, width<span class="op">=</span><span class="fl">0.5</span>, ax<span class="op">=</span>ax)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>sns.stripplot(data<span class="op">=</span>df, x<span class="op">=</span><span class="st">"gruppe"</span>, y<span class="op">=</span><span class="st">"wert"</span>, size<span class="op">=</span><span class="dv">3</span>, alpha<span class="op">=</span><span class="fl">0.6</span>, ax<span class="op">=</span>ax)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Zusammenhang mit Trendlinie</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sns.regplot(data<span class="op">=</span>df, x<span class="op">=</span><span class="st">"flaeche"</span>, y<span class="op">=</span><span class="st">"miete"</span>, scatter_kws<span class="op">=</span>{<span class="st">"s"</span>: <span class="dv">12</span>, <span class="st">"alpha"</span>: <span class="fl">0.6</span>})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Korrelationsmatrix</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>korr <span class="op">=</span> df.select_dtypes(<span class="st">"number"</span>).corr()</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>sns.heatmap(korr, annot<span class="op">=</span><span class="va">True</span>, fmt<span class="op">=</span><span class="st">".2f"</span>, cmap<span class="op">=</span><span class="st">"vlag"</span>, center<span class="op">=</span><span class="dv">0</span>, square<span class="op">=</span><span class="va">True</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>center=0</code> ist hier wichtig: Korrelationen haben einen sinnvollen Nullpunkt und brauchen eine divergierende Palette, siehe <a href="../visualisierung/farbe.html">Farbe</a>.</p>
+<p><strong>Nach einer Variablen aufteilen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>sns.relplot(data<span class="op">=</span>df, x<span class="op">=</span><span class="st">"datum"</span>, y<span class="op">=</span><span class="st">"wert"</span>, col<span class="op">=</span><span class="st">"standort"</span>, col_wrap<span class="op">=</span><span class="dv">3</span>,</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>            kind<span class="op">=</span><span class="st">"line"</span>, height<span class="op">=</span><span class="fl">2.4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Palette und Thema setzen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>sns.set_theme(style<span class="op">=</span><span class="st">"whitegrid"</span>, font_scale<span class="op">=</span><span class="fl">0.95</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>sns.set_palette(<span class="st">"colorblind"</span>)          <span class="co"># geprueft auf Farbfehlsichtigkeit</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Feinschliff über matplotlib</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>ax.set_ylim(<span class="dv">0</span>, <span class="va">None</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">"Sion streut stärker als die übrigen Standorte"</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>ax.legend_.remove()                    <span class="co"># Legende weg, dafuer direkt beschriften</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>fig.savefig(<span class="st">"abbildung.png"</span>, dpi<span class="op">=</span><span class="dv">300</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Interaktiv für ein Dashboard</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> plotly.express <span class="im">as</span> px</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>abb <span class="op">=</span> px.line(df, x<span class="op">=</span><span class="st">"datum"</span>, y<span class="op">=</span><span class="st">"wert"</span>, color<span class="op">=</span><span class="st">"standort"</span>, template<span class="op">=</span><span class="st">"simple_white"</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>abb.write_html(<span class="st">"verlauf.html"</span>, include_plotlyjs<span class="op">=</span><span class="st">"cdn"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://seaborn.pydata.org/examples/index.html">seaborn: Beispielgalerie</a></li>
+<li><a href="https://seaborn.pydata.org/tutorial/function_overview.html">seaborn: Achsen- gegenüber Rasterfunktionen</a></li>
+<li><a href="https://plotly.com/python/plotly-express/">plotly express: Übersicht</a></li>
+</ul>
 
 
 </section>
@@ -1588,11 +1864,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 12:14</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 12:53</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
