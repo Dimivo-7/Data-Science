@@ -23,10 +23,6 @@ _templates/karten.ejs     Vorlage, aus der die Karten der Übersichten entstehen
 _freeze/                  gerechnete Chunk-Ergebnisse, gehört ins Repo
 ```
 
-Daneben liegen `cas-grundlagen/` und `cas-statda-davi/` in der früheren
-Gliederung. Sie werden gerade in die thematische Struktur überführt und
-verschwinden danach samt ihren Einträgen in `_quarto.yml`.
-
 Jedes Beispiel steht in R und Python nebeneinander (`panel-tabset`), R zuerst.
 
 ## Seitentypen
