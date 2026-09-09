@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Weit verbreitete Serverdatenbanken, ihre Eigenheiten und der Zugriff aus R und Python.">
+<meta name="description" content="DBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.">
 
-<title>MySQL und MariaDB – Data Science Notizen</title>
+<title>Datenbankzugriff aus R und Python – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -65,27 +65,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
-<script src="../../site_libs/clipboard/clipboard.min.js"></script>
-<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="../../site_libs/quarto-search/fuse.min.js"></script>
-<script src="../../site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="../../">
-<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../../site_libs/quarto-html/popper.min.js"></script>
-<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="../../site_libs/quarto-html/anchor.min.js"></script>
-<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark-f7d73e3450f8f73085b9d3af2b744099.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
-<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../site_libs/bootstrap/bootstrap-dark-b19535b873470a65c585fe6503f5eb6b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-f7d73e3450f8f73085b9d3af2b744099.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-c18f8b5eacc000b59572e6776326f613.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-b19535b873470a65c585fe6503f5eb6b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-1b2899294e8ea4616305e2ea955eecae.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -287,7 +287,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a class="navbar-brand" href="../../index.html">
+    <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">Data Science</span>
     </a>
   </div>
@@ -314,7 +314,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../daten/index.html">Daten</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/mysql-mariadb.html">MySQL und MariaDB</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../datenbanken/datenbanken-zugriff.html">Datenbankzugriff aus R und Python</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -328,37 +328,37 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../index.html" class="sidebar-item-text sidebar-link">
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Übersicht</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../stand.html" class="sidebar-item-text sidebar-link">
+  <a href="../stand.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Stand der Seite</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../tags.html" class="sidebar-item-text sidebar-link">
+  <a href="../tags.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Tags</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../glossar.html" class="sidebar-item-text sidebar-link">
+  <a href="../glossar.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Glossar</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../links.html" class="sidebar-item-text sidebar-link">
+  <a href="../links.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Linkliste</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../programmierung/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../programmierung/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Programmierung</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -367,175 +367,175 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/python-grundlagen.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/python-grundlagen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Python-Grundlagen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" tabindex="0" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung">Module</span> in Python</span></a>
+  <a href="../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Funktionen und <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren.">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/python-objektorientierung.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/python-objektorientierung.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Objektorientierung in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/python-exceptions-io.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/python-exceptions-io.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Fehlerbehandlung und Dateizugriff</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/r-grundlagen.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/r-grundlagen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">R-Grundlagen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/numpy-scipy.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/numpy-scipy.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">NumPy und SciPy</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/pandas.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/pandas.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">pandas</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/pakete-umgebungen.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/pakete-umgebungen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Pakete und Umgebungen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/fragen.html" class="sidebar-item-text sidebar-link">
+  <a href="../programmierung/fragen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Fragen zur Programmierung</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung">Reproduzierbarkeit</span></span></a>
+  <a href="../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../daten/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../daten/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Daten</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenimport-formate.html" class="sidebar-item-text sidebar-link">
+  <a href="../daten/datenimport-formate.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Datenimport und Formate</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung">Tidy Data</span></span></a>
+  <a href="../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus.">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/data-wrangling.html" class="sidebar-item-text sidebar-link">
+  <a href="../daten/data-wrangling.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Data Wrangling</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datum-zeit.html" class="sidebar-item-text sidebar-link">
+  <a href="../daten/datum-zeit.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Datum und Zeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenqualitaet.html" class="sidebar-item-text sidebar-link">
+  <a href="../daten/datenqualitaet.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Datenqualität</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/fragen.html" class="sidebar-item-text sidebar-link">
+  <a href="../daten/fragen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Fragen zu Daten</span></a>
   </div>
 </li>
-          <li class="sidebar-item sidebar-item-section">
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../daten/datenbanken/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../datenbanken/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Datenbanken</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 show">  
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/datenmodellierung.html" class="sidebar-item-text sidebar-link">
+  <a href="../datenbanken/datenmodellierung.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Datenmodellierung</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/sql.html" class="sidebar-item-text sidebar-link">
+  <a href="../datenbanken/sql.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">SQL</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/datenbanken-zugriff.html" class="sidebar-item-text sidebar-link">
+  <a href="../datenbanken/datenbanken-zugriff.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Datenbankzugriff aus R und Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/sqlite.html" class="sidebar-item-text sidebar-link">
+  <a href="../datenbanken/sqlite.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">SQLite</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/duckdb.html" class="sidebar-item-text sidebar-link">
+  <a href="../datenbanken/duckdb.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">DuckDB</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/postgresql.html" class="sidebar-item-text sidebar-link">
+  <a href="../datenbanken/postgresql.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">PostgreSQL</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/mysql-mariadb.html" class="sidebar-item-text sidebar-link active">
+  <a href="../datenbanken/mysql-mariadb.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">MySQL und MariaDB</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../daten/datenbanken/mongodb.html" class="sidebar-item-text sidebar-link">
+  <a href="../datenbanken/mongodb.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">MongoDB</span></a>
   </div>
 </li>
       </ul>
   </li>
-      </ul>
-  </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../werkzeuge/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../werkzeuge/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Werkzeuge</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -544,19 +544,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" tabindex="0" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge">Shell</span></span></a>
+  <a href="../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Linux und <span class="glossary-term" tabindex="0" data-topic="Werkzeuge" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht.">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../werkzeuge/git.html" class="sidebar-item-text sidebar-link">
+  <a href="../werkzeuge/git.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Git</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../werkzeuge/docker-virtualisierung.html" class="sidebar-item-text sidebar-link">
+  <a href="../werkzeuge/docker-virtualisierung.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Docker und Virtualisierung</span></a>
   </div>
 </li>
@@ -564,7 +564,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Statistik</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -573,13 +573,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/fragen.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/fragen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Übergreifende Fragen</span></a>
   </div>
 </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/grundlagen/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/grundlagen/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Grundlagen</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -588,31 +588,31 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik">Skalenniveaus</span></span></a>
+  <a href="../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse.">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/grundlagen/haeufigkeiten.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/grundlagen/haeufigkeiten.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Häufigkeiten</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/grundlagen/lage-streuungsmasse.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/grundlagen/lage-streuungsmasse.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Lage- und Streuungsmasse</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/grundlagen/korrelation.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/grundlagen/korrelation.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Korrelation</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/grundlagen/explorative-datenanalyse.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/grundlagen/explorative-datenanalyse.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Explorative Datenanalyse</span></a>
   </div>
 </li>
@@ -620,7 +620,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/wahrscheinlichkeit/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/wahrscheinlichkeit/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Wahrscheinlichkeit</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -629,51 +629,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+  <a href="../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit.">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" tabindex="0" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik">Bayes</span></span></a>
+  <a href="../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft.">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis.">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik">Zufallsvariablen</span></span></a>
+  <a href="../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden.">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/wahrscheinlichkeit/diskrete-verteilungen.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/wahrscheinlichkeit/diskrete-verteilungen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Diskrete Verteilungen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/wahrscheinlichkeit/stetige-verteilungen.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/wahrscheinlichkeit/stetige-verteilungen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Stetige Verteilungen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik">Normalverteilung</span> und <span class="glossary-term" tabindex="0" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik">zentraler Grenzwertsatz</span></span></a>
+  <a href="../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären.">Normalverteilung</span> und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind.">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik">QQ-Plots</span></span></a>
+  <a href="../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder.">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/inferenz/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/inferenz/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Inferenz</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -682,37 +682,37 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervalle</span></span></a>
+  <a href="../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Schätzen und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/hypothesentests-grundlagen.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/inferenz/hypothesentests-grundlagen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Hypothesentests: Grundlagen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/effektstaerken.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/inferenz/effektstaerken.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Effektstärken</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik">Power</span> und Stichprobenumfang</span></a>
+  <a href="../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Multiples Testen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/bootstrap-resampling.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/inferenz/bootstrap-resampling.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Bootstrap und Resampling</span></a>
   </div>
 </li>
@@ -720,7 +720,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/tests/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/tests/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Tests</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -729,49 +729,49 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span> für eine Stichprobe</span></a>
+  <a href="../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span> für zwei Stichproben</span></a>
+  <a href="../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span></span></a>
+  <a href="../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Gepaarter <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/anova.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/tests/anova.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Varianzanalyse</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik">Chi-Quadrat-Tests</span></span></a>
+  <a href="../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus.">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/korrelationstests.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/tests/korrelationstests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Korrelationstests</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/nichtparametrische-tests.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/tests/nichtparametrische-tests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Nichtparametrische Tests</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/tests/normalitaetstests.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/tests/normalitaetstests.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Normalitätstests</span></a>
   </div>
 </li>
@@ -779,7 +779,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/regression/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/regression/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Regression</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -788,37 +788,37 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-10" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/einfache-lineare-regression.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/regression/einfache-lineare-regression.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Einfache lineare Regression</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/multiple-lineare-regression.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/regression/multiple-lineare-regression.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Multiple lineare Regression</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/regressionsdiagnostik.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/regression/regressionsdiagnostik.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Regressionsdiagnostik</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/logistische-regression.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/regression/logistische-regression.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Logistische Regression</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/klassifikationsguete.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/regression/klassifikationsguete.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Klassifikationsgüte</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/modellauswahl.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/regression/modellauswahl.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Modellauswahl</span></a>
   </div>
 </li>
@@ -826,7 +826,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/ueberlebenszeit/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/ueberlebenszeit/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Überlebenszeit</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-11" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -835,25 +835,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-11" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/ueberlebenszeit/zensierung-ueberlebensfunktion.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/ueberlebenszeit/zensierung-ueberlebensfunktion.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Zensierung und Überlebensfunktion</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/ueberlebenszeit/kaplan-meier.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/ueberlebenszeit/kaplan-meier.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Kaplan-Meier-Schätzer</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/ueberlebenszeit/log-rank-test.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/ueberlebenszeit/log-rank-test.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Log-Rank-Test</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/ueberlebenszeit/cox-modell.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/ueberlebenszeit/cox-modell.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Cox-Modell</span></a>
   </div>
 </li>
@@ -861,7 +861,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/multivariat/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/multivariat/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Multivariat</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-12" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -870,37 +870,37 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-12" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/multivariat/distanzmasse.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/multivariat/distanzmasse.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Distanzmasse</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/multivariat/hauptkomponentenanalyse.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/multivariat/hauptkomponentenanalyse.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Hauptkomponentenanalyse</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/multivariat/faktorenanalyse.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/multivariat/faktorenanalyse.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Faktorenanalyse</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/multivariat/k-means.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/multivariat/k-means.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">k-Means</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/multivariat/hierarchisches-clustering.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/multivariat/hierarchisches-clustering.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Hierarchisches Clustering</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/multivariat/clusterguete.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/multivariat/clusterguete.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Clustergüte</span></a>
   </div>
 </li>
@@ -908,7 +908,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
           <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../statistik/zeitreihen/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../statistik/zeitreihen/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Zeitreihen</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-13" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -917,25 +917,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-13" class="collapse list-unstyled sidebar-section depth2 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/zeitreihen/zeitreihen-grundlagen.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/zeitreihen/zeitreihen-grundlagen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Zeitreihen: Grundlagen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/zeitreihen/stationaritaet-acf-pacf.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/zeitreihen/stationaritaet-acf-pacf.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Stationarität, ACF und PACF</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/zeitreihen/glaettung-einfache-verfahren.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/zeitreihen/glaettung-einfache-verfahren.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Glättung</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/zeitreihen/arima-sarima.html" class="sidebar-item-text sidebar-link">
+  <a href="../statistik/zeitreihen/arima-sarima.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ARIMA und SARIMA</span></a>
   </div>
 </li>
@@ -945,7 +945,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../ki/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../ki/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">KI</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -954,61 +954,61 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/wann-was.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/wann-was.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Wann was verwenden</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/prompt-bausteine.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/prompt-bausteine.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Bausteine eines Prompts</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/patterns-grundlagen.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/patterns-grundlagen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Grundlegende Patterns</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/patterns-denkfuehrung.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/patterns-denkfuehrung.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Denkführende Patterns</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/patterns-pruefung.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/patterns-pruefung.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Prüfende Patterns</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/prompts-datenarbeit.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/prompts-datenarbeit.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Prompts für die Datenarbeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/modelle-und-grenzen.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/modelle-und-grenzen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Modelle und ihre Grenzen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/context-engineering.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/context-engineering.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Vom Prompt zum Kontext</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/ki-texte-ueberarbeiten.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/ki-texte-ueberarbeiten.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">KI-Entwürfe überarbeiten</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../ki/fragen.html" class="sidebar-item-text sidebar-link">
+  <a href="../ki/fragen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Fragen zu KI</span></a>
   </div>
 </li>
@@ -1016,7 +1016,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../visualisierung/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../visualisierung/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Visualisierung</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-15" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -1025,67 +1025,67 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-15" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/zielbild-audience.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/zielbild-audience.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Zielbild und Publikum</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/wahrnehmung-kodierung.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/wahrnehmung-kodierung.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Wahrnehmung und Kodierung</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/diagrammtyp-waehlen.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/diagrammtyp-waehlen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Diagrammtyp wählen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/ggplot2.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/ggplot2.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ggplot2</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/matplotlib.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/matplotlib.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">matplotlib</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/seaborn-plotly.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/seaborn-plotly.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">seaborn und plotly</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/farbe.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/farbe.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Farbe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/irrefuehrende-darstellungen.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/irrefuehrende-darstellungen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Irreführende Darstellungen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/dashboards-interaktivitaet.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/dashboards-interaktivitaet.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Dashboards und Interaktivität</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/fragen.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/fragen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Fragen zur Visualisierung</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../visualisierung/storytelling.html" class="sidebar-item-text sidebar-link">
+  <a href="../visualisierung/storytelling.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Storytelling mit Daten</span></a>
   </div>
 </li>
@@ -1093,7 +1093,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../../referenz/index.html" class="sidebar-item-text sidebar-link">
+            <a href="../referenz/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Referenz</span></a>
           <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-16" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -1102,13 +1102,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-16" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../referenz/r.html" class="sidebar-item-text sidebar-link">
+  <a href="../referenz/r.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">R</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../referenz/python.html" class="sidebar-item-text sidebar-link">
+  <a href="../referenz/python.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Python</span></a>
   </div>
 </li>
@@ -1127,9 +1127,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
   <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
   <ul class="collapse">
-  <li><a href="#mysql-mariadb-und-was-sie-unterscheidet" id="toc-mysql-mariadb-und-was-sie-unterscheidet" class="nav-link" data-scroll-target="#mysql-mariadb-und-was-sie-unterscheidet">MySQL, MariaDB und was sie unterscheidet</a></li>
-  <li><a href="#zeichensatz-und-sortierung" id="toc-zeichensatz-und-sortierung" class="nav-link" data-scroll-target="#zeichensatz-und-sortierung">Zeichensatz und Sortierung</a></li>
-  <li><a href="#eigenheiten-die-beim-auswerten-auffallen" id="toc-eigenheiten-die-beim-auswerten-auffallen" class="nav-link" data-scroll-target="#eigenheiten-die-beim-auswerten-auffallen">Eigenheiten, die beim Auswerten auffallen</a></li>
+  <li><a href="#zugriff-aus-beiden-sprachen" id="toc-zugriff-aus-beiden-sprachen" class="nav-link" data-scroll-target="#zugriff-aus-beiden-sprachen">Zugriff aus beiden Sprachen</a></li>
+  <li><a href="#parameter-statt-zeichenkettenbau" id="toc-parameter-statt-zeichenkettenbau" class="nav-link" data-scroll-target="#parameter-statt-zeichenkettenbau">Parameter statt Zeichenkettenbau</a></li>
+  <li><a href="#sqlite-oder-mysql" id="toc-sqlite-oder-mysql" class="nav-link" data-scroll-target="#sqlite-oder-mysql">SQLite oder MySQL</a></li>
   </ul></li>
   <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
@@ -1140,9 +1140,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../daten/index.html">Daten</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../../daten/datenbanken/mysql-mariadb.html">MySQL und MariaDB</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../datenbanken/index.html">Datenbanken</a></li><li class="breadcrumb-item"><a href="../datenbanken/datenbanken-zugriff.html">Datenbankzugriff aus R und Python</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">MySQL und MariaDB</h1>
+<h1 class="title">Datenbankzugriff aus R und Python</h1>
   <div class="quarto-categories">
     <div class="quarto-category">Datenbanken</div>
     <div class="quarto-category">SQL</div>
@@ -1153,7 +1153,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <div>
   <div class="description">
-    Weit verbreitete Serverdatenbanken, ihre Eigenheiten und der Zugriff aus R und Python.
+    DBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz.
   </div>
 </div>
 
@@ -1176,145 +1176,178 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="kernideen" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
 <ul>
-<li>Serverdatenbank, sehr verbreitet in Webanwendungen und damit in vielen Datenquellen</li>
-<li>MariaDB ist aus MySQL hervorgegangen und weitgehend austauschbar</li>
-<li>Der Speicher-Engine entscheidet über Transaktionen und <span class="glossary-term" tabindex="0" data-def="Verweis auf den Primärschlüssel einer anderen Tabelle. Die Datenbank erzwingt dabei, dass das Ziel existiert, und verhindert so widersprüchliche Zustände." data-topic="Daten">Fremdschlüssel</span></li>
-<li>Zeichensatz und Sortierung sind eine echte Fehlerquelle, nicht eine Formalie</li>
-<li>Analytisch schwächer als PostgreSQL, für den Lesezugriff aber unproblematisch</li>
-<li>In der Datenarbeit meist Quellsystem, nicht Zielsystem</li>
+<li>Verbindung aufbauen, Abfrage senden, Ergebnis als <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale.">Data Frame</span> entgegennehmen</li>
+<li>Parameter statt zusammengebauter Zeichenketten, sonst droht SQL-Injektion</li>
+<li>Verbindungen gehören geschlossen, am besten im Kontextmanager</li>
+<li>SQLite als Datei ohne Server, MySQL und PostgreSQL mit Server</li>
+<li>Aggregieren gehört in die Datenbank, nicht in den Arbeitsspeicher</li>
 </ul>
 </section>
 <section id="erklärung" class="level2">
 <h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
 <div class="note-box">
-<p><strong>Vorwissen:</strong> <a href="../../daten/datenbanken/sql.html">SQL</a>. Der Zugriff aus R und Python steht unter <a href="../../daten/datenbanken/datenbanken-zugriff.html">Datenbankzugriff</a>, die Einordnung gegenüber anderen Systemen in der <a href="../../daten/datenbanken/index.html">Übersicht</a>.</p>
+<p><strong>Vorwissen:</strong> <a href="../datenbanken/sql.html">SQL</a> für die Abfragen selbst und <a href="../datenbanken/datenmodellierung.html">Datenmodellierung</a> für den Aufbau der Tabellen.</p>
 </div>
-<section id="mysql-mariadb-und-was-sie-unterscheidet" class="level3">
-<h3 class="anchored" data-anchor-id="mysql-mariadb-und-was-sie-unterscheidet">MySQL, MariaDB und was sie unterscheidet</h3>
-<p>MariaDB entstand als Abspaltung von MySQL und ist für den Lesezugriff praktisch identisch: dieselben Treiber, dieselben Abfragen, dieselben Werkzeuge. Für die Datenarbeit spielt der Unterschied selten eine Rolle; er wird erst beim Betrieb relevant, wo sich Funktionsumfang und Lizenzen unterscheiden.</p>
-<p>Wichtiger als die Unterscheidung der beiden ist die Speicher-Engine. <code>InnoDB</code> ist heute der Standard und kann Transaktionen und <span class="glossary-term" tabindex="0" data-def="Verweis auf den Primärschlüssel einer anderen Tabelle. Die Datenbank erzwingt dabei, dass das Ziel existiert, und verhindert so widersprüchliche Zustände." data-topic="Daten">Fremdschlüssel</span>. Die ältere <code>MyISAM</code> kann beides nicht: Ein <span class="glossary-term" tabindex="0" data-def="Verweis auf den Primärschlüssel einer anderen Tabelle. Die Datenbank erzwingt dabei, dass das Ziel existiert, und verhindert so widersprüchliche Zustände." data-topic="Daten">Fremdschlüssel</span> wird dort ohne Fehlermeldung ignoriert, und ein abgebrochener Schreibvorgang hinterlässt einen halben Stand. In alten Beständen begegnet einem das gelegentlich, und man sieht es der Tabelle nicht an.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> table_name, engine <span class="kw">FROM</span> information_schema.<span class="kw">tables</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">WHERE</span> table_schema <span class="op">=</span> <span class="kw">DATABASE</span>();</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="zeichensatz-und-sortierung" class="level3">
-<h3 class="anchored" data-anchor-id="zeichensatz-und-sortierung">Zeichensatz und Sortierung</h3>
-<p>Die häufigste stille Fehlerquelle beim Lesen aus MySQL sind Umlaute, die als Fragezeichen oder als Buchstabensalat ankommen. Ursache ist ein Zeichensatz, der nicht durchgehend <code>utf8mb4</code> ist. Historisch bedeutete <code>utf8</code> in MySQL eine verkürzte Variante, die keine vier Byte langen Zeichen speichern konnte, also weder Emojis noch manche asiatische Schriftzeichen.</p>
-<p>Die zweite Eigenheit ist die Sortierung, die auch die Vergleiche steuert. Bei den üblichen Voreinstellungen unterscheidet MySQL in <code>WHERE</code> nicht zwischen Gross- und Kleinschreibung, PostgreSQL dagegen schon. Eine Abfrage, die auf dem einen System das Erwartete liefert, kann auf dem anderen leer bleiben.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>SHOW VARIABLES <span class="kw">LIKE</span> <span class="st">'character_set%'</span>;</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>SHOW VARIABLES <span class="kw">LIKE</span> <span class="st">'collation%'</span>;</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="eigenheiten-die-beim-auswerten-auffallen" class="level3">
-<h3 class="anchored" data-anchor-id="eigenheiten-die-beim-auswerten-auffallen">Eigenheiten, die beim Auswerten auffallen</h3>
-<ul>
-<li><strong>Datumsangaben mit Nullwerten:</strong> MySQL erlaubt <code>0000-00-00</code>, was in R und Python zu <code>NA</code> beziehungsweise <code>NaT</code> wird oder den Treiber stört. In den Verbindungsoptionen lässt sich das Verhalten festlegen.</li>
-<li><strong><code>GROUP BY</code> mit nicht aggregierten Spalten:</strong> war lange erlaubt und lieferte einen beliebigen Wert der Gruppe. Neuere Versionen lehnen es ab, alte Abfragen brechen deshalb beim Umstieg.</li>
-<li><strong>Fensterfunktionen</strong> gibt es erst ab MySQL 8 und MariaDB 10.2; in älteren Beständen fehlen sie und werden durch Selbstverbindungen ersetzt.</li>
-<li><strong><code>LIMIT</code> ohne <code>ORDER BY</code></strong> liefert keine definierte Auswahl, auch wenn es in der Praxis oft stabil aussieht.</li>
-</ul>
-<div class="quiz">
-<div class="quiz__frage">
-<p>Eine Abfrage <code>WHERE bezeichnung = 'pneumatik'</code> findet in MySQL Zeilen mit <code>Pneumatik</code>, in PostgreSQL nicht. Woran liegt das?</p>
-</div>
-<div class="quiz__optionen">
-<div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
-An der Sortierung, die in MySQL üblicherweise nicht zwischen Gross- und Kleinschreibung unterscheidet
-</div>
-<div class="quiz__erklaerung">
-Richtig. Die Collation steuert Vergleiche mit. Wer portabel schreiben will, vergleicht ausdrücklich, etwa über <code>LOWER(bezeichnung) = 'pneumatik'</code>.
-</div>
-</div>
-<div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
-An unterschiedlichen Zeichensätzen
-</div>
-<div class="quiz__erklaerung">
-Der Zeichensatz betrifft die Speicherung, nicht die Gross- und Kleinschreibung beim Vergleich.
-</div>
-</div>
-<div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
-PostgreSQL hat den <span class="glossary-term" tabindex="0" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt." data-topic="Programmierung">Index</span> nicht genutzt
-</div>
-<div class="quiz__erklaerung">
-Der <span class="glossary-term" tabindex="0" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt." data-topic="Programmierung">Index</span> ändert das Ergebnis nicht, nur die Geschwindigkeit.
-</div>
-</div>
-</div>
-</div>
-</section>
-</section>
-<section id="typische-aufgaben" class="level2">
-<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
-<p><strong>Verbinden</strong></p>
+<section id="zugriff-aus-beiden-sprachen" class="level3">
+<h3 class="anchored" data-anchor-id="zugriff-aus-beiden-sprachen">Zugriff aus beiden Sprachen</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbConnect</span>(</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  RMariaDB<span class="sc">::</span><span class="fu">MariaDB</span>(),</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">host =</span> <span class="st">"db.example.org"</span>, <span class="at">port =</span> <span class="dv">3306</span>, <span class="at">dbname =</span> <span class="st">"shop"</span>,</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">user =</span> <span class="fu">Sys.getenv</span>(<span class="st">"MYSQL_USER"</span>), <span class="at">password =</span> <span class="fu">Sys.getenv</span>(<span class="st">"MYSQL_PASSWORD"</span>)</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbExecute</span>(con, <span class="st">"SET NAMES utf8mb4"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>ergebnis <span class="ot">&lt;-</span> <span class="fu">dbGetQuery</span>(con, <span class="st">"</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT a.kategorie, SUM(b.betrag) AS umsatz</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY a.kategorie"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(ergebnis)      <span class="co"># ein gewoehnlicher Data Frame</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'data.frame':   3 obs. of  2 variables:
+ $ kategorie: chr  "Elektronik" "Mechanik" "Pneumatik"
+ $ umsatz   : num  2400 740 1968</code></pre>
+</div>
+</div>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sqlalchemy <span class="im">import</span> create_engine</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>motor <span class="op">=</span> create_engine(</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="ss">f"mysql+pymysql://</span><span class="sc">{</span>os<span class="sc">.</span>environ[<span class="st">'MYSQL_USER'</span>]<span class="sc">}</span><span class="ss">:</span><span class="sc">{</span>os<span class="sc">.</span>environ[<span class="st">'MYSQL_PASSWORD'</span>]<span class="sc">}</span><span class="ss">"</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"@db.example.org:3306/shop?charset=utf8mb4"</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_sql_query(<span class="st">"""</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT a.kategorie, SUM(b.betrag) AS umsatz</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY a.kategorie</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>, verbindung)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    kategorie  umsatz
+0  Elektronik  2400.0
+1    Mechanik   740.0
+2   Pneumatik  1968.0</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df.dtypes)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>kategorie        str
+umsatz       float64
+dtype: object</code></pre>
 </div>
 </div>
 </div>
-<p>Der Zusatz zum Zeichensatz ist kein Detail: Ohne ihn kommen Umlaute je nach Servereinstellung falsch an, und zwar ohne Fehlermeldung.</p>
-<p><strong>Nachsehen, was es gibt</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>SHOW DATABASES;</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>SHOW <span class="kw">TABLES</span>;</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>DESCRIBE artikel;</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>SHOW <span class="kw">CREATE</span> <span class="kw">TABLE</span> artikel;      <span class="co">-- inklusive Engine und Zeichensatz</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Lesen und weiterverarbeiten</strong></p>
+</div>
+</div>
+<p>Das Ergebnis ist in beiden Fällen die vertraute Tabelle, mit der weitergearbeitet wird wie mit jedem anderen <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale.">Data Frame</span>.</p>
+<div class="note-box">
+<p>Wieviel gehört in die Datenbank, wieviel in die Auswertung? Meine Regel: Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte Datenmenge über die Leitung geht. Modellierung, Grafik und alles Iterative danach in R oder Python. Eine Million Zeilen zu laden, um daraus fünf Gruppensummen zu bilden, ist die häufigste vermeidbare Wartezeit.</p>
+</div>
+</section>
+<section id="parameter-statt-zeichenkettenbau" class="level3">
+<h3 class="anchored" data-anchor-id="parameter-statt-zeichenkettenbau">Parameter statt Zeichenkettenbau</h3>
+<p>Eine Abfrage aus Nutzereingaben zusammenzukleben ist die klassische Sicherheitslücke und erzeugt ausserdem Fehler bei Anführungszeichen. Beide Sprachen bieten Platzhalter:</p>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbGetQuery</span>(con, <span class="st">"</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT a.bezeichnung, SUM(b.betrag) AS umsatz</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="st">  WHERE b.datum &gt;= ?</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY a.bezeichnung"</span>, <span class="at">params =</span> <span class="fu">list</span>(<span class="st">"2026-01-01"</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dbGetQuery</span>(con,</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SELECT bezeichnung FROM artikel WHERE kategorie = ?"</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">params =</span> <span class="fu">list</span>(<span class="st">"Mechanik"</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     bezeichnung
+1 Kugellager 608
+2      Dichtring</code></pre>
+</div>
+</div>
 </div>
 <div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_sql_query(</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"""SELECT a.bezeichnung, SUM(b.betrag) AS umsatz</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="st">       FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="st">       WHERE b.datum &gt;= </span><span class="sc">%(ab)s</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="st">       GROUP BY a.bezeichnung"""</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    motor, params<span class="op">=</span>{<span class="st">"ab"</span>: <span class="st">"2026-01-01"</span>})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.read_sql_query(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"SELECT bezeichnung FROM artikel WHERE kategorie = ?"</span>,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    verbindung, params<span class="op">=</span>(<span class="st">"Mechanik"</span>,)))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      bezeichnung
+0  Kugellager 608
+1       Dichtring</code></pre>
 </div>
 </div>
 </div>
-<p><strong>Eine langsame Abfrage untersuchen</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">EXPLAIN</span> <span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> bestellung <span class="kw">WHERE</span> artikel_id <span class="op">=</span> <span class="dv">3</span>;</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>SHOW <span class="kw">INDEX</span> <span class="kw">FROM</span> bestellung;</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> idx_bestellung_artikel <span class="kw">ON</span> bestellung(artikel_id);</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Sicherung und Wiederherstellung</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">mysqldump</span> <span class="at">-h</span> host <span class="at">-u</span> benutzer <span class="at">-p</span> <span class="at">--single-transaction</span> shop <span class="op">&gt;</span> sicherung.sql</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="ex">mysql</span> <span class="at">-h</span> host <span class="at">-u</span> benutzer <span class="at">-p</span> shop <span class="op">&lt;</span> sicherung.sql</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><code>--single-transaction</code> sorgt bei InnoDB für einen konsistenten Stand, ohne die Tabellen zu sperren.</p>
-<p><strong>Aus einem <span class="glossary-term" tabindex="0" data-def="Gekapselte Ausführungsumgebung, die sich den Betriebssystemkern mit dem Host teilt. Enthält im Unterschied zur virtuellen Umgebung auch Systembibliotheken und Sprachversion." data-topic="Werkzeuge">Container</span> heraus ausprobieren</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--name</span> mariadb <span class="at">-e</span> MARIADB_ROOT_PASSWORD=geheim <span class="at">-p</span> 3306:3306 <span class="at">-d</span> mariadb</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> exec <span class="at">-it</span> mariadb mariadb <span class="at">-uroot</span> <span class="at">-pgeheim</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Siehe auch <a href="../../werkzeuge/docker-virtualisierung.html">Docker und Virtualisierung</a>.</p>
+</div>
+</div>
+</section>
+<section id="sqlite-oder-mysql" class="level3">
+<h3 class="anchored" data-anchor-id="sqlite-oder-mysql">SQLite oder MySQL</h3>
+<p>SQLite braucht keinen Server und liegt als einzelne Datei vor, oder wie hier nur im Arbeitsspeicher. Zum Üben, für Zwischenstände und für kleine Projekte ist es ideal. MySQL und PostgreSQL sind der Serverfall mit Nutzerverwaltung, gleichzeitigen Zugriffen und Rechtevergabe. Die SQL-Grundlagen sind dieselben, die Unterschiede liegen in Datentypen und Erweiterungen.</p>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Verbinden, abfragen, schliessen</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbConnect</span>(RSQLite<span class="sc">::</span><span class="fu">SQLite</span>(), <span class="st">"laden.sqlite"</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbGetQuery</span>(con, <span class="st">"SELECT * FROM artikel"</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbDisconnect</span>(con)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sqlite3</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> sqlite3.<span class="ex">connect</span>(<span class="st">"laden.sqlite"</span>) <span class="im">as</span> verbindung:</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    df <span class="op">=</span> pd.read_sql_query(<span class="st">"SELECT * FROM artikel"</span>, verbindung)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p><strong>Werte als Parameter übergeben</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbGetQuery</span>(con, <span class="st">"SELECT * FROM artikel WHERE preis &gt; ?"</span>, <span class="at">params =</span> <span class="fu">list</span>(<span class="dv">100</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>pd.read_sql_query(<span class="st">"SELECT * FROM artikel WHERE preis &gt; ?"</span>, verbindung, params<span class="op">=</span>(<span class="dv">100</span>,))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p>Zeichenketten selbst zusammenzubauen ist die Ursache von SQL-Injektion und zusätzlich fehleranfällig bei Anführungszeichen und Datumsformaten.</p>
+<p><strong>Einen <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale.">Data Frame</span> in eine Tabelle schreiben</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbWriteTable</span>(con, <span class="st">"ergebnis"</span>, df, <span class="at">overwrite =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>df.to_sql(<span class="st">"ergebnis"</span>, verbindung, if_exists<span class="op">=</span><span class="st">"replace"</span>, index<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p><strong>Nachsehen, was in der Datenbank liegt</strong></p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbListTables</span>(con)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>DBI<span class="sc">::</span><span class="fu">dbListFields</span>(con, <span class="st">"artikel"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>pd.read_sql_query(<span class="st">"SELECT name FROM sqlite_master WHERE type = 'table'"</span>, verbindung)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+<p><strong>Grosse Tabellen in Portionen lesen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> teil <span class="kw">in</span> pd.read_sql_query(<span class="st">"SELECT * FROM bestellung"</span>, verbindung, chunksize<span class="op">=</span><span class="dv">10_000</span>):</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    verarbeite(teil)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Besser noch: aggregieren lassen, wo die Daten liegen, und nur das Ergebnis holen. Eine Datenbank ist darin schneller als jede Schleife im Arbeitsspeicher.</p>
+<p><strong>Verbindung zu einem Server statt zu einer Datei</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sqlalchemy <span class="im">import</span> create_engine</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>motor <span class="op">=</span> create_engine(<span class="st">"postgresql+psycopg://benutzer:passwort@host:5432/datenbank"</span>)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_sql_query(<span class="st">"SELECT * FROM artikel"</span>, motor)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
 <ul>
-<li><a href="https://dev.mysql.com/doc/refman/8.0/en/">MySQL: Referenzhandbuch</a></li>
-<li><a href="https://mariadb.com/kb/en/documentation/">MariaDB: Dokumentation</a></li>
-<li><a href="https://dev.mysql.com/doc/refman/8.0/en/charset-unicode-utf8mb4.html">Warum utf8mb4 und nicht utf8</a></li>
+<li><a href="https://www.sqlite.org/lang.html">SQLite: SQL-Referenz</a></li>
+<li><a href="https://use-the-index-luke.com/">Use The Index, Luke: SQL-Performance erklärt</a></li>
 </ul>
 
 
@@ -1760,42 +1793,9 @@ Der <span class="glossary-term" tabindex="0" data-def="Beschriftung der Zeilen e
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 11:53</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">9. September 2026, 12:12</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
-})();
-</script>
-<script>
-(function () {
-  function auswerten(option, quiz) {
-    var richtig = option.getAttribute("data-richtig") === "1";
-    option.classList.add(richtig ? "is-richtig" : "is-falsch");
-    option.classList.add("is-beantwortet");
-
-    if (richtig) {
-      quiz.classList.add("is-geloest");
-      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
-      // damit auch klar wird, warum die anderen nicht stimmen.
-      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
-        o.classList.add("is-beantwortet");
-        if (o !== option) { o.classList.add("is-verworfen"); }
-      });
-    }
-  }
-
-  document.querySelectorAll(".quiz").forEach(function (quiz) {
-    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
-      var option = knopf.closest(".quiz__option");
-
-      knopf.addEventListener("click", function () { auswerten(option, quiz); });
-      knopf.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          auswerten(option, quiz);
-        }
-      });
-    });
-  });
 })();
 </script>
 
