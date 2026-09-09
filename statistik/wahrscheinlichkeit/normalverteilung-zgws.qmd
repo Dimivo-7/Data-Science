@@ -4,11 +4,127 @@ description: "Warum so viele Verfahren auf der Normalverteilung aufbauen."
 categories: ["Verteilungen", "Wahrscheinlichkeit", "Interpretation", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 60
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Der zentrale Grenzwertsatz erklärt die Sonderrolle der Normalverteilung
+- Mittelwerte sind annähernd normalverteilt, auch wenn die Einzelwerte es nicht sind
+- Standardisierung und z-Werte machen Verteilungen vergleichbar
+- Die Faustregeln 68, 95 und 99.7 Prozent
+- Nicht die Daten müssen normalverteilt sein, sondern die Schätzung
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [stetige Verteilungen](stetige-verteilungen.qmd) für Dichte und
+Verteilungsfunktion. Diese Seite ist die Grundlage für
+[Konfidenzintervalle](../inferenz/schaetzen-konfidenzintervalle.qmd) und alle
+Verfahren, die auf Mittelwerten beruhen. Wie sich Normalität grafisch prüfen
+lässt, steht unter [QQ-Plots](qq-plots.qmd).
+:::
+
+### Der zentrale Grenzwertsatz
+
+Summen und Mittelwerte vieler unabhängiger Einflüsse nähern sich einer
+Normalverteilung an, unabhängig davon, wie die einzelnen Grössen selbst
+verteilt sind. Das lässt sich zeigen, und zwar mit einer Ausgangsverteilung,
+die alles andere als normal aussieht:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-clt-r
+#| fig-cap: "Links die stark schiefe Ausgangsverteilung, rechts die Mittelwerte aus je 30 solchen Werten."
+#| fig-height: 3.2
+einzeln <- rexp(4000, rate = 1)
+mittel  <- replicate(4000, mean(rexp(30, rate = 1)))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+hist(einzeln, breaks = 40, col = "grey75", border = "white",
+     main = "einzelne Werte", xlab = "Wert")
+hist(mittel, breaks = 40, col = "grey75", border = "white",
+     main = "Mittelwerte aus je 30", xlab = "Mittelwert")
+```
+
+## Python
+
+```{python}
+#| label: fig-clt-py
+#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
+einzeln = rng.exponential(1.0, 4000)
+mittel = rng.exponential(1.0, size=(4000, 30)).mean(axis=1)
+
+fig, (a, b) = plt.subplots(1, 2, figsize=(7, 3.2))
+a.hist(einzeln, bins=40, color="0.75", edgecolor="white")
+a.set_title("einzelne Werte"); a.set_xlabel("Wert")
+b.hist(mittel, bins=40, color="0.75", edgecolor="white")
+b.set_title("Mittelwerte aus je 30"); b.set_xlabel("Mittelwert")
+fig.tight_layout()
+plt.show()
+```
+:::
+
+Die Ausgangswerte sind exponentialverteilt, also stark rechtsschief. Schon
+Mittelwerte aus dreissig Beobachtungen sind erkennbar glockenförmig. Das ist
+der Grund, warum Mittelwertvergleiche in [Hypothesentests: Grundlagen](../inferenz/hypothesentests-grundlagen.qmd) auch dann
+funktionieren, wenn die Einzelwerte nicht normalverteilt sind, sofern die
+Stichprobe gross genug ist.
+
+::: {.note-box}
+Ein häufiges Missverständnis: Der Satz sagt nichts darüber, dass die
+**Ausgangsdaten** normalverteilt würden. Normal wird die Verteilung der
+**Mittelwerte**, und zwar über gedachte Wiederholungen der Stichprobenziehung.
+:::
+
+### Standardisierung und z-Werte
+
+Verschiedene Merkmale haben verschiedene Einheiten und Grössenordnungen. Die
+Standardisierung übersetzt jeden Wert in die Anzahl Standardabweichungen, um
+die er vom Mittel abweicht:
+
+$$z = \frac{x - \mu}{\sigma}$$
+
+```{r}
+#| label: zwert-r
+# Ein IQ von 130 und eine Koerpergroesse von 1.92 m
+z_iq    <- (130 - 100) / 15
+z_groesse <- (1.92 - 1.78) / 0.07
+
+c(iq = z_iq, groesse = z_groesse)
+# gleicher z-Wert bedeutet gleicher Rang in der jeweiligen Verteilung
+round(pnorm(c(z_iq, z_groesse)), 4)
+```
+
+Beide Werte liegen zwei Standardabweichungen über dem Mittel und damit an
+derselben relativen Position, obwohl die Einheiten nichts miteinander zu tun
+haben. Das ist der Zweck der Standardisierung.
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu Verteilungen](https://www.openintro.org/book/os/)

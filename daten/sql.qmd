@@ -4,13 +4,262 @@ description: "Abfragen, Joins, Aggregation und Unterabfragen."
 categories: ["SQL", "Datenbanken", "R", "Python"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 70
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(DBI)
+library(RSQLite)
+
+# Eine echte Datenbank im Arbeitsspeicher. Alle Abfragen dieser Seite laufen
+# wirklich; die Ausgaben sind keine abgeschriebenen Beispiele.
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbExecute(con, "
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL
+  )")
+
+dbExecute(con, "
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum      TEXT NOT NULL,
+    menge      INTEGER NOT NULL,
+    betrag     REAL NOT NULL
+  )")
+
+dbExecute(con, "INSERT INTO artikel VALUES
+  (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+  (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+  (5,'Sensor induktiv','Elektronik')")
+
+dbExecute(con, "INSERT INTO bestellung VALUES
+  (1,1,'2026-01-14',10, 240.0), (2,1,'2026-02-03',25, 600.0),
+  (3,2,'2026-01-22', 4, 512.0), (4,3,'2026-02-11',100, 350.0),
+  (5,3,'2026-03-02', 60, 210.0), (6,4,'2026-01-30',200, 180.0),
+  (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
+  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
+
+zeige <- function(sql) knitr::kable(dbGetQuery(con, sql))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import sqlite3
+import pandas as pd
+
+verbindung = sqlite3.connect(":memory:")
+verbindung.executescript("""
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL);
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
+  INSERT INTO artikel VALUES
+    (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+    (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+    (5,'Sensor induktiv','Elektronik');
+  INSERT INTO bestellung VALUES
+    (1,1,'2026-01-14',10,240.0), (2,1,'2026-02-03',25,600.0),
+    (3,2,'2026-01-22',4,512.0), (4,3,'2026-02-11',100,350.0),
+    (5,3,'2026-03-02',60,210.0), (6,4,'2026-01-30',200,180.0),
+    (7,5,'2026-02-19',8,960.0), (8,5,'2026-03-08',12,1440.0),
+    (9,2,'2026-03-15',2,256.0), (10,1,'2026-03-20',15,360.0);
+""")
+verbindung.commit()
+```
+
 ## Kernideen
+
+- `SELECT`, `WHERE`, `JOIN`, `GROUP BY`, `HAVING`, `ORDER BY`
+- Die Auswertungsreihenfolge weicht von der Schreibreihenfolge ab
+- `WHERE` filtert Zeilen, `HAVING` filtert Gruppen
+- Ein Join verbindet über Schlüssel, die Art des Joins entscheidet über Verluste
+- Aggregate ohne `GROUP BY` fassen die ganze Tabelle zusammen
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Datenmodellierung](datenmodellierung.qmd) für Schlüssel und
+Beziehungen. Wer [Data Wrangling](data-wrangling.qmd) oder
+[pandas](../programmierung/pandas.qmd) kennt, findet dieselben Operationen
+wieder: `WHERE` ist `filter`, `GROUP BY` ist `groupby`, `JOIN` ist `merge`. Die
+Abfragen dieser Seite laufen beim Bauen der Website gegen eine echte
+SQLite-Datenbank.
+:::
+
+### Abfragen
+
+SQL ist deklarativ. Man beschreibt das gewünschte Ergebnis, nicht den Weg
+dorthin.
+
+```{r}
+#| label: select-r
+zeige("SELECT bezeichnung, kategorie FROM artikel WHERE kategorie = 'Pneumatik'")
+```
+
+Verbinden zweier Tabellen über den Schlüssel:
+
+```{r}
+#| label: join-r
+zeige("
+  SELECT b.datum, a.bezeichnung, b.menge, b.betrag
+  FROM bestellung b
+  JOIN artikel a ON a.artikel_id = b.artikel_id
+  ORDER BY b.datum
+  LIMIT 5")
+```
+
+Gruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:
+
+```{r}
+#| label: groupby-r
+zeige("
+  SELECT a.kategorie,
+         COUNT(*)         AS anzahl,
+         SUM(b.betrag)    AS umsatz,
+         ROUND(AVG(b.betrag), 2) AS mittel
+  FROM bestellung b
+  JOIN artikel a ON a.artikel_id = b.artikel_id
+  GROUP BY a.kategorie
+  HAVING COUNT(*) >= 2
+  ORDER BY umsatz DESC")
+```
+
+### Die Auswertungsreihenfolge
+
+Sie erklärt die häufigste Verwirrung von Einsteigern, nämlich warum sich ein
+Aggregat nicht in `WHERE` prüfen lässt:
+
+| Reihenfolge | Klausel | was passiert |
+|---|---|---|
+| 1 | `FROM`, `JOIN` | Tabellen zusammenstellen |
+| 2 | `WHERE` | einzelne Zeilen filtern |
+| 3 | `GROUP BY` | Zeilen zu Gruppen zusammenfassen |
+| 4 | `HAVING` | Gruppen filtern |
+| 5 | `SELECT` | Spalten auswählen und berechnen |
+| 6 | `ORDER BY` | sortieren |
+
+`WHERE` läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht.
+`HAVING` läuft danach.
+
+```{r}
+#| label: reihenfolge-r
+# WHERE filtert Zeilen VOR der Gruppierung
+zeige("
+  SELECT a.kategorie, SUM(b.betrag) AS umsatz
+  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+  WHERE b.datum >= '2026-02-01'
+  GROUP BY a.kategorie
+  ORDER BY umsatz DESC")
+```
+
+::: {.quiz}
+Warum lässt sich `WHERE SUM(betrag) > 500` nicht schreiben?
+
+- [x] `WHERE` wird vor der Gruppierung ausgewertet, es gibt dort noch keine
+      Summen ~ Richtig. Bedingungen auf Aggregaten gehören in `HAVING`, das nach
+      der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.
+- [ ] `SUM` ist in einer Bedingung generell nicht erlaubt ~ In `HAVING` ist es
+      erlaubt, es hängt allein am Zeitpunkt.
+- [ ] Es fehlt ein `GROUP BY` ~ Auch mit `GROUP BY` bliebe die Zeile falsch, denn
+      `WHERE` läuft trotzdem vorher.
+:::
+
+::: {.quiz}
+Ein Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?
+
+- [x] Der Schlüssel war auf der rechten Seite nicht eindeutig ~ Richtig. Jede
+      linke Zeile wird mit jeder passenden rechten kombiniert. Es ist dieselbe
+      Falle wie beim `merge` in [pandas](../programmierung/pandas.qmd), und die Prüfung ist
+      dieselbe: vorher die Eindeutigkeit des Schlüssels sicherstellen.
+- [ ] Es wurde ein `LEFT JOIN` statt eines `INNER JOIN` verwendet ~ Ein
+      `LEFT JOIN` behält alle linken Zeilen, vervielfacht sie aber nicht von
+      sich aus.
+- [ ] Die Verknüpfungsbedingung fehlt ~ Dann entstünde das Kreuzprodukt, also
+      ungleich mehr Zeilen. Der häufigere und unauffälligere Fall ist der
+      mehrdeutige Schlüssel.
+:::
+
 ## Typische Aufgaben
 
+**Zeilen auswählen und filtern**
+
+```sql
+SELECT bezeichnung, preis
+FROM artikel
+WHERE preis > 100 AND bezeichnung LIKE 'A%'
+ORDER BY preis DESC
+LIMIT 10;
+```
+
+**Gruppieren und die Gruppen filtern**
+
+```sql
+SELECT artikel_id, COUNT(*) AS anzahl, SUM(menge) AS menge_total
+FROM bestellung
+GROUP BY artikel_id
+HAVING COUNT(*) >= 2;
+```
+
+`WHERE` wirkt vor der Gruppierung auf einzelne Zeilen, `HAVING` danach auf die
+gebildeten Gruppen. Die Verwechslung ist der häufigste Fehler beim Aggregieren.
+
+**Tabellen verbinden**
+
+```sql
+SELECT b.bestell_id, a.bezeichnung, b.menge
+FROM bestellung AS b
+JOIN artikel AS a ON a.artikel_id = b.artikel_id;
+```
+
+Ein `LEFT JOIN` behält alle Zeilen der linken Tabelle, auch wenn rechts nichts
+passt; ein `INNER JOIN` verwirft sie. Wer nach einem Join weniger Zeilen hat als
+erwartet, hat meist den falschen Typ gewählt.
+
+**Fehlende Werte und Fallunterscheidungen**
+
+```sql
+SELECT bezeichnung,
+       COALESCE(rabatt, 0) AS rabatt,
+       CASE WHEN preis > 500 THEN 'teuer' ELSE 'guenstig' END AS klasse
+FROM artikel;
+```
+
+**Zwischenergebnis benennen statt verschachteln**
+
+```sql
+WITH umsatz AS (
+  SELECT artikel_id, SUM(menge * preis) AS summe
+  FROM bestellung
+  GROUP BY artikel_id
+)
+SELECT a.bezeichnung, u.summe
+FROM umsatz AS u
+JOIN artikel AS a ON a.artikel_id = u.artikel_id
+ORDER BY u.summe DESC;
+```
+
+**Doppelte Werte finden**
+
+```sql
+SELECT bezeichnung, COUNT(*) AS anzahl
+FROM artikel
+GROUP BY bezeichnung
+HAVING COUNT(*) > 1;
+```
+
 ## Verlinkte Ressourcen
+
+- [SQLite: SQL-Referenz](https://www.sqlite.org/lang.html)
+- [Use The Index, Luke: SQL-Performance erklärt](https://use-the-index-luke.com/)

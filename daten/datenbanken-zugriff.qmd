@@ -4,13 +4,286 @@ description: "DBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz."
 categories: ["Datenbanken", "SQL", "R", "Python"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
-stand: geruest
+stand: entwurf
 order: 80
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(DBI)
+library(RSQLite)
+
+# Eine echte Datenbank im Arbeitsspeicher. Alle Abfragen dieser Seite laufen
+# wirklich; die Ausgaben sind keine abgeschriebenen Beispiele.
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbExecute(con, "
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL
+  )")
+
+dbExecute(con, "
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum      TEXT NOT NULL,
+    menge      INTEGER NOT NULL,
+    betrag     REAL NOT NULL
+  )")
+
+dbExecute(con, "INSERT INTO artikel VALUES
+  (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+  (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+  (5,'Sensor induktiv','Elektronik')")
+
+dbExecute(con, "INSERT INTO bestellung VALUES
+  (1,1,'2026-01-14',10, 240.0), (2,1,'2026-02-03',25, 600.0),
+  (3,2,'2026-01-22', 4, 512.0), (4,3,'2026-02-11',100, 350.0),
+  (5,3,'2026-03-02', 60, 210.0), (6,4,'2026-01-30',200, 180.0),
+  (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
+  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
+
+zeige <- function(sql) knitr::kable(dbGetQuery(con, sql))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import sqlite3
+import pandas as pd
+
+verbindung = sqlite3.connect(":memory:")
+verbindung.executescript("""
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL);
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
+  INSERT INTO artikel VALUES
+    (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+    (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+    (5,'Sensor induktiv','Elektronik');
+  INSERT INTO bestellung VALUES
+    (1,1,'2026-01-14',10,240.0), (2,1,'2026-02-03',25,600.0),
+    (3,2,'2026-01-22',4,512.0), (4,3,'2026-02-11',100,350.0),
+    (5,3,'2026-03-02',60,210.0), (6,4,'2026-01-30',200,180.0),
+    (7,5,'2026-02-19',8,960.0), (8,5,'2026-03-08',12,1440.0),
+    (9,2,'2026-03-15',2,256.0), (10,1,'2026-03-20',15,360.0);
+""")
+verbindung.commit()
+```
+
 ## Kernideen
+
+- Verbindung aufbauen, Abfrage senden, Ergebnis als Data Frame entgegennehmen
+- Parameter statt zusammengebauter Zeichenketten, sonst droht SQL-Injektion
+- Verbindungen gehören geschlossen, am besten im Kontextmanager
+- SQLite als Datei ohne Server, MySQL und PostgreSQL mit Server
+- Aggregieren gehört in die Datenbank, nicht in den Arbeitsspeicher
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [SQL](sql.qmd) für die Abfragen selbst und
+[Datenmodellierung](datenmodellierung.qmd) für den Aufbau der Tabellen.
+:::
+
+### Zugriff aus beiden Sprachen
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: zugriff-r
+ergebnis <- dbGetQuery(con, "
+  SELECT a.kategorie, SUM(b.betrag) AS umsatz
+  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+  GROUP BY a.kategorie")
+
+str(ergebnis)      # ein gewoehnlicher Data Frame
+```
+
+## Python
+
+```{python}
+#| label: zugriff-py
+df = pd.read_sql_query("""
+  SELECT a.kategorie, SUM(b.betrag) AS umsatz
+  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+  GROUP BY a.kategorie
+""", verbindung)
+
+print(df)
+print(df.dtypes)
+```
+:::
+
+Das Ergebnis ist in beiden Fällen die vertraute Tabelle, mit der weitergearbeitet
+wird wie mit jedem anderen Data Frame.
+
+::: {.note-box}
+Wieviel gehört in die Datenbank, wieviel in die Auswertung? Meine Regel:
+Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte
+Datenmenge über die Leitung geht. Modellierung, Grafik und alles Iterative
+danach in R oder Python. Eine Million Zeilen zu laden, um daraus fünf
+Gruppensummen zu bilden, ist die häufigste vermeidbare Wartezeit.
+:::
+
+### Parameter statt Zeichenkettenbau
+
+Eine Abfrage aus Nutzereingaben zusammenzukleben ist die klassische
+Sicherheitslücke und erzeugt ausserdem Fehler bei Anführungszeichen. Beide
+Sprachen bieten Platzhalter:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: parameter-r
+dbGetQuery(con,
+  "SELECT bezeichnung FROM artikel WHERE kategorie = ?",
+  params = list("Mechanik"))
+```
+
+## Python
+
+```{python}
+#| label: parameter-py
+print(pd.read_sql_query(
+    "SELECT bezeichnung FROM artikel WHERE kategorie = ?",
+    verbindung, params=("Mechanik",)))
+```
+:::
+
+### SQLite oder MySQL
+
+SQLite braucht keinen Server und liegt als einzelne Datei vor, oder wie hier
+nur im Arbeitsspeicher. Zum Üben, für Zwischenstände und für kleine Projekte
+ist es ideal. MySQL und PostgreSQL sind der Serverfall mit Nutzerverwaltung,
+gleichzeitigen Zugriffen und Rechtevergabe. Die SQL-Grundlagen sind dieselben,
+die Unterschiede liegen in Datentypen und Erweiterungen.
+
+```{r}
+#| label: aufraeumen-r
+#| include: false
+dbDisconnect(con)
+```
+
+```{python}
+#| label: aufraeumen-py
+#| include: false
+verbindung.close()
+```
+
 ## Typische Aufgaben
 
+**Verbinden, abfragen, schliessen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+con <- DBI::dbConnect(RSQLite::SQLite(), "laden.sqlite")
+df <- DBI::dbGetQuery(con, "SELECT * FROM artikel")
+DBI::dbDisconnect(con)
+```
+
+## Python
+
+```python
+import sqlite3
+import pandas as pd
+
+with sqlite3.connect("laden.sqlite") as verbindung:
+    df = pd.read_sql_query("SELECT * FROM artikel", verbindung)
+```
+
+:::
+
+**Werte als Parameter übergeben**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+DBI::dbGetQuery(con, "SELECT * FROM artikel WHERE preis > ?", params = list(100))
+```
+
+## Python
+
+```python
+pd.read_sql_query("SELECT * FROM artikel WHERE preis > ?", verbindung, params=(100,))
+```
+
+:::
+
+Zeichenketten selbst zusammenzubauen ist die Ursache von SQL-Injektion und
+zusätzlich fehleranfällig bei Anführungszeichen und Datumsformaten.
+
+**Einen Data Frame in eine Tabelle schreiben**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+DBI::dbWriteTable(con, "ergebnis", df, overwrite = TRUE)
+```
+
+## Python
+
+```python
+df.to_sql("ergebnis", verbindung, if_exists="replace", index=False)
+```
+
+:::
+
+**Nachsehen, was in der Datenbank liegt**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+DBI::dbListTables(con)
+DBI::dbListFields(con, "artikel")
+```
+
+## Python
+
+```python
+pd.read_sql_query("SELECT name FROM sqlite_master WHERE type = 'table'", verbindung)
+```
+
+:::
+
+**Grosse Tabellen in Portionen lesen**
+
+```python
+for teil in pd.read_sql_query("SELECT * FROM bestellung", verbindung, chunksize=10_000):
+    verarbeite(teil)
+```
+
+Besser noch: aggregieren lassen, wo die Daten liegen, und nur das Ergebnis
+holen. Eine Datenbank ist darin schneller als jede Schleife im Arbeitsspeicher.
+
+**Verbindung zu einem Server statt zu einer Datei**
+
+```python
+from sqlalchemy import create_engine
+motor = create_engine("postgresql+psycopg://benutzer:passwort@host:5432/datenbank")
+df = pd.read_sql_query("SELECT * FROM artikel", motor)
+```
+
 ## Verlinkte Ressourcen
+
+- [SQLite: SQL-Referenz](https://www.sqlite.org/lang.html)
+- [Use The Index, Luke: SQL-Performance erklärt](https://use-the-index-luke.com/)

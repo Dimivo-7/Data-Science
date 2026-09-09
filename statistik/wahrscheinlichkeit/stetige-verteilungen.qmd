@@ -4,11 +4,115 @@ description: "Dichte, Verteilungsfunktion und die wichtigsten stetigen Modelle."
 categories: ["Verteilungen", "Wahrscheinlichkeit", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 50
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Dichtefunktion: Fläche statt Punktwahrscheinlichkeit
+- Jede einzelne Ausprägung hat Wahrscheinlichkeit null
+- Stetige Gleichverteilung als einfachster Fall
+- Exponentialverteilung und ihre Gedächtnislosigkeit
+- Das dpqr-Schema gilt unverändert weiter
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Zufallsvariablen](zufallsvariablen.qmd) und
+[diskrete Verteilungen](diskrete-verteilungen.qmd), vor allem Erwartungswert und
+das dpqr-Schema. Die Normalverteilung bekommt wegen ihrer Sonderrolle eine
+[eigene Seite](normalverteilung-zgws.qmd).
+:::
+
+### Warum bei stetigen Grössen jede Punktwahrscheinlichkeit null ist
+
+Bei einem Würfel lässt sich fragen, wie wahrscheinlich eine Drei ist. Bei einer
+Körpergrösse lässt sich nicht sinnvoll fragen, wie wahrscheinlich exakt
+1.80000... Meter sind. Zwischen zwei beliebigen Werten liegen unendlich viele
+weitere, und die Wahrscheinlichkeit jedes einzelnen ist null.
+
+Sinnvoll sind nur Aussagen über Intervalle. Deshalb tritt an die Stelle der
+Wahrscheinlichkeitsfunktion die **Dichtefunktion**. Ihre Werte sind keine
+Wahrscheinlichkeiten, sondern Dichten; die Wahrscheinlichkeit ist die Fläche
+unter der Kurve.
+
+```{r}
+#| label: fig-dichte-r
+#| fig-cap: "Die Fläche unter der Dichte zwischen 90 und 110 ist die Wahrscheinlichkeit, in diesem Bereich zu liegen."
+#| fig-height: 3.2
+x <- seq(60, 140, length.out = 400)
+d <- dnorm(x, mean = 100, sd = 15)
+flaeche <- data.frame(x = x[x >= 90 & x <= 110], y = d[x >= 90 & x <= 110])
+
+ggplot(data.frame(x, d), aes(x, d)) +
+  geom_area(data = flaeche, aes(x, y), fill = "grey75") +
+  geom_line(linewidth = 0.8) +
+  labs(x = "Wert", y = "Dichte")
+```
+
+```{r}
+#| label: flaeche-r
+# Die Flaeche laesst sich ueber die Verteilungsfunktion ablesen
+pnorm(110, mean = 100, sd = 15) - pnorm(90, mean = 100, sd = 15)
+```
+
+Die Verteilungsfunktion `pnorm` gibt die aufsummierte Fläche bis zu einer
+Schranke. Die Differenz zweier solcher Werte ist die Fläche dazwischen. Das ist
+dasselbe Prinzip wie bei der empirischen Verteilungsfunktion in
+[Skalenniveaus](../grundlagen/skalenniveaus.qmd), nur mit einer glatten Kurve statt einer Treppe.
+
+### Drei Verteilungen und wofür sie stehen
+
+**Stetige Gleichverteilung.** Jeder Wert im Intervall ist gleich dicht.
+Modelliert Rundungsfehler und dient als Ausgangspunkt für Simulationen.
+
+**Exponentialverteilung.** Beschreibt Wartezeiten zwischen Ereignissen, die mit
+konstanter Rate auftreten, und ist damit das stetige Gegenstück zur
+Poissonverteilung aus [Diskrete Verteilungen](diskrete-verteilungen.qmd). Ihre auffälligste Eigenschaft ist die
+Gedächtnislosigkeit: Die verbleibende Wartezeit hängt nicht davon ab, wie lange
+schon gewartet wurde.
+
+```{r}
+#| label: gedaechtnislos-r
+rate <- 0.5
+
+# P(mehr als 3 warten)
+p_ueber_3 <- 1 - pexp(3, rate)
+# P(mehr als 8 warten, gegeben es sind schon 5 vergangen)
+p_bedingt <- (1 - pexp(8, rate)) / (1 - pexp(5, rate))
+
+round(c(ohne_vorgeschichte = p_ueber_3, mit_vorgeschichte = p_bedingt), 4)
+```
+
+Beide Werte stimmen überein. Für technische Ausfälle ist das oft gerade die
+falsche Annahme, weil Verschleiss sehr wohl ein Gedächtnis hat.
+
+**Normalverteilung.** Sie ist nicht deshalb zentral, weil in der Natur so
+vieles normalverteilt wäre, sondern wegen des zentralen Grenzwertsatzes.
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu Verteilungen](https://www.openintro.org/book/os/)

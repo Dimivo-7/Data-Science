@@ -4,11 +4,144 @@ description: "Verteilungen grafisch vergleichen und typische Muster deuten."
 categories: ["Verteilungen", "Visualisierung", "Interpretation", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 70
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+theme_set(theme_minimal(base_size = 12))
+set.seed(42)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+rng = np.random.default_rng(42)
+```
+
 ## Kernideen
+
+- Der QQ-Plot vergleicht beobachtete Quantile mit theoretischen
+- Punkte auf der Geraden bedeuten Übereinstimmung mit der Referenzverteilung
+- Abweichungen an den Enden sind üblich, Bögen und S-Formen nicht
+- Er zeigt die Art der Abweichung, ein Test nur ihr Vorhandensein
+- Bei grossem n schlägt jeder Normalitätstest an, der Plot bleibt lesbar
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Lage- und Streuungsmasse](../grundlagen/lage-streuungsmasse.qmd)
+für Quantile, denn der QQ-Plot besteht aus nichts anderem, und die
+[Normalverteilung](normalverteilung-zgws.qmd) als übliche Referenz. Die
+zugehörigen Tests stehen unter
+[Normalitätstests](../tests/normalitaetstests.qmd).
+:::
+
+### Der QQ-Plot
+
+Ob eine Verteilungsannahme passt, lässt sich am Histogramm nur grob beurteilen,
+weil dessen Aussehen von der Klassenzahl abhängt. Der QQ-Plot ist präziser: Er
+trägt die beobachteten Quantile gegen die theoretisch erwarteten auf. Liegen
+die Punkte auf einer Geraden, passt die Annahme.
+
+Der eigentliche Nutzen liegt darin, dass Abweichungen lesbar sind:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-qq-r
+#| fig-cap: "Drei Stichproben im QQ-Plot: normal, rechtsschief, schwere Ränder."
+#| fig-height: 3.2
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+
+qqnorm(rnorm(200), main = "normalverteilt"); qqline(rnorm(200))
+qqnorm(rexp(200), main = "rechtsschief"); qqline(rexp(200))
+qqnorm(rt(200, df = 3), main = "schwere Ränder"); qqline(rt(200, df = 3))
+```
+
+## Python
+
+```{python}
+#| label: fig-qq-py
+#| fig-cap: "Dieselben drei Muster mit scipy."
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2))
+proben = [("normalverteilt", rng.normal(size=200)),
+          ("rechtsschief", rng.exponential(size=200)),
+          ("schwere Ränder", rng.standard_t(df=3, size=200))]
+
+for ax, (titel, daten) in zip(achsen, proben):
+    stats.probplot(daten, dist="norm", plot=ax)
+    ax.set_title(titel)
+    ax.get_lines()[0].set_markersize(3)
+fig.tight_layout()
+plt.show()
+```
+:::
+
+Die Muster lassen sich merken. Eine durchgehende Krümmung zeigt Schiefe. Ein
+Abknicken an beiden Enden nach oben und unten zeigt schwerere Ränder als die
+Normalverteilung, also mehr extreme Werte als erwartet. Ein Abflachen an den
+Enden zeigt das Gegenteil.
+
+::: {.note-box}
+Bei kleinen Stichproben streuen die Punkte an den Rändern immer stärker, weil
+dort die wenigsten Beobachtungen liegen. Leichte Abweichungen an den Enden sind
+normal und kein Beleg gegen die Annahme.
+:::
+
+::: {.quiz}
+Eine Dichtefunktion nimmt an einer Stelle den Wert 10 an. Ist das möglich?
+
+- [x] Ja, denn die Dichte ist keine Wahrscheinlichkeit ~ Richtig. Sie gibt
+      Wahrscheinlichkeit pro Einheit an. Bei einer Gleichverteilung zwischen 0
+      und 0.1 muss die Dichte 10 betragen, damit die Fläche eins ergibt.
+      Beschränkt ist die Fläche, nicht die Höhe.
+- [ ] Nein, Wahrscheinlichkeiten liegen zwischen null und eins ~ Das gilt für
+      Wahrscheinlichkeiten, und eine Dichte ist keine.
+- [ ] Nur bei diskreten Verteilungen ~ Dort gibt es gar keine Dichte, sondern
+      eine Wahrscheinlichkeitsfunktion, und deren Werte sind tatsächlich
+      begrenzt.
+:::
+
+::: {.quiz}
+Ein QQ-Plot zeigt Punkte, die links unterhalb und rechts oberhalb der Geraden
+liegen. Was heisst das? Die Muster stehen in @fig-qq-r nebeneinander.
+
+- [ ] Die Daten sind rechtsschief ~ Schiefe zeigt sich als durchgehende
+      Krümmung, nicht als Abknicken an beiden Enden.
+- [x] Die Verteilung hat schwerere Ränder als die Normalverteilung ~ Richtig.
+      An beiden Enden liegen extremere Werte, als das Modell erwarten lässt.
+      Praktisch heisst das mehr Ausreisser, was Verfahren stört, die auf dem
+      Mittelwert beruhen.
+- [ ] Die Stichprobe ist zu klein ~ Bei kleinen Stichproben streuen die Ränder
+      stärker, aber dann in beide Richtungen zufällig, nicht systematisch.
+:::
+
+::: {.quiz}
+Was sagt der zentrale Grenzwertsatz über die Ausgangsdaten aus? @fig-clt-r
+zeigt links stark schiefe Einzelwerte.
+
+- [ ] Dass sie mit wachsender Stichprobe normalverteilt werden ~ Genau das sagt
+      er nicht. Die Einzelwerte bleiben schief, wie das linke Bild zeigt.
+- [x] Nichts, normal wird die Verteilung der Mittelwerte ~ Richtig. Rechts sind
+      Mittelwerte aus je dreissig Werten aufgetragen, und die sind glockenförmig.
+      Darauf beruhen Konfidenzintervall und t-Test.
+- [ ] Dass sie unabhängig sein müssen ~ Unabhängigkeit ist eine Voraussetzung
+      des Satzes, aber nicht seine Aussage.
+:::
+
 ## Verlinkte Ressourcen
+
+- [OpenIntro Statistics, Kapitel zu Verteilungen](https://www.openintro.org/book/os/)

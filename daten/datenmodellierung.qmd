@@ -4,11 +4,155 @@ description: "Relationales Modell, Schlüssel, Beziehungen und Normalisierung."
 categories: ["Datenbanken", "SQL"]
 quelle: ["PYFR"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 60
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(DBI)
+library(RSQLite)
+
+# Eine echte Datenbank im Arbeitsspeicher. Alle Abfragen dieser Seite laufen
+# wirklich; die Ausgaben sind keine abgeschriebenen Beispiele.
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbExecute(con, "
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL
+  )")
+
+dbExecute(con, "
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum      TEXT NOT NULL,
+    menge      INTEGER NOT NULL,
+    betrag     REAL NOT NULL
+  )")
+
+dbExecute(con, "INSERT INTO artikel VALUES
+  (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+  (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+  (5,'Sensor induktiv','Elektronik')")
+
+dbExecute(con, "INSERT INTO bestellung VALUES
+  (1,1,'2026-01-14',10, 240.0), (2,1,'2026-02-03',25, 600.0),
+  (3,2,'2026-01-22', 4, 512.0), (4,3,'2026-02-11',100, 350.0),
+  (5,3,'2026-03-02', 60, 210.0), (6,4,'2026-01-30',200, 180.0),
+  (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
+  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
+
+zeige <- function(sql) knitr::kable(dbGetQuery(con, sql))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import sqlite3
+import pandas as pd
+
+verbindung = sqlite3.connect(":memory:")
+verbindung.executescript("""
+  CREATE TABLE artikel (
+    artikel_id INTEGER PRIMARY KEY,
+    bezeichnung TEXT NOT NULL,
+    kategorie   TEXT NOT NULL);
+  CREATE TABLE bestellung (
+    bestell_id INTEGER PRIMARY KEY,
+    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+    datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
+  INSERT INTO artikel VALUES
+    (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
+    (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
+    (5,'Sensor induktiv','Elektronik');
+  INSERT INTO bestellung VALUES
+    (1,1,'2026-01-14',10,240.0), (2,1,'2026-02-03',25,600.0),
+    (3,2,'2026-01-22',4,512.0), (4,3,'2026-02-11',100,350.0),
+    (5,3,'2026-03-02',60,210.0), (6,4,'2026-01-30',200,180.0),
+    (7,5,'2026-02-19',8,960.0), (8,5,'2026-03-08',12,1440.0),
+    (9,2,'2026-03-15',2,256.0), (10,1,'2026-03-20',15,360.0);
+""")
+verbindung.commit()
+```
+
 ## Kernideen
+
+- Relation, Attribut, Primär- und Fremdschlüssel
+- Redundanz erzeugt Anomalien beim Einfügen, Ändern und Löschen
+- Entity-Relationship-Modell und Kardinalitäten
+- Normalformen als Regeln gegen genau diese Anomalien
+- Der Weg vom Modell zu Tabellen ist eine Entwurfsentscheidung
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** keines. Hilfreich ist [pandas](../programmierung/pandas.qmd),
+weil eine Tabelle dort dasselbe ist wie eine Relation hier. Wie man die
+entworfenen Tabellen abfragt, steht unter [SQL](sql.qmd), der Zugriff aus R und
+Python unter
+[Datenbankzugriff](datenbanken-zugriff.qmd).
+:::
+
+### Warum nicht einfach eine grosse Tabelle
+
+Eine Tabelle, die alles enthält, sieht bequem aus:
+
+| bestell_id | artikel | kategorie | datum | betrag |
+|---|---|---|---|---|
+| 1 | Ventil 3/8 | Pneumatik | 2026-01-14 | 240.00 |
+| 2 | Ventil 3/8 | Pneumatik | 2026-02-03 | 600.00 |
+
+Die Bezeichnung und die Kategorie stehen bei jeder Bestellung erneut. Daraus
+folgen drei Probleme, die zusammen Anomalien heissen:
+
+- **Änderung:** Wird der Artikel umbenannt, muss das an jeder Stelle geschehen. Wird eine übersehen, widersprechen sich die Daten.
+- **Einfügen:** Ein neuer Artikel ohne Bestellung lässt sich gar nicht erfassen, weil es keine Zeile gäbe.
+- **Löschen:** Wird die letzte Bestellung eines Artikels gelöscht, verschwindet der Artikel mit.
+
+Die Aufteilung auf zwei Tabellen, verbunden über einen Schlüssel, löst alle
+drei. Genau das ist die Idee des relationalen Modells.
+
+### Schlüssel
+
+Der **Primärschlüssel** identifiziert eine Zeile eindeutig. Der
+**Fremdschlüssel** verweist auf eine Zeile einer anderen Tabelle und erzwingt
+dabei, dass das Ziel existiert. Diese referentielle Integrität ist der
+Hauptunterschied zu einer Sammlung von CSV-Dateien: Die Datenbank verhindert
+widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme
+sich benehmen.
+
+```{r}
+#| label: schluessel-r
+# Verweis auf einen nicht existierenden Artikel
+dbExecute(con, "PRAGMA foreign_keys = ON")
+versuch <- try(
+  dbExecute(con, "INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 1, 10.0)"),
+  silent = TRUE)
+cat(if (inherits(versuch, "try-error")) "abgelehnt, Artikel 999 existiert nicht"
+    else "durchgelassen")
+```
+
+Die Datenbank weist den Datensatz zurück. In einer CSV-Datei stünde er
+kommentarlos drin und würde beim nächsten Join stillschweigend verschwinden.
+
+### Vom ER-Modell zu Tabellen
+
+Die Modellierung beginnt bei der Frage, welche Gegenstände es gibt und wie sie
+zusammenhängen. Die Kardinalität entscheidet über die Umsetzung:
+
+| Beziehung | Beispiel | Umsetzung |
+|---|---|---|
+| eins zu viele | ein Artikel hat viele Bestellungen | Fremdschlüssel auf der Viele-Seite |
+| viele zu viele | Artikel gehören zu mehreren Lieferanten und umgekehrt | eigene Verbindungstabelle |
+| eins zu eins | selten, meist Auslagerung optionaler Felder | Fremdschlüssel mit Eindeutigkeit |
+
+Hier liegt der erste Fall vor: Der Fremdschlüssel steht in `bestellung`, weil
+dort die viele-Seite ist.
+
 ## Verlinkte Ressourcen
+
+- [Einführung in relationale Datenbanken (SQLite)](https://www.sqlite.org/quirks.html)
