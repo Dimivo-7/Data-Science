@@ -1,0 +1,240 @@
+---
+title: "Denkführende Patterns"
+description: "Schrittweises Denken, Abstraktion, Zerlegung und Code als Denkwerkzeug."
+categories: ["Prompting", "Sprachmodelle", "Interpretation"]
+seitentyp: werkzeug
+stand: entwurf
+order: 40
+---
+
+## Kernideen
+
+- Zwischenschritte sichtbar zu machen verbessert mehrstufige Schlüsse
+- Ein Schritt zurück zur allgemeinen Frage schlägt oft den direkten Angriff
+- Grosse Aufgaben werden zerlegt, bevor sie gelöst werden
+- Planen und Ausführen zu trennen verhindert das Losrennen in die falsche Richtung
+- Für Rechnungen ist Code das Denkwerkzeug, nicht die Sprache
+- Bei Reasoning-Modellen verlagert sich der Nutzen von der Denkführung zur Aufgabenbeschreibung
+
+## Erklärung
+
+::: {.note-box}
+Diese Patterns lohnen sich, wenn eine Aufgabe in Schritte zerfällt oder wenn
+Zwischenergebnisse aufeinander aufbauen. Bei einfachen Aufträgen kosten sie nur
+Länge, siehe [Wann was verwenden](wann-was.qmd).
+:::
+
+### Schrittweises Denken anfordern
+
+Die einfachste Form: eine Signalphrase, die das Modell veranlasst, den Weg zur
+Antwort auszuformulieren, statt sie zu raten. Der Gewinn ist bei Aufgaben mit
+mehreren Bedingungen am grössten.
+
+```text
+Beantworte die folgende Frage Schritt für Schritt. Nenne zuerst die
+Zwischenschritte, dann das Ergebnis.
+
+Frage: [Frage]
+```
+
+Mit Beispiel wird das Muster verbindlicher, weil das Modell die gewünschte
+Granularität der Schritte sieht:
+
+```text
+Löse die Aufgabe nach demselben Muster wie im Beispiel.
+
+Beispiel:
+Aufgabe: [einfache Aufgabe]
+Schritt 1: [...]
+Schritt 2: [...]
+Ergebnis: [...]
+
+Jetzt:
+Aufgabe: [eigene Aufgabe]
+```
+
+### Einen Schritt zurücktreten
+
+Statt die konkrete Frage direkt anzugreifen, wird zuerst die allgemeine Frage
+dahinter geklärt. Das Vorgehen hilft, wenn die konkrete Frage in eine Sackgasse
+führt oder wenn ein Prinzip die Antwort trägt.
+
+```text
+Bevor du meine konkrete Frage beantwortest: Welche allgemeinere Frage oder
+welches Prinzip steht dahinter? Beantworte zuerst diese, dann meine.
+
+Konkrete Frage: [Frage]
+```
+
+### Lange Texte in Portionen verarbeiten
+
+Bei langen Eingaben verliert das Modell den Faden. Es hilft, das Material in
+Abschnitte zu zerlegen, jeden Abschnitt zusammenzufassen und erst am Ende die
+Gesamtfrage zu beantworten.
+
+```text
+Gehe den folgenden Text abschnittsweise durch. Fasse jeden Abschnitt in einem
+Satz zusammen und halte fest, was er zur Frage "[Frage]" beiträgt. Beantworte
+die Frage erst am Schluss, gestützt auf diese Zusammenfassungen.
+
+Text: [Material]
+```
+
+### Vom Einfachen zum Schweren
+
+Die Aufgabe wird in Teilaufgaben zerlegt, die aufeinander aufbauen: erst die
+einfachste, dann jeweils die nächste unter Verwendung der bisherigen Ergebnisse.
+
+```text
+Zerlege die folgende Aufgabe in Teilaufgaben, geordnet von der einfachsten zur
+schwierigsten. Löse sie in dieser Reihenfolge und nutze jeweils die Ergebnisse
+der vorherigen Teilaufgaben.
+
+Aufgabe: [Aufgabe]
+```
+
+### Erst planen, dann ausführen
+
+Plan und Ausführung werden getrennt. Das verhindert, dass das Modell den ersten
+plausiblen Weg einschlägt, und man kann den Plan korrigieren, bevor Arbeit
+hineinfliesst.
+
+```text
+Erstelle zuerst einen Plan mit höchstens fünf Schritten, wie du die Aufgabe
+lösen würdest. Führe ihn noch nicht aus. Warte auf mein Einverständnis.
+
+Aufgabe: [Aufgabe]
+```
+
+Die Fassung ohne Rückfrage, wenn der Plan nicht geprüft werden muss:
+
+```text
+Erstelle zuerst einen Plan, führe ihn dann Schritt für Schritt aus und
+markiere klar, wo der Plan endet und die Ausführung beginnt.
+
+Aufgabe: [Aufgabe]
+```
+
+### Mehrere Lösungswege nebeneinander
+
+Bei offenen Aufgaben lohnt es sich, mehrere Ansätze verfolgen und vergleichen zu
+lassen, statt einen einzigen auszubauen.
+
+```text
+Entwickle drei verschiedene Lösungsansätze für die Aufgabe. Verfolge jeden nur
+so weit, bis sein Kern erkennbar ist. Vergleiche sie danach anhand von
+[Kriterien] und empfiehl einen, mit Begründung.
+
+Aufgabe: [Aufgabe]
+```
+
+### Code als Denkwerkzeug
+
+Für Rechnungen, Abzählungen und formale Logik ist Sprache das falsche Medium.
+Statt das Ergebnis formulieren zu lassen, lässt man den Rechenweg als Code
+formulieren und führt ihn selbst aus. Das Ergebnis ist damit nachvollziehbar,
+wiederholbar und prüfbar.
+
+```text
+Schreibe für die folgende Aufgabe ein kurzes, lauffähiges Python-Skript statt
+einer Antwort in Worten. Kommentiere jede Rechenzeile knapp. Gib keine
+Ergebniszahlen an, die du nicht aus dem Skript hast.
+
+Aufgabe: [Aufgabe]
+```
+
+Dasselbe in der Datenarbeit, wo es zusätzlich die Reproduzierbarkeit sichert:
+
+```text
+Formuliere die Auswertung als R-Code mit dplyr. Verwende die Spalten
+[Spaltennamen]. Gib den Code aus, keine Zahlen: die Zahlen entstehen bei mir
+beim Ausführen.
+```
+
+### Bei Reasoning-Modellen
+
+Modelle, die selbst in Schritten denken, brauchen die Denkführung nicht mehr.
+Vier Punkte bleiben:
+
+1. Die Aufgabe präzise beschreiben, inklusive Zielformat und Randbedingungen.
+2. Auf Aufforderungen zum schrittweisen Denken verzichten, sie bringen nichts.
+3. Den Lösungsraum nicht durch zu viele Vorgaben einengen.
+4. Selektiv einsetzen: höhere Kosten und Wartezeit lohnen sich nur bei
+   anspruchsvollen Aufgaben.
+
+::: {.quiz}
+Eine Aufgabe verlangt, aus 30 Messwerten den Median und die Quartile zu
+bestimmen. Welches Vorgehen ist richtig?
+
+- [ ] Schrittweises Denken anfordern ~ Das macht den Rechenweg sichtbar, aber
+      nicht korrekt; abgezählt wird trotzdem sprachlich.
+- [x] Code erzeugen lassen und selbst ausführen ~ Richtig. Für Rechnungen ist
+      Code das Denkwerkzeug. Das Ergebnis ist dann reproduzierbar und lässt sich
+      prüfen.
+- [ ] Ein Reasoning-Modell verwenden ~ Auch dieses rechnet sprachlich, solange
+      es kein Werkzeug ausführt.
+:::
+
+::: {.quiz}
+Warum lohnt es sich, Plan und Ausführung zu trennen?
+
+- [x] Ein falscher Plan lässt sich billig korrigieren, eine falsche Ausführung
+      nicht ~ Richtig. Der Plan ist kurz und schnell zu prüfen; die Ausführung
+      kostet Zeit und ist schwerer zu überblicken.
+- [ ] Weil das Modell sonst nicht antwortet ~ Es antwortet auch ohne Plan, nur
+      eben sofort in eine Richtung.
+- [ ] Weil Pläne genauer sind als Antworten ~ Der Plan ist nicht genauer, er ist
+      früher.
+:::
+
+## Typische Aufgaben
+
+**Eine Analyse planen lassen, bevor Code entsteht**
+
+```text
+Ich habe [Beschreibung der Daten] und will [Fragestellung] beantworten.
+
+Erstelle einen Plan mit höchstens fünf Schritten: welche Kennzahlen, welche
+Grafiken, welches Modell, welche Voraussetzungen zu prüfen sind. Führe den Plan
+noch nicht aus und schreibe noch keinen Code.
+```
+
+**Einen Fehler eingrenzen**
+
+```text
+Der folgende Code läuft, liefert aber [falsches Verhalten].
+
+Gehe systematisch vor: Nenne zuerst die drei wahrscheinlichsten Ursachen,
+ordne sie nach Wahrscheinlichkeit, und beschreibe zu jeder einen Test, mit dem
+ich sie in einer Minute ausschliessen kann. Ändere den Code noch nicht.
+
+Code: [Code]
+```
+
+**Eine Methodenwahl begründen lassen**
+
+```text
+Tritt zuerst einen Schritt zurück: Welche allgemeine Frage beantwortet die
+Methodenwahl hier? Beantworte sie, und leite daraus ab, welches Verfahren zu
+[Datenlage und Fragestellung] passt. Nenne zwei Alternativen und den Grund,
+warum sie ausscheiden.
+```
+
+**Eine lange Quelle auswerten**
+
+```text
+Fasse den folgenden Text abschnittsweise zusammen, ein Satz je Abschnitt.
+Markiere Abschnitte, die für die Frage "[Frage]" nichts beitragen, mit
+"irrelevant". Beantworte die Frage erst danach und verweise auf die
+Abschnittsnummern.
+
+Text: [Material]
+```
+
+## Verlinkte Ressourcen
+
+- [Chain-of-Thought Prompting](https://arxiv.org/abs/2201.11903)
+- [Step-Back Prompting](https://arxiv.org/abs/2310.06117)
+- [Least-to-Most Prompting](https://arxiv.org/abs/2205.10625)
+- [Tree of Thoughts](https://arxiv.org/abs/2305.10601)
+- [Program of Thoughts](https://arxiv.org/abs/2211.12588)

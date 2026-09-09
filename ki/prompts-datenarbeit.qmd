@@ -1,0 +1,267 @@
+---
+title: "Prompts für die Datenarbeit"
+description: "Fertige Prompts für Import, Aufbereitung, Analyse, Grafik und Bericht."
+categories: ["Prompting", "Sprachmodelle", "Data Wrangling", "Interpretation"]
+seitentyp: werkzeug
+stand: entwurf
+order: 60
+---
+
+## Kernideen
+
+- Fertige Prompts sparen die immer gleiche Tipparbeit, nicht das Denken
+- Jeder Prompt hier nennt Zielformat und Randbedingungen, damit die Antwort brauchbar ist
+- Wo gerechnet wird, verlangt der Prompt Code statt Zahlen
+- Platzhalter in eckigen Klammern werden vor dem Absenden ersetzt
+- Kein Prompt ersetzt die Prüfung des Ergebnisses
+
+## Erklärung
+
+::: {.note-box}
+Die Blöcke lassen sich über das Symbol oben rechts kopieren. Sie sind so
+gebaut, dass sie in jedem Chatfenster funktionieren; die Muster dahinter stehen
+unter [grundlegende Patterns](patterns-grundlagen.qmd),
+[denkführende Patterns](patterns-denkfuehrung.qmd) und
+[prüfende Patterns](patterns-pruefung.qmd).
+:::
+
+Eine Vorbemerkung, die für alles Folgende gilt: Sprachmodelle sind gut darin,
+Code und Formulierungen vorzuschlagen, und schlecht darin, Zahlen zu berechnen.
+Deshalb verlangen die Prompts hier durchgehend Code, den man selbst ausführt,
+sobald es um Werte geht. Was dabei herauskommt, wird geprüft wie fremder Code
+auch.
+
+### Daten sichten und aufbereiten
+
+**Erster Überblick über einen unbekannten Datensatz**
+
+```text
+Ich habe eine Tabelle mit den Spalten:
+[Spaltenname: Typ, Beispielwert; eine Zeile je Spalte]
+
+Schlage einen Ablauf für die erste Sichtung vor: welche Kennzahlen, welche
+Grafiken, welche Plausibilitätsprüfungen, in welcher Reihenfolge.
+
+Gib den Ablauf als nummerierte Liste aus und danach den Code dafür, einmal in R
+mit dplyr/ggplot2 und einmal in Python mit pandas/matplotlib. Keine
+Ergebniszahlen, die entstehen bei mir.
+```
+
+**Datenqualität prüfen**
+
+```text
+Schreibe Code, der die folgenden Prüfungen durchführt und je Prüfung eine Zeile
+ausgibt: Zeilenzahl, Spaltentypen, fehlende Werte je Spalte, Duplikate nach
+[Schlüsselspalte], Wertebereiche der numerischen Spalten, unerwartete
+Kategorien in [kategoriale Spalte].
+
+Sprache: [R oder Python]. Kommentiere jede Prüfung mit einem Satz, warum sie
+sinnvoll ist.
+```
+
+**Umformung beschreiben lassen**
+
+```text
+Meine Tabelle liegt im [breiten/langen] Format vor:
+[Spalten und zwei Beispielzeilen]
+
+Ich brauche sie im [langen/breiten] Format mit [Zielspalten].
+
+Gib den Code in R (tidyr) und Python (pandas). Erkläre in zwei Sätzen, was mit
+den Zeilen passiert, damit ich das Ergebnis prüfen kann.
+```
+
+### Analyse und Interpretation
+
+**Methode wählen lassen**
+
+```text
+Fragestellung: [Frage]
+Zielvariable: [Name, Skalenniveau]
+Einflussgrössen: [Namen, Skalenniveaus]
+Stichprobenumfang: [n]
+Besonderheiten: [gepaart, zensiert, Zeitreihe, geschachtelt, nichts davon]
+
+Nenne das passende Verfahren, zwei Alternativen und den Grund, warum sie
+ausscheiden. Nenne die Voraussetzungen des gewählten Verfahrens und wie ich
+jede davon prüfe. Noch kein Code.
+```
+
+**Output erklären lassen**
+
+```text
+Hier ist der vollständige Output einer [Methode] aus [R/Python].
+
+Erkläre jeden Wert in einer Tabelle mit den Spalten
+"Grösse | Was sie sagt | Typische Fehldeutung".
+Lass keinen Wert aus, auch nicht Freiheitsgrade oder Konvergenzmeldungen.
+Sage danach in drei Sätzen, was das Ergebnis fachlich bedeutet.
+
+Output:
+[Output einfügen]
+```
+
+**Ergebnissatz formulieren lassen**
+
+```text
+Formuliere aus diesen Werten einen Ergebnissatz, wie er in einem Bericht
+stehen würde: Schätzwert mit Einheit, Konfidenzintervall, Teststatistik mit
+Freiheitsgraden, p-Wert, Effektstärke, n.
+
+Keine Wertung, keine Empfehlung, ein bis zwei Sätze.
+
+Werte: [Werte]
+```
+
+**Eine Interpretation gegenlesen lassen**
+
+```text
+Prüfe meine Interpretation gegen den Output. Achte auf: falsch benannte Werte,
+Signifikanz als Relevanz gedeutet, fehlende Einschränkungen, Kausalaussagen
+ohne Grundlage, Aussagen über die Nullhypothese.
+
+Nenne nur die Abweichungen, mit Fundstelle.
+
+Output: [Output]
+Interpretation: [Text]
+```
+
+### Code
+
+**Code erklären lassen**
+
+```text
+Erkläre den folgenden Code Zeile für Zeile in einer Tabelle
+"Zeile | Was passiert | Warum das nötig ist".
+Nenne am Ende die zwei Stellen, an denen er bei ungewöhnlichen Daten bricht.
+
+Code: [Code]
+```
+
+**Von einer Sprache in die andere übersetzen**
+
+```text
+Übersetze den folgenden [R/Python]-Code nach [Python/R]. Verwende
+[pandas/dplyr] idiomatisch, keine Zeile-für-Zeile-Übersetzung. Nenne
+anschliessend die Stellen, an denen sich das Verhalten unterscheidet, etwa beim
+Umgang mit fehlenden Werten oder bei der Sortierung.
+
+Code: [Code]
+```
+
+**Einen Fehler eingrenzen**
+
+```text
+Der Code bricht mit dieser Meldung ab:
+[Fehlermeldung]
+
+Code: [Code]
+
+Nenne die drei wahrscheinlichsten Ursachen, geordnet nach Wahrscheinlichkeit,
+und zu jeder einen Test, mit dem ich sie in einer Minute prüfe. Ändere den Code
+noch nicht.
+```
+
+**Tests vorschlagen lassen**
+
+```text
+Schlage Testfälle für die folgende Funktion vor: Normalfall, Randfälle, leere
+Eingabe, fehlende Werte, falscher Typ. Gib die Tests als lauffähigen Code aus,
+je Test eine Zeile Kommentar zum erwarteten Verhalten.
+
+Funktion: [Code]
+```
+
+### Grafik
+
+**Diagrammtyp wählen lassen**
+
+```text
+Ich will zeigen: [Botschaft in einem Satz].
+Daten: [Variablen mit Skalenniveau, Anzahl Beobachtungen, Anzahl Gruppen].
+Publikum: [wer, mit welchem Vorwissen].
+
+Schlage zwei Darstellungen vor, nenne je Vor- und Nachteil, und empfiehl eine.
+Danach der Code in ggplot2 und matplotlib, mit Achsenbeschriftung und Titel,
+aber ohne Farbspielereien.
+```
+
+**Eine Grafik verbessern lassen**
+
+```text
+Hier ist der Code meiner Grafik. Prüfe sie auf: fehlende oder unklare
+Achsenbeschriftung, Einheiten, abgeschnittene Achsen, zu viele Farben,
+Lesbarkeit bei Schwarz-Weiss-Druck, Barrierefreiheit bei Farbfehlsichtigkeit.
+
+Nenne je Fund die Zeile und die Korrektur. Gib danach den überarbeiteten Code
+aus.
+
+Code: [Code]
+```
+
+### Bericht und Kommunikation
+
+**Ergebnisse für ein anderes Publikum übersetzen**
+
+```text
+Schreibe den folgenden Ergebnisteil für [Publikum] um. Erhalte alle Zahlen und
+Einschränkungen. Ersetze Fachbegriffe, wo möglich, ohne die Aussage zu
+verändern; wo nicht möglich, erkläre sie in einem Halbsatz.
+
+Höchstens [n] Wörter, sachlicher Ton, keine Empfehlungen.
+
+Text: [Text]
+```
+
+**Eine Struktur für den Bericht entwerfen lassen**
+
+```text
+Ich habe [Analysen] gerechnet und will darüber berichten. Adressat ist
+[Publikum], der Umfang [Seitenzahl].
+
+Entwirf eine Gliederung mit Abschnitten und je zwei Stichworten, was hinein
+gehört. Ordne meine Analysen den Abschnitten zu und nenne, was für die
+Fragestellung fehlt.
+```
+
+**Die eigene Zusammenfassung gegen das Material prüfen**
+
+```text
+Prüfe, ob meine Zusammenfassung zum Material passt:
+- Steht jede Zahl so im Material?
+- Fehlt eine Einschränkung?
+- Steht etwas darin, das im Material nicht steht?
+
+Liste nur Abweichungen auf, mit Fundstelle.
+
+Material: [Text]
+Zusammenfassung: [Text]
+```
+
+## Typische Aufgaben
+
+Die Prompts oben decken den Ablauf eines Datenprojekts ab. Zwei Hinweise für
+den Einsatz:
+
+**Platzhalter vollständig ersetzen.** Bleibt eine eckige Klammer stehen, füllt
+das Modell sie mit einer Annahme, und diese Annahme steht nirgends. Der
+wirksamste Zusatz gegen dieses Problem, angehängt an jeden Prompt:
+
+```text
+Wenn dir Angaben fehlen, frage nach, statt zu raten. Liste am Ende unter
+"Annahmen" alles auf, was du angenommen hast.
+```
+
+**Zahlen nie übernehmen, ohne sie selbst erzeugt zu haben.** Wenn eine Antwort
+konkrete Werte enthält, die nicht aus ausgeführtem Code stammen, gilt der
+Standardsatz:
+
+```text
+Gib keine Ergebniszahlen an. Gib nur den Code aus, mit dem ich sie selbst
+erzeuge.
+```
+
+## Verlinkte Ressourcen
+
+- [The Prompt Report](https://arxiv.org/abs/2406.06608)
+- [Program of Thoughts: Code als Rechenweg](https://arxiv.org/abs/2211.12588)

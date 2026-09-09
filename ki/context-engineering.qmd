@@ -1,0 +1,146 @@
+---
+title: "Vom Prompt zum Kontext"
+description: "Wenn die Formulierung nicht mehr reicht: Kontext, Wissensanbindung und Agenten."
+categories: ["Sprachmodelle", "Prompting", "Reproduzierbarkeit"]
+seitentyp: konzept
+stand: entwurf
+order: 80
+---
+
+## Kernideen
+
+- Ein guter Prompt in schlechtem Kontext schlägt selten einen einfachen Prompt in gutem Kontext
+- Vier Stufen: Prompt, Wissensanbindung, Kontextgestaltung, arbeitsteilige Agenten
+- Wissensanbindung ersetzt Raten durch Nachschlagen in eigenen Dokumenten
+- Kontextgestaltung legt fest, was das Modell weiss, bevor das Gespräch beginnt
+- Mehr Kontext ist nicht besser; ausgewählter Kontext ist besser
+- Jede Stufe kostet Aufbau und lohnt sich erst ab wiederkehrender Nutzung
+
+## Erklärung
+
+::: {.note-box}
+Diese Seite ordnet ein, wann Prompt-Arbeit an ihre Grenze kommt. Die Patterns
+selbst stehen unter [grundlegende](patterns-grundlagen.qmd),
+[denkführende](patterns-denkfuehrung.qmd) und
+[prüfende Patterns](patterns-pruefung.qmd); warum ein Modell überhaupt Kontext
+braucht, erklärt [Modelle und ihre Grenzen](modelle-und-grenzen.qmd).
+:::
+
+### Die vier Stufen
+
+| Stufe | Was gestaltet wird | Typischer Auslöser | Aufwand |
+|---|---|---|---|
+| Prompting | Die einzelne Eingabe: Formulierung, Struktur, Muster | Die Antwort trifft nicht das Gewünschte | Minuten |
+| Wissensanbindung | Zugriff auf eigene Dokumente, aus denen zitiert wird | Das Modell kennt die Sache nicht oder erfindet Details | Tage |
+| Kontextgestaltung | Was gilt, bevor das Gespräch beginnt: Regeln, Beispiele, Daten, Werkzeuge | Dieselbe Aufgabe kommt regelmässig wieder | Tage bis Wochen |
+| Agenten | Mehrere spezialisierte Rollen, die arbeitsteilig zusammenwirken | Die Aufgabe zerfällt in Teilaufgaben mit eigenen Werkzeugen | Wochen |
+
+Die Reihenfolge ist auch eine Reihenfolge der Fehlersuche: Wer bei einer
+unbefriedigenden Antwort zuerst das Modell wechselt, überspringt die drei
+billigeren Stellschrauben.
+
+### Wann Prompting nicht mehr reicht
+
+Drei Symptome zeigen, dass die Formulierung nicht mehr das Problem ist:
+
+- **Das Modell erfindet Details**, die in einem Dokument stehen, das es nicht
+  hat. Dann fehlt Wissensanbindung, keine bessere Formulierung.
+- **Dieselben Vorgaben werden in jedem Gespräch wiederholt.** Dann gehören sie
+  in den Kontext, nicht in den Prompt.
+- **Die Aufgabe braucht Werkzeuge**, etwa Rechnen, Suchen oder Dateizugriff.
+  Dann entscheidet die Anbindung, nicht der Text.
+
+### Wissensanbindung
+
+Statt sich auf das Trainingswissen zu verlassen, bekommt das Modell die
+relevanten Ausschnitte eigener Dokumente in den Kontext gelegt und antwortet
+daraus. Der Effekt ist doppelt: Die Antwort wird belegbar, und Halluzination
+wird unwahrscheinlicher, weil die Frage im Material beantwortbar ist.
+
+In kleinem Massstab braucht es dafür keine Infrastruktur, sondern nur Disziplin:
+den einschlägigen Abschnitt selbst mitgeben und die Antwort darauf beschränken.
+
+```text
+Beantworte die Frage ausschliesslich auf Basis des folgenden Materials. Zitiere
+zu jeder Aussage die Stelle. Was das Material nicht hergibt, beantwortest du
+mit "steht nicht im Material".
+
+Material:
+[Auszüge]
+
+Frage: [Frage]
+```
+
+Ab einer gewissen Menge an Dokumenten übernimmt das eine Suche, die zur Frage
+die passenden Ausschnitte heraussucht und automatisch in den Kontext legt. Das
+ist der Kern der abrufgestützten Generierung.
+
+### Kontextgestaltung
+
+Hier wird festgelegt, was dauerhaft gilt: die Rolle, der Ton, das Zielformat,
+die Fachbegriffe, die verfügbaren Werkzeuge, die Beispiele für gute Antworten.
+Bei wiederkehrenden Aufgaben ersetzt das die immer gleiche Wiederholung im
+Prompt.
+
+Was in eine solche Dauervorgabe gehört:
+
+- Wer antwortet und für wen
+- Welches Format Antworten haben
+- Welche Quellen gelten und welche nicht
+- Was das Modell tun soll, wenn Angaben fehlen
+- Ein bis zwei Beispiele für eine gute Antwort
+
+Was nicht hineingehört: alles, was nur für einen Einzelfall gilt, und alles, was
+sich häufig ändert. Beides gehört in den jeweiligen Prompt, sonst veraltet die
+Dauervorgabe unbemerkt.
+
+### Warum mehr Kontext nicht besser ist
+
+Der Kontext ist begrenzt, und die Aufmerksamkeit verteilt sich darin. Zwei
+Effekte sind praktisch relevant: Angaben in der Mitte langer Eingaben werden
+schwächer berücksichtigt als solche am Anfang und am Ende, und Nebensächliches
+verdünnt das Wesentliche. Daraus folgt eine einfache Regel: auswählen statt
+anhängen, und wichtige Vorgaben ans Ende stellen oder wiederholen.
+
+### Agenten
+
+Die vierte Stufe verteilt eine Aufgabe auf mehrere spezialisierte Rollen mit
+eigenen Werkzeugen: eine plant, eine sucht, eine rechnet, eine prüft. Das lohnt
+sich, wenn die Teilaufgaben wirklich verschieden sind und jede für sich prüfbar
+bleibt. Es lohnt sich nicht als Selbstzweck: Jede zusätzliche Stufe erzeugt eine
+weitere Fehlerquelle, und Fehler, die früh entstehen, werden später mit
+Selbstvertrauen weitergereicht.
+
+Für die Datenarbeit heisst das konkret: Der Nutzen liegt dort, wo ein Schritt
+ein Werkzeug braucht, das das Modell nicht selbst ist, also beim Rechnen, beim
+Datenzugriff und beim Ausführen von Code.
+
+::: {.quiz}
+Ein Modell erfindet regelmässig Details über eine interne Richtlinie. Was ist
+die richtige Massnahme?
+
+- [ ] Den Prompt präziser formulieren ~ Präzision hilft nicht gegen fehlendes
+      Wissen; die Antwort wird nur präziser erfunden.
+- [x] Die Richtlinie in den Kontext geben und die Antwort darauf beschränken ~
+      Richtig. Was das Modell nicht kennt, muss ins Material. Zusätzlich gehört
+      die Anweisung dazu, fehlende Angaben als fehlend zu benennen.
+- [ ] Ein grösseres Modell verwenden ~ Es kennt die interne Richtlinie ebenso
+      wenig.
+:::
+
+::: {.quiz}
+Dieselben fünf Vorgaben werden in jedem Gespräch neu getippt. Was folgt daraus?
+
+- [x] Sie gehören in eine Dauervorgabe, nicht in den Prompt ~ Richtig. Das spart
+      Tipparbeit und macht die Vorgaben einheitlich. Fallbezogenes bleibt im
+      Prompt.
+- [ ] Man sollte sie kürzen ~ Kürzen ändert nichts an der Wiederholung.
+- [ ] Man sollte sie ans Ende stellen ~ Das hilft der Gewichtung, löst die
+      Wiederholung aber nicht.
+:::
+
+## Verlinkte Ressourcen
+
+- [Retrieval-Augmented Generation](https://arxiv.org/abs/2005.11401)
+- [Lost in the Middle: wie Position im Kontext wirkt](https://arxiv.org/abs/2307.03172)
+- [Toolformer: Modelle, die Werkzeuge aufrufen](https://arxiv.org/abs/2302.04761)

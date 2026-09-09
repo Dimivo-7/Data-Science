@@ -549,6 +549,7 @@ Tags beantworten "Wo habe ich das schon mal gehabt?". Regeln:
 | Multivariat | `Dimensionsreduktion`, `Faktorenanalyse`, `Clustering`, `Distanzmasse` |
 | Modellgüte | `Modelldiagnostik`, `Modellvalidierung`, `Interpretation` |
 | Visualisierung | `Visualisierung`, `Wahrnehmung`, `Farbe`, `Dashboards`, `Interaktivität`, `Storytelling`, `Kommunikation`, `Visualisierungsethik` |
+| KI | `Prompting`, `Sprachmodelle` |
 | Betrieb | `Deployment` |
 
 Der Tag `Interpretation` steht auf jeder Methodenseite.

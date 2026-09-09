@@ -1,0 +1,184 @@
+---
+title: "Bausteine eines Prompts"
+description: "Rolle, Aufgabe, Kontext, Format und Randbedingungen, mit Vorlage zum Kopieren."
+categories: ["Prompting", "Sprachmodelle", "Kommunikation"]
+seitentyp: werkzeug
+stand: entwurf
+order: 20
+---
+
+## Kernideen
+
+- Fünf Bausteine decken fast jeden Prompt ab: Rolle, Aufgabe, Kontext, Format, Randbedingungen
+- Die Aufgabe ist der einzige Pflichtteil, alles andere ist Präzisierung
+- Das Zielformat vorzugeben spart die meiste Nacharbeit
+- Was nicht drinsteht, wird vom Modell geraten, nicht erfragt
+- Beispiele wirken stärker als Adjektive: ein Muster schlägt "professionell"
+- Ein Prompt ist ein Entwurf; die zweite Fassung ist fast immer die bessere
+
+## Erklärung
+
+::: {.note-box}
+Welche Aufgabe überhaupt welches Vorgehen braucht, klärt
+[Wann was verwenden](wann-was.qmd). Diese Seite behandelt den Aufbau der
+Eingabe selbst; die Muster darüber hinaus stehen unter
+[grundlegende Patterns](patterns-grundlagen.qmd).
+:::
+
+### Die fünf Bausteine
+
+| Baustein | Beantwortet | Beispiel |
+|---|---|---|
+| Rolle | Aus welcher Perspektive? | "Du bist Reviewer für statistische Auswertungen." |
+| Aufgabe | Was genau soll getan werden? | "Prüfe die Interpretation dieses Regressionsoutputs." |
+| Kontext | Was muss man wissen? | Der Output selbst, das Fachgebiet, die Fragestellung |
+| Format | Wie soll das Ergebnis aussehen? | "Tabelle mit Spalten Grösse, Bedeutung, Falle" |
+| Randbedingungen | Was ist verboten oder gefordert? | "Höchstens 200 Wörter, keine Empfehlungen, Schweizer Rechtschreibung" |
+
+Die Reihenfolge ist zweitrangig, die Vollständigkeit nicht. Jeder weggelassene
+Baustein wird vom Modell mit einer Annahme gefüllt, und diese Annahme steht
+nirgends.
+
+### Vorlage zum Kopieren
+
+```text
+Rolle: Du bist [Rolle mit Erfahrungshintergrund].
+
+Aufgabe: [Was genau getan werden soll, ein Satz im Imperativ.]
+
+Kontext:
+[Material, Daten, Vorgeschichte. Lieber zu viel Konkretes als zu viele
+Adjektive.]
+
+Format:
+[Aufbau der Antwort: Tabelle, Liste, Fliesstext, Länge, Sprache.]
+
+Randbedingungen:
+- [Was nicht vorkommen soll]
+- [Was zwingend vorkommen muss]
+- Wenn dir Angaben fehlen, frage nach, statt zu raten.
+```
+
+Der letzte Punkt ist der wirksamste einzelne Satz in dieser Vorlage. Ohne ihn
+füllt das Modell Lücken selbst und zwar unsichtbar.
+
+### Präzise statt höflich
+
+Adjektive wie "professionell", "ausführlich" oder "kritisch" sind schwach, weil
+sie für jedes Fachgebiet etwas anderes bedeuten. Ersetzt man sie durch eine
+messbare Vorgabe, wird die Antwort brauchbar:
+
+| Statt | Besser |
+|---|---|
+| "ausführlich" | "je Punkt zwei bis drei Sätze, insgesamt höchstens 400 Wörter" |
+| "kritisch" | "nenne zu jeder These das stärkste Gegenargument" |
+| "verständlich" | "für jemanden, der Regression kennt, aber keine Survival-Analyse" |
+| "professionell" | "Ton wie ein Prüfbericht: Feststellung, Beleg, Konsequenz" |
+| "kurz" | "höchstens fünf Aufzählungspunkte, kein Einleitungssatz" |
+
+### Beispiele wirken stärker als Beschreibungen
+
+Ein einziges Beispiel für das gewünschte Ergebnis ersetzt einen Absatz voller
+Beschreibungen. Das ist der Kern des
+[Few-Shot-Patterns](patterns-grundlagen.qmd):
+
+```text
+Formatiere die folgenden Befunde nach diesem Muster:
+
+Beispiel:
+Eingabe: Fläche wirkt stark, p sehr klein, Intervall 10.8 bis 13.1
+Ausgabe: Pro Quadratmeter steigt die Miete um 12.0 Einheiten
+         (95-Prozent-Intervall 10.8 bis 13.1, p < 0.001).
+
+Jetzt für: [eigene Befunde]
+```
+
+### Was in den Kontext gehört, und was nicht
+
+Sprachmodelle reagieren empfindlich auf Ballast. Zu viel Nebensächliches
+verschlechtert die Antwort messbar, weil die Aufmerksamkeit sich verteilt. Zwei
+Regeln:
+
+- Alles hinein, was zur Aufgabe gehört: Daten, Auszüge, Vorgaben, Zielgruppe.
+- Alles heraus, was nur Vorgeschichte ist: frühere Versuche, Meinungen,
+  Wiederholungen.
+
+Bei langen Eingaben lohnt sich ein vorgeschalteter Filterschritt, siehe
+[System-2 Attention](patterns-grundlagen.qmd).
+
+### Iterieren statt perfektionieren
+
+Der erste Prompt ist ein Entwurf. Statt ihn lange zu verfeinern, ist es
+wirksamer, die Antwort zu lesen und gezielt nachzusteuern:
+
+```text
+Die Antwort ist zu allgemein. Bleibe bei denselben Punkten, aber:
+- ersetze jede allgemeine Aussage durch eine konkrete Zahl aus dem Material
+- streiche alles, was ohne Kenntnis meiner Daten geschrieben werden könnte
+- nenne am Ende, welche Angaben dir für eine bessere Antwort fehlen
+```
+
+::: {.quiz}
+Ein Prompt lautet: "Schreib mir eine professionelle Zusammenfassung dieser
+Auswertung." Was fehlt vor allem?
+
+- [ ] Die Rolle ~ Sie hilft, ist aber hier nicht das Hauptproblem.
+- [x] Format, Länge und Zielgruppe ~ Richtig. "Professionell" ist nicht
+      überprüfbar. Ohne Angabe zu Aufbau, Umfang und Publikum entscheidet das
+      Modell selbst, und die Nacharbeit ist grösser als die eingesparte
+      Tipparbeit.
+- [ ] Nichts, der Auftrag ist klar ~ Er ist kurz, aber nicht klar: fünf
+      verschiedene Antworten würden ihn alle erfüllen.
+:::
+
+## Typische Aufgaben
+
+**Einen unklaren Auftrag klären lassen, bevor gearbeitet wird**
+
+```text
+Bevor du antwortest: Stelle mir die drei Fragen, deren Antworten dein Ergebnis
+am stärksten verändern würden. Warte auf meine Antworten.
+```
+
+**Ein Format erzwingen**
+
+```text
+Antworte ausschliesslich als Markdown-Tabelle mit den Spalten
+"Grösse | Bedeutung | Typische Fehldeutung". Keine Einleitung, kein Fazit.
+```
+
+**Länge und Ton festlegen**
+
+```text
+Höchstens 150 Wörter. Sachlicher Ton, keine Werbesprache, keine Aufzählung von
+Vorteilen. Schweizer Rechtschreibung, also ss statt ß. Keine Gedankenstriche.
+```
+
+**Annahmen sichtbar machen**
+
+```text
+Liste am Ende unter der Überschrift "Annahmen" alles auf, was du angenommen
+hast, weil es im Material nicht stand.
+```
+
+**Eine Antwort auf das Wesentliche kürzen**
+
+```text
+Kürze den folgenden Text auf die Hälfte. Erhalte alle Zahlen und alle
+Einschränkungen. Streiche zuerst Wiederholungen, dann Beispiele, dann
+Adjektive.
+```
+
+**Sprache und Terminologie festlegen**
+
+```text
+Antworte auf Deutsch. Fachbegriffe bleiben englisch, wenn sie im Fachgebiet
+englisch üblich sind (zum Beispiel Confounder, Overfitting). Erkläre jeden
+Fachbegriff beim ersten Vorkommen in einem Halbsatz.
+```
+
+## Verlinkte Ressourcen
+
+- [The Prompt Report: systematische Übersicht](https://arxiv.org/abs/2406.06608)
+- [Anthropic: Prompt Engineering Guide](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview)
+- [OpenAI: Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering)

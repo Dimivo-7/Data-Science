@@ -1,0 +1,216 @@
+---
+title: "Prüfende Patterns"
+description: "Antworten gegenprüfen, mehrfach rechnen lassen und gezielt überarbeiten."
+categories: ["Prompting", "Sprachmodelle", "Interpretation"]
+seitentyp: werkzeug
+stand: entwurf
+order: 50
+---
+
+## Kernideen
+
+- Dieselbe Frage mehrfach zu stellen deckt Instabilität auf
+- Umformulierte Fragen prüfen, ob die Antwort an der Formulierung hängt
+- Modelle können ihre eigenen Antworten brauchbar einschätzen, aber nicht garantieren
+- Gezielte Überarbeitung schlägt die Bitte, es "besser" zu machen
+- Selbstprüfung ersetzt keine externe Prüfung, sie sortiert nur vor
+- Was niemand nachprüfen kann, bleibt unbestätigt, egal wie sicher es klingt
+
+## Erklärung
+
+::: {.note-box}
+Diese Patterns lohnen sich, wenn das Ergebnis weiterverwendet wird: in einem
+Bericht, in Code, in einer Entscheidung. Für einen Umformulierungsauftrag sind
+sie überflüssig, siehe [Wann was verwenden](wann-was.qmd).
+:::
+
+### Mehrfach antworten lassen und vergleichen
+
+Bei Aufgaben mit einer eindeutigen Lösung ist Übereinstimmung über mehrere
+unabhängige Durchläufe ein brauchbares Signal. Weichen die Antworten
+voneinander ab, ist nicht die Antwort das Problem, sondern die Frage.
+
+```text
+Beantworte die folgende Frage dreimal unabhängig voneinander, ohne dich auf
+die vorherigen Antworten zu beziehen. Vergleiche die drei Antworten am Ende:
+Worin stimmen sie überein, worin nicht, und was folgt daraus für die
+Verlässlichkeit?
+
+Frage: [Frage]
+```
+
+### Die Frage umformulieren und erneut stellen
+
+Hängt die Antwort an der Formulierung, ist sie nicht belastbar. Dieses Muster
+macht das sichtbar, ohne dass man selbst mehrere Varianten schreiben muss.
+
+```text
+Formuliere die folgende Frage in drei deutlich verschiedenen Fassungen.
+Beantworte jede Fassung kurz. Sage mir am Ende, ob die Antworten sich
+unterscheiden, und woran das liegt.
+
+Frage: [Frage]
+```
+
+### Die eigene Antwort beurteilen lassen
+
+Frage und Antwort werden erneut vorgelegt, mit der Bitte um Beurteilung. Das
+findet Widersprüche und offensichtliche Fehler zuverlässig; es findet nicht,
+was das Modell auch beim ersten Mal nicht wusste.
+
+```text
+Hier sind eine Frage und eine Antwort darauf.
+
+Beurteile: Ist die Antwort korrekt, vollständig und konsistent mit der Frage?
+Falls nein: Woran genau scheitert sie? Antworte in drei Punkten: Was stimmt,
+was ist unsicher, was ist falsch.
+
+Frage: [Frage]
+Antwort: [Antwort]
+```
+
+### Gezielt überarbeiten lassen
+
+Die Bitte, etwas "besser" zu machen, führt zu Umformulierungen. Wirksam ist eine
+Überarbeitung entlang benannter Kriterien, in mehreren Runden.
+
+```text
+Überarbeite den folgenden Text in drei Runden und zeige nach jeder Runde das
+Ergebnis:
+
+Runde 1: Streiche alles, was ohne Kenntnis meiner Daten geschrieben werden
+         könnte.
+Runde 2: Ersetze jede allgemeine Aussage durch eine konkrete aus dem Material.
+Runde 3: Kürze auf höchstens [n] Wörter, ohne Zahlen oder Einschränkungen zu
+         verlieren.
+
+Text: [Text]
+```
+
+### Nach Gegenargumenten fragen
+
+Die produktivste Prüffrage ist nicht "stimmt das", sondern "was spricht
+dagegen". Modelle neigen dazu, der eingeschlagenen Richtung zu folgen; die
+Aufforderung dreht diese Neigung um.
+
+```text
+Nenne zu meiner folgenden Schlussfolgerung die drei stärksten Gegenargumente
+und die Bedingung, unter der die Schlussfolgerung falsch wäre. Verteidige sie
+nicht.
+
+Schlussfolgerung: [Aussage]
+```
+
+### Sicherheit ausweisen lassen
+
+Modelle formulieren Falsches genauso flüssig wie Richtiges. Eine ausdrückliche
+Einschätzung je Aussage macht den Unterschied wenigstens sichtbar.
+
+```text
+Kennzeichne jede Aussage deiner Antwort mit einer von drei Stufen:
+[gesichert] für Allgemeinwissen des Fachgebiets,
+[unsicher] für Aussagen, die du nicht belegen kannst,
+[Annahme] für alles, was du aus meiner Frage geschlossen hast.
+
+Frage: [Frage]
+```
+
+### Was Selbstprüfung nicht leistet
+
+Die Grenze ist klar: Ein Modell kann Widersprüche in seiner Antwort finden, aber
+keine Wissenslücke schliessen, von der es nichts weiss. Deshalb gilt für jede
+Aussage, die eine Entscheidung trägt:
+
+- Zahlen und Rechnungen selbst nachrechnen, am besten in Code.
+- Fachliche Aussagen an einer Quelle prüfen, nicht an einer zweiten Antwort.
+- Code ausführen und testen, nicht lesen und für gut befinden.
+- Zitate und Verweise für erfunden halten, bis sie geöffnet wurden.
+
+::: {.quiz}
+Dieselbe Frage liefert in drei Durchläufen drei verschiedene Antworten. Was ist
+der richtige Schluss?
+
+- [ ] Das Modell ist unbrauchbar ~ Es zeigt gerade etwas Nützliches.
+- [x] Die Frage ist unterbestimmt oder die Aufgabe zu schwer ~ Richtig.
+      Schwankende Antworten sind ein Signal über die Frage, nicht nur über das
+      Modell. Der nächste Schritt ist Präzisieren oder Zerlegen, nicht ein
+      vierter Versuch.
+- [ ] Man nimmt die längste Antwort ~ Länge sagt nichts über Richtigkeit.
+:::
+
+::: {.quiz}
+Eine Antwort enthält drei Literaturverweise mit Titel, Autoren und Jahr. Was
+ist zu tun?
+
+- [ ] Übernehmen, die Angaben sind detailliert ~ Detailtreue ist bei erfundenen
+      Verweisen die Regel, nicht die Ausnahme.
+- [x] Jeden Verweis öffnen, bevor er zitiert wird ~ Richtig. Erfundene Quellen
+      sehen echten zum Verwechseln ähnlich, inklusive plausibler
+      Seitenzahlen. Was sich nicht öffnen lässt, wird nicht zitiert.
+- [ ] Das Modell fragen, ob die Verweise echt sind ~ Die Selbstauskunft ist hier
+      wertlos, weil das Modell die Quelle ebenfalls nicht nachschlagen kann.
+:::
+
+## Typische Aufgaben
+
+**Eine statistische Interpretation gegenlesen lassen**
+
+```text
+Hier ist ein Modelloutput und meine Interpretation dazu.
+
+Prüfe in dieser Reihenfolge:
+1. Wird ein Wert falsch benannt?
+2. Wird Signifikanz mit Relevanz verwechselt?
+3. Fehlt eine Einschränkung, die aus dem Output folgt?
+4. Steht eine Kausalaussage da, die die Daten nicht tragen?
+
+Antworte je Punkt mit "in Ordnung" oder mit der konkreten Fundstelle.
+
+Output: [Output]
+Interpretation: [Text]
+```
+
+**Code prüfen lassen, ohne ihn umschreiben zu lassen**
+
+```text
+Prüfe den folgenden Code auf: Randfälle, stille Typumwandlungen, Umgang mit
+fehlenden Werten, und Stellen, an denen das Ergebnis von der Reihenfolge der
+Daten abhängt.
+
+Schreibe den Code nicht um. Nenne je Fund: Zeile, Problem, Testfall, mit dem
+ich es sehe.
+
+Code: [Code]
+```
+
+**Einen Entwurf auf KI-Muster durchsehen**
+
+```text
+Prüfe den Text auf die typischen Schreibmuster maschinell erzeugter Entwürfe:
+Echo-Verneinung, wiederholte Satzanfänge, Häufung von Gedankenstrichen,
+Kurzsatzketten, Ankündigungssätze, allgemeine Schlussfolgerungen.
+
+Markiere jede Fundstelle und schlage eine konkrete Umformulierung vor.
+
+Text: [Text]
+```
+
+**Vor dem Absenden: die Ergebnisprüfung**
+
+```text
+Prüfe meine Zusammenfassung gegen das Ausgangsmaterial:
+- Steht jede Zahl so im Material?
+- Ist eine Einschränkung weggefallen?
+- Steht etwas in der Zusammenfassung, das im Material nicht steht?
+
+Liste nur die Abweichungen auf.
+
+Material: [Text]
+Zusammenfassung: [Text]
+```
+
+## Verlinkte Ressourcen
+
+- [Self-Consistency improves Chain-of-Thought](https://arxiv.org/abs/2203.11171)
+- [Self-Refine: Iterative Refinement with Self-Feedback](https://arxiv.org/abs/2303.17651)
+- [Language Models (Mostly) Know What They Know](https://arxiv.org/abs/2207.05221)

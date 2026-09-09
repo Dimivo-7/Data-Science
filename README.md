@@ -17,6 +17,7 @@ daten/                    Import, Tidy Data, Wrangling, Qualität, SQL
 werkzeuge/                Shell, Git, Container
 statistik/                Grundlagen, Wahrscheinlichkeit, Inferenz, Tests,
                           Regression, Überlebenszeit, Multivariat, Zeitreihen
+ki/                       Prompts, Patterns, Grenzen von Sprachmodellen
 visualisierung/           Wahrnehmung, Diagrammwahl, ggplot2, matplotlib, mehr
 referenz/                 Befehlsreferenz R und Python
 _templates/karten.ejs     Vorlage, aus der die Karten der Übersichten entstehen

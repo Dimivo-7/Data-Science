@@ -1,0 +1,138 @@
+---
+title: "Modelle und ihre Grenzen"
+description: "Wie Sprachmodelle antworten, welche Kategorien es gibt und wo sie zuverlässig scheitern."
+categories: ["Sprachmodelle", "Prompting", "Interpretation"]
+seitentyp: konzept
+stand: entwurf
+order: 70
+---
+
+## Kernideen
+
+- Ein Sprachmodell setzt Text fort; es schlägt nichts nach und rechnet nicht
+- Sprachliche Sicherheit sagt nichts über inhaltliche Richtigkeit
+- Halluzination ist keine Panne, sondern die Kehrseite des Funktionsprinzips
+- Vorurteile aus den Trainingsdaten wirken weiter, auch unbemerkt
+- Modellkategorien unterscheiden sich in Kosten, Wartezeit und Art der Aufgabe
+- Was das Modell nicht weiss, muss in den Kontext, nicht in den Prompt
+
+## Erklärung
+
+::: {.note-box}
+Diese Seite erklärt, warum die Regeln auf den Prompt-Seiten so lauten, wie sie
+lauten. Wer nur wissen will, was wann zu tun ist, findet das unter
+[Wann was verwenden](wann-was.qmd).
+:::
+
+### Was beim Antworten passiert
+
+Ein Sprachmodell wählt Wort für Wort die jeweils wahrscheinlichste Fortsetzung,
+gemessen an dem, was es in seinen Trainingsdaten gesehen hat. Es hat keinen
+Zugriff auf eine Datenbank, keine innere Prüfinstanz und kein Wissen darüber,
+was es nicht weiss. Alles Weitere folgt aus diesem einen Punkt:
+
+- **Flüssigkeit ist kein Qualitätssignal.** Ein falscher Satz ist genauso
+  wahrscheinlich gut formuliert wie ein richtiger, weil die Formulierung und
+  nicht die Korrektheit optimiert wurde.
+- **Fehlendes Wissen wird ergänzt, nicht gemeldet.** Wo Trainingsdaten dünn
+  sind, entsteht die plausibelste Fortsetzung. Das ist der Mechanismus hinter
+  erfundenen Quellen, Funktionsnamen und Jahreszahlen.
+- **Rechnen ist Fortsetzen.** Eine Summe entsteht nicht durch Addition, sondern
+  weil ähnliche Summen im Training vorkamen. Für exakte Werte braucht es Code,
+  siehe [Program-of-Thoughts](patterns-denkfuehrung.qmd).
+- **Der Kontext ist der Arbeitsspeicher.** Was nicht im Gespräch steht, existiert
+  für das Modell nicht, auch wenn es gestern besprochen wurde.
+
+### Halluzination und wie man damit umgeht
+
+Halluzination bezeichnet inhaltlich falsche Aussagen, die formal einwandfrei
+wirken. Sie tritt besonders auf bei Detailangaben (Zahlen, Namen, Zitate,
+Paragraphen), bei Nischenwissen, bei Fragen nach Aktuellem und immer dann, wenn
+die Frage eine Antwort suggeriert.
+
+Drei Vorkehrungen, in dieser Reihenfolge:
+
+1. **Material mitgeben.** Eine Antwort auf Basis eines mitgelieferten Textes ist
+   prüfbar, eine aus dem Gedächtnis nicht.
+2. **Unsicherheit ausweisen lassen.** Die Trennung in gesichert, unsicher und
+   angenommen kostet einen Satz im Prompt, siehe
+   [prüfende Patterns](patterns-pruefung.qmd).
+3. **Selbst nachprüfen.** Zitate öffnen, Code ausführen, Zahlen nachrechnen. Was
+   sich nicht prüfen lässt, wird nicht verwendet.
+
+::: {.callout-note collapse="true"}
+## Warum "Bist du sicher?" wenig hilft
+
+Die Rückfrage veranlasst das Modell häufig, seine Antwort zu ändern, unabhängig
+davon, ob sie stimmte. Sie prüft nichts, sie signalisiert Unzufriedenheit.
+Wirksamer ist die Frage nach dem stärksten Gegenargument oder nach der
+Bedingung, unter der die Aussage falsch wäre: beides zwingt zu einer inhaltlichen
+Auseinandersetzung statt zu einer Anpassung an die vermutete Erwartung.
+:::
+
+### Verzerrungen
+
+Modelle geben Muster ihrer Trainingsdaten wieder, auch unerwünschte. Das zeigt
+sich selten in offensichtlichen Aussagen und häufig in Nebensächlichkeiten: in
+Beispielnamen, in unterstellten Rollen, in der Auswahl dessen, was als typisch
+gilt. In der Datenarbeit ist die praktische Folge, dass ein Modell bei der
+Interpretation von Ergebnissen die naheliegende, konventionelle Deutung
+bevorzugt und ungewöhnliche Erklärungen seltener nennt. Wer Alternativen sehen
+will, muss ausdrücklich danach fragen.
+
+### Modellkategorien
+
+| Kategorie | Stärke | Grenze | Wann |
+|---|---|---|---|
+| Klein und schnell | Kosten, Wartezeit, viele Aufrufe | Bricht mehrstufige Schlüsse früh ab | Klassifizieren, Umformulieren, Standardauskünfte |
+| Standard | Breites Können bei vertretbaren Kosten | Bei schwierigen Schlüssen unzuverlässig | Der Normalfall der täglichen Arbeit |
+| Reasoning | Mehrstufige Schlüsse, Planung | Deutlich teurer und langsamer | Schwierige Aufgaben mit vielen Abhängigkeiten |
+| Mit Werkzeugen | Rechnen, Suchen, Dateien, Code ausführen | Nur so gut wie Werkzeuge und Daten | Sobald exakte Werte oder aktuelle Angaben nötig sind |
+| Offene Gewichte | Lokal betreibbar, Datenkontrolle | Meist etwas schwächer, eigener Betrieb nötig | Vertrauliche Daten, reproduzierbare Umgebungen |
+
+Die konkreten Modellnamen ändern sich im Halbjahresrhythmus, die Kategorien
+nicht. Deshalb lohnt es sich, die eigene Arbeit an der Kategorie auszurichten
+und die Namen als austauschbar zu behandeln.
+
+### Was in den Kontext gehört und was nicht
+
+Der Kontext ist begrenzt und die Aufmerksamkeit verteilt sich darin. Zwei
+Effekte sind zu kennen: Zu wenig Kontext führt zu erfundenen Annahmen, zu viel
+Kontext senkt die Genauigkeit, weil Nebensächliches mitgewichtet wird. In langen
+Gesprächen kommt hinzu, dass frühe Angaben an Gewicht verlieren; wichtige
+Vorgaben gehören deshalb wiederholt oder ans Ende.
+
+::: {.quiz}
+Ein Modell nennt eine Quelle mit Titel, Autoren, Jahr und Seitenzahl. Die
+Angaben sind präzise. Was folgt daraus?
+
+- [ ] Die Quelle existiert, so detaillierte Angaben werden nicht erfunden ~
+      Gerade sie werden erfunden, weil das Muster einer Literaturangabe gut
+      gelernt ist.
+- [x] Nichts; die Angabe ist erst nach dem Öffnen belastbar ~ Richtig. Präzision
+      entsteht aus dem Muster, nicht aus einem Nachschlagevorgang. Prüfen heisst
+      öffnen.
+- [ ] Man sollte das Modell nach der DOI fragen ~ Auch die kann entstehen, statt
+      nachgeschlagen zu werden.
+:::
+
+::: {.quiz}
+Warum liefert dasselbe Modell auf dieselbe Frage manchmal verschiedene
+Antworten?
+
+- [x] Weil die Fortsetzung zufällig aus wahrscheinlichen Kandidaten gewählt wird ~
+      Richtig. Diese Streuung ist einstellbar, aber selten null. Für Aufgaben mit
+      eindeutiger Lösung ist Uneinigkeit über mehrere Durchläufe ein Warnsignal
+      für die Frage.
+- [ ] Weil das Modell dazulernt ~ Im laufenden Gespräch lernt es nicht; es sieht
+      nur, was im Kontext steht.
+- [ ] Weil die Frage zu lang ist ~ Länge beeinflusst die Qualität, aber nicht die
+      grundsätzliche Streuung.
+:::
+
+## Verlinkte Ressourcen
+
+- [Survey of Hallucination in Large Language Models](https://arxiv.org/abs/2311.05232)
+- [On the Dangers of Stochastic Parrots](https://dl.acm.org/doi/10.1145/3442188.3445922)
+- [Language Models (Mostly) Know What They Know](https://arxiv.org/abs/2207.05221)
+- [Lost in the Middle: Umgang mit langem Kontext](https://arxiv.org/abs/2307.03172)

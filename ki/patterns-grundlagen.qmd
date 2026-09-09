@@ -1,0 +1,220 @@
+---
+title: "Grundlegende Patterns"
+description: "Persona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts."
+categories: ["Prompting", "Sprachmodelle", "Kommunikation"]
+seitentyp: werkzeug
+stand: entwurf
+order: 30
+---
+
+## Kernideen
+
+- Eine Rolle verschiebt Perspektive, Tonfall und Tiefe der Antwort
+- Umgekehrte Befragung dreht die Richtung: das Modell fragt, man selbst antwortet
+- Wenige Beispiele legen Format und Stil zuverlässiger fest als jede Beschreibung
+- Ballast im Prompt senkt die Antwortqualität, ein Filterschritt hebt sie wieder
+- Die eigene Frage vom Modell umformulieren zu lassen deckt Mehrdeutigkeiten auf
+- Zwischenfragen zulassen schlägt eine sofortige Antwort auf eine unklare Frage
+
+## Erklärung
+
+::: {.note-box}
+Welche Aufgabe welches Vorgehen braucht, klärt
+[Wann was verwenden](wann-was.qmd); der Aufbau der Eingabe steht unter
+[Bausteine eines Prompts](prompt-bausteine.qmd). Die Prompts hier lassen sich
+über das Symbol oben rechts am Block kopieren und mit eckigen Klammern als
+Platzhalter füllen.
+:::
+
+### Persona: eine Rolle zuweisen
+
+Das Modell antwortet aus der Perspektive einer Rolle. Das verändert nicht das
+Wissen, aber die Auswahl: Was gilt als erwähnenswert, welche Fachbegriffe
+fallen, welche Risiken kommen zur Sprache. Wirksam, wenn man eine bestimmte
+Sicht braucht oder mehrere Sichten vergleichen will.
+
+```text
+Du bist [Rolle mit Erfahrungshintergrund, z. B. Reviewer für statistische
+Auswertungen in einem Fachjournal].
+
+Beurteile aus dieser Perspektive: [Material oder Frage]
+
+Nenne, was dir in dieser Rolle zuerst auffällt, und was du zurückweisen
+würdest.
+```
+
+Zwei Rollen nacheinander auf dasselbe Material anzusetzen ist oft
+aufschlussreicher als eine ausführliche Einzelantwort:
+
+```text
+Beurteile den folgenden Abschnitt nacheinander aus zwei Perspektiven:
+1. als Methodenprüferin, die auf Voraussetzungen und Fehlerquellen achtet
+2. als Fachperson des Anwendungsgebiets, die auf Relevanz achtet
+
+Halte die beiden Sichten getrennt und nenne am Ende, wo sie sich
+widersprechen.
+
+Abschnitt: [Text]
+```
+
+### Umgekehrte Befragung: das Modell fragt
+
+Statt selbst alles zu beschreiben, lässt man sich befragen. Das ist der
+wirksamste Weg, wenn die eigene Aufgabe noch unscharf ist, und er verhindert die
+lange Liste von Annahmen, die das Modell sonst still trifft.
+
+```text
+Ich möchte [Ziel, z. B. eine Auswertung meiner Messdaten planen].
+
+Stelle mir nacheinander die Fragen, die du brauchst, um mir dabei zu helfen.
+Eine Frage pro Nachricht, warte jeweils auf meine Antwort. Beginne mit der
+Frage, deren Antwort am meisten verändert.
+```
+
+### Few-Shot: mit Beispielen zeigen statt beschreiben
+
+Zwei bis fünf Beispiele legen Format, Granularität und Tonfall fest. Das wirkt
+besonders bei Klassifikationen und bei wiederkehrenden Formulierungen.
+
+```text
+Ordne jeden Befund einer der Kategorien "gesichert", "unklar" oder
+"widerlegt" zu.
+
+Beispiele:
+Befund: Intervall 10.8 bis 13.1, p < 0.001, n = 200  -> gesichert
+Befund: Intervall -0.2 bis 8.4, p = 0.06, n = 40     -> unklar
+Befund: Intervall -0.4 bis 0.3, p = 0.71, n = 5000   -> widerlegt
+
+Jetzt:
+[eigene Befunde, einer pro Zeile]
+```
+
+Die Beispiele sollen die Grenzfälle abdecken, nicht die einfachen Fälle. Wer nur
+eindeutige Beispiele gibt, bekommt bei Grenzfällen eine Zufallsentscheidung.
+
+### Ballast entfernen, bevor gearbeitet wird
+
+Lange, unstrukturierte Eingaben enthalten Nebensächliches, und das senkt die
+Antwortqualität. Ein vorgeschalteter Filterschritt hilft.
+
+```text
+Schritt 1: Entferne aus dem folgenden Text alles, was für die Frage
+"[Frage]" nicht gebraucht wird. Gib den gekürzten Text aus.
+
+Schritt 2: Beantworte die Frage nur auf Basis des gekürzten Textes.
+
+Text: [Material]
+```
+
+### Die Frage umformulieren lassen
+
+Das Modell formuliert die Frage zuerst in eigenen Worten und beantwortet dann
+die umformulierte Fassung. Damit werden Mehrdeutigkeiten sichtbar, bevor sie in
+die Antwort einfliessen.
+
+```text
+Formuliere meine Frage zuerst in eigenen Worten und präzisiere dabei, wie du
+sie verstehst. Antworte danach auf die präzisierte Fassung.
+
+Frage: [Frage]
+```
+
+Eine schlichte, aber wirksame Variante ist die Aufforderung, die Aufgabe vor
+der Bearbeitung ein zweites Mal zu lesen:
+
+```text
+Lies die Aufgabenstellung zweimal, bevor du antwortest. Prüfe beim zweiten
+Lesen, ob eine Bedingung darin steht, die du beim ersten Lesen übersehen
+hättest.
+
+Aufgabe: [Aufgabe]
+```
+
+### Zwischenfragen zulassen
+
+Bei komplexen oder schlecht definierten Aufgaben liefert das Modell bessere
+Ergebnisse, wenn es sich selbst Zwischenfragen stellen und beantworten darf.
+
+```text
+Wenn du Zwischenfragen brauchst, um die Hauptfrage zu beantworten: Stelle sie
+dir selbst, beantworte sie sichtbar, und komme dann zur Hauptfrage zurück.
+
+Hauptfrage: [Frage]
+```
+
+::: {.quiz}
+Für eine Klassifikation werden drei Beispiele mitgegeben, alle eindeutig. Die
+Ergebnisse bei Grenzfällen schwanken. Woran liegt das?
+
+- [ ] Zu wenige Beispiele, es braucht mindestens zehn ~ Die Anzahl ist selten
+      das Problem, die Auswahl schon.
+- [x] Die Beispiele decken die Grenzfälle nicht ab ~ Richtig. Beispiele
+      definieren die Entscheidungsgrenze. Wer nur klare Fälle zeigt, überlässt
+      genau die schwierigen Fälle dem Modell.
+- [ ] Das Modell ist zu klein ~ Möglich, aber die Grenzfälle blieben auch bei
+      einem grösseren Modell undefiniert.
+:::
+
+::: {.quiz}
+Wann ist die umgekehrte Befragung, bei der das Modell fragt, dem normalen
+Prompt überlegen?
+
+- [x] Wenn die eigene Aufgabe noch unscharf ist ~ Richtig. Statt Annahmen still
+      zu treffen, macht das Modell sie zu Fragen. Der Aufwand verschiebt sich
+      vom Nachbessern nach hinten zum Klären nach vorn.
+- [ ] Immer, weil mehr Interaktion besser ist ~ Bei einer klaren, kleinen
+      Aufgabe kostet sie nur Zeit.
+- [ ] Wenn das Modell keinen Kontext hat ~ Fehlender Kontext wird durch Fragen
+      nicht ersetzt, sondern nur sichtbar.
+:::
+
+## Typische Aufgaben
+
+**Text für eine bestimmte Zielgruppe umschreiben**
+
+```text
+Du bist Redakteur für Fachtexte. Schreibe den folgenden Abschnitt für
+[Zielgruppe] um. Erhalte alle Zahlen und Einschränkungen, ersetze Fachbegriffe
+nur dort, wo sie für diese Zielgruppe entbehrlich sind. Höchstens [n] Wörter.
+
+Abschnitt: [Text]
+```
+
+**Aus unsortierten Notizen eine Gliederung machen**
+
+```text
+Entferne zuerst alles Nebensächliche aus den folgenden Notizen. Erstelle
+danach eine Gliederung mit höchstens fünf Hauptpunkten und je zwei
+Unterpunkten. Ordne jeder Zeile der Notizen einen Gliederungspunkt zu; was
+nirgends passt, listest du am Ende unter "übrig".
+
+Notizen: [Material]
+```
+
+**Einen Sachverhalt in zwei Tiefen erklären lassen**
+
+```text
+Erkläre [Begriff] zweimal:
+1. in drei Sätzen für jemanden ohne Vorkenntnisse
+2. in fünf Sätzen für jemanden, der [verwandtes Thema] kennt
+
+Nenne danach die häufigste Fehlvorstellung zu diesem Begriff.
+```
+
+**Eine Entscheidung vorbereiten lassen**
+
+```text
+Ich muss zwischen [Option A] und [Option B] entscheiden.
+
+Stelle mir zuerst die Fragen, die du zur Beurteilung brauchst. Wenn ich
+geantwortet habe: Nenne je Option die zwei stärksten Argumente dafür und das
+stärkste dagegen, und benenne die Bedingung, unter der sich die Entscheidung
+umkehrt.
+```
+
+## Verlinkte Ressourcen
+
+- [The Prompt Report: Übersicht über Prompting-Techniken](https://arxiv.org/abs/2406.06608)
+- [System 2 Attention](https://arxiv.org/abs/2311.11829)
+- [Rephrase and Respond](https://arxiv.org/abs/2311.04205)
+- [Re-Reading improves reasoning](https://arxiv.org/abs/2309.06275)

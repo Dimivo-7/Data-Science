@@ -1,0 +1,143 @@
+---
+title: "Wann was verwenden"
+description: "Entscheidungshilfe: welches Vorgehen, welches Pattern und welches Modell für welche Aufgabe."
+categories: ["Prompting", "Sprachmodelle", "Interpretation"]
+seitentyp: konzept
+stand: entwurf
+order: 10
+---
+
+## Kernideen
+
+- Zuerst die Aufgabenart bestimmen, dann das Vorgehen wählen
+- Einfache Aufgaben brauchen kein aufwendiges Pattern, nur einen klaren Auftrag
+- Denkführende Patterns lohnen sich, wo mehrere Schritte oder Fallunterscheidungen nötig sind
+- Prüfende Patterns lohnen sich, wo ein Fehler teuer wäre
+- Fehlt dem Modell Wissen, hilft kein Pattern, sondern nur Kontext
+- Für Rechnen, exakte Zahlen und Reproduzierbarkeit ist Code das bessere Werkzeug
+
+## Erklärung
+
+::: {.note-box}
+Diese Seite ist der Einstieg in den Bereich. Sie ordnet zu, was auf den anderen
+Seiten ausgeführt wird: die [Bausteine eines Prompts](prompt-bausteine.qmd), die
+[grundlegenden Patterns](patterns-grundlagen.qmd), die
+[denkführenden Patterns](patterns-denkfuehrung.qmd), die
+[prüfenden Patterns](patterns-pruefung.qmd) und die
+[fertigen Prompts für die Datenarbeit](prompts-datenarbeit.qmd).
+:::
+
+### Der erste Schritt: um welche Art von Aufgabe geht es
+
+Die meisten Fehlgriffe entstehen nicht an der Formulierung, sondern an der
+Einordnung. Wer eine Wissensfrage stellt, wo eine Rechenaufgabe vorliegt,
+bekommt eine flüssig formulierte falsche Zahl.
+
+| Art der Aufgabe | Woran erkennbar | Vorgehen |
+|---|---|---|
+| Umformulieren, kürzen, übersetzen | Der Inhalt liegt vor, nur die Form ändert sich | Klarer Auftrag mit Zielformat, kein Pattern nötig |
+| Erklären lassen | Etwas ist verstanden worden oder auch nicht | [Persona](patterns-grundlagen.qmd) plus Zielgruppe, danach eine Verständnisfrage stellen |
+| Strukturieren, gliedern | Viel unsortiertes Material | [System-2 Attention](patterns-grundlagen.qmd), dann Gliederung anfordern |
+| Mehrstufig schliessen, planen | Die Antwort hängt von Zwischenergebnissen ab | [Plan-and-Solve](patterns-denkfuehrung.qmd) oder [Chain-of-Thought](patterns-denkfuehrung.qmd) |
+| Rechnen, zählen, exakt vergleichen | Es geht um Zahlen, die stimmen müssen | [Program-of-Thoughts](patterns-denkfuehrung.qmd): Code erzeugen und ihn selbst ausführen |
+| Code schreiben oder verstehen | Eine Datei, eine Funktion, ein Fehler | Kontext mitgeben, Beispielaufruf verlangen, danach selbst testen |
+| Entscheiden zwischen Optionen | Mehrere Wege, unklare Kriterien | [Step-Back](patterns-denkfuehrung.qmd), dann Kriterien und Bewertung getrennt anfordern |
+| Prüfen, gegenlesen | Ein Entwurf liegt vor | [Self-Refine](patterns-pruefung.qmd) oder gezielt nach Gegenargumenten fragen |
+| Fakten nachschlagen | Es geht um Wissen, das stimmen muss | Kein Pattern, sondern Quelle: Dokumente mitgeben oder in einer Referenz nachschlagen |
+
+### Der zweite Schritt: wie viel Aufwand lohnt sich
+
+Ein Pattern ist Aufwand, und Aufwand lohnt sich nur bei entsprechendem Nutzen.
+Als Faustregel:
+
+- **Ein Satz genügt**, wenn die Aufgabe klar, die Antwort kurz und ein Fehler
+  billig ist. Ein Umformulierungsauftrag braucht keine Rollenzuweisung.
+- **Struktur lohnt sich**, sobald Format, Zielgruppe oder Umfang eine Rolle
+  spielen. Das ist der Fall der [Prompt-Bausteine](prompt-bausteine.qmd).
+- **Denkführung lohnt sich**, wenn die Aufgabe in Schritte zerfällt oder wenn
+  Zwischenergebnisse aufeinander aufbauen.
+- **Prüfung lohnt sich**, wenn das Ergebnis weiterverwendet wird: in einem
+  Bericht, in Code, in einer Entscheidung.
+
+Der teuerste Fehler ist nicht das zu einfache Prompt, sondern das ungeprüfte
+Ergebnis.
+
+### Welches Modell
+
+Die Modelllandschaft ändert sich schnell, die Kategorien bleiben stabil.
+
+| Kategorie | Wofür | Worauf achten |
+|---|---|---|
+| Kleines, schnelles Modell | Umformulieren, Klassifizieren, Standardauskünfte, viele Aufrufe | Bei mehrstufigen Aufgaben brechen die Schlüsse früh ab |
+| Standardmodell | Der Normalfall: Erklären, Entwerfen, Code, Analysen mittlerer Tiefe | Denkführende Patterns wirken hier am deutlichsten |
+| Reasoning-Modell | Schwierige Schlüsse, Planung, Aufgaben mit vielen Abhängigkeiten | Höhere Kosten und Wartezeit; das Modell denkt selbst in Schritten, deshalb bringen Denkführungs-Patterns wenig zusätzlich |
+| Modell mit Werkzeugzugriff | Rechnen, Dateien lesen, Suche, Code ausführen | Nur so gut wie die Werkzeuge und deren Daten |
+
+Bei Reasoning-Modellen verschiebt sich die Arbeit von der Denkführung zur
+präzisen Aufgabenbeschreibung: Was genau soll herauskommen, in welcher Form,
+unter welchen Randbedingungen.
+
+### Wann kein Sprachmodell
+
+Es gibt Aufgaben, bei denen ein Sprachmodell die falsche Wahl ist, unabhängig
+von Modell und Formulierung:
+
+- **Exakte Rechnungen und Aggregationen.** Eine Summe über 5000 Zeilen gehört in
+  [pandas](../programmierung/pandas.qmd) oder [SQL](../daten/sql.qmd), nicht in
+  einen Chat.
+- **Reproduzierbare Auswertungen.** Was im Bericht steht, muss beim nächsten
+  Datenstand automatisch stimmen, siehe
+  [Reproduzierbarkeit](../programmierung/reproduzierbarkeit.qmd).
+- **Statistische Entscheidungen.** Welcher Test passt, entscheidet der
+  [Entscheidungsbaum](../statistik/tests/index.qmd); ein Modell kann die Wahl
+  erklären, aber die Voraussetzungen prüfen die Daten.
+- **Vertrauliche Daten** in Werkzeugen ohne geklärte Verarbeitung.
+- **Fragen, deren Antwort niemand prüfen kann.** Wo keine Prüfung möglich ist,
+  ist die Antwort wertlos, egal wie überzeugend sie klingt.
+
+### Die Kurzfassung als Entscheidungsbaum
+
+1. Muss die Antwort **exakt** sein und lässt sie sich rechnen? Dann Code, nicht
+   Prompt.
+2. Braucht das Modell **Wissen**, das es nicht hat? Dann Kontext mitgeben
+   (Dokumente, Auszüge, Zahlen), siehe
+   [Context Engineering](context-engineering.qmd).
+3. Ist die Aufgabe in **einem Schritt** lösbar? Dann klarer Auftrag mit Format,
+   fertig.
+4. Zerfällt sie in **mehrere Schritte**? Dann erst planen lassen, dann
+   ausführen.
+5. Wird das Ergebnis **weiterverwendet**? Dann eine Prüfrunde anhängen und
+   selbst gegenlesen.
+
+::: {.quiz}
+Eine Tabelle mit 40 000 Zeilen soll nach Monat aggregiert werden. Was ist der
+richtige Weg?
+
+- [ ] Die Tabelle in den Chat kopieren und aggregieren lassen ~ Das Modell zählt
+      nicht zuverlässig, und die Datenmenge sprengt den Kontext.
+- [x] Den Code dafür erzeugen lassen und selbst ausführen ~ Richtig. Das Modell
+      ist gut darin, die passende Gruppierung zu formulieren; die Rechnung
+      gehört in pandas, dplyr oder SQL, wo sie exakt und wiederholbar ist.
+- [ ] Das grösste verfügbare Modell verwenden ~ Die Modellgrösse ändert nichts
+      daran, dass Sprachmodelle nicht rechnen, sondern Text fortsetzen.
+:::
+
+::: {.quiz}
+Für eine schwierige Planungsaufgabe steht ein Reasoning-Modell zur Verfügung.
+Was ändert sich am Prompt?
+
+- [ ] Nichts, die Patterns gelten unverändert ~ Ein Teil von ihnen wird
+      überflüssig.
+- [x] Die Denkführung wird weniger wichtig, die Aufgabenbeschreibung wichtiger ~
+      Richtig. Das Modell erzeugt seine Zwischenschritte selbst. Entscheidend
+      wird, was genau herauskommen soll, in welcher Form und unter welchen
+      Randbedingungen.
+- [ ] Der Prompt sollte möglichst kurz sein ~ Kürze ist kein Wert an sich;
+      fehlende Randbedingungen bleiben auch bei einem Reasoning-Modell unerfüllt.
+:::
+
+## Verlinkte Ressourcen
+
+- [The Prompt Report: Übersicht über Prompting-Techniken](https://arxiv.org/abs/2406.06608)
+- [Chain-of-Thought Prompting](https://arxiv.org/abs/2201.11903)
+- [Large Language Models are Zero-Shot Reasoners](https://arxiv.org/abs/2205.11916)
