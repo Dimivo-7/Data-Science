@@ -55,6 +55,29 @@ jobs:
       - name: Point reticulate at this Python
         run: echo "RETICULATE_PYTHON=$(which python)" >> "$GITHUB_ENV"
 
+      # Rendert einmal und schreibt die Ausgabe bei einem Fehler als render.log
+      # nach main, weil die Action-Logs ohne Token nicht lesbar sind. Dank
+      # freeze: auto findet der folgende Publish-Schritt die Ergebnisse vor und
+      # rendert nicht ein zweites Mal.
+      - name: Render mit Protokoll
+        id: diagnose
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          quarto render 2>&1 | tee render.log
+
+      - name: Render-Log zurueckschreiben
+        if: steps.diagnose.outcome == 'failure'
+        run: |
+          tail -c 60000 render.log > render-tail.log
+          mv render-tail.log render.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f render.log
+          git commit -m "Render-Log fuer die Fehlersuche [skip ci]"
+          git push origin HEAD:main
+          exit 1
+
       - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@v2
         with:
