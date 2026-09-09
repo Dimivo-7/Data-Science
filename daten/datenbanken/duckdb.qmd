@@ -1,0 +1,198 @@
+---
+title: "DuckDB"
+description: "SQL für analytische Auswertungen im eigenen Prozess, direkt auf Dateien."
+categories: ["Datenbanken", "SQL", "R", "Python"]
+seitentyp: werkzeug
+stand: entwurf
+order: 50
+---
+
+## Kernideen
+
+- Wie SQLite ohne Server, aber für Auswertungen statt für Einzelzugriffe gebaut
+- Fragt CSV- und Parquet-Dateien direkt ab, ohne sie vorher zu importieren
+- Spaltenweise Speicherung: Aggregationen über viele Zeilen sind schnell
+- Arbeitet mit Data Frames aus R und Python zusammen, ohne Kopie
+- Volles analytisches SQL, inklusive Fensterfunktionen
+- Für vieles der bessere Zwischenschritt als eine Serverdatenbank
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [SQL](sql.qmd) für die Abfragen. Die Einordnung gegenüber den
+anderen Systemen steht in der [Übersicht](index.qmd); die Formate CSV und
+Parquet behandelt [Datenimport und Formate](../datenimport-formate.qmd).
+:::
+
+### Wofür DuckDB gebaut ist
+
+SQLite und die Serverdatenbanken sind darauf ausgelegt, einzelne Zeilen zu
+lesen und zu schreiben: eine Bestellung anlegen, einen Kunden nachschlagen.
+DuckDB ist auf die andere Art von Frage ausgelegt, die in der Datenarbeit die
+übliche ist: über viele Zeilen hinweg aggregieren, gruppieren, verbinden.
+
+Der Unterschied liegt in der Speicherung. Zeilenweise organisierte Systeme
+lesen ganze Datensätze; DuckDB speichert spaltenweise und liest nur die Spalten,
+die in der Abfrage vorkommen. Bei einer Tabelle mit fünfzig Spalten, von denen
+drei gebraucht werden, ist das der Unterschied zwischen Sekunden und Minuten.
+
+Wie SQLite läuft DuckDB im eigenen Prozess: kein Server, keine Installation
+über den Paketmanager der Sprache hinaus, keine Rechteverwaltung.
+
+### Dateien direkt abfragen
+
+Der praktischste Punkt im Alltag: Es braucht keinen Import. CSV- und
+Parquet-Dateien lassen sich unmittelbar als Tabelle ansprechen, auch mehrere auf
+einmal über ein Muster im Dateinamen.
+
+```sql
+SELECT standort, COUNT(*) AS n, AVG(verbrauch) AS mittel
+FROM 'messungen/*.parquet'
+WHERE datum >= '2026-01-01'
+GROUP BY standort
+ORDER BY mittel DESC;
+```
+
+Damit wird DuckDB zum Werkzeug für Dateien, die für den Arbeitsspeicher zu gross
+sind, ohne dass eine Datenbank aufgesetzt werden muss.
+
+### Zusammenspiel mit R und Python
+
+DuckDB kann Data Frames der jeweiligen Sprache direkt als Tabelle ansprechen und
+Ergebnisse wieder als Data Frame zurückgeben. Damit lässt sich SQL genau dort
+einsetzen, wo es klarer ist als eine lange Kette von Wrangling-Schritten, ohne
+die Umgebung zu verlassen.
+
+::: {.panel-tabset}
+
+## R
+
+```r
+library(duckdb)
+con <- dbConnect(duckdb())
+
+duckdb_register(con, "messung", messung_df)      # Data Frame als Tabelle
+ergebnis <- dbGetQuery(con, "
+  SELECT standort, AVG(verbrauch) AS mittel
+  FROM messung GROUP BY standort")
+```
+
+## Python
+
+```python
+import duckdb
+
+messung = pd.read_parquet("messung.parquet")
+
+ergebnis = duckdb.sql("""
+    SELECT standort, AVG(verbrauch) AS mittel
+    FROM messung GROUP BY standort
+""").df()
+```
+
+:::
+
+In Python wird der Data Frame `messung` einfach über seinen Namen angesprochen;
+eine Registrierung ist nicht nötig.
+
+### Wann DuckDB, wann etwas anderes
+
+| Fall | Passend |
+|---|---|
+| Grosse Dateien auswerten, einmal oder wiederholt | DuckDB |
+| Wenige Zeilen laufend lesen und schreiben | [SQLite](sqlite.qmd) oder Serverdatenbank |
+| Mehrere Personen greifen gleichzeitig schreibend zu | [PostgreSQL](postgresql.qmd) |
+| Daten liegen bereits in einer Serverdatenbank | Dort aggregieren, siehe [PostgreSQL](postgresql.qmd) |
+| Ergebnisse langfristig aufbewahren und pflegen | Serverdatenbank |
+
+::: {.quiz}
+Eine Parquet-Datei mit 80 Millionen Zeilen und 60 Spalten soll nach Monat
+aggregiert werden; drei Spalten werden gebraucht. Was ist der schnellste Weg?
+
+- [ ] Die Datei mit pandas laden und gruppieren ~ Der Speicher reicht dafür
+      selten, und geladen würden alle 60 Spalten.
+- [x] Die Datei direkt mit DuckDB abfragen ~ Richtig. Gelesen werden nur die drei
+      benötigten Spalten und nur die benötigten Abschnitte der Datei; ein Import
+      entfällt.
+- [ ] Die Datei in PostgreSQL importieren und dort aggregieren ~ Funktioniert,
+      kostet aber Importzeit und Infrastruktur für eine einmalige Auswertung.
+:::
+
+## Typische Aufgaben
+
+**Eine Datei ansehen, ohne sie zu laden**
+
+```sql
+SELECT * FROM 'daten.csv' LIMIT 10;
+DESCRIBE SELECT * FROM 'daten.csv';        -- Spalten und erkannte Typen
+SELECT COUNT(*) FROM 'daten.parquet';
+```
+
+**Viele Dateien als eine Tabelle behandeln**
+
+```sql
+SELECT * FROM read_parquet('messungen/*.parquet');
+SELECT * FROM read_csv_auto('export_2026_*.csv', union_by_name = true);
+```
+
+**Formate umwandeln**
+
+```sql
+COPY (SELECT * FROM 'gross.csv') TO 'gross.parquet' (FORMAT parquet);
+```
+
+Parquet ist spaltenweise, komprimiert und typsicher; als Zwischenformat für
+grosse Zwischenstände ist es CSV deutlich überlegen.
+
+**Ergebnis zurück in die Sprache holen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+df <- dbGetQuery(con, "SELECT * FROM 'gross.parquet' WHERE standort = 'Bern'")
+```
+
+## Python
+
+```python
+df = duckdb.sql("SELECT * FROM 'gross.parquet' WHERE standort = 'Bern'").df()
+```
+
+:::
+
+**Eine dauerhafte Datenbankdatei verwenden**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+con <- dbConnect(duckdb(), dbdir = "analyse.duckdb")
+```
+
+## Python
+
+```python
+verbindung = duckdb.connect("analyse.duckdb")
+```
+
+:::
+
+**Aus einer anderen Datenbank lesen**
+
+```sql
+INSTALL postgres; LOAD postgres;
+ATTACH 'dbname=produktion host=db.example.org' AS pg (TYPE postgres);
+SELECT COUNT(*) FROM pg.public.bestellung;
+```
+
+So lassen sich Daten aus einer Serverdatenbank mit lokalen Dateien in einer
+einzigen Abfrage verbinden.
+
+## Verlinkte Ressourcen
+
+- [DuckDB: Dokumentation](https://duckdb.org/docs/)
+- [DuckDB in Python](https://duckdb.org/docs/api/python/overview)
+- [Parquet: Format und Werkzeuge](https://parquet.apache.org/docs/)

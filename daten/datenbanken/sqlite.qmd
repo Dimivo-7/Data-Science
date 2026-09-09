@@ -1,0 +1,217 @@
+---
+title: "SQLite"
+description: "Die Datenbank als einzelne Datei: ohne Server, ideal für Auswertungen und Prototypen."
+categories: ["Datenbanken", "SQL", "R", "Python"]
+quelle: ["PYFR"]
+seitentyp: werkzeug
+stand: entwurf
+order: 40
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(DBI)
+library(RSQLite)
+```
+
+## Kernideen
+
+- Eine Datenbank ist eine einzige Datei, es läuft kein Server
+- In R und Python ohne Installation verfügbar, die Treiber bringen sie mit
+- Typen sind Empfehlungen, keine Vorschriften: SQLite speichert, was kommt
+- Ideal für Auswertungen, Prototypen und Datensätze, die nicht in den Speicher passen
+- Grenze ist der gleichzeitige Schreibzugriff, nicht die Datenmenge
+- Alles, was hier an SQL geübt wird, gilt in den Serversystemen weiter
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [SQL](sql.qmd) für die Abfragen und
+[Datenmodellierung](datenmodellierung.qmd) für den Tabellenentwurf. Welches
+System wann passt, steht in der [Übersicht](index.qmd).
+:::
+
+### Was SQLite ist
+
+SQLite ist eine Programmbibliothek, keine Serveranwendung. Die gesamte
+Datenbank steht in einer Datei, und das Programm, das sie benutzt, spricht
+direkt mit dieser Datei. Es gibt keinen Dienst, keinen Port, keine Benutzer
+und keine Rechteverwaltung. Genau das macht sie für die Datenarbeit so
+praktisch: Eine Auswertung braucht keine Infrastruktur, und die Datenbank lässt
+sich kopieren, versionieren und weitergeben wie jede andere Datei.
+
+Der Preis dafür ist das Schreibmodell. Lesen können viele Prozesse
+gleichzeitig, schreiben nur einer. Für eine Anwendung mit vielen gleichzeitigen
+Benutzern ist das die falsche Wahl; für eine Auswertung, die eine Person
+ausführt, spielt es keine Rolle.
+
+### Typen sind Empfehlungen
+
+SQLite ist dynamisch typisiert. Eine als `INTEGER` deklarierte Spalte nimmt
+klaglos den Text `"k.A."` auf, weil der deklarierte Typ nur eine Affinität ist.
+Das ist bequem beim Einlesen roher Daten und eine Fehlerquelle bei allem, was
+danach kommt.
+
+Die praktische Folge: Prüfungen gehören ins eigene Vorgehen, nicht in die
+Erwartung an das System. Wer sicher sein will, setzt beim Anlegen Bedingungen:
+
+```sql
+CREATE TABLE messung (
+  messung_id INTEGER PRIMARY KEY,
+  wert       REAL    NOT NULL CHECK (wert >= 0),
+  gemessen   TEXT    NOT NULL,          -- ISO-8601 als Text
+  geraet_id  INTEGER NOT NULL REFERENCES geraet(geraet_id)
+);
+```
+
+Zwei Eigenheiten sind dabei zu kennen. Erstens kennt SQLite keinen eigenen
+Datums- und Zeittyp; Zeitstempel werden als Text im Format `YYYY-MM-DD` oder
+als Zahl abgelegt, siehe [Datum und Zeit](../datum-zeit.qmd). Zweitens sind
+Fremdschlüssel standardmässig ausgeschaltet und müssen je Verbindung
+eingeschaltet werden.
+
+### Wo sie in der Datenarbeit glänzt
+
+Der häufigste Fall ist eine Datei, die für den Arbeitsspeicher zu gross ist.
+Statt sie ganz zu laden, legt man sie einmal in eine SQLite-Datei und fragt
+danach nur noch das ab, was gebraucht wird. Der zweite Fall ist der
+Zwischenstand einer längeren Auswertung: eine Tabelle, die mehrere Skripte
+gemeinsam nutzen, ohne dass jemand eine CSV-Datei hin- und herkopiert.
+
+::: {.quiz}
+Eine Spalte ist als `INTEGER` angelegt, und beim Import landen dort Texte wie
+`"k.A."`. Was ist passiert?
+
+- [ ] Der Import ist fehlerhaft und muss wiederholt werden ~ Der Import hat
+      getan, was er sollte; SQLite hat den Wert angenommen.
+- [x] SQLite behandelt den deklarierten Typ als Empfehlung ~ Richtig. Die
+      Typaffinität wandelt um, wo möglich, und speichert sonst wie geliefert.
+      Wer das ausschliessen will, setzt beim Anlegen eine `CHECK`-Bedingung
+      oder prüft beim Import.
+- [ ] Die Spalte war in Wahrheit als `TEXT` deklariert ~ Auch bei `INTEGER`
+      passiert genau das.
+:::
+
+## Typische Aufgaben
+
+**Verbinden, abfragen, schliessen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+con <- DBI::dbConnect(RSQLite::SQLite(), "laden.sqlite")
+DBI::dbExecute(con, "PRAGMA foreign_keys = ON")   # Fremdschluessel aktivieren
+df <- DBI::dbGetQuery(con, "SELECT * FROM artikel WHERE preis > ?", params = list(100))
+DBI::dbDisconnect(con)
+```
+
+## Python
+
+```python
+import sqlite3
+import pandas as pd
+
+with sqlite3.connect("laden.sqlite") as verbindung:
+    verbindung.execute("PRAGMA foreign_keys = ON")
+    df = pd.read_sql_query("SELECT * FROM artikel WHERE preis > ?", verbindung,
+                           params=(100,))
+```
+
+:::
+
+**Eine grosse CSV-Datei in eine Datenbank überführen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+con <- DBI::dbConnect(RSQLite::SQLite(), "gross.sqlite")
+readr::read_csv_chunked(
+  "gross.csv",
+  callback = readr::DataFrameCallback$new(function(teil, pos) {
+    DBI::dbWriteTable(con, "messung", teil, append = TRUE)
+  }),
+  chunk_size = 100000
+)
+```
+
+## Python
+
+```python
+import sqlite3
+import pandas as pd
+
+with sqlite3.connect("gross.sqlite") as verbindung:
+    for teil in pd.read_csv("gross.csv", chunksize=100_000):
+        teil.to_sql("messung", verbindung, if_exists="append", index=False)
+```
+
+:::
+
+**Nachsehen, was in der Datei liegt**
+
+```sql
+SELECT name FROM sqlite_master WHERE type = 'table';   -- Tabellen
+PRAGMA table_info(artikel);                            -- Spalten und Typen
+SELECT COUNT(*) FROM artikel;                          -- Zeilen
+```
+
+**Eine Abfrage beschleunigen**
+
+```sql
+EXPLAIN QUERY PLAN
+SELECT * FROM bestellung WHERE artikel_id = 3;
+
+CREATE INDEX idx_bestellung_artikel ON bestellung(artikel_id);
+```
+
+Steht im Plan `SCAN`, wird die ganze Tabelle gelesen; nach dem Index steht dort
+`SEARCH`. Bei kleinen Tabellen ist beides gleich schnell, ab einigen
+Hunderttausend Zeilen ist es der Unterschied zwischen Sekunden und Minuten.
+
+**Wartung und Grösse**
+
+```sql
+ANALYZE;    -- Statistiken fuer den Abfrageplaner auffrischen
+VACUUM;     -- geloeschten Platz zurueckgeben, Datei verkleinern
+```
+
+**Mit der Kommandozeile arbeiten**
+
+```bash
+sqlite3 laden.sqlite               # interaktive Konsole
+.tables                            # Tabellen auflisten
+.schema artikel                    # Definition einer Tabelle
+.headers on
+.mode csv
+.import daten.csv artikel          # CSV importieren
+.output ergebnis.csv               # Ausgabe umleiten
+```
+
+**Eine Datenbank im Arbeitsspeicher, etwa für Tests**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+```
+
+## Python
+
+```python
+verbindung = sqlite3.connect(":memory:")
+```
+
+:::
+
+## Verlinkte Ressourcen
+
+- [SQLite: offizielle Dokumentation](https://www.sqlite.org/docs.html)
+- [Wann SQLite passt und wann nicht](https://www.sqlite.org/whentouse.html)
+- [Typaffinität in SQLite](https://www.sqlite.org/datatype3.html)

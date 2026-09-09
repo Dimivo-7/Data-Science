@@ -1,0 +1,192 @@
+---
+title: "MySQL und MariaDB"
+description: "Weit verbreitete Serverdatenbanken, ihre Eigenheiten und der Zugriff aus R und Python."
+categories: ["Datenbanken", "SQL", "R", "Python"]
+seitentyp: werkzeug
+stand: entwurf
+order: 70
+---
+
+## Kernideen
+
+- Serverdatenbank, sehr verbreitet in Webanwendungen und damit in vielen Datenquellen
+- MariaDB ist aus MySQL hervorgegangen und weitgehend austauschbar
+- Der Speicher-Engine entscheidet über Transaktionen und Fremdschlüssel
+- Zeichensatz und Sortierung sind eine echte Fehlerquelle, nicht eine Formalie
+- Analytisch schwächer als PostgreSQL, für den Lesezugriff aber unproblematisch
+- In der Datenarbeit meist Quellsystem, nicht Zielsystem
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [SQL](sql.qmd). Der Zugriff aus R und Python steht unter
+[Datenbankzugriff](datenbanken-zugriff.qmd), die Einordnung gegenüber anderen
+Systemen in der [Übersicht](index.qmd).
+:::
+
+### MySQL, MariaDB und was sie unterscheidet
+
+MariaDB entstand als Abspaltung von MySQL und ist für den Lesezugriff praktisch
+identisch: dieselben Treiber, dieselben Abfragen, dieselben Werkzeuge. Für die
+Datenarbeit spielt der Unterschied selten eine Rolle; er wird erst beim Betrieb
+relevant, wo sich Funktionsumfang und Lizenzen unterscheiden.
+
+Wichtiger als die Unterscheidung der beiden ist die Speicher-Engine. `InnoDB`
+ist heute der Standard und kann Transaktionen und Fremdschlüssel. Die ältere
+`MyISAM` kann beides nicht: Ein Fremdschlüssel wird dort ohne Fehlermeldung
+ignoriert, und ein abgebrochener Schreibvorgang hinterlässt einen halben Stand.
+In alten Beständen begegnet einem das gelegentlich, und man sieht es der
+Tabelle nicht an.
+
+```sql
+SELECT table_name, engine FROM information_schema.tables
+WHERE table_schema = DATABASE();
+```
+
+### Zeichensatz und Sortierung
+
+Die häufigste stille Fehlerquelle beim Lesen aus MySQL sind Umlaute, die als
+Fragezeichen oder als Buchstabensalat ankommen. Ursache ist ein Zeichensatz, der
+nicht durchgehend `utf8mb4` ist. Historisch bedeutete `utf8` in MySQL eine
+verkürzte Variante, die keine vier Byte langen Zeichen speichern konnte, also
+weder Emojis noch manche asiatische Schriftzeichen.
+
+Die zweite Eigenheit ist die Sortierung, die auch die Vergleiche steuert. Bei
+den üblichen Voreinstellungen unterscheidet MySQL in `WHERE` nicht zwischen
+Gross- und Kleinschreibung, PostgreSQL dagegen schon. Eine Abfrage, die auf dem
+einen System das Erwartete liefert, kann auf dem anderen leer bleiben.
+
+```sql
+SHOW VARIABLES LIKE 'character_set%';
+SHOW VARIABLES LIKE 'collation%';
+```
+
+### Eigenheiten, die beim Auswerten auffallen
+
+- **Datumsangaben mit Nullwerten:** MySQL erlaubt `0000-00-00`, was in R und
+  Python zu `NA` beziehungsweise `NaT` wird oder den Treiber stört. In den
+  Verbindungsoptionen lässt sich das Verhalten festlegen.
+- **`GROUP BY` mit nicht aggregierten Spalten:** war lange erlaubt und lieferte
+  einen beliebigen Wert der Gruppe. Neuere Versionen lehnen es ab, alte
+  Abfragen brechen deshalb beim Umstieg.
+- **Fensterfunktionen** gibt es erst ab MySQL 8 und MariaDB 10.2; in älteren
+  Beständen fehlen sie und werden durch Selbstverbindungen ersetzt.
+- **`LIMIT` ohne `ORDER BY`** liefert keine definierte Auswahl, auch wenn es in
+  der Praxis oft stabil aussieht.
+
+::: {.quiz}
+Eine Abfrage `WHERE bezeichnung = 'pneumatik'` findet in MySQL Zeilen mit
+`Pneumatik`, in PostgreSQL nicht. Woran liegt das?
+
+- [x] An der Sortierung, die in MySQL üblicherweise nicht zwischen Gross- und
+      Kleinschreibung unterscheidet ~ Richtig. Die Collation steuert Vergleiche
+      mit. Wer portabel schreiben will, vergleicht ausdrücklich, etwa über
+      `LOWER(bezeichnung) = 'pneumatik'`.
+- [ ] An unterschiedlichen Zeichensätzen ~ Der Zeichensatz betrifft die
+      Speicherung, nicht die Gross- und Kleinschreibung beim Vergleich.
+- [ ] PostgreSQL hat den Index nicht genutzt ~ Der Index ändert das Ergebnis
+      nicht, nur die Geschwindigkeit.
+:::
+
+## Typische Aufgaben
+
+**Verbinden**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+con <- DBI::dbConnect(
+  RMariaDB::MariaDB(),
+  host = "db.example.org", port = 3306, dbname = "shop",
+  user = Sys.getenv("MYSQL_USER"), password = Sys.getenv("MYSQL_PASSWORD")
+)
+DBI::dbExecute(con, "SET NAMES utf8mb4")
+```
+
+## Python
+
+```python
+from sqlalchemy import create_engine
+import os
+
+motor = create_engine(
+    f"mysql+pymysql://{os.environ['MYSQL_USER']}:{os.environ['MYSQL_PASSWORD']}"
+    "@db.example.org:3306/shop?charset=utf8mb4"
+)
+```
+
+:::
+
+Der Zusatz zum Zeichensatz ist kein Detail: Ohne ihn kommen Umlaute je nach
+Servereinstellung falsch an, und zwar ohne Fehlermeldung.
+
+**Nachsehen, was es gibt**
+
+```sql
+SHOW DATABASES;
+SHOW TABLES;
+DESCRIBE artikel;
+SHOW CREATE TABLE artikel;      -- inklusive Engine und Zeichensatz
+```
+
+**Lesen und weiterverarbeiten**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+df <- DBI::dbGetQuery(con, "
+  SELECT a.bezeichnung, SUM(b.betrag) AS umsatz
+  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+  WHERE b.datum >= ?
+  GROUP BY a.bezeichnung", params = list("2026-01-01"))
+```
+
+## Python
+
+```python
+df = pd.read_sql_query(
+    """SELECT a.bezeichnung, SUM(b.betrag) AS umsatz
+       FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+       WHERE b.datum >= %(ab)s
+       GROUP BY a.bezeichnung""",
+    motor, params={"ab": "2026-01-01"})
+```
+
+:::
+
+**Eine langsame Abfrage untersuchen**
+
+```sql
+EXPLAIN SELECT * FROM bestellung WHERE artikel_id = 3;
+SHOW INDEX FROM bestellung;
+CREATE INDEX idx_bestellung_artikel ON bestellung(artikel_id);
+```
+
+**Sicherung und Wiederherstellung**
+
+```bash
+mysqldump -h host -u benutzer -p --single-transaction shop > sicherung.sql
+mysql -h host -u benutzer -p shop < sicherung.sql
+```
+
+`--single-transaction` sorgt bei InnoDB für einen konsistenten Stand, ohne die
+Tabellen zu sperren.
+
+**Aus einem Container heraus ausprobieren**
+
+```bash
+docker run --name mariadb -e MARIADB_ROOT_PASSWORD=geheim -p 3306:3306 -d mariadb
+docker exec -it mariadb mariadb -uroot -pgeheim
+```
+
+Siehe auch [Docker und Virtualisierung](../../werkzeuge/docker-virtualisierung.qmd).
+
+## Verlinkte Ressourcen
+
+- [MySQL: Referenzhandbuch](https://dev.mysql.com/doc/refman/8.0/en/)
+- [MariaDB: Dokumentation](https://mariadb.com/kb/en/documentation/)
+- [Warum utf8mb4 und nicht utf8](https://dev.mysql.com/doc/refman/8.0/en/charset-unicode-utf8mb4.html)

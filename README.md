@@ -13,7 +13,8 @@ Thema, jeder Ordner ein Bereich.
 index.qmd                 Übersicht mit Lesepfaden, Karten aus dem Frontmatter
 stand.qmd                 Statusübersicht aller Seiten
 programmierung/           Python, R, Pakete, Umgebungen, Reproduzierbarkeit
-daten/                    Import, Tidy Data, Wrangling, Qualität, SQL
+daten/                    Import, Tidy Data, Wrangling, Qualität
+  datenbanken/            Modellierung, SQL, Zugriff, SQLite bis MongoDB
 werkzeuge/                Shell, Git, Container
 statistik/                Grundlagen, Wahrscheinlichkeit, Inferenz, Tests,
                           Regression, Überlebenszeit, Multivariat, Zeitreihen

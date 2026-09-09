@@ -5,7 +5,7 @@ categories: ["SQL", "Datenbanken", "R", "Python"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
 stand: entwurf
-order: 70
+order: 20
 ---
 
 ```{r}
@@ -90,8 +90,8 @@ verbindung.commit()
 
 ::: {.note-box}
 **Vorwissen:** [Datenmodellierung](datenmodellierung.qmd) für Schlüssel und
-Beziehungen. Wer [Data Wrangling](data-wrangling.qmd) oder
-[pandas](../programmierung/pandas.qmd) kennt, findet dieselben Operationen
+Beziehungen. Wer [Data Wrangling](../data-wrangling.qmd) oder
+[pandas](../../programmierung/pandas.qmd) kennt, findet dieselben Operationen
 wieder: `WHERE` ist `filter`, `GROUP BY` ist `groupby`, `JOIN` ist `merge`. Die
 Abfragen dieser Seite laufen beim Bauen der Website gegen eine echte
 SQLite-Datenbank.
@@ -107,19 +107,21 @@ unter jedem Block steht das tatsächliche Ergebnis. Wie man dieselbe Abfrage aus
 R oder Python absetzt, steht unter
 [Datenbankzugriff](datenbanken-zugriff.qmd).
 
-```{sql}
-#| label: select-sql
-#| connection: con
+```sql
 SELECT bezeichnung, kategorie
 FROM artikel
 WHERE kategorie = 'Pneumatik'
 ```
 
+```{r}
+#| label: select-sql
+#| echo: false
+knitr::kable(dbGetQuery(con, "SELECT bezeichnung, kategorie FROM artikel WHERE kategorie = 'Pneumatik'"))
+```
+
 Verbinden zweier Tabellen über den Schlüssel:
 
-```{sql}
-#| label: join-sql
-#| connection: con
+```sql
 SELECT b.datum, a.bezeichnung, b.menge, b.betrag
 FROM bestellung b
 JOIN artikel a ON a.artikel_id = b.artikel_id
@@ -127,11 +129,15 @@ ORDER BY b.datum
 LIMIT 5
 ```
 
+```{r}
+#| label: join-sql
+#| echo: false
+knitr::kable(dbGetQuery(con, "SELECT b.datum, a.bezeichnung, b.menge, b.betrag FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id ORDER BY b.datum LIMIT 5"))
+```
+
 Gruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:
 
-```{sql}
-#| label: groupby-sql
-#| connection: con
+```sql
 SELECT a.kategorie,
        COUNT(*)                AS anzahl,
        SUM(b.betrag)           AS umsatz,
@@ -141,6 +147,12 @@ JOIN artikel a ON a.artikel_id = b.artikel_id
 GROUP BY a.kategorie
 HAVING COUNT(*) >= 2
 ORDER BY umsatz DESC
+```
+
+```{r}
+#| label: groupby-sql
+#| echo: false
+knitr::kable(dbGetQuery(con, "SELECT a.kategorie,        COUNT(*)                AS anzahl,        SUM(b.betrag)           AS umsatz,        ROUND(AVG(b.betrag), 2) AS mittel FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id GROUP BY a.kategorie HAVING COUNT(*) >= 2 ORDER BY umsatz DESC"))
 ```
 
 ### Die Auswertungsreihenfolge
@@ -160,9 +172,7 @@ Aggregat nicht in `WHERE` prüfen lässt:
 `WHERE` läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht.
 `HAVING` läuft danach.
 
-```{sql}
-#| label: reihenfolge-sql
-#| connection: con
+```sql
 -- WHERE filtert einzelne Zeilen, und zwar vor der Gruppierung
 SELECT a.kategorie, SUM(b.betrag) AS umsatz
 FROM bestellung b
@@ -170,6 +180,12 @@ JOIN artikel a ON a.artikel_id = b.artikel_id
 WHERE b.datum >= '2026-02-01'
 GROUP BY a.kategorie
 ORDER BY umsatz DESC
+```
+
+```{r}
+#| label: reihenfolge-sql
+#| echo: false
+knitr::kable(dbGetQuery(con, "SELECT a.kategorie, SUM(b.betrag) AS umsatz FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id WHERE b.datum >= '2026-02-01' GROUP BY a.kategorie ORDER BY umsatz DESC"))
 ```
 
 ::: {.quiz}
@@ -189,7 +205,7 @@ Ein Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?
 
 - [x] Der Schlüssel war auf der rechten Seite nicht eindeutig ~ Richtig. Jede
       linke Zeile wird mit jeder passenden rechten kombiniert. Es ist dieselbe
-      Falle wie beim `merge` in [pandas](../programmierung/pandas.qmd), und die Prüfung ist
+      Falle wie beim `merge` in [pandas](../../programmierung/pandas.qmd), und die Prüfung ist
       dieselbe: vorher die Eindeutigkeit des Schlüssels sicherstellen.
 - [ ] Es wurde ein `LEFT JOIN` statt eines `INNER JOIN` verwendet ~ Ein
       `LEFT JOIN` behält alle linken Zeilen, vervielfacht sie aber nicht von

@@ -1,0 +1,208 @@
+---
+title: "PostgreSQL"
+description: "Der Standard unter den offenen Serverdatenbanken, mit Fensterfunktionen, JSON und Erweiterungen."
+categories: ["Datenbanken", "SQL", "R", "Python"]
+seitentyp: werkzeug
+stand: entwurf
+order: 60
+---
+
+## Kernideen
+
+- Serverdatenbank für viele gleichzeitige Zugriffe, mit Benutzern und Rechten
+- Strenge Typen und echte Prüfungen: falsche Daten kommen gar nicht erst hinein
+- Starke analytische Fähigkeiten, insbesondere Fenster- und Aggregatfunktionen
+- Kennt JSON als eigenen Typ, damit auch halbstrukturierte Daten
+- Erweiterbar, etwa um Zeitreihen, Geodaten oder Vektorsuche
+- Für die Datenarbeit meist das Zielsystem, aus dem gelesen wird
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [SQL](sql.qmd) und [Datenmodellierung](datenmodellierung.qmd).
+Der Zugriff aus R und Python steht unter
+[Datenbankzugriff](datenbanken-zugriff.qmd), die Wahl des Systems in der
+[Übersicht](index.qmd).
+:::
+
+### Was PostgreSQL von SQLite unterscheidet
+
+Der offensichtliche Unterschied ist der Server: Es läuft ein Dienst, zu dem
+sich Programme über das Netz verbinden, mit Benutzern, Passwörtern und
+Rechten. Der wichtigere Unterschied für die tägliche Arbeit ist die Strenge.
+Typen werden durchgesetzt, Fremdschlüssel gelten immer, und eine Transaktion,
+die eine Bedingung verletzt, wird abgelehnt statt teilweise geschrieben.
+
+Für die Datenarbeit heisst das: Was aus PostgreSQL kommt, hat eine
+verlässliche Struktur. Die Prüfungen, die man bei einer CSV-Datei selbst
+schreiben muss, hat die Datenbank bereits erledigt.
+
+### Was analytisch nützlich ist
+
+Drei Sprachmittel begegnen einem bei Auswertungen ständig:
+
+**Fensterfunktionen** rechnen über eine Menge von Zeilen, ohne sie zu
+Gruppen zusammenzufassen. Damit lassen sich laufende Summen, Ränge und
+Vorperiodenvergleiche direkt in der Datenbank bilden:
+
+```sql
+SELECT datum,
+       betrag,
+       SUM(betrag) OVER (ORDER BY datum)                    AS kumuliert,
+       betrag - LAG(betrag) OVER (ORDER BY datum)           AS veraenderung,
+       RANK() OVER (PARTITION BY kategorie ORDER BY betrag DESC) AS rang
+FROM bestellung;
+```
+
+**Gemeinsame Tabellenausdrücke** benennen Zwischenergebnisse und machen lange
+Abfragen lesbar:
+
+```sql
+WITH monatlich AS (
+  SELECT date_trunc('month', datum) AS monat, SUM(betrag) AS umsatz
+  FROM bestellung
+  GROUP BY 1
+)
+SELECT monat, umsatz, umsatz - LAG(umsatz) OVER (ORDER BY monat) AS delta
+FROM monatlich
+ORDER BY monat;
+```
+
+**JSON als Typ** erlaubt halbstrukturierte Felder, ohne das relationale Modell
+aufzugeben:
+
+```sql
+SELECT eigenschaften ->> 'hersteller' AS hersteller
+FROM artikel
+WHERE eigenschaften @> '{"kategorie": "Pneumatik"}';
+```
+
+Damit deckt PostgreSQL viele Fälle ab, für die sonst eine Dokumentdatenbank
+herangezogen würde, siehe [MongoDB](mongodb.qmd).
+
+### Was beim Zugriff zu beachten ist
+
+Verbindungen sind teurer als bei einer Dateidatenbank, und sie sind begrenzt.
+Wer in einer Schleife verbindet, erschöpft den Server; wer eine Verbindung
+offenlässt, blockiert sie. In Auswertungen gilt deshalb: einmal verbinden, alles
+Nötige holen, schliessen. Für Anwendungen mit vielen kurzen Zugriffen
+übernimmt ein Verbindungspool diese Aufgabe.
+
+Der zweite Punkt ist die Arbeitsteilung. Aggregieren, Filtern und Verbinden
+gehören in die Datenbank, weil sie das schneller kann und weil dann weniger
+Daten über das Netz gehen. In R oder Python landet, was ausgewertet und
+dargestellt wird.
+
+::: {.quiz}
+Eine Auswertung liest 20 Millionen Zeilen nach Python und gruppiert sie dort
+mit pandas. Was ist daran falsch?
+
+- [ ] Nichts, pandas ist schnell genug ~ Es ist nicht die Geschwindigkeit von
+      pandas, die hier das Problem ist.
+- [x] Die Gruppierung gehört in die Datenbank ~ Richtig. Der Server aggregiert
+      auf indizierten Spalten deutlich schneller und überträgt statt Millionen
+      Zeilen nur das Ergebnis. Das spart Netz, Speicher und Zeit.
+- [ ] Man hätte SQLite nehmen sollen ~ Das ändert nichts daran, wo aggregiert
+      wird.
+:::
+
+## Typische Aufgaben
+
+**Verbinden**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+con <- DBI::dbConnect(
+  RPostgres::Postgres(),
+  host = "db.example.org", port = 5432, dbname = "produktion",
+  user = Sys.getenv("PGUSER"), password = Sys.getenv("PGPASSWORD")
+)
+```
+
+## Python
+
+```python
+from sqlalchemy import create_engine
+import os
+
+motor = create_engine(
+    f"postgresql+psycopg://{os.environ['PGUSER']}:{os.environ['PGPASSWORD']}"
+    "@db.example.org:5432/produktion"
+)
+```
+
+:::
+
+Zugangsdaten gehören in Umgebungsvariablen oder in eine `.pgpass`-Datei, nie in
+den Code und schon gar nicht in die Versionsverwaltung.
+
+**Nachsehen, was es gibt**
+
+```sql
+\dt                                    -- Tabellen (in psql)
+\d artikel                             -- Definition einer Tabelle
+
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+SELECT column_name, data_type FROM information_schema.columns
+WHERE table_name = 'artikel';
+```
+
+**Grosse Ergebnisse in Portionen lesen**
+
+```python
+for teil in pd.read_sql_query("SELECT * FROM messung", motor, chunksize=100_000):
+    verarbeite(teil)
+```
+
+**Daten schreiben**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+DBI::dbWriteTable(con, "ergebnis", df, overwrite = TRUE)
+```
+
+## Python
+
+```python
+df.to_sql("ergebnis", motor, if_exists="replace", index=False, method="multi")
+```
+
+:::
+
+Für grosse Mengen ist `COPY` um ein Vielfaches schneller als einzelne
+`INSERT`-Anweisungen:
+
+```sql
+COPY messung (geraet_id, wert, gemessen) FROM '/pfad/daten.csv' CSV HEADER;
+```
+
+**Eine langsame Abfrage untersuchen**
+
+```sql
+EXPLAIN ANALYZE
+SELECT kategorie, SUM(betrag) FROM bestellung GROUP BY kategorie;
+
+CREATE INDEX idx_bestellung_datum ON bestellung(datum);
+```
+
+`Seq Scan` auf einer grossen Tabelle ist der häufigste Befund, und ein Index auf
+der Filterspalte die häufigste Abhilfe.
+
+**Sicherung und Wiederherstellung**
+
+```bash
+pg_dump -h host -U benutzer -d produktion -F c -f sicherung.dump
+pg_restore -h host -U benutzer -d produktion sicherung.dump
+```
+
+## Verlinkte Ressourcen
+
+- [PostgreSQL: Dokumentation](https://www.postgresql.org/docs/current/)
+- [Fensterfunktionen erklärt](https://www.postgresql.org/docs/current/tutorial-window.html)
+- [Use The Index, Luke: SQL-Performance](https://use-the-index-luke.com/)

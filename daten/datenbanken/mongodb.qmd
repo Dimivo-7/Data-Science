@@ -1,0 +1,241 @@
+---
+title: "MongoDB"
+description: "Dokumentdatenbank ohne festes Schema: wann sie passt und wie man sie abfragt."
+categories: ["Datenbanken", "Data Wrangling", "R", "Python"]
+seitentyp: werkzeug
+stand: entwurf
+order: 80
+---
+
+## Kernideen
+
+- Speichert Dokumente statt Zeilen, ohne festes Schema
+- Verschachtelte Strukturen bleiben erhalten, statt auf Tabellen verteilt zu werden
+- Abgefragt wird nicht mit SQL, sondern über Filterdokumente und eine Pipeline
+- Kein Schema heisst nicht keine Struktur, sondern Struktur ohne Prüfung
+- Für die Auswertung wird meist flach gemacht, was verschachtelt gespeichert ist
+- Relationale Systeme können JSON inzwischen auch; der Vergleich lohnt sich
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Datenmodellierung](datenmodellierung.qmd) als Gegenpol und
+[Datenimport und Formate](../datenimport-formate.qmd) für JSON. Welches System
+wann passt, steht in der [Übersicht](index.qmd).
+:::
+
+### Dokumente statt Zeilen
+
+Ein Dokument ist eine JSON-ähnliche Struktur, die auch Listen und
+Unterdokumente enthalten darf. Eine Bestellung liegt damit als Ganzes an einem
+Ort, statt auf mehrere Tabellen verteilt zu sein:
+
+```json
+{
+  "bestell_id": 4711,
+  "kunde": { "name": "Meier AG", "ort": "Chur" },
+  "positionen": [
+    { "artikel": "Ventil 3/2", "menge": 10, "preis": 24.0 },
+    { "artikel": "Sensor induktiv", "menge": 2, "preis": 128.0 }
+  ],
+  "datum": "2026-03-15"
+}
+```
+
+Der Vorteil ist der Zugriff: Wer die Bestellung liest, hat alles beisammen, ohne
+zu verbinden. Der Nachteil zeigt sich, sobald man quer auswerten will, etwa den
+Umsatz je Artikel über alle Bestellungen. Dann muss die Struktur aufgebrochen
+werden, und das ist genau die Arbeit, die ein relationales Modell einem abnimmt.
+
+### Kein Schema heisst nicht keine Struktur
+
+Ohne Schemaprüfung nimmt die Datenbank jedes Dokument an, auch eines mit
+fehlendem Feld, falschem Typ oder abweichender Schreibweise. Die Struktur
+existiert trotzdem, sie steht nur nicht mehr in der Datenbank, sondern verteilt
+in allen Programmen, die darauf zugreifen.
+
+Für die Datenarbeit hat das eine unmittelbare Folge: Die erste Frage an eine
+unbekannte Sammlung ist nicht "was steht drin", sondern "welche Felder gibt es
+überhaupt, und in welchen Typen". Prüfungen, die bei
+[PostgreSQL](postgresql.qmd) die Datenbank übernimmt, gehören hier ins eigene
+Vorgehen, siehe [Datenqualität](../datenqualitaet.qmd).
+
+MongoDB kann eine Schemaprüfung erzwingen; genutzt wird sie in gewachsenen
+Beständen selten.
+
+### Abfragen ohne SQL
+
+Gefiltert wird mit einem Dokument, das die Bedingungen beschreibt.
+Aggregationen laufen über eine Pipeline aus Stufen, die nacheinander angewendet
+werden; jede Stufe entspricht ungefähr einer SQL-Klausel.
+
+| SQL | MongoDB |
+|---|---|
+| `WHERE` | `$match` |
+| `GROUP BY` | `$group` |
+| `SELECT` Spalten | `$project` |
+| `ORDER BY` | `$sort` |
+| `LIMIT` | `$limit` |
+| `JOIN` | `$lookup` |
+| Liste aufbrechen | `$unwind` |
+
+```python
+pipeline = [
+    {"$match": {"datum": {"$gte": "2026-01-01"}}},
+    {"$unwind": "$positionen"},
+    {"$group": {"_id": "$positionen.artikel",
+                "umsatz": {"$sum": {"$multiply": ["$positionen.menge",
+                                                  "$positionen.preis"]}}}},
+    {"$sort": {"umsatz": -1}},
+    {"$limit": 10},
+]
+```
+
+Die Stufe `$unwind` hat kein direktes Gegenstück in SQL: Sie macht aus einem
+Dokument mit einer Liste von drei Positionen drei Dokumente. Erst danach lässt
+sich über Positionen gruppieren.
+
+### Wann eine Dokumentdatenbank passt
+
+| Fall | Passend |
+|---|---|
+| Struktur variiert je Datensatz und ändert sich häufig | MongoDB |
+| Verschachtelte Objekte werden als Ganzes gelesen und geschrieben | MongoDB |
+| Querauswertungen über viele Datensätze sind der Normalfall | Relationale Systeme |
+| Fremdschlüssel und Konsistenz sollen erzwungen werden | [PostgreSQL](postgresql.qmd) |
+| Nur ein paar Felder sind halbstrukturiert | PostgreSQL mit JSON-Spalte |
+| Grosse Auswertungen über Dateien | [DuckDB](duckdb.qmd) |
+
+::: {.quiz}
+Eine Sammlung enthält Bestellungen mit einer Liste von Positionen. Gesucht ist
+der Umsatz je Artikel. Was ist der erste Schritt in der Pipeline?
+
+- [ ] `$group` über den Artikel ~ Das geht noch nicht: Der Artikel steckt in
+      einer Liste, und die Gruppierung sähe ganze Dokumente.
+- [x] `$unwind` auf die Positionen ~ Richtig. Erst wird aus jedem Dokument je
+      Position ein eigenes Dokument, danach lässt sich gruppieren. Das ist der
+      Schritt, den SQL nicht braucht, weil dort Positionen ohnehin eigene Zeilen
+      sind.
+- [ ] `$lookup` auf die Artikeltabelle ~ Das verbindet mit einer anderen
+      Sammlung und löst das Problem der Liste nicht.
+:::
+
+## Typische Aufgaben
+
+**Verbinden**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+library(mongolite)
+sammlung <- mongo(collection = "bestellung", db = "shop",
+                  url = Sys.getenv("MONGO_URL"))
+```
+
+## Python
+
+```python
+from pymongo import MongoClient
+import os
+
+klient = MongoClient(os.environ["MONGO_URL"])
+sammlung = klient["shop"]["bestellung"]
+```
+
+:::
+
+**Sich einen Überblick verschaffen**
+
+```python
+print(klient.list_database_names())
+print(klient["shop"].list_collection_names())
+print(sammlung.estimated_document_count())
+sammlung.find_one()                       # ein Beispieldokument
+```
+
+Welche Felder überhaupt vorkommen, verrät eine kleine Auszählung, weil es kein
+Schema gibt, das man ansehen könnte:
+
+```python
+from collections import Counter
+
+felder = Counter()
+for dok in sammlung.find().limit(1000):
+    felder.update(dok.keys())
+print(felder.most_common())
+```
+
+**Filtern und in einen Data Frame holen**
+
+::: {.panel-tabset}
+
+## R
+
+```r
+df <- sammlung$find(
+  query = '{"datum": {"$gte": "2026-01-01"}}',
+  fields = '{"bestell_id": 1, "kunde.ort": 1, "datum": 1, "_id": 0}'
+)
+```
+
+## Python
+
+```python
+import pandas as pd
+
+df = pd.DataFrame(sammlung.find(
+    {"datum": {"$gte": "2026-01-01"}},
+    {"bestell_id": 1, "kunde.ort": 1, "datum": 1, "_id": 0},
+))
+```
+
+:::
+
+**Verschachtelte Felder flach machen**
+
+```python
+df = pd.json_normalize(
+    sammlung.find({}, {"_id": 0}),
+    record_path="positionen",
+    meta=["bestell_id", "datum", ["kunde", "ort"]],
+)
+```
+
+Damit entsteht die Tabelle, mit der sich weiterarbeiten lässt, siehe
+[Tidy Data](../tidy-data.qmd).
+
+**Aggregieren in der Datenbank**
+
+```python
+ergebnis = list(sammlung.aggregate([
+    {"$unwind": "$positionen"},
+    {"$group": {"_id": "$positionen.artikel",
+                "umsatz": {"$sum": {"$multiply": ["$positionen.menge",
+                                                  "$positionen.preis"]}}}},
+    {"$sort": {"umsatz": -1}},
+]))
+df = pd.DataFrame(ergebnis).rename(columns={"_id": "artikel"})
+```
+
+**Index anlegen**
+
+```python
+sammlung.create_index("datum")
+sammlung.create_index([("kunde.ort", 1), ("datum", -1)])
+print(sammlung.index_information())
+```
+
+**Zum Ausprobieren aus einem Container**
+
+```bash
+docker run --name mongo -p 27017:27017 -d mongo
+docker exec -it mongo mongosh
+```
+
+## Verlinkte Ressourcen
+
+- [MongoDB: Dokumentation](https://www.mongodb.com/docs/manual/)
+- [Aggregation Pipeline](https://www.mongodb.com/docs/manual/core/aggregation-pipeline/)
+- [pymongo: Handbuch](https://pymongo.readthedocs.io/en/stable/)
