@@ -4,29 +4,483 @@ description: "Überlebenskurven schätzen, Median und Konfidenzband richtig deut
 categories: ["Survival-Analyse", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 20
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(survival)
+
+set.seed(2026)
+
+# Beispieldaten: Abos eines Fitnessstudios, Stichtag nach 24 Monaten.
+# Monatsabos kuendigen haeufiger, groessere Distanz erhoeht das Risiko.
+n <- 400
+vertrag <- factor(sample(c("Jahr", "Monat"), n, replace = TRUE, prob = c(0.45, 0.55)),
+                  levels = c("Jahr", "Monat"))
+distanz <- round(runif(n, 0.5, 15), 1)
+rate <- 0.018 * exp(0.85 * (vertrag == "Monat") + 0.045 * distanz)
+zeit_ereignis <- rexp(n, rate)
+stichtag <- 24
+
+abo <- data.frame(
+  zeit = pmin(zeit_ereignis, stichtag),
+  status = as.integer(zeit_ereignis <= stichtag),
+  vertrag = vertrag,
+  distanz = distanz
+)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from lifelines import KaplanMeierFitter
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+rng = np.random.default_rng(2026)
+
+n = 400
+vertrag = rng.choice(["Jahr", "Monat"], n, p=[0.45, 0.55])
+distanz = rng.uniform(0.5, 15, n).round(1)
+rate = 0.018 * np.exp(0.85 * (vertrag == "Monat") + 0.045 * distanz)
+zeit_ereignis = rng.exponential(1 / rate)
+stichtag = 24
+
+abo = pd.DataFrame({
+    "zeit": np.minimum(zeit_ereignis, stichtag),
+    "status": (zeit_ereignis <= stichtag).astype(int),
+    "vertrag": vertrag,
+    "distanz": distanz,
+})
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Welcher Anteil hat zu einem gegebenen Zeitpunkt noch kein Ereignis erlebt, bei rechtszensierten Daten? |
+| Zielvariable | Zeit bis zum Ereignis plus Statusindikator |
+| Prädiktoren | keine, oder eine kategoriale Gruppierung für getrennte Kurven |
+| Was die Methode liefert | Überlebenskurve mit Konfidenzband, Anteile zu gewählten Zeitpunkten, Median, Anzahl unter Risiko |
+| R-Funktion | `survfit(Surv(zeit, status) ~ 1)`, gelesen mit `summary()` und `plot()` |
+| Python-Funktion | `KaplanMeierFitter().fit(zeit, status)` |
+| Verwandte Methoden | [Log-Rank-Test](log-rank-test.qmd), [Cox-Modell](cox-modell.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Wie lange bleiben Mitglieder, bis wann fällt ein
+Bauteil aus, welcher Anteil ist nach zwölf Monaten noch ohne Rückfall.
+Gemeinsam ist ihnen eine Zeit bis zu einem Ereignis und ein Teil Beobachtungen,
+bei denen das Ereignis noch nicht eingetreten ist.
+
+Der Kaplan-Meier-Schätzer ist beschreibend: Er schätzt die Kurve, ohne eine
+Verteilungsform zu unterstellen und ohne Einflussgrössen zu berücksichtigen. Er
+ist deshalb fast immer der erste Schritt und selten der letzte.
+
+| Situation | Stattdessen |
+|---|---|
+| Gruppen sollen statistisch verglichen werden | [Log-Rank-Test](log-rank-test.qmd) |
+| Der Effekt mehrerer Einflussgrössen interessiert | [Cox-Modell](cox-modell.qmd) |
+| Es gibt keine Zensierung, alle Zeiten sind vollständig | gewöhnliche [deskriptive Statistik](../grundlagen/lage-streuungsmasse.qmd) genügt |
+| Zielgrösse ist ja oder nein ohne Zeitbezug | [logistische Regression](../regression/logistische-regression.qmd) |
+| Ein einzelner metrischer Prädiktor soll gezeigt werden | Klassen bilden und je Klasse eine Kurve, oder Cox-Modell |
+
 ## Grundidee und Modell
+
+Die Kurve entsteht Schritt für Schritt: An jedem Zeitpunkt, an dem ein Ereignis
+eintritt, wird der Anteil derjenigen berechnet, die diesen Zeitpunkt überstehen,
+und dieser Anteil multipliziert die bisherige Kurve.
+
+$$\hat{S}(t) = \prod_{t_i \le t} \left(1 - \frac{d_i}{n_i}\right)$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $t_i$ | Zeitpunkt, an dem mindestens ein Ereignis eintritt |
+| $d_i$ | Anzahl Ereignisse zu diesem Zeitpunkt |
+| $n_i$ | Anzahl unter Risiko, also noch beobachtet und ohne Ereignis |
+| $1 - d_i/n_i$ | bedingte Wahrscheinlichkeit, diesen Zeitpunkt zu überstehen |
+| $\prod$ | Produkt über alle Ereigniszeitpunkte bis $t$ |
+
+Zensierte Beobachtungen tauchen nicht als Ereignis auf, verkleinern aber $n_i$
+für alle späteren Zeitpunkte. Genau dadurch fliesst ihre Information ein: Sie
+haben bis zu ihrem Ausscheiden mitgezählt. Die Kurve ist deshalb eine
+Treppenfunktion, die nur bei Ereignissen fällt.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Rechtszensierung | Bekannt ist, dass das Ereignis nach der Beobachtungszeit liegt | Datenstruktur, Erhebung | Andere Zensierungsart braucht andere Verfahren | Verfahren für Intervall- oder Linkszensierung |
+| Nicht informative Zensierung | Zensierte haben dasselbe Risiko wie Beobachtete | nur inhaltlich, siehe [Zensierung](zensierung-ueberlebensfunktion.qmd) | Kurve systematisch zu optimistisch oder zu pessimistisch | Ursachen der Zensierung berichten, Sensitivitätsrechnung |
+| Unabhängige Beobachtungen | Ein Ereignis beeinflusst andere nicht | Erhebungsdesign | Konfidenzband zu schmal | Modelle für geschachtelte Daten |
+| Gleiche Grundgesamtheit über die Zeit | Kein Zustrom mit anderem Risiko mitten in der Beobachtung | Aufnahmezeitpunkte prüfen | Kurve mischt verschiedene Populationen | nach Aufnahmekohorte trennen |
+| Genügend unter Risiko am Kurvenende | Der rechte Teil beruht nicht auf wenigen Fällen | Risikotabelle ansehen | Kurvenende schwankt stark und wird überinterpretiert | Kurve abschneiden, wo die Zahl zu klein wird |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: voraussetzungen-km-r
+# Wie viele Ereignisse, wie viele zensiert, und wann wird zensiert
+table(status = abo$status)
+round(prop.table(table(abo$status)), 3)
+
+# Zensierung tritt hier nur am Stichtag auf, das ist der unbedenkliche Fall
+range(abo$zeit[abo$status == 0])
+```
+
+## Python
+
+```{python}
+#| label: voraussetzungen-km-py
+print(abo["status"].value_counts().to_dict())
+print(abo["status"].value_counts(normalize=True).round(3).to_dict())
+print((abo.loc[abo["status"] == 0, "zeit"].min(),
+       abo.loc[abo["status"] == 0, "zeit"].max()))
+```
+
+:::
+
+Alle zensierten Beobachtungen liegen genau auf dem Stichtag von 24 Monaten. Das
+ist administrative Zensierung, also der Fall, in dem die Annahme nicht
+informativer Zensierung gut begründet ist. Läge die Zensierung verstreut über
+die Zeit, gehörte die Frage nach ihren Ursachen in die Auswertung.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-km-r
+kurve <- survfit(Surv(zeit, status) ~ 1, data = abo)
+kurve
+
+summary(kurve, times = c(3, 6, 12, 18, 24))
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-km-py
+km = KaplanMeierFitter().fit(abo["zeit"], abo["status"], label="alle")
+
+print("Ereignisse:", int(abo["status"].sum()), "von", len(abo))
+print("Median:", round(float(km.median_survival_time_), 2))
+
+zeitpunkte = [3, 6, 12, 18, 24]
+band = km.confidence_interval_survival_function_
+# je Zeitpunkt die letzte Stuetzstelle der Treppenfunktion vor oder auf t
+stuetzen = [band.index[band.index <= t][-1] for t in zeitpunkte]
+
+tabelle = pd.DataFrame({
+    "zeit": zeitpunkte,
+    "S(t)": km.survival_function_at_times(zeitpunkte).round(3).values,
+    "unten": band.iloc[:, 0].loc[stuetzen].round(3).values,
+    "oben": band.iloc[:, 1].loc[stuetzen].round(3).values,
+})
+print(tabelle.to_string(index=False))
+```
+
+:::
+
+Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 400 Abos,
+Monats- und Jahresverträge, Distanz zwischen 0.5 und 15 Kilometern, und ein
+Kündigungsrisiko, das mit Monatsvertrag und mit der Distanz steigt. Der Stichtag
+liegt bei 24 Monaten, was zu administrativer Zensierung führt.
 
 ## Output lesen
 
+R, `survfit()` und `summary()`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `n` | Anzahl Beobachtungen | nicht Anzahl Ereignisse |
+| `events` | Anzahl eingetretener Ereignisse | trägt die Genauigkeit der Schätzung, nicht n |
+| `median` | Zeitpunkt, an dem die Kurve 0.5 erreicht | `NA`, wenn die Kurve nie unter 0.5 fällt; das ist kein Fehler |
+| `0.95LCL`, `0.95UCL` | Konfidenzintervall für den Median | oft breit und nach oben offen |
+| `time` | Zeitpunkte in `summary(..., times = ...)` | frei wählbar, sinnvoll an fachlich relevanten Marken |
+| `n.risk` | Anzahl unter Risiko zu diesem Zeitpunkt | sinkt durch Ereignisse und Zensierungen |
+| `n.event` | Ereignisse seit dem letzten Zeitpunkt | |
+| `survival` | geschätzter Anteil ohne Ereignis | die eigentliche Zahl zum Berichten |
+| `std.err` | Standardfehler dieser Schätzung | wächst mit fallender Anzahl unter Risiko |
+| `lower 95% CI`, `upper 95% CI` | Konfidenzintervall des Anteils | am Kurvenende sehr breit |
+
+Python, `KaplanMeierFitter`:
+
+| Zugriff | Was er liefert | Unterschied zu R |
+|---|---|---|
+| `median_survival_time_` | Median | R nennt ihn in der Zusammenfassung mit Intervall |
+| `survival_function_` | die vollständige Treppenfunktion als Tabelle | in R über `summary()` |
+| `survival_function_at_times([...])` | Anteile zu gewählten Zeitpunkten | Gegenstück zu `times =` |
+| `confidence_interval_` | Konfidenzband über alle Zeitpunkte | in R Teil von `summary()` |
+| `event_table` | Ereignisse, Zensierungen und Anzahl unter Risiko je Zeitpunkt | in R die Spalten `n.risk` und `n.event` |
+| `plot_survival_function()` | Kurve samt Band | in R `plot()` |
+
+Ein Unterschied, über den man stolpert: Die Voreinstellung des Konfidenzbands
+unterscheidet sich zwischen den Paketen, R nutzt die log-Transformation. Kleine
+Abweichungen zwischen den Bändern sind deshalb normal und kein Rechenfehler.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: eine Kurve für alle
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-a-km-r
+#| fig-cap: "Überlebenskurve mit Konfidenzband. Die senkrechten Markierungen sind zensierte Beobachtungen."
+plot(kurve, xlab = "Monate seit Abschluss", ylab = "Anteil ohne Kündigung",
+     mark.time = TRUE, conf.int = TRUE, lwd = 2, ylim = c(0, 1))
+abline(h = 0.5, lty = 2)
+```
+
+## Python
+
+```{python}
+#| label: fig-szenario-a-km-py
+#| fig-cap: "Dieselbe Kurve mit lifelines."
+fig, ax = plt.subplots()
+km.plot_survival_function(ax=ax, ci_show=True, color="#2166ac")
+ax.axhline(0.5, linestyle="--", color="black", linewidth=0.8)
+ax.set_xlabel("Monate seit Abschluss")
+ax.set_ylabel("Anteil ohne Kündigung")
+ax.set_ylim(0, 1)
+plt.show()
+```
+
+:::
+
+Die Kurve fällt zunächst steil und flacht später ab: Das Kündigungsrisiko ist in
+den ersten Monaten am höchsten. Der Median ist der Zeitpunkt, an dem die Kurve
+die gestrichelte Linie schneidet; die Anteile zu einzelnen Zeitpunkten stehen in
+der Tabelle aus der Durchführung, jeweils mit Konfidenzintervall.
+
+Ergebnissatz: Von 400 Abos wurden im Beobachtungszeitraum die ausgegebene Anzahl
+gekündigt, die übrigen waren am Stichtag nach 24 Monaten noch aktiv. Der
+geschätzte Anteil ohne Kündigung beträgt nach zwölf Monaten den ausgegebenen
+Wert (95-Prozent-Intervall wie ausgegeben), der Median liegt bei dem ausgegebenen
+Zeitpunkt.
+
+### Szenario B: zwei Gruppen im Vergleich
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-b-km-r
+#| fig-cap: "Getrennte Kurven nach Vertragsart, mit Anzahl unter Risiko in der Beschriftung."
+kurve_gruppen <- survfit(Surv(zeit, status) ~ vertrag, data = abo)
+kurve_gruppen
+
+plot(kurve_gruppen, col = c("#2166ac", "#b2182b"), lwd = 2, mark.time = TRUE,
+     xlab = "Monate seit Abschluss", ylab = "Anteil ohne Kündigung", ylim = c(0, 1))
+legend("bottomleft", legend = c("Jahresvertrag", "Monatsvertrag"),
+       col = c("#2166ac", "#b2182b"), lwd = 2, bty = "n")
+abline(h = 0.5, lty = 2)
+```
+
+## Python
+
+```{python}
+#| label: fig-szenario-b-km-py
+#| fig-cap: "Dieselben Gruppen mit lifelines."
+fig, ax = plt.subplots()
+for name, farbe in [("Jahr", "#2166ac"), ("Monat", "#b2182b")]:
+    teil = abo[abo["vertrag"] == name]
+    kmf = KaplanMeierFitter().fit(teil["zeit"], teil["status"], label=name)
+    kmf.plot_survival_function(ax=ax, ci_show=True, color=farbe)
+    print(name, "Median:", round(float(kmf.median_survival_time_), 2),
+          "| n =", len(teil), "| Ereignisse:", int(teil["status"].sum()))
+ax.axhline(0.5, linestyle="--", color="black", linewidth=0.8)
+ax.set_xlabel("Monate seit Abschluss")
+ax.set_ylabel("Anteil ohne Kündigung")
+ax.set_ylim(0, 1)
+plt.show()
+```
+
+:::
+
+Die Kurven trennen sich früh und bleiben getrennt: Monatsverträge werden
+deutlich häufiger und früher gekündigt. Wichtig ist die Zurückhaltung an dieser
+Stelle: Der optische Abstand ist noch kein statistischer Nachweis, und er sagt
+auch nichts darüber, ob die Vertragsart die Ursache ist. Für den Nachweis ist der
+[Log-Rank-Test](log-rank-test.qmd) zuständig, für die Kontrolle weiterer
+Einflussgrössen das [Cox-Modell](cox-modell.qmd).
+
+Ergebnissatz: Abos mit Monatsvertrag zeigen eine deutlich kürzere Laufzeit als
+Jahresverträge (Median wie ausgegeben gegenüber dem ausgegebenen Wert, n und
+Ereignisse je Gruppe wie ausgegeben).
+
+### Szenario C: Fallstrick Kurvenende und fehlender Median
+
+Am rechten Ende beruht die Kurve auf wenigen Beobachtungen. Wer dort abliest,
+liest Rauschen. Und wenn die Kurve nie unter 0.5 fällt, gibt es keinen Median,
+was Programme mit `NA` beantworten und Leser gelegentlich als Fehler deuten.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-c-km-r
+# Nur Jahresvertraege in Studionaehe: geringes Risiko, kurzer Beobachtungszeitraum
+treue <- subset(abo, vertrag == "Jahr" & distanz < 5)
+
+kurve_treue <- survfit(Surv(zeit, status) ~ 1, data = treue)
+kurve_treue
+
+# Anzahl unter Risiko gegen Ende
+summary(kurve_treue, times = c(6, 12, 18, 24))$n.risk
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-km-py
+treue = abo[(abo["vertrag"] == "Jahr") & (abo["distanz"] < 5)]
+km_treue = KaplanMeierFitter().fit(treue["zeit"], treue["status"])
+
+print("n =", len(treue), "| Ereignisse:", int(treue["status"].sum()))
+print("Median:", km_treue.median_survival_time_)
+print(km_treue.event_table[["at_risk", "observed", "censored"]].tail(3))
+```
+
+:::
+
+Zwei Befunde: Der Median ist unendlich beziehungsweise `NA`, weil die Kurve im
+Beobachtungszeitraum nie die Hälfte erreicht. Das ist kein Rechenfehler, sondern
+die korrekte Aussage "mehr als die Hälfte war am Stichtag noch dabei"; berichtet
+wird dann ein Anteil zu einem festen Zeitpunkt statt eines Medians. Und die
+Anzahl unter Risiko sinkt bis zum Stichtag deutlich, weshalb der rechte Teil der
+Kurve mit Vorsicht zu lesen ist.
+
+Das Vorgehen: Median nur berichten, wenn er geschätzt ist; sonst Anteile zu
+fachlich sinnvollen Zeitpunkten nennen. Kurven dort abschneiden, wo die Anzahl
+unter Risiko unter etwa zehn fällt, und die Risikozahlen immer mitangeben.
+
+Ergebnissatz: Für Jahresverträge in Studionähe ist der Median im
+Beobachtungszeitraum nicht erreicht; nach 24 Monaten sind noch der ausgegebene
+Anteil aktiv (n wie ausgegeben, Ereignisse wie ausgegeben).
 
 ## Interpretationsfallen
 
+- **Der Median ist keine mittlere Laufzeit.** Er ist der Zeitpunkt, an dem die
+  Hälfte das Ereignis hatte. Ein Mittelwert wäre bei zensierten Daten ohnehin
+  nicht schätzbar, ohne die Kurve zu extrapolieren.
+- **Kein Median heisst nicht kein Ergebnis.** Es heisst, dass mehr als die
+  Hälfte am Stichtag noch dabei war.
+- **Das Kurvenende ist unzuverlässig.** Ohne Risikozahlen ist eine
+  Überlebenskurve nicht beurteilbar.
+- **Optische Trennung ist kein Nachweis.** Zwei Kurven können sich deutlich
+  trennen und der Unterschied dennoch mit Zufall vereinbar sein.
+- **Kaplan-Meier kontrolliert nichts.** Ein Gruppenunterschied kann vollständig
+  von einer dritten Grösse kommen; dafür ist das
+  [Cox-Modell](cox-modell.qmd) da.
+- **Zensierungen sind keine Ereignisse.** In der Kurve fallen sie nicht auf,
+  wenn man die Markierungen weglässt; deshalb gehören sie eingezeichnet.
+- **Nicht über den Beobachtungszeitraum hinaus lesen.** Was nach dem Stichtag
+  passiert, steht nicht in den Daten.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> Von [n] Beobachtungen traten [Ereignisse] Ereignisse ein, [zensiert] waren zum
+> Stichtag [Zeitpunkt] zensiert. Der geschätzte Anteil ohne Ereignis beträgt nach
+> [Zeitpunkt] [Anteil] (95-Prozent-Konfidenzintervall [unten] bis [oben]); der
+> Median liegt bei [Median] [Einheit] ([Intervall]).
+
+Immer genannt werden: n und Anzahl Ereignisse getrennt, Art und Zeitpunkt der
+Zensierung, Anteile mit Konfidenzintervall an fachlich sinnvollen Zeitpunkten,
+der Median mit Intervall oder die Feststellung, dass er nicht erreicht wurde,
+und die Anzahl unter Risiko an den berichteten Zeitpunkten.
+
+Beispiel für eine Ergebnistabelle:
+
+| Zeitpunkt | unter Risiko | Ereignisse kumuliert | Anteil ohne Ereignis | 95-Prozent-Intervall |
+|---|---|---|---|---|
+| 6 Monate | | | | |
+| 12 Monate | | | | |
+| 24 Monate | | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt Kaplan-Meier |
+|---|---|
+| [Log-Rank-Test](log-rank-test.qmd) | Gruppenunterschied soll statistisch geprüft werden |
+| [Cox-Modell](cox-modell.qmd) | Effekt mehrerer Einflussgrössen, Effektmass als Hazard Ratio |
+| [Logistische Regression](../regression/logistische-regression.qmd) | nur ob, nicht wann; keine Zeitdimension |
+| Parametrische Modelle, etwa Weibull | Verteilungsform ist begründet und Extrapolation nötig |
+| [Lage- und Streuungsmasse](../grundlagen/lage-streuungsmasse.qmd) | keine Zensierung vorhanden |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Der Output nennt für den Median `NA`. Was ist zu berichten?
+
+- [ ] Dass die Schätzung fehlgeschlagen ist ~ Sie ist nicht fehlgeschlagen, das
+      Ergebnis ist wohldefiniert.
+- [x] Dass mehr als die Hälfte am Stichtag noch kein Ereignis hatte ~ Richtig.
+      Die Kurve erreicht 0.5 im Beobachtungszeitraum nicht. Berichtet werden dann
+      Anteile zu festen Zeitpunkten statt eines Medians.
+- [ ] Dass die Stichprobe zu klein war ~ Auch bei grosser Stichprobe kann der
+      Median jenseits des Beobachtungsendes liegen.
+:::
+
+::: {.quiz}
+Zwei Kurven liegen am rechten Rand weit auseinander, dort stehen aber nur noch
+acht beziehungsweise sechs Fälle unter Risiko. Wie ist das zu deuten?
+
+- [x] Zurückhaltend: der Abstand am Ende beruht auf wenigen Beobachtungen ~
+      Richtig. Jede einzelne Beobachtung verschiebt die Treppe dort stark. Die
+      Aussage gehört auf den Bereich beschränkt, in dem genügend Fälle unter
+      Risiko sind.
+- [ ] Als deutlichster Teil des Ergebnisses, weil der Abstand am grössten ist ~
+      Der Abstand wächst dort auch ohne echten Unterschied.
+- [ ] Als Beleg, dass sich die Gruppen erst spät unterscheiden ~ Dafür wäre ein
+      Zeitverlauf mit ausreichender Fallzahl nötig.
+:::
+
+::: {.quiz}
+Warum senkt eine zensierte Beobachtung die Kurve nicht?
+
+- [x] Weil kein Ereignis eingetreten ist; sie verkleinert nur die Anzahl unter
+      Risiko ~ Richtig. Die Kurve fällt ausschliesslich an Ereigniszeitpunkten.
+      Zensierte Fälle wirken über den Nenner der späteren Schritte.
+- [ ] Weil sie aus der Rechnung entfernt wird ~ Sie wird nicht entfernt, sonst
+      wäre die Schätzung verzerrt.
+- [ ] Weil sie erst am Ende berücksichtigt wird ~ Sie wirkt ab ihrem Zeitpunkt.
+:::
+
+::: {.quiz}
+Der Anteil ohne Ereignis nach zwölf Monaten beträgt 0.66 mit Intervall 0.61 bis
+0.71. Was heisst das?
+
+- [ ] 66 Prozent aller Mitglieder kündigen nach zwölf Monaten ~ Das Gegenteil:
+      66 Prozent haben bis dahin nicht gekündigt.
+- [x] Geschätzt sind nach zwölf Monaten 66 Prozent noch ohne Kündigung, mit der
+      genannten Unsicherheit ~ Richtig. Das Intervall gilt dem Verfahren und
+      wird mitberichtet, weil die Schätzung mit fallender Anzahl unter Risiko
+      unsicherer wird.
+- [ ] Der Median liegt bei zwölf Monaten ~ Der Median ist der Zeitpunkt mit
+      Anteil 0.5, hier also später.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 11](https://www.statlearning.com/)
+- [survival: Vignette zur Grundfunktionalität](https://cran.r-project.org/web/packages/survival/vignettes/survival.pdf)
+- [lifelines: KaplanMeierFitter](https://lifelines.readthedocs.io/en/latest/fitters/univariate/KaplanMeierFitter.html)

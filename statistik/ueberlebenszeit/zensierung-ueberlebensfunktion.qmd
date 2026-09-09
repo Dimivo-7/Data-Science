@@ -4,11 +4,255 @@ description: "Was Zensierung bedeutet und wie die Überlebensfunktion zu lesen i
 categories: ["Survival-Analyse", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 10
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(survival)
+
+set.seed(2026)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+```
+
 ## Kernideen
+
+- Zielgrösse ist eine Zeit bis zu einem Ereignis, nicht ein Wert
+- Zensiert heisst: das Ereignis war am Ende der Beobachtung noch nicht eingetreten
+- Eine zensierte Beobachtung ist Information, nicht ein fehlender Wert
+- Weglassen verzerrt nach unten, Mitzählen als Ereignis verzerrt nach oben
+- Die Überlebensfunktion gibt den Anteil an, der zum Zeitpunkt t noch kein Ereignis hatte
+- Die Hazard-Rate ist das momentane Risiko, nicht eine kumulierte Wahrscheinlichkeit
 
 ## Erklärung
 
+::: {.note-box}
+**Vorwissen:** [Zufallsvariablen](../wahrscheinlichkeit/zufallsvariablen.qmd)
+und [bedingte Wahrscheinlichkeit](../wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.qmd),
+denn die Schätzung besteht aus einer Kette bedingter Wahrscheinlichkeiten. Wie
+man daraus eine Kurve schätzt, steht unter [Kaplan-Meier](kaplan-meier.qmd).
+:::
+
+### Die Datenlage, die eigene Verfahren nötig macht
+
+Gefragt ist die Zeit bis zu einem Ereignis: Kündigung, Ausfall, Reparatur,
+Rückfall. Jede Beobachtung besteht deshalb aus zwei Angaben, nicht aus einer:
+
+| Angabe | Bedeutung |
+|---|---|
+| Zeit | wie lange beobachtet wurde |
+| Status | ob das Ereignis in dieser Zeit eingetreten ist |
+
+Ohne den Status ist die Zeit nicht interpretierbar. Zwölf Monate können heissen
+"nach zwölf Monaten gekündigt" oder "seit zwölf Monaten dabei und noch nicht
+gekündigt". Das sind völlig verschiedene Aussagen, und der Unterschied ist der
+Kern des Fachgebiets.
+
+### Zensierung ist Information
+
+Eine Beobachtung heisst rechtszensiert, wenn die Beobachtung endet, bevor das
+Ereignis eintritt. Typische Gründe: Die Studie endet, der Vertrag läuft noch,
+die Person zieht weg.
+
+Der entscheidende Punkt: Eine zensierte Beobachtung sagt nicht nichts, sondern
+etwas Halbes. Wer nach zwölf Monaten noch dabei ist, hat die ersten zwölf
+Monate überlebt, und genau diese Information nutzen die Verfahren der
+Überlebenszeitanalyse.
+
+Was passiert, wenn man sie nicht nutzt, lässt sich vorrechnen: Die beiden
+naheliegenden Behelfslösungen liegen systematisch daneben, und zwar in
+entgegengesetzte Richtungen.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: zensierung-r
+n <- 400
+# Studioabos: ein Teil kuendigt, der Rest ist am Stichtag nach 24 Monaten dabei
+rate <- 0.035
+zeit_bis_kuendigung <- rexp(n, rate)
+beobachtungsende <- 24
+
+zeit <- pmin(zeit_bis_kuendigung, beobachtungsende)
+status <- as.integer(zeit_bis_kuendigung <= beobachtungsende)
+
+c(ereignisse = sum(status),
+  zensiert = sum(status == 0),
+  wahrer_median = round(log(2) / rate, 1),
+  nur_ereignisse = round(median(zeit[status == 1]), 1),
+  alle_als_ereignis = round(median(zeit), 1),
+  kaplan_meier = round(unname(summary(survfit(Surv(zeit, status) ~ 1))$table["median"]), 1))
+```
+
+## Python
+
+```{python}
+#| label: zensierung-py
+from lifelines import KaplanMeierFitter
+
+rng = np.random.default_rng(2026)
+
+n = 400
+rate = 0.035
+zeit_bis_kuendigung = rng.exponential(1 / rate, n)
+beobachtungsende = 24
+
+zeit = np.minimum(zeit_bis_kuendigung, beobachtungsende)
+status = (zeit_bis_kuendigung <= beobachtungsende).astype(int)
+
+km = KaplanMeierFitter().fit(zeit, status)
+
+print({
+    "ereignisse": int(status.sum()),
+    "zensiert": int((status == 0).sum()),
+    "wahrer_median": round(np.log(2) / rate, 1),
+    "nur_ereignisse": round(float(np.median(zeit[status == 1])), 1),
+    "alle_als_ereignis": round(float(np.median(zeit)), 1),
+    "kaplan_meier": round(float(km.median_survival_time_), 1),
+})
+```
+
+:::
+
+Der wahre Median liegt bei knapp zwanzig Monaten. Wer nur die Gekündigten
+betrachtet, unterschätzt ihn deutlich, weil die Langläufer per Konstruktion
+fehlen. Wer alle Zeiten als Ereigniszeiten behandelt, drückt den Median
+Richtung Beobachtungsende, weil viele Beobachtungen auf 24 gesetzt sind. Der
+Kaplan-Meier-Schätzer nutzt beide Sorten Information und trifft den wahren Wert.
+
+::: {.callout-note collapse="true"}
+## Weitere Formen der Zensierung
+
+Der Normalfall ist Rechtszensierung. Daneben gibt es Linkszensierung, wenn nur
+bekannt ist, dass das Ereignis vor einem Zeitpunkt lag, und
+Intervallzensierung, wenn es zwischen zwei Untersuchungen eintrat. Beide
+brauchen andere Verfahren; die hier behandelten setzen Rechtszensierung voraus.
+
+Zu unterscheiden ist Zensierung ausserdem von Trunkierung: Dort fehlen
+Beobachtungen vollständig, etwa weil sie erst ab einem Alter in die Studie
+kommen.
+:::
+
+### Die Voraussetzung, die niemand prüfen kann
+
+Alle Verfahren setzen voraus, dass die Zensierung nichts über die Zeit bis zum
+Ereignis aussagt, dass also die Zensierten dasselbe Risiko haben wie die
+Beobachteten. Das nennt man nicht informative Zensierung.
+
+Diese Annahme lässt sich in den Daten nicht prüfen, denn dazu bräuchte man
+gerade die unbeobachteten Zeiten. Sie muss inhaltlich begründet werden:
+
+- **Unbedenklich:** administratives Studienende. Wer am Stichtag noch dabei ist,
+  ist aus einem Grund zensiert, der nichts mit dem Kündigungsrisiko zu tun hat.
+- **Bedenklich:** Personen verlassen die Beobachtung, weil sie unzufrieden sind
+  oder wegziehen. Dann sind die Zensierten gerade die mit höherem Risiko, und
+  jede Schätzung ist zu optimistisch.
+
+Wo die Annahme fraglich ist, gehört das in den Bericht, nicht in eine Fussnote.
+
+### Überlebensfunktion und Hazard-Rate
+
+Zwei Funktionen beschreiben denselben Sachverhalt aus zwei Richtungen.
+
+Die **Überlebensfunktion** $S(t)$ ist der Anteil, der zum Zeitpunkt $t$ noch
+kein Ereignis erlebt hat. Sie beginnt bei eins, fällt monoton und ist die Kurve,
+die man ansieht und berichtet. Aus ihr liest man Anteile zu bestimmten
+Zeitpunkten ab, etwa "nach zwölf Monaten sind noch 66 Prozent dabei", und den
+Median, also den Zeitpunkt, an dem die Kurve die Hälfte erreicht.
+
+Die **Hazard-Rate** $h(t)$ ist das momentane Risiko: die Rate, mit der das
+Ereignis eintritt, unter denen, die bis $t$ noch dabei sind. Sie ist keine
+Wahrscheinlichkeit und liegt nicht zwischen null und eins. Sie ist die Grösse,
+die das [Cox-Modell](cox-modell.qmd) modelliert.
+
+```{r}
+#| label: fig-survival-hazard-r
+#| fig-cap: "Überlebensfunktion und Hazard-Rate für dieselbe Verteilung. Die konstante Hazard-Rate ergibt eine exponentiell fallende Überlebenskurve."
+#| fig-height: 3.2
+t <- seq(0, 36, by = 0.5)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(t, exp(-rate * t), type = "l", lwd = 2, ylim = c(0, 1),
+     xlab = "Monate", ylab = "S(t)", main = "Überlebensfunktion")
+abline(h = 0.5, lty = 2); abline(v = log(2) / rate, lty = 2)
+plot(t, rep(rate, length(t)), type = "l", lwd = 2, ylim = c(0, 0.08),
+     xlab = "Monate", ylab = "h(t)", main = "Hazard-Rate")
+par(mfrow = c(1, 1))
+```
+
+Der Zusammenhang ist eindeutig: Aus der Hazard-Rate folgt die
+Überlebensfunktion und umgekehrt. Eine konstante Hazard-Rate bedeutet, dass das
+Risiko nicht vom Alter abhängt; in der Praxis steigt oder fällt es meist, und
+genau das macht die Kurvenform interessant.
+
+### Was man aus einer Überlebenskurve abliest
+
+| Grösse | Wie | Bemerkung |
+|---|---|---|
+| Anteil zu einem Zeitpunkt | senkrecht bei $t$ ablesen | mit Konfidenzintervall berichten |
+| Median | waagrecht bei 0.5 ablesen | nicht definiert, wenn die Kurve nie unter 0.5 fällt |
+| Verlauf | Steilheit der Kurve | steil heisst hohes Risiko in diesem Abschnitt |
+| Anzahl unter Risiko | Tabelle unter der Kurve | am Ende oft so klein, dass die Kurve nichts mehr aussagt |
+
+Der letzte Punkt ist der häufigste Interpretationsfehler: Das rechte Ende einer
+Überlebenskurve beruht meist auf wenigen Beobachtungen und schwankt entsprechend.
+Deshalb gehört die Zahl der noch unter Risiko stehenden Fälle zu jeder
+Darstellung.
+
+::: {.quiz}
+Eine Auswertung entfernt alle zensierten Fälle und berechnet den Mittelwert der
+verbleibenden Zeiten. Was ist die Folge?
+
+- [ ] Der Mittelwert ist unverzerrt, nur die Stichprobe ist kleiner ~ Sie ist
+      nicht nur kleiner, sondern systematisch ausgewählt.
+- [x] Die Zeit wird unterschätzt, weil die Langläufer fehlen ~ Richtig. Zensiert
+      sind gerade die Fälle, die lange kein Ereignis hatten. Wer sie entfernt,
+      behält die kurzen Zeiten und verzerrt nach unten.
+- [ ] Die Zeit wird überschätzt ~ Das passiert bei der anderen Behelfslösung,
+      wenn man zensierte Zeiten als Ereigniszeiten mitzählt.
+:::
+
+::: {.quiz}
+Warum ist die Annahme nicht informativer Zensierung in den Daten nicht prüfbar?
+
+- [x] Weil dafür die unbeobachteten Zeiten der Zensierten nötig wären ~ Richtig.
+      Die Frage lautet, ob die Zensierten dasselbe Risiko hatten; das liesse
+      sich nur beantworten, wenn man ihre Ereigniszeiten kennte. Übrig bleibt
+      die inhaltliche Begründung.
+- [ ] Weil die Stichprobe dafür zu klein ist ~ Auch bei beliebig grosser
+      Stichprobe fehlt genau diese Information.
+- [ ] Sie ist prüfbar, über einen Test auf gleiche Verteilung ~ Ein solcher Test
+      vergleicht beobachtbare Merkmale, nicht die unbeobachteten Zeiten.
+:::
+
+::: {.quiz}
+Eine Hazard-Rate beträgt 0.035 pro Monat. Was bedeutet das?
+
+- [ ] 3.5 Prozent aller Personen erleben das Ereignis ~ Die Hazard-Rate ist
+      keine Wahrscheinlichkeit über die ganze Gruppe.
+- [x] Unter denen, die bis dahin kein Ereignis hatten, tritt es mit dieser Rate
+      je Monat ein ~ Richtig. Die Hazard-Rate ist bedingt auf das Überleben bis
+      zu diesem Zeitpunkt und beschreibt das momentane Risiko.
+- [ ] Nach einem Monat sind 96.5 Prozent noch dabei ~ Das ist ungefähr die
+      Überlebensfunktion nach einem Monat, nicht die Hazard-Rate selbst.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 11](https://www.statlearning.com/)
+- [survival: Dokumentation des R-Pakets](https://cran.r-project.org/web/packages/survival/vignettes/survival.pdf)
+- [lifelines: Einführung](https://lifelines.readthedocs.io/en/latest/Survival%20Analysis%20intro.html)

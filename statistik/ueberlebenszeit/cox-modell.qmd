@@ -4,29 +4,575 @@ description: "Hazard Ratio, proportionale Hazards und die Deutung mehrerer Einfl
 categories: ["Survival-Analyse", "Regression", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 40
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(survival)
+
+set.seed(2026)
+
+n <- 400
+vertrag <- factor(sample(c("Jahr", "Monat"), n, replace = TRUE, prob = c(0.45, 0.55)),
+                  levels = c("Jahr", "Monat"))
+distanz <- round(runif(n, 0.5, 15), 1)
+rate <- 0.018 * exp(0.85 * (vertrag == "Monat") + 0.045 * distanz)
+zeit_ereignis <- rexp(n, rate)
+stichtag <- 24
+
+abo <- data.frame(
+  zeit = pmin(zeit_ereignis, stichtag),
+  status = as.integer(zeit_ereignis <= stichtag),
+  vertrag = vertrag,
+  distanz = distanz
+)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from lifelines import CoxPHFitter
+from lifelines.statistics import proportional_hazard_test
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+rng = np.random.default_rng(2026)
+
+n = 400
+vertrag = rng.choice(["Jahr", "Monat"], n, p=[0.45, 0.55])
+distanz = rng.uniform(0.5, 15, n).round(1)
+rate = 0.018 * np.exp(0.85 * (vertrag == "Monat") + 0.045 * distanz)
+zeit_ereignis = rng.exponential(1 / rate)
+stichtag = 24
+
+abo = pd.DataFrame({
+    "zeit": np.minimum(zeit_ereignis, stichtag),
+    "status": (zeit_ereignis <= stichtag).astype(int),
+    "monatsvertrag": (vertrag == "Monat").astype(int),
+    "distanz": distanz,
+})
+```
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie beeinflussen mehrere Grössen gleichzeitig das momentane Risiko eines Ereignisses? |
+| Zielvariable | Zeit bis zum Ereignis plus Statusindikator |
+| Prädiktoren | beliebig viele, metrisch oder kategorial |
+| Was die Methode liefert | Hazard Ratio je Prädiktor mit Konfidenzintervall und p-Wert, Gesamttests, Konkordanz |
+| R-Funktion | `coxph(Surv(zeit, status) ~ x1 + x2)`, geprüft mit `cox.zph()` |
+| Python-Funktion | `CoxPHFitter().fit(df, duration_col, event_col)`, geprüft mit `proportional_hazard_test()` |
+| Verwandte Methoden | [Kaplan-Meier](kaplan-meier.qmd), [Log-Rank-Test](log-rank-test.qmd), [logistische Regression](../regression/logistische-regression.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Welche Merkmale erhöhen das Kündigungsrisiko, wie
+wirkt eine Behandlung bei gleichem Alter, welchen Beitrag hat die Distanz zum
+Studio, wenn die Vertragsart konstant gehalten wird.
+
+Das Cox-Modell ist der Schritt vom Vergleich zum Effektmass. Es liefert je
+Prädiktor ein Hazard Ratio, also einen Faktor, um den sich das momentane Risiko
+ändert, und kann dabei mehrere Grössen gleichzeitig berücksichtigen. Es heisst
+semiparametrisch, weil es den zeitlichen Verlauf des Grundrisikos offenlässt und
+nur die Verhältnisse zwischen den Beobachtungen modelliert.
+
+| Situation | Stattdessen |
+|---|---|
+| Nur eine beschreibende Kurve gesucht | [Kaplan-Meier](kaplan-meier.qmd) |
+| Nur die Frage, ob zwei Gruppen sich unterscheiden | [Log-Rank-Test](log-rank-test.qmd) |
+| Zeitdimension unwichtig, nur ob das Ereignis eintrat | [logistische Regression](../regression/logistische-regression.qmd) |
+| Der Effekt ändert sich deutlich über die Zeit | Stratifizierung oder zeitabhängige Koeffizienten |
+| Verteilungsform ist begründet und Extrapolation nötig | parametrische Modelle, etwa Weibull |
+| Zielgrösse ist metrisch ohne Zensierung | [multiple lineare Regression](../regression/multiple-lineare-regression.qmd) |
+
 ## Grundidee und Modell
+
+Das Modell zerlegt das Risiko in zwei Teile: einen zeitlichen Verlauf, der für
+alle gleich ist, und einen Faktor, der von den Prädiktoren abhängt und über die
+Zeit konstant bleibt.
+
+$$h(t \mid x) = h_0(t) \cdot e^{\beta_1 x_1 + \dots + \beta_k x_k}$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $h(t \mid x)$ | Hazard-Rate bei Prädiktorwerten $x$: momentanes Risiko, keine Wahrscheinlichkeit |
+| $h_0(t)$ | Grundrisiko über die Zeit, bleibt unspezifiziert und wird nicht geschätzt |
+| $\beta_j$ | Effekt von $x_j$ auf den logarithmierten Hazard |
+| $e^{\beta_j}$ | Hazard Ratio: Faktor, um den sich das Risiko je Einheit von $x_j$ ändert, bei konstant gehaltenen übrigen Prädiktoren |
+| $e^{\beta_1 x_1 + \dots}$ | gemeinsamer Faktor aller Prädiktoren |
+
+Geschätzt wird über die partielle Likelihood, die nur die Reihenfolge der
+Ereignisse nutzt: Zu jedem Ereigniszeitpunkt wird gefragt, wie wahrscheinlich es
+war, dass gerade diese Beobachtung das Ereignis hatte, gegeben wer zu diesem
+Zeitpunkt unter Risiko stand. Das Grundrisiko kürzt sich dabei heraus, und genau
+deshalb muss es nie geschätzt werden.
+
+Ein Hazard Ratio von 2 bedeutet: doppeltes momentanes Risiko. Es bedeutet nicht
+doppelt so schnell, nicht halbe Laufzeit und nicht doppelte Wahrscheinlichkeit.
 
 ## Voraussetzungen und ihre Prüfung
 
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Proportionale Hazards | Das Hazard Ratio ist über die Zeit konstant | `cox.zph()` beziehungsweise `proportional_hazard_test()`, dazu die Residuenplots | Ein einzelnes Hazard Ratio ist irreführend, weil es über verschiedene Zeiträume mittelt | Stratifizieren, zeitabhängigen Effekt aufnehmen, Zeitabschnitte trennen |
+| Linearität im Log-Hazard | Metrische Prädiktoren wirken linear auf den logarithmierten Hazard | Martingale-Residuen gegen den Prädiktor | Verzerrte Schätzung, falsche Funktionsform | Transformation, Splines, Klassenbildung |
+| Nicht informative Zensierung | Zensierte haben dasselbe Risiko wie Beobachtete | inhaltlich, siehe [Zensierung](zensierung-ueberlebensfunktion.qmd) | Alle Schätzungen verzerrt | Ursachen berichten |
+| Unabhängige Beobachtungen | keine Klumpen, keine Wiederholungen je Person | Erhebungsdesign | Standardfehler zu klein | robuste Varianz, Frailty-Modelle |
+| Keine starke Multikollinearität | Prädiktoren sind nicht nahezu Linearkombinationen | Korrelationen, VIF auf dem linearen Prädiktor | Instabile Koeffizienten, wie bei der [multiplen Regression](../regression/multiple-lineare-regression.qmd) | Variable entfernen oder zusammenfassen |
+| Genügend Ereignisse je Prädiktor | Faustregel: mindestens etwa zehn Ereignisse je geschätztem Koeffizienten | Ereignisse zählen | Überanpassung, zu enge Intervalle | Modell verkleinern |
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-voraussetzungen-cox-r
+#| fig-cap: "Schoenfeld-Residuen je Prädiktor. Ein waagrechter Verlauf spricht für proportionale Hazards."
+#| fig-height: 3.4
+modell <- coxph(Surv(zeit, status) ~ vertrag + distanz, data = abo)
+
+pruefung <- cox.zph(modell)
+pruefung
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(pruefung[1], main = "Vertragsart")
+plot(pruefung[2], main = "Distanz")
+par(mfrow = c(1, 1))
+```
+
+## Python
+
+```{python}
+#| label: voraussetzungen-cox-py
+cox = CoxPHFitter().fit(abo[["zeit", "status", "monatsvertrag", "distanz"]],
+                        duration_col="zeit", event_col="status")
+
+pruefung = proportional_hazard_test(cox, abo[["zeit", "status", "monatsvertrag", "distanz"]],
+                                    time_transform="rank")
+pruefung.print_summary(decimals=3)
+
+print("Ereignisse:", int(abo["status"].sum()), "je geschätztem Koeffizienten:",
+      round(int(abo["status"].sum()) / 2, 1))
+```
+
+:::
+
+Die Prüfung testet je Prädiktor, ob der Effekt mit der Zeit zusammenhängt. Grosse
+p-Werte und ein waagrechter Verlauf der Residuen sprechen für die Annahme. Ein
+kleiner p-Wert heisst nicht, dass das Modell falsch ist, sondern dass ein
+einzelnes Hazard Ratio für diesen Prädiktor die Zeit über nicht ausreicht.
+
 ## Durchführung in R und Python
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: durchfuehrung-cox-r
+summary(modell)
+```
+
+## Python
+
+```{python}
+#| label: durchfuehrung-cox-py
+cox.print_summary(decimals=3)
+```
+
+:::
+
+Die Daten sind dieselben wie auf den beiden vorangehenden Seiten: 400 Abos,
+Vertragsart und Distanz als Einflussgrössen, Stichtag nach 24 Monaten. Die
+simulierten Effekte sind ein Faktor von etwa 2.3 für den Monatsvertrag, also
+`exp(0.85)`, und etwa 1.05 je Kilometer, also `exp(0.045)`.
 
 ## Output lesen
 
+R, `summary(coxph(...))`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `n`, `number of events` | Beobachtungen und Ereignisse | die Ereigniszahl trägt die Genauigkeit |
+| `coef` | geschätztes $\beta_j$, Effekt auf den log-Hazard | Vorzeichen zeigt die Richtung |
+| `exp(coef)` | Hazard Ratio | 1 heisst kein Effekt, über 1 höheres Risiko |
+| `se(coef)` | Standardfehler auf der log-Skala | Intervalle werden dort gebildet und dann exponiert |
+| `z`, `Pr(>|z|)` | Wald-Test je Koeffizient | prüft nur diesen Koeffizienten |
+| `lower .95`, `upper .95` | Konfidenzintervall des Hazard Ratio | enthält es 1, ist der Effekt nicht signifikant |
+| `Concordance` | Anteil richtig geordneter Paare | 0.5 ist Zufall, ab etwa 0.7 brauchbar |
+| `Likelihood ratio test` | Gesamttest gegen das Nullmodell | Gegenstück zum F-Test der linearen Regression |
+| `Wald test`, `Score (logrank) test` | zwei weitere Gesamttests | bei grossem n praktisch gleich; der Score-Test ist bei einem kategorialen Prädiktor der Log-Rank-Test |
+| `cox.zph()` | Prüfung der Proportionalität | kleiner p-Wert heisst Annahme verletzt, nicht Modell bestätigt |
+
+Python, `CoxPHFitter.print_summary()`:
+
+| Grösse | Was sie sagt | Unterschied zu R |
+|---|---|---|
+| `coef`, `exp(coef)` | wie in R | identisch |
+| `se(coef)`, `z`, `p` | wie in R | identisch |
+| `coef lower 95%`, `exp(coef) lower 95%` | Intervalle auf beiden Skalen | R zeigt nur die exponierten Grenzen |
+| `-log2(p)` | p-Wert als Bits | in R nicht enthalten |
+| `Concordance` | wie in R | identisch |
+| `Partial AIC` | Kennzahl für Modellvergleiche | in R über `AIC(modell)` |
+| `log-likelihood ratio test` | Gesamttest | wie in R |
+
+Zwei Unterschiede in der Handhabung: In Python müssen kategoriale Prädiktoren
+selbst als Indikatorvariablen vorliegen, R übernimmt das über Faktoren. Und die
+Referenzkategorie ist in R die erste Faktorstufe, in Python die mit dem Wert
+null; die Richtung des Hazard Ratio hängt daran.
+
 ## Ergebnisse interpretieren
+
+### Szenario A: klare Effekte
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-a-cox-r
+ergebnis <- summary(modell)
+round(cbind(
+  hazard_ratio = ergebnis$conf.int[, "exp(coef)"],
+  unten = ergebnis$conf.int[, "lower .95"],
+  oben = ergebnis$conf.int[, "upper .95"],
+  p = ergebnis$coefficients[, "Pr(>|z|)"]
+), 4)
+
+round(ergebnis$concordance, 3)
+```
+
+## Python
+
+```{python}
+#| label: szenario-a-cox-py
+zusammenfassung = cox.summary[["exp(coef)", "exp(coef) lower 95%",
+                               "exp(coef) upper 95%", "p"]]
+print(zusammenfassung.round(4))
+print("Konkordanz:", round(cox.concordance_index_, 3))
+```
+
+:::
+
+Das Hazard Ratio des Monatsvertrags liegt deutlich über eins, und sein
+Konfidenzintervall schliesst die eins nicht ein: Bei gleicher Distanz ist das
+momentane Kündigungsrisiko um den geschätzten Faktor höher als bei
+Jahresverträgen. Für die Distanz liegt das Hazard Ratio knapp über eins, was je
+Kilometer klein wirkt, sich aber über die Spannweite von 15 Kilometern
+multipliziert: Der Vergleich vom nächsten zum entferntesten Mitglied ergibt den
+Faktor `exp(0.045 · 14.5)`, also etwa 1.9.
+
+Genau das ist die typische Deutungsarbeit bei metrischen Prädiktoren: Ein Hazard
+Ratio je Einheit ist ohne die Spannweite der Variable nicht einzuordnen. Wer
+verständlich berichten will, nennt den Effekt für einen fachlich sinnvollen
+Abstand, etwa je fünf Kilometer.
+
+Die Konkordanz sagt, wie gut das Modell Paare nach Risiko sortiert. Sie ist eine
+Güte-, nicht eine Signifikanzangabe.
+
+Ergebnissatz: Monatsverträge haben ein höheres Kündigungsrisiko als
+Jahresverträge (Hazard Ratio wie ausgegeben, 95-Prozent-Intervall wie ausgegeben,
+p wie ausgegeben), bei konstanter Distanz. Je zusätzlichem Kilometer steigt das
+Risiko um den ausgegebenen Faktor (n = 400, Ereignisse wie ausgegeben, Konkordanz
+wie ausgegeben).
+
+### Szenario B: kein nachweisbarer Effekt
+
+Ein zusätzlicher Prädiktor ohne Einfluss, hier die Trainingsdauer.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-b-cox-r
+set.seed(9)
+abo$trainingsminuten <- round(rnorm(nrow(abo), mean = 55, sd = 15))
+
+modell_b <- coxph(Surv(zeit, status) ~ vertrag + distanz + trainingsminuten,
+                  data = abo)
+round(summary(modell_b)$conf.int[, c("exp(coef)", "lower .95", "upper .95")], 4)
+round(summary(modell_b)$coefficients[, "Pr(>|z|)"], 4)
+```
+
+## Python
+
+```{python}
+#| label: szenario-b-cox-py
+rng_b = np.random.default_rng(9)
+abo_b = abo.copy()
+abo_b["trainingsminuten"] = rng_b.normal(55, 15, len(abo_b)).round()
+
+cox_b = CoxPHFitter().fit(
+    abo_b[["zeit", "status", "monatsvertrag", "distanz", "trainingsminuten"]],
+    duration_col="zeit", event_col="status")
+print(cox_b.summary[["exp(coef)", "exp(coef) lower 95%",
+                     "exp(coef) upper 95%", "p"]].round(4))
+```
+
+:::
+
+Das Hazard Ratio der Trainingsminuten liegt nahe eins, und sein
+Konfidenzintervall schliesst die eins ein. Aussage: In diesen Daten ist kein
+Zusammenhang zwischen Trainingsdauer und Kündigungsrisiko nachweisbar. Nicht:
+Es gibt keinen. Wie gross ein Effekt sein könnte, zeigt die Breite des
+Intervalls, und die ist bei einem Prädiktor je Minute klein wirkend, über eine
+Stunde gerechnet aber durchaus relevant.
+
+Die Effekte der übrigen Prädiktoren bleiben nahezu unverändert. Das ist zu
+erwarten, weil die Trainingsdauer hier unabhängig von ihnen erzeugt wurde;
+verschieben sich Koeffizienten beim Hinzufügen deutlich, hängen die Prädiktoren
+zusammen und die Deutung ändert sich, siehe
+[multiple lineare Regression](../regression/multiple-lineare-regression.qmd).
+
+Ergebnissatz: Für die Trainingsdauer ergibt sich kein Zusammenhang mit dem
+Kündigungsrisiko (Hazard Ratio wie ausgegeben, 95-Prozent-Intervall wie
+ausgegeben, p wie ausgegeben).
+
+### Szenario C: Fallstrick verletzte Proportionalität
+
+Der Kernfall. Wenn sich der Effekt über die Zeit umkehrt, mittelt das Modell zu
+einem einzelnen Hazard Ratio, das keinen der beiden Zeiträume beschreibt.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: fig-szenario-c-cox-r
+#| fig-cap: "Schoenfeld-Residuen bei verletzter Annahme: der Effekt fällt sichtbar mit der Zeit."
+#| fig-height: 3.2
+set.seed(5)
+m <- 250
+# Gruppe A: hohes Risiko in den ersten Monaten, danach sehr niedrig
+frueh <- rexp(m, 0.16)
+spaet <- 6 + rexp(m, 0.008)
+a_zeit <- ifelse(frueh <= 6, frueh, spaet)
+b_zeit <- rexp(m, 0.045)
+
+kreuz <- data.frame(
+  zeit = pmin(c(a_zeit, b_zeit), 24),
+  status = as.integer(c(a_zeit, b_zeit) <= 24),
+  gruppe = factor(rep(c("A", "B"), each = m), levels = c("B", "A"))
+)
+
+modell_c <- coxph(Surv(zeit, status) ~ gruppe, data = kreuz)
+round(summary(modell_c)$conf.int[, c("exp(coef)", "lower .95", "upper .95")], 3)
+
+pruefung_c <- cox.zph(modell_c)
+pruefung_c
+
+plot(pruefung_c, main = "Gruppe A gegenüber B")
+```
+
+## Python
+
+```{python}
+#| label: szenario-c-cox-py
+rng_c = np.random.default_rng(5)
+m = 250
+frueh = rng_c.exponential(1 / 0.16, m)
+spaet = 6 + rng_c.exponential(1 / 0.008, m)
+a_zeit = np.where(frueh <= 6, frueh, spaet)
+b_zeit = rng_c.exponential(1 / 0.045, m)
+
+kreuz = pd.DataFrame({
+    "zeit": np.minimum(np.concatenate([a_zeit, b_zeit]), 24),
+    "status": (np.concatenate([a_zeit, b_zeit]) <= 24).astype(int),
+    "gruppe_a": np.concatenate([np.ones(m), np.zeros(m)]).astype(int),
+})
+
+cox_c = CoxPHFitter().fit(kreuz, duration_col="zeit", event_col="status")
+print(cox_c.summary[["exp(coef)", "exp(coef) lower 95%",
+                     "exp(coef) upper 95%", "p"]].round(3))
+
+proportional_hazard_test(cox_c, kreuz, time_transform="rank").print_summary(decimals=3)
+
+# Getrennt nach Zeitabschnitt: das gemittelte Hazard Ratio beschreibt keinen davon
+for von, bis in [(0, 6), (6, 24)]:
+    teil = kreuz[(kreuz["zeit"] > von) & (kreuz["zeit"] <= bis)].copy()
+    hr = CoxPHFitter().fit(teil, duration_col="zeit", event_col="status") \
+        .summary.loc["gruppe_a", "exp(coef)"]
+    print(f"Monate {von} bis {bis}: Hazard Ratio = {hr:.2f}")
+```
+
+:::
+
+Erkennbar ist die Verletzung an drei Stellen. Der Test auf Proportionalität
+liefert einen kleinen p-Wert. Die Schoenfeld-Residuen fallen sichtbar mit der
+Zeit, statt waagrecht zu verlaufen. Und die abschnittsweise geschätzten Hazard
+Ratios liegen auf verschiedenen Seiten von eins: früh ist Gruppe A im
+Nachteil, später im Vorteil.
+
+Das gemittelte Hazard Ratio aus dem Gesamtmodell beschreibt damit keinen der
+beiden Zeiträume; es kann sogar nahe eins liegen und den Eindruck erzeugen, es
+gäbe keinen Effekt.
+
+Das Vorgehen, in dieser Reihenfolge: erst die Kurven ansehen, dann die
+Proportionalität prüfen. Ist sie verletzt, gibt es drei Wege: nach der
+betroffenen Variablen stratifizieren, wenn ihr Effekt nicht interessiert; einen
+zeitabhängigen Effekt aufnehmen; oder Zeitabschnitte getrennt berichten. Was
+nicht geht, ist ein einzelnes Hazard Ratio zu berichten und die Verletzung in
+einer Fussnote zu erwähnen.
+
+Ergebnissatz: Die Annahme proportionaler Hazards ist verletzt (Test wie
+ausgegeben). Berichtet werden getrennte Hazard Ratios für die ersten sechs Monate
+und die Zeit danach (Werte wie ausgegeben).
+
+### Weiteres Szenario: Stratifizieren statt schätzen
+
+Wenn eine Variable die Proportionalität verletzt, ihr Effekt aber nicht
+interessiert, wird nach ihr stratifiziert: Das Modell erlaubt je Schicht ein
+eigenes Grundrisiko und schätzt die übrigen Effekte gemeinsam.
+
+::: {.panel-tabset}
+
+## R
+
+```{r}
+#| label: szenario-d-cox-r
+modell_strat <- coxph(Surv(zeit, status) ~ distanz + strata(vertrag), data = abo)
+round(summary(modell_strat)$conf.int[, c("exp(coef)", "lower .95", "upper .95")], 4)
+```
+
+## Python
+
+```{python}
+#| label: szenario-d-cox-py
+cox_strat = CoxPHFitter().fit(
+    abo[["zeit", "status", "monatsvertrag", "distanz"]],
+    duration_col="zeit", event_col="status", strata=["monatsvertrag"])
+print(cox_strat.summary[["exp(coef)", "exp(coef) lower 95%",
+                         "exp(coef) upper 95%", "p"]].round(4))
+```
+
+:::
+
+Der Effekt der Distanz wird weiterhin geschätzt, der der Vertragsart nicht mehr:
+Für ihn gibt es kein Hazard Ratio, weil jede Schicht ihr eigenes Grundrisiko hat.
+Genau das ist der Handel: Man kauft Robustheit gegen die Verletzung und verliert
+das Effektmass für die geschichtete Variable.
 
 ## Interpretationsfallen
 
+- **Hazard Ratio ist kein Zeitverhältnis.** Ein Faktor 2 bedeutet doppeltes
+  momentanes Risiko, nicht halbe Laufzeit.
+- **Hazard Ratio ist keine Wahrscheinlichkeit.** Es ist ein Verhältnis von
+  Raten und kann beliebig über eins liegen.
+- **Ein einzelnes Hazard Ratio setzt Proportionalität voraus.** Ohne diese
+  Prüfung ist die Zahl ein Mittel über Zeiträume, die sich unterscheiden können.
+- **Ein signifikanter Test auf Proportionalität bestätigt nicht das Modell**, er
+  weist auf eine Verletzung hin. Umgekehrt beweist ein grosser p-Wert die
+  Annahme nicht, er widerlegt sie nur nicht.
+- **Je Einheit ist nicht je Spannweite.** Bei metrischen Prädiktoren gehört der
+  Effekt für einen fachlich sinnvollen Abstand berichtet.
+- **Bei konstant gehaltenen anderen Prädiktoren** heisst: unter den aufgenommenen.
+  Eine nicht erhobene gemeinsame Ursache bleibt unsichtbar; ein Hazard Ratio ist
+  keine Kausalaussage.
+- **Konkordanz ist keine Signifikanz.** Ein Modell kann signifikante Effekte und
+  eine Konkordanz nahe 0.5 haben.
+- **Die Ereigniszahl begrenzt das Modell**, nicht die Fallzahl. Mit 40 Ereignissen
+  sind vier Prädiktoren zu viel.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> In einem Cox-Modell mit [Prädiktoren] ist [Prädiktor] mit dem Risiko
+> assoziiert: Hazard Ratio [Wert] (95-Prozent-Konfidenzintervall [unten] bis
+> [oben], p = [p]), bei konstant gehaltenen übrigen Prädiktoren. Das Modell
+> beruht auf [n] Beobachtungen mit [Ereignisse] Ereignissen; die Konkordanz
+> beträgt [Wert]. Die Annahme proportionaler Hazards wurde geprüft [Ergebnis].
+
+Immer genannt werden: Hazard Ratio mit Konfidenzintervall und p-Wert je
+Prädiktor, n und Ereigniszahl getrennt, Konkordanz, das Ergebnis der
+Proportionalitätsprüfung und bei metrischen Prädiktoren die Einheit, auf die sich
+das Hazard Ratio bezieht.
+
+Beispiel für eine Ergebnistabelle:
+
+| Prädiktor | Hazard Ratio | 95-Prozent-Intervall | p |
+|---|---|---|---|
+| Monatsvertrag (gegenüber Jahresvertrag) | | | |
+| Distanz (je 5 km) | | | |
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt des Cox-Modells |
+|---|---|
+| [Kaplan-Meier](kaplan-meier.qmd) | beschreibende Kurve ohne Einflussgrössen |
+| [Log-Rank-Test](log-rank-test.qmd) | nur die Frage, ob sich zwei Gruppen unterscheiden |
+| [Logistische Regression](../regression/logistische-regression.qmd) | nur ob, nicht wann; keine Zensierung |
+| Parametrische Modelle, etwa Weibull | Verteilungsform begründet, Vorhersage über den Beobachtungszeitraum hinaus |
+| Modelle mit zeitabhängigen Effekten | Proportionalität verletzt und der Effekt selbst interessiert |
+| Frailty-Modelle | geschachtelte oder wiederholte Ereignisse je Person |
+
 ## Verständnisfragen
 
+::: {.quiz}
+Ein Hazard Ratio beträgt 2.3 mit Intervall 1.7 bis 3.1. Was heisst das?
+
+- [x] Das momentane Risiko ist etwa 2.3-mal so hoch, bei konstant gehaltenen
+      übrigen Prädiktoren ~ Richtig. Das Intervall schliesst die eins nicht ein,
+      der Effekt ist also von null verschieden. Über Laufzeiten sagt die Zahl
+      direkt nichts.
+- [ ] Die Laufzeit halbiert sich ~ Das folgt nicht; der Zusammenhang zwischen
+      Hazard Ratio und Median hängt von der Verteilungsform ab.
+- [ ] Die Wahrscheinlichkeit für das Ereignis ist 2.3 ~ Wahrscheinlichkeiten sind
+      höchstens eins; ein Hazard Ratio ist keine Wahrscheinlichkeit.
+:::
+
+::: {.quiz}
+`cox.zph()` liefert für einen Prädiktor p = 0.004. Was folgt?
+
+- [ ] Der Prädiktor hat einen signifikanten Effekt ~ Das ist eine andere Frage,
+      die der Wald-Test beantwortet.
+- [x] Sein Effekt ändert sich über die Zeit, ein einzelnes Hazard Ratio genügt
+      nicht ~ Richtig. Der Test prüft die Annahme proportionaler Hazards. Bei
+      Verletzung wird stratifiziert, ein zeitabhängiger Effekt aufgenommen oder
+      nach Zeitabschnitten berichtet.
+- [ ] Das Modell ist insgesamt schlecht angepasst ~ Die Anpassung kann gut sein;
+      verletzt ist eine bestimmte Annahme über einen bestimmten Prädiktor.
+:::
+
+::: {.quiz}
+Ein Modell mit vier Prädiktoren beruht auf 400 Beobachtungen, von denen 32 ein
+Ereignis hatten. Was ist das Problem?
+
+- [x] Acht Ereignisse je Koeffizient sind zu wenig ~ Richtig. Die Genauigkeit
+      hängt an der Ereigniszahl, nicht an der Fallzahl. Die Faustregel von rund
+      zehn Ereignissen je Koeffizienten ist hier verletzt, Intervalle sind zu eng
+      und die Schätzung instabil.
+- [ ] Kein Problem, 400 Beobachtungen sind ausreichend ~ Die 368 Zensierten
+      tragen zur Schätzung der Koeffizienten nur begrenzt bei.
+- [ ] Die Zensierungsrate ist zu hoch für ein Cox-Modell ~ Hohe Zensierung ist
+      normal; entscheidend ist die absolute Ereigniszahl.
+:::
+
+::: {.quiz}
+Nach Aufnahme eines weiteren Prädiktors sinkt das Hazard Ratio der Vertragsart
+von 2.3 auf 1.4. Was bedeutet das?
+
+- [x] Ein Teil des Effekts lief über den neuen Prädiktor ~ Richtig. Das Hazard
+      Ratio misst jetzt den Beitrag bei konstant gehaltenem neuem Prädiktor.
+      Welche Fassung berichtet wird, entscheidet die inhaltliche Frage.
+- [ ] Das erste Modell war falsch gerechnet ~ Beide sind korrekt gerechnet, sie
+      beantworten verschiedene Fragen.
+- [ ] Die Vertragsart ist nun unwichtig ~ Wichtigkeit ist keine Eigenschaft, die
+      sich durch Hinzufügen einer Variablen ändert.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 11.4 bis 11.5](https://www.statlearning.com/)
+- [survival: coxph](https://stat.ethz.ch/R-manual/R-devel/library/survival/html/coxph.html)
+- [lifelines: CoxPHFitter](https://lifelines.readthedocs.io/en/latest/fitters/regression/CoxPHFitter.html)
+- [Therneau und Grambsch: Modeling Survival Data](https://link.springer.com/book/10.1007/978-1-4757-3294-8)
