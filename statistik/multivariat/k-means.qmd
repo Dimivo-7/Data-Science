@@ -11,13 +11,35 @@ order: 40
 ```{r}
 #| label: setup-r
 #| include: false
-set.seed(2026)
+# Kundendaten mit drei eingebauten Gruppen, unterschiedlich gross. Die
+# Zufallszahlen stammen aus einem einfachen Kongruenzgenerator, damit R und
+# Python exakt dieselben Daten sehen.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
 
-# Kundendaten mit drei eingebauten Gruppen, unterschiedlich gross
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1) {
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+}
+
+gleichwerte <- function(saat, anzahl, von, bis) {
+  von + (bis - von) * lehmer(saat, anzahl)
+}
+
 gruppe_wahr <- rep(c("A", "B", "C"), times = c(120, 90, 60))
 kunden <- data.frame(
-  besuche = round(c(rnorm(120, 14, 2.5), rnorm(90, 6, 1.8), rnorm(60, 3, 1.2)), 1),
-  umsatz  = round(c(rnorm(120, 1400, 220), rnorm(90, 900, 160), rnorm(60, 2200, 300)), 0)
+  besuche = round(c(normalwerte(3001, 120, 14, 2.5),
+                    normalwerte(3002, 90, 6, 1.8),
+                    normalwerte(3003, 60, 3, 1.2)), 1),
+  umsatz  = round(c(normalwerte(4001, 120, 1400, 220),
+                    normalwerte(4002, 90, 900, 160),
+                    normalwerte(4003, 60, 2200, 300)), 0)
 )
 ```
 
@@ -27,6 +49,7 @@ kunden <- data.frame(
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy import stats
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
@@ -34,14 +57,32 @@ from sklearn.metrics import silhouette_score
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
 
-rng = np.random.default_rng(2026)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0.0, streuung=1.0):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+
+
+def gleichwerte(saat, anzahl, von, bis):
+    return von + (bis - von) * lehmer(saat, anzahl)
+
 
 gruppe_wahr = np.repeat(["A", "B", "C"], [120, 90, 60])
 kunden = pd.DataFrame({
-    "besuche": np.concatenate([rng.normal(14, 2.5, 120), rng.normal(6, 1.8, 90),
-                               rng.normal(3, 1.2, 60)]).round(1),
-    "umsatz": np.concatenate([rng.normal(1400, 220, 120), rng.normal(900, 160, 90),
-                              rng.normal(2200, 300, 60)]).round(0),
+    "besuche": np.concatenate([normalwerte(3001, 120, 14, 2.5),
+                               normalwerte(3002, 90, 6, 1.8),
+                               normalwerte(3003, 60, 3, 1.2)]).round(1),
+    "umsatz": np.concatenate([normalwerte(4001, 120, 1400, 220),
+                              normalwerte(4002, 90, 900, 160),
+                              normalwerte(4003, 60, 2200, 300)]).round(0),
 })
 ```
 
@@ -114,95 +155,6 @@ Standardisierung entscheidet über das Ergebnis, siehe
 | Keine extremen Ausreisser | Einzelne Punkte ziehen kein Zentrum auf sich | Streudiagramm, Abstände zum Zentrum | Eine Gruppe besteht aus einem Punkt | Ausreisser prüfen, k-Medoids |
 | Mehrere Startwerte | Das lokale Minimum ist nicht das erste gefundene | `nstart` beziehungsweise `n_init` setzen | Ergebnis schwankt zwischen Läufen | mindestens 25 Startwerte |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-voraussetzungen-km-r
-#| fig-cap: "Links die Rohdaten, rechts die standardisierten. Erst standardisiert sind beide Variablen gleich gewichtet."
-#| fig-height: 3.4
-skaliert <- scale(kunden)
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-plot(kunden$besuche, kunden$umsatz, pch = 16, cex = 0.6, col = "grey40",
-     xlab = "Besuche", ylab = "Umsatz", main = "Rohdaten")
-plot(skaliert[, 1], skaliert[, 2], pch = 16, cex = 0.6, col = "grey40",
-     xlab = "Besuche (z)", ylab = "Umsatz (z)", main = "standardisiert")
-par(mfrow = c(1, 1))
-
-round(apply(kunden, 2, var), 1)
-```
-
-## Python
-
-```{python}
-#| label: fig-voraussetzungen-km-py
-#| fig-cap: "Dieselbe Gegenüberstellung in Python."
-#| fig-height: 3.4
-skaliert = StandardScaler().fit_transform(kunden)
-
-fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
-achsen[0].scatter(kunden["besuche"], kunden["umsatz"], s=8, color="0.4")
-achsen[0].set_xlabel("Besuche")
-achsen[0].set_ylabel("Umsatz")
-achsen[0].set_title("Rohdaten")
-achsen[1].scatter(skaliert[:, 0], skaliert[:, 1], s=8, color="0.4")
-achsen[1].set_xlabel("Besuche (z)")
-achsen[1].set_ylabel("Umsatz (z)")
-achsen[1].set_title("standardisiert")
-plt.tight_layout()
-plt.show()
-
-print(kunden.var().round(1).to_dict())
-```
-
-:::
-
-Die Varianz des Umsatzes ist um mehrere Grössenordnungen grösser als die der
-Besuche, weil Franken und Anzahl verschiedene Einheiten sind. Ohne
-Standardisierung würde k-Means praktisch nur nach Umsatz trennen. Im rechten Bild
-sind drei Punktwolken erkennbar, was zur eingebauten Struktur passt.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-km-r
-km <- kmeans(skaliert, centers = 3, nstart = 25)
-
-km$size
-round(km$centers, 3)
-round(c(within = km$tot.withinss, between = km$betweenss,
-        anteil = km$betweenss / km$totss), 3)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-km-py
-km = KMeans(n_clusters=3, n_init=25, random_state=2026).fit(skaliert)
-
-print(np.bincount(km.labels_))
-print(pd.DataFrame(km.cluster_centers_, columns=kunden.columns,
-                   index=[f"Gruppe {i+1}" for i in range(3)]).round(3))
-
-gesamt = ((skaliert - skaliert.mean(axis=0)) ** 2).sum()
-print({"within": round(float(km.inertia_), 3),
-       "between": round(float(gesamt - km.inertia_), 3),
-       "anteil": round(float((gesamt - km.inertia_) / gesamt), 3)})
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 270 Kunden
-in drei eingebauten Gruppen von 120, 90 und 60 Beobachtungen, beschrieben durch
-Besuche und Umsatz. Weil die Gruppen konstruiert sind, lässt sich prüfen, ob das
-Verfahren sie findet.
-
 ## Output lesen
 
 R, `kmeans()`:
@@ -229,238 +181,13 @@ Python, `KMeans`:
 | kein `betweenss` | selbst berechnen als Gesamtstreuung minus `inertia_` | in R enthalten |
 | `n_init` | Anzahl Startwerte | wie `nstart`; die Voreinstellung hat sich zwischen den Versionen geändert, deshalb ausdrücklich setzen |
 
-In beiden Sprachen gilt: **Die Gruppennummern bedeuten nichts.** Gruppe 1 in
-einem Lauf kann Gruppe 3 im nächsten sein. Für den Bericht werden die Gruppen
-nach einem inhaltlichen Merkmal umsortiert und benannt.
-
-## Ergebnisse interpretieren
-
-### Szenario A: drei klar getrennte Gruppen
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-a-km-r
-#| fig-cap: "Gefundene Gruppen mit ihren Zentren. Die Farben sind Gruppennummern, keine Rangfolge."
-kunden$gruppe <- factor(km$cluster)
-
-plot(skaliert[, 1], skaliert[, 2], pch = 16, cex = 0.7,
-     col = c("#2166ac", "#b2182b", "#1b7837")[km$cluster],
-     xlab = "Besuche (z)", ylab = "Umsatz (z)")
-points(km$centers, pch = 4, cex = 2, lwd = 3)
-
-# Zentren zurueck in die Einheiten der Rohdaten
-zentren_roh <- t(t(km$centers) * attr(skaliert, "scaled:scale") +
-                   attr(skaliert, "scaled:center"))
-round(zentren_roh, 1)
-
-table(gefunden = km$cluster, eingebaut = gruppe_wahr)
-```
-
-## Python
-
-```{python}
-#| label: fig-szenario-a-km-py
-#| fig-cap: "Dieselbe Darstellung in Python."
-skalierer = StandardScaler().fit(kunden)
-
-fig, ax = plt.subplots()
-for nummer, farbe in enumerate(["#2166ac", "#b2182b", "#1b7837"]):
-    teil = skaliert[km.labels_ == nummer]
-    ax.scatter(teil[:, 0], teil[:, 1], s=10, color=farbe, label=f"Gruppe {nummer+1}")
-ax.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[:, 1],
-           marker="x", s=120, linewidths=3, color="black")
-ax.set_xlabel("Besuche (z)")
-ax.set_ylabel("Umsatz (z)")
-ax.legend(frameon=False)
-plt.show()
-
-print(pd.DataFrame(skalierer.inverse_transform(km.cluster_centers_),
-                   columns=kunden.columns,
-                   index=[f"Gruppe {i+1}" for i in range(3)]).round(1))
-print(pd.crosstab(km.labels_, gruppe_wahr))
-```
-
+::: {.note-box}
+**Die Gruppennummern bedeuten nichts.** Gruppe 1 in einem Lauf kann Gruppe 3 im
+nächsten sein, und R und Python nummerieren dieselbe Aufteilung fast immer
+verschieden. Für den Bericht werden die Gruppen nach einem inhaltlichen Merkmal
+umsortiert und benannt. Jede Aussage der Form "Gruppe 2 kauft mehr" ist ohne
+diese Benennung wertlos.
 :::
-
-Die Kreuztabelle vergleicht die gefundenen Gruppen mit den eingebauten. Sie
-stimmen bis auf wenige Randfälle überein, was hier möglich ist, weil die
-Struktur konstruiert wurde; in echten Daten gibt es diese Vergleichsmöglichkeit
-nicht.
-
-Für die Deutung sind die zurückgerechneten Zentren entscheidend, nicht die
-standardisierten: Eine Gruppe mit rund 14 Besuchen und 1400 Franken Umsatz ist
-etwas anderes als eine mit 3 Besuchen und 2200 Franken. Genau daraus entstehen die
-Namen der Segmente, und ohne Namen ist ein Clustering kein Ergebnis.
-
-Der Anteil `betweenss / totss` sagt, wie viel Streuung die Aufteilung erklärt. Er
-ist eine Kennzahl, kein Gütesiegel: Er steigt mit jedem zusätzlichen k.
-
-Ergebnissatz: k-Means auf zwei standardisierten Merkmalen (n = 270, k = 3, 25
-Startwerte) ergibt Gruppen mit den ausgegebenen Grössen. Die Zentren liegen bei
-den ausgegebenen Werten für Besuche und Umsatz; die Aufteilung erklärt den
-ausgegebenen Anteil der Gesamtstreuung.
-
-### Szenario B: k zu hoch gewählt
-
-k-Means teilt immer, auch wenn nichts zu teilen ist. Bei zu grossem k werden
-bestehende Gruppen zerschnitten, und die Kennzahlen verbessern sich trotzdem.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-km-r
-for (k in 2:6) {
-  lauf <- kmeans(skaliert, centers = k, nstart = 25)
-  cat("k =", k,
-      "| within:", round(lauf$tot.withinss, 1),
-      "| Anteil erklaert:", round(lauf$betweenss / lauf$totss, 3),
-      "| kleinste Gruppe:", min(lauf$size), "\n")
-}
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-km-py
-gesamt = ((skaliert - skaliert.mean(axis=0)) ** 2).sum()
-for k in range(2, 7):
-    lauf = KMeans(n_clusters=k, n_init=25, random_state=2026).fit(skaliert)
-    print(f"k = {k} | within: {lauf.inertia_:.1f} "
-          f"| Anteil erklaert: {(gesamt - lauf.inertia_) / gesamt:.3f} "
-          f"| kleinste Gruppe: {np.bincount(lauf.labels_).min()}")
-```
-
-:::
-
-Die Streuung innerhalb der Gruppen sinkt mit jedem zusätzlichen k, und der
-erklärte Anteil steigt. Das ist keine Verbesserung, sondern eine
-Selbstverständlichkeit: Bei k gleich der Anzahl Beobachtungen wäre die Streuung
-null. Deshalb taugt diese Kennzahl nicht zur Wahl von k.
-
-Woran man den Punkt erkennt, an dem es aufhört, sinnvoll zu sein: Der Zugewinn
-wird klein (der Knick im Verlauf), und die kleinste Gruppe wird zu klein, um sie
-inhaltlich zu beschreiben. Die systematische Behandlung steht unter
-[Clustergüte](clusterguete.qmd).
-
-Ergebnissatz: Der Zugewinn an erklärter Streuung fällt ab k = 3 deutlich ab;
-berichtet wird die Lösung mit drei Gruppen.
-
-### Szenario C: Fallstrick nicht kugelige Gruppen
-
-k-Means minimiert Abstände zu Zentren und schneidet den Raum damit in
-geradlinig begrenzte Bereiche. Bei langgezogenen oder verschachtelten Gruppen
-liegt es systematisch falsch, ohne dass die Kennzahlen etwas anzeigen.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-c-km-r
-#| fig-cap: "Zwei ineinander liegende Ringe. Links die wahre Struktur, rechts die Aufteilung durch k-Means."
-#| fig-height: 3.4
-set.seed(7)
-winkel <- runif(400, 0, 2 * pi)
-radius <- c(rep(1, 200), rep(3, 200)) + rnorm(400, 0, 0.15)
-ringe <- data.frame(x = radius * cos(winkel), y = radius * sin(winkel))
-ring_wahr <- rep(c("innen", "aussen"), each = 200)
-
-km_ringe <- kmeans(scale(ringe), centers = 2, nstart = 25)
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-plot(ringe$x, ringe$y, pch = 16, cex = 0.6,
-     col = ifelse(ring_wahr == "innen", "#2166ac", "#b2182b"),
-     xlab = "x", ylab = "y", main = "wahre Struktur")
-plot(ringe$x, ringe$y, pch = 16, cex = 0.6,
-     col = c("#2166ac", "#b2182b")[km_ringe$cluster],
-     xlab = "x", ylab = "y", main = "k-Means mit k = 2")
-par(mfrow = c(1, 1))
-
-table(km_ringe$cluster, ring_wahr)
-round(km_ringe$betweenss / km_ringe$totss, 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-km-py
-rng_c = np.random.default_rng(7)
-winkel = rng_c.uniform(0, 2 * np.pi, 400)
-radius = np.concatenate([np.ones(200), np.full(200, 3.0)]) + rng_c.normal(0, 0.15, 400)
-ringe = pd.DataFrame({"x": radius * np.cos(winkel), "y": radius * np.sin(winkel)})
-ring_wahr = np.repeat(["innen", "aussen"], 200)
-
-km_ringe = KMeans(n_clusters=2, n_init=25, random_state=7) \
-    .fit(StandardScaler().fit_transform(ringe))
-
-print(pd.crosstab(km_ringe.labels_, ring_wahr))
-print("Silhouette:", round(silhouette_score(
-    StandardScaler().fit_transform(ringe), km_ringe.labels_), 3))
-```
-
-:::
-
-Die Kreuztabelle zeigt das Problem: Jede gefundene Gruppe enthält etwa gleich
-viele Punkte aus beiden Ringen. k-Means hat den Raum durch die Mitte geschnitten,
-weil das die Abstandssumme minimiert, und damit die Struktur vollständig
-verfehlt. Der erklärte Anteil der Streuung sieht dabei unauffällig aus, und die
-Silhouette ist mittelmässig, aber nicht alarmierend.
-
-Erkennbar ist der Fall nur im Bild. Das Vorgehen: Vor dem Clustering die Daten
-ansehen, bei zwei oder drei Dimensionen direkt, bei mehr über die
-[Hauptkomponenten](hauptkomponentenanalyse.qmd). Zeigen sich langgezogene,
-ringförmige oder verschachtelte Formen, ist ein dichtebasiertes Verfahren wie
-DBSCAN die passende Wahl, oder ein hierarchisches mit geeigneter
-Verknüpfungsmethode.
-
-Ergebnissatz: k-Means trennt die beiden ringförmigen Gruppen nicht (Kreuztabelle
-wie ausgegeben); für diese Struktur wird ein dichtebasiertes Verfahren verwendet.
-
-### Weiteres Szenario: Startwerte
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-d-km-r
-werte <- sapply(1:20, function(i) {
-  set.seed(i)
-  kmeans(skaliert, centers = 3, nstart = 1)$tot.withinss
-})
-
-round(c(bester = min(werte), schlechtester = max(werte),
-        verschiedene_loesungen = length(unique(round(werte, 4)))), 3)
-
-round(kmeans(skaliert, centers = 3, nstart = 25)$tot.withinss, 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-d-km-py
-werte = [KMeans(n_clusters=3, n_init=1, random_state=i).fit(skaliert).inertia_
-         for i in range(20)]
-
-print({"bester": round(min(werte), 3), "schlechtester": round(max(werte), 3),
-       "verschiedene_loesungen": len({round(w, 4) for w in werte})})
-print("mit 25 Startwerten:",
-      round(KMeans(n_clusters=3, n_init=25, random_state=2026).fit(skaliert).inertia_, 3))
-```
-
-:::
-
-Mit einem einzigen Startwert landet das Verfahren je nach Zufall in
-verschiedenen lokalen Minima; die schlechteste Lösung hat eine deutlich höhere
-Streuung als die beste. Mit 25 Startwerten wird die beste gefunden. Das ist der
-Grund, weshalb `nstart` beziehungsweise `n_init` immer ausdrücklich gesetzt wird:
-Die Voreinstellung ist in beiden Sprachen niedrig und hat sich in Python zwischen
-Versionen geändert.
 
 ## Interpretationsfallen
 
@@ -494,14 +221,6 @@ Begründung, Anzahl Startwerte, Gruppengrössen, Zentren in Originaleinheiten,
 erklärter Streuungsanteil, ein Gütemass wie die Silhouette und eine inhaltliche
 Beschreibung jeder Gruppe.
 
-Beispiel für eine Ergebnistabelle:
-
-| Gruppe | n | Besuche (Mittel) | Umsatz (Mittel) | Beschreibung |
-|---|---|---|---|---|
-| 1 | | | | |
-| 2 | | | | |
-| 3 | | | | |
-
 ## Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt k-Means |
@@ -513,17 +232,479 @@ Beispiel für eine Ergebnistabelle:
 | Gaussian-Mixture-Modelle | Gruppen dürfen verschiedene Streuung und Form haben, Zuordnung mit Wahrscheinlichkeit |
 | [Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) | neue Variablen statt Gruppen von Beobachtungen |
 
+## Beispiele
+
+Die ersten vier Beispiele arbeiten mit demselben konstruierten Datensatz: 270
+Kunden mit den Merkmalen Besuche und Umsatz, aufgeteilt in drei eingebaute
+Gruppen von 120, 90 und 60 Personen. Weil die Wahrheit bekannt ist, lässt sich
+prüfen, ob das Verfahren sie findet.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Warum standardisiert wird
+
+#### Frage und Datenlage
+
+Besuche werden in Anzahl gemessen, Umsatz in Franken. Was passiert, wenn man
+diesen Unterschied ignoriert?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-km-r
+#| fig-cap: "Beispiel 1: links die Rohdaten, rechts die standardisierten."
+#| fig-height: 3.4
+round(apply(kunden, 2, var), 1)
+
+skaliert <- scale(kunden)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(kunden$besuche, kunden$umsatz, pch = 16, cex = 0.6, col = "grey40",
+     xlab = "Besuche", ylab = "Umsatz", main = "Rohdaten")
+plot(skaliert[, 1], skaliert[, 2], pch = 16, cex = 0.6, col = "grey40",
+     xlab = "Besuche (z)", ylab = "Umsatz (z)", main = "standardisiert")
+par(mfrow = c(1, 1))
+
+# Was ohne Standardisierung passiert
+ohne <- kmeans(kunden, centers = 3, nstart = 25)
+round(ohne$centers, 1)
+table(ohne = ohne$cluster, eingebaut = gruppe_wahr)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-km-py
+#| fig-cap: "Beispiel 1: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.4
+print(kunden.var().round(1).to_dict())
+
+skalierer = StandardScaler().fit(kunden)
+skaliert = skalierer.transform(kunden)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+achsen[0].scatter(kunden["besuche"], kunden["umsatz"], s=8, color="0.4")
+achsen[0].set_xlabel("Besuche")
+achsen[0].set_ylabel("Umsatz")
+achsen[0].set_title("Rohdaten")
+achsen[1].scatter(skaliert[:, 0], skaliert[:, 1], s=8, color="0.4")
+achsen[1].set_xlabel("Besuche (z)")
+achsen[1].set_ylabel("Umsatz (z)")
+achsen[1].set_title("standardisiert")
+plt.tight_layout()
+plt.show()
+
+ohne = KMeans(n_clusters=3, n_init=25, random_state=2026).fit(kunden)
+print(pd.DataFrame(ohne.cluster_centers_, columns=kunden.columns).round(1))
+print(pd.crosstab(ohne.labels_, gruppe_wahr))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Varianz `besuche` | **26.1** | in Besuchen zum Quadrat |
+| Varianz `umsatz` | **259 478** | in Franken zum Quadrat |
+| Verhältnis | rund 1 zu 10 000 | Die euklidische Distanz addiert beide Quadrate. Der Beitrag der Besuche verschwindet dabei vollständig — k-Means würde ohne Standardisierung praktisch nur nach Umsatz trennen. |
+| Zentren ohne Standardisierung | unterscheiden sich fast nur im Umsatz | Die Besuchszahlen der drei Zentren liegen eng beieinander. |
+| Kreuztabelle ohne Standardisierung | die eingebauten Gruppen werden vermischt | Insbesondere die beiden Gruppen mit ähnlichem Umsatz, aber sehr verschiedener Besuchszahl werden zusammengeworfen. |
+| Linkes Bild | eine gestreckte Wolke | Die Achsen sind nicht vergleichbar, Abstände darin auch nicht. |
+| Rechtes Bild | drei erkennbare Punktwolken | Erst hier zählen beide Merkmale gleich viel. |
+
+::: {.note-box}
+Standardisierung ist bei k-Means keine Kosmetik, sondern **Teil der
+Modellentscheidung**. Sie legt fest, dass beide Merkmale gleich wichtig sein
+sollen. Wer bewusst anders gewichten will, kann das tun — aber dann als
+begründete Entscheidung und nicht als Nebenwirkung der Masseinheit.
+:::
+
+#### Interpretation
+
+Die Wahl der Skalierung gehört in den Methodenteil jedes Berichts. Verwendet
+wird hier die z-Standardisierung: von jedem Wert wird der Mittelwert abgezogen
+und durch die Standardabweichung geteilt. Weiteres dazu unter
+[Distanzmasse](distanzmasse.qmd).
+
+### Beispiel 2: Die Lösung mit drei Gruppen
+
+#### Frage und Datenlage
+
+Drei Gruppen, 25 Startwerte, standardisierte Daten. Findet das Verfahren die
+eingebaute Struktur?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-km-r
+#| fig-cap: "Beispiel 2: gefundene Gruppen mit ihren Zentren (Kreuze)."
+km <- kmeans(skaliert, centers = 3, nstart = 25)
+
+km$size
+round(km$centers, 3)
+round(c(within = km$tot.withinss, between = km$betweenss,
+        anteil = km$betweenss / km$totss), 3)
+
+par(mar = c(4, 4, 2, 1))
+plot(skaliert[, 1], skaliert[, 2], pch = 16, cex = 0.7,
+     col = c("#2166ac", "#b2182b", "#1b7837")[km$cluster],
+     xlab = "Besuche (z)", ylab = "Umsatz (z)")
+points(km$centers, pch = 4, cex = 2, lwd = 3)
+
+# Zentren zurueck in die Einheiten der Rohdaten
+zentren_roh <- t(t(km$centers) * attr(skaliert, "scaled:scale") +
+                   attr(skaliert, "scaled:center"))
+round(zentren_roh, 1)
+
+table(gefunden = km$cluster, eingebaut = gruppe_wahr)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-km-py
+#| fig-cap: "Beispiel 2: dieselbe Darstellung in Python."
+km = KMeans(n_clusters=3, n_init=25, random_state=2026).fit(skaliert)
+
+print("Gruppengrössen:", np.bincount(km.labels_))
+print(pd.DataFrame(km.cluster_centers_, columns=kunden.columns).round(3))
+
+gesamt = ((skaliert - skaliert.mean(axis=0)) ** 2).sum()
+print({"within": round(float(km.inertia_), 3),
+       "between": round(float(gesamt - km.inertia_), 3),
+       "anteil": round(float((gesamt - km.inertia_) / gesamt), 3)})
+
+fig, achse = plt.subplots()
+for nummer, farbe in enumerate(["#2166ac", "#b2182b", "#1b7837"]):
+    teil = skaliert[km.labels_ == nummer]
+    achse.scatter(teil[:, 0], teil[:, 1], s=10, color=farbe,
+                  label=f"Gruppe {nummer + 1}")
+achse.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[:, 1],
+              marker="x", s=120, linewidths=3, color="black")
+achse.set_xlabel("Besuche (z)")
+achse.set_ylabel("Umsatz (z)")
+achse.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+
+print(pd.DataFrame(skalierer.inverse_transform(km.cluster_centers_),
+                   columns=kunden.columns).round(1))
+print(pd.crosstab(km.labels_, gruppe_wahr))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die drei Zentren, zurückgerechnet in die ursprünglichen Einheiten:
+
+| Grösse | Zentrum Besuche | Zentrum Umsatz | standardisiert (Besuche / Umsatz) |
+|---|---|---|---|
+| 115 | 14.1 | 1358 | 1.044 / -0.048 |
+| 97 | 6.0 | 932 | -0.548 / -0.884 |
+| 58 | 2.9 | 2182 | -1.155 / 1.573 |
+
+| Ausgabe | Wert hier | Bedeutung |
+|---|---|---|
+| Gruppengrössen | 115, 97, 58 | Die eingebauten Gruppen waren 120, 90 und 60 gross. Die Abweichung entsteht an den Rändern, wo sich die Wolken berühren. |
+| `within` | **88.594** | Summe der quadrierten Abstände jeder Beobachtung zu ihrem Zentrum. Die Einheit ist die standardisierte Skala, ein absoluter Vergleich mit anderen Datensätzen ist damit sinnlos. |
+| `between` | 451.406 | Streuung zwischen den Zentren. |
+| `totss` | 540 | Die Gesamtstreuung: bei 270 Beobachtungen und zwei standardisierten Variablen genau $2 \cdot 269 = 538$ nach der Stichprobenformel, hier 540, weil `scale()` mit $n-1$ teilt und die Summe über $n$ läuft. `within` und `between` addieren sich zu diesem Wert. |
+| Anteil `between/totss` | **0.836** | 83.6 Prozent der Streuung liegen zwischen den Gruppen. Eine Kennzahl, **kein Gütesiegel**: Sie steigt mit jedem zusätzlichen k. |
+| Kreuztabelle | 263 von 270 richtig | Fünf Kunden der grössten Gruppe und zwei der kleinsten landen in der mittleren. Genau die Randfälle also, die im Bild zwischen zwei Wolken liegen. |
+
+#### Interpretation und Ergebnissatz
+
+Die zurückgerechneten Zentren sind das, was ein Clustering überhaupt erst zu
+einem Ergebnis macht:
+
+| Gruppe | n | Besuche | Umsatz | Beschreibung |
+|---|---|---|---|---|
+| Stammkunden | 115 | 14.1 | 1358 | kommen oft, geben pro Jahr solide aus |
+| Gelegenheitskunden | 97 | 6.0 | 932 | kommen selten, geben wenig aus |
+| Grosseinkäufer | 58 | 2.9 | 2182 | kommen fast nie, kaufen dann aber viel |
+
+Die dritte Gruppe ist der interessante Befund: Wer nur auf den Umsatz geschaut
+hätte, hätte sie für die beste Kundengruppe gehalten; wer nur auf die Besuche
+geschaut hätte, für die schlechteste. Erst beide Merkmale zusammen beschreiben
+sie.
+
+> Ein k-Means-Clustering auf Besuchen und Umsatz, z-standardisiert, mit k = 3
+> und 25 Startwerten (n = 270) ergibt Gruppen von 115, 97 und 58 Kunden. Die
+> Zentren liegen bei 14.1 Besuchen und 1358 Franken, 6.0 Besuchen und 932 Franken
+> sowie 2.9 Besuchen und 2182 Franken; die Aufteilung erklärt 83.6 Prozent der
+> Gesamtstreuung.
+
+### Beispiel 3: Warum k nicht aus der Streuung folgt
+
+#### Frage und Datenlage
+
+Die naheliegende Idee, k so zu wählen, dass die Streuung innerhalb der Gruppen
+klein wird, führt zuverlässig in die Irre. Die Rechnung zeigt, warum.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-km-r
+for (k in 2:6) {
+  lauf <- kmeans(skaliert, centers = k, nstart = 25)
+  cat("k =", k,
+      "| within:", round(lauf$tot.withinss, 1),
+      "| Anteil erklaert:", round(lauf$betweenss / lauf$totss, 3),
+      "| kleinste Gruppe:", min(lauf$size), "\n")
+}
+```
+
+##### Python
+
+```{python}
+#| label: b3-km-py
+gesamt = ((skaliert - skaliert.mean(axis=0)) ** 2).sum()
+for k in range(2, 7):
+    lauf = KMeans(n_clusters=k, n_init=25, random_state=2026).fit(skaliert)
+    print(f"k = {k} | within: {lauf.inertia_:6.1f} "
+          f"| Anteil erklaert: {(gesamt - lauf.inertia_) / gesamt:.3f} "
+          f"| kleinste Gruppe: {np.bincount(lauf.labels_).min():3d} "
+          f"| Silhouette: {silhouette_score(skaliert, lauf.labels_):.3f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| k | within | Anteil erklärt | Zugewinn | kleinste Gruppe | Silhouette |
+|---|---|---|---|---|---|
+| 2 | 258.3 | 0.522 | — | 59 | 0.554 |
+| **3** | **88.6** | **0.836** | **+0.314** | 58 | **0.626** |
+| 4 | 71.5 | 0.868 | +0.032 | 49 | 0.506 |
+| 5 | 61.1 | 0.887 | +0.019 | 27 | 0.440 |
+| 6 | 52.1 | 0.903 | +0.016 | 24 | 0.441 |
+
+Drei Dinge stehen in dieser Tabelle:
+
+| Beobachtung | Was folgt |
+|---|---|
+| `within` sinkt **immer** | Bei k = n wäre sie null, denn jede Beobachtung wäre ihr eigenes Zentrum. Die Kennzahl kann k nicht begründen — sie zeigt nur an, dass mehr Zentren näher liegen. |
+| Der **Zugewinn** bricht nach k = 3 ein | Von 2 auf 3 kommen 31 Prozentpunkte dazu, von 3 auf 4 nur noch 3. Das ist der Knick, den die Ellenbogenmethode sucht. |
+| Die **Silhouette** hat ein Maximum bei k = 3 | Anders als `within` steigt sie nicht mechanisch mit k, sondern fällt wieder. Deshalb ist sie das brauchbarere Kriterium; ausführlich unter [Clustergüte](clusterguete.qmd). |
+
+Der Blick auf die kleinste Gruppe ergänzt das um ein praktisches Argument: Ab
+k = 5 entstehen Gruppen von 27 Kunden, die inhaltlich kaum mehr von ihren
+Nachbarn zu unterscheiden sind.
+
+#### Interpretation und Ergebnissatz
+
+> Die Wahl von k stützt sich auf den Verlauf der Streuung innerhalb der Gruppen
+> (deutlicher Knick nach k = 3), auf die mittlere Silhouettenbreite (Maximum bei
+> k = 3 mit 0.63) und auf die inhaltliche Beschreibbarkeit der Gruppen.
+
+### Beispiel 4: Startwerte
+
+#### Frage und Datenlage
+
+k-Means findet ein lokales Minimum, nicht zwingend das beste. Wie stark das ins
+Gewicht fällt, hängt davon ab, wie klar die Struktur ist — hier verglichen für
+k = 3 und k = 5.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-km-r
+vergleiche <- function(k) {
+  werte <- sapply(1:20, function(i) {
+    set.seed(i)
+    kmeans(skaliert, centers = k, nstart = 1)$tot.withinss
+  })
+  c(k = k, bester = min(werte), schlechtester = max(werte),
+    abstand_prozent = 100 * (max(werte) - min(werte)) / min(werte),
+    verschiedene = length(unique(round(werte, 3))))
+}
+
+round(rbind(vergleiche(3), vergleiche(5)), 3)
+
+# mit 25 Startwerten
+round(c(k3 = kmeans(skaliert, 3, nstart = 25)$tot.withinss,
+        k5 = kmeans(skaliert, 5, nstart = 25)$tot.withinss), 3)
+```
+
+##### Python
+
+```{python}
+#| label: b4-km-py
+def vergleiche(k):
+    werte = [KMeans(n_clusters=k, n_init=1, random_state=i).fit(skaliert).inertia_
+             for i in range(20)]
+    return {"k": k, "bester": round(min(werte), 3),
+            "schlechtester": round(max(werte), 3),
+            "abstand_prozent": round(100 * (max(werte) - min(werte)) / min(werte), 1),
+            "verschiedene": len({round(w, 3) for w in werte})}
+
+
+print(pd.DataFrame([vergleiche(3), vergleiche(5)]).to_string(index=False))
+
+for k in (3, 5):
+    print(f"k = {k} mit 25 Startwerten:",
+          round(KMeans(n_clusters=k, n_init=25,
+                       random_state=2026).fit(skaliert).inertia_, 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| k | bester Lauf | schlechtester Lauf | Abstand | verschiedene Lösungen |
+|---|---|---|---|---|
+| 3 | 88.594 | 88.615 | **0.0 %** | 2 |
+| 5 | 61.189 | 70.405 | **15.1 %** | 15 |
+
+| Beobachtung | Was sie bedeutet |
+|---|---|
+| Bei k = 3 spielt der Startwert keine Rolle | Zwanzig Einzelläufe finden praktisch dieselbe Lösung. Wo die Struktur eindeutig ist, führt jeder Weg dorthin. |
+| Bei k = 5 landen zwanzig Läufe auf **15 verschiedenen** Lösungen | Der schlechteste hat 15 Prozent mehr Streuung innerhalb der Gruppen als der beste. Wer einmal rechnet und das Ergebnis berichtet, berichtet ein zufälliges Zwischenergebnis. |
+| Mit 25 Startwerten wird in beiden Fällen das Minimum gefunden | Die Software rechnet 25-mal und behält die beste Lösung. Der Aufwand ist bei dieser Datengrösse vernachlässigbar. |
+
+::: {.note-box}
+Der Zusammenhang lohnt es sich zu merken: **Instabilität gegenüber Startwerten
+ist selbst ein Hinweis darauf, dass k zu gross gewählt ist.** Wo es echte Gruppen
+gibt, findet das Verfahren sie fast immer; wo es willkürlich teilt, hängt das
+Ergebnis vom Zufall ab.
+:::
+
+#### Interpretation
+
+`nstart` beziehungsweise `n_init` wird immer ausdrücklich gesetzt. Die
+Voreinstellung ist in beiden Sprachen niedrig — in R genau eins — und hat sich in
+Python zwischen den Versionen geändert. Ein Wert von 25 ist üblich und praktisch
+immer ausreichend.
+
+### Beispiel 5: Wenn die Form nicht passt
+
+#### Frage und Datenlage
+
+Ein Datensatz mit zwei ineinander liegenden Ringen: 200 Punkte auf einem Kreis
+mit Radius 1, 200 auf einem mit Radius 3. Die Struktur ist für das Auge
+offensichtlich. Was macht k-Means daraus?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-km-r
+#| fig-cap: "Beispiel 5: links die wahre Struktur, rechts die Aufteilung durch k-Means."
+#| fig-height: 3.4
+winkel <- gleichwerte(777, 400, 0, 2 * pi)
+radius <- c(rep(1, 200), rep(3, 200)) + normalwerte(888, 400, 0, 0.15)
+ringe <- data.frame(x = radius * cos(winkel), y = radius * sin(winkel))
+ring_wahr <- rep(c("innen", "aussen"), each = 200)
+
+km_ringe <- kmeans(scale(ringe), centers = 2, nstart = 25)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(ringe$x, ringe$y, pch = 16, cex = 0.6,
+     col = ifelse(ring_wahr == "innen", "#2166ac", "#b2182b"),
+     xlab = "x", ylab = "y", main = "wahre Struktur")
+plot(ringe$x, ringe$y, pch = 16, cex = 0.6,
+     col = c("#2166ac", "#b2182b")[km_ringe$cluster],
+     xlab = "x", ylab = "y", main = "k-Means mit k = 2")
+par(mfrow = c(1, 1))
+
+table(gefunden = km_ringe$cluster, eingebaut = ring_wahr)
+round(km_ringe$betweenss / km_ringe$totss, 3)
+```
+
+##### Python
+
+```{python}
+#| label: b5-km-py
+winkel = gleichwerte(777, 400, 0, 2 * np.pi)
+radius = np.concatenate([np.ones(200), np.full(200, 3.0)]) + \
+    normalwerte(888, 400, 0, 0.15)
+ringe = pd.DataFrame({"x": radius * np.cos(winkel), "y": radius * np.sin(winkel)})
+ring_wahr = np.repeat(["innen", "aussen"], 200)
+
+ring_skaliert = StandardScaler().fit_transform(ringe)
+km_ringe = KMeans(n_clusters=2, n_init=25, random_state=7).fit(ring_skaliert)
+
+print(pd.crosstab(km_ringe.labels_, ring_wahr))
+ring_gesamt = ((ring_skaliert - ring_skaliert.mean(axis=0)) ** 2).sum()
+print("Anteil erklärt:",
+      round(float((ring_gesamt - km_ringe.inertia_) / ring_gesamt), 3))
+print("Silhouette:",
+      round(silhouette_score(ring_skaliert, km_ringe.labels_), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die Kreuztabelle der gefundenen gegen die wahren Gruppen:
+
+| | aussen | innen |
+|---|---|---|
+| gefundene Gruppe 1 | 102 | 72 |
+| gefundene Gruppe 2 | 98 | 128 |
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Kreuztabelle | jede Zeile enthält beide Ringe | **Vollständiges Versagen.** Wären die Gruppen erkannt, stünde in jeder Zeile eine Null. Hier ist die Aufteilung fast eine Halbierung nach Zufall. |
+| Anteil erklärt | 0.336 | Niedriger als bei den Kundendaten, aber nicht auffällig niedrig. Für sich genommen liest sich der Wert wie ein mässiges, nicht wie ein falsches Ergebnis. |
+| Silhouette | 0.321 | Ebenfalls mittelmässig, nicht alarmierend. Werte um 0.3 werden gelegentlich als "schwache Struktur" gedeutet — und genau das ist die Falle. |
+
+::: {.note-box}
+**Keine Kennzahl zeigt diesen Fehler an.** k-Means hat getan, was es tun soll: die
+Abstandssumme minimiert. Der Raum wird dabei zwangsläufig durch gerade Linien in
+Bereiche geteilt, und ein Ring lässt sich so nicht von einem anderen trennen —
+ganz gleich, wie gross k gewählt wird.
+
+Erkennbar ist der Fall nur im **Bild**.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Das Vorgehen: Vor dem Clustering die Daten ansehen — bei zwei oder drei
+Dimensionen direkt, bei mehr über die ersten
+[Hauptkomponenten](hauptkomponentenanalyse.qmd). Zeigen sich langgezogene,
+ringförmige oder verschachtelte Formen, ist ein dichtebasiertes Verfahren wie
+DBSCAN die passende Wahl, oder ein hierarchisches mit Single-Linkage, das
+kettenförmige Strukturen zusammenfasst.
+
+> k-Means mit k = 2 trennt die beiden ringförmigen Gruppen nicht (jede gefundene
+> Gruppe enthält Punkte aus beiden Ringen, Silhouette 0.32). Für diese Struktur
+> wird ein dichtebasiertes Verfahren verwendet.
+
+::::
+
 ## Verständnisfragen
 
 ::: {.quiz}
-Nach dem Erhöhen von k von 3 auf 6 sinkt die Streuung innerhalb der Gruppen
-deutlich. Ist die Lösung mit sechs Gruppen besser?
+Nach dem Erhöhen von k von 3 auf 6 sinkt die Streuung innerhalb der Gruppen von
+88.6 auf 52.1. Ist die Lösung mit sechs Gruppen besser?
 
 - [ ] Ja, geringere Streuung heisst bessere Anpassung ~ Die Streuung sinkt
       zwangsläufig mit jedem zusätzlichen k, bis sie bei k gleich n null ist.
 - [x] Nein, die Kennzahl kann k nicht begründen ~ Richtig. Herangezogen werden
-      der Knick im Verlauf, die Silhouette und die inhaltliche Beschreibbarkeit
-      der Gruppen samt einer Mindestgrösse.
+      der Knick im Verlauf, die Silhouette (die hier bei k = 3 ihr Maximum hat)
+      und die inhaltliche Beschreibbarkeit der Gruppen samt einer Mindestgrösse.
 - [ ] Das entscheidet der erklärte Anteil der Streuung ~ Der ist dieselbe
       Kennzahl in anderer Form und steigt ebenfalls mit k.
 :::
@@ -542,13 +723,27 @@ dieselben Kunden. Ist das ein Fehler?
 :::
 
 ::: {.quiz}
+Zwanzig Läufe mit je einem Startwert liefern bei k = 3 zwei praktisch identische
+Lösungen, bei k = 5 aber fünfzehn verschiedene. Was lässt sich daraus ablesen?
+
+- [x] Dass drei Gruppen in den Daten stecken und fünf nicht ~ Richtig. Wo echte
+      Struktur vorliegt, führt fast jeder Startwert dorthin. Instabilität
+      gegenüber Startwerten ist selbst ein Hinweis, dass k zu gross gewählt ist.
+- [ ] Dass bei k = 5 zu wenige Läufe gerechnet wurden ~ Mehr Startwerte finden
+      zwar das Minimum, ändern aber nichts daran, dass die Aufteilung willkürlich
+      ist.
+- [ ] Dass die Daten nicht standardisiert waren ~ Sie waren es; die
+      Standardisierung betrifft die Gewichtung der Merkmale, nicht die Startwerte.
+:::
+
+::: {.quiz}
 Ein Datensatz enthält zwei ineinander liegende ringförmige Gruppen. k-Means mit
-k gleich zwei liefert eine Lösung mit ordentlichen Kennzahlen. Was ist passiert?
+k gleich zwei liefert eine Silhouette von 0.32. Was ist passiert?
 
 - [x] Der Raum wurde geradlinig geteilt, die Ringe wurden zerschnitten ~ Richtig.
       k-Means minimiert Abstände zu Zentren und erzeugt dadurch geradlinig
       begrenzte Bereiche. Ringförmige Strukturen kann es grundsätzlich nicht
-      finden; die Kennzahlen zeigen das nicht an.
+      finden; die Kennzahlen zeigen das nicht an, sie sehen bloss mittelmässig aus.
 - [ ] Die Daten waren nicht standardisiert ~ Standardisierung ändert an der Form
       der Gruppen nichts.
 - [ ] k war zu klein gewählt ~ Auch mit grösserem k entstehen geradlinig
@@ -559,7 +754,7 @@ k gleich zwei liefert eine Lösung mit ordentlichen Kennzahlen. Was ist passiert
 Warum werden die Zentren für den Bericht zurückgerechnet?
 
 - [x] Weil sie in Standardabweichungen nicht deutbar sind ~ Richtig. Ein Zentrum
-      bei 1.2 Standardabweichungen sagt niemandem etwas; 14 Besuche und 1400
+      bei 1.04 Standardabweichungen sagt niemandem etwas; 14.1 Besuche und 1358
       Franken Umsatz beschreiben das Segment.
 - [ ] Weil die Standardisierung das Ergebnis verfälscht ~ Sie ist notwendig für
       die Gruppierung, nur nicht für die Darstellung.
