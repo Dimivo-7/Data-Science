@@ -50,7 +50,11 @@ nicht tun, liegt es an der Konvention der Funktion und nicht an der Stichprobe.
 
 
 
-## Kurzsteckbrief
+:::: {.panel-tabset}
+
+## Theorie
+
+### Kurzsteckbrief
 
 | | |
 |---|---|
@@ -62,7 +66,7 @@ nicht tun, liegt es an der Konvention der Funktion und nicht an der Stichprobe.
 | Python-Funktion | `pg.ttest(a, b, correction=True)` |
 | Verwandte Methoden | [gepaarter t-Test](t-test-gepaart.qmd), [Varianzanalyse](anova.qmd), [nichtparametrische Tests](nichtparametrische-tests.qmd) |
 
-## Wann diese Methode, wann nicht
+### Wann diese Methode, wann nicht
 
 Typische Fragestellungen: Unterscheiden sich zwei Maschinen in der gefertigten
 Dicke, zwei Standorte im Durchsatz, zwei Varianten einer Seite in der
@@ -85,7 +89,7 @@ nicht nötig und verschlechtert die Fehlerkontrolle.
 | Zielvariable kategorial | [Chi-Quadrat-Test](chi-quadrat-tests.qmd) |
 | Weitere Einflussgrössen sollen kontrolliert werden | [multiple lineare Regression](../regression/multiple-lineare-regression.qmd) |
 
-## Grundidee und Modell
+### Grundidee und Modell
 
 Verglichen wird die beobachtete Differenz der beiden Mittelwerte mit der
 Streuung, die man allein durch Zufall erwarten würde. Ist die Differenz gross
@@ -107,7 +111,7 @@ ihr folgt $t$ näherungsweise einer t-Verteilung. Bei der Welch-Variante werden
 die Freiheitsgrade aus den beiden Varianzen und Gruppengrössen berechnet und
 sind deshalb meist keine ganze Zahl.
 
-## Voraussetzungen und ihre Prüfung
+### Voraussetzungen und ihre Prüfung
 
 | Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
 |---|---|---|---|---|
@@ -122,7 +126,7 @@ Geprüft wird vor dem Test und mit den Augen, nicht mit einem zweiten Test. Ein
 kleinem n findet er auch grobe Abweichungen nicht, bei grossem n stört ihn jede
 belanglose Abweichung, obwohl gerade dort der zentrale Grenzwertsatz greift.
 
-## Output lesen
+### Output lesen
 
 R, `t.test()`:
 
@@ -162,7 +166,7 @@ bestimmt die Faktorstufe die Reihenfolge, in Python die Reihenfolge der
 Argumente. Wer die Richtung berichtet, prüft sie am Vorzeichen und an den
 Gruppenmittelwerten.
 
-## Interpretationsfallen
+### Interpretationsfallen
 
 - **Signifikanz ist keine Relevanz.** Bei grossem n wird jeder noch so kleine
   Unterschied signifikant. Die Entscheidung fällt an der Differenz in ihrer
@@ -182,7 +186,7 @@ Gruppenmittelwerten.
   siehe [Varianzanalyse](anova.qmd) und
   [multiples Testen](../inferenz/multiples-testen.qmd).
 
-## Ergebnis berichten
+### Ergebnis berichten
 
 Vorlage für den Ergebnissatz:
 
@@ -196,7 +200,7 @@ Differenz mit Konfidenzintervall, Teststatistik mit Freiheitsgraden, p-Wert und
 Effektstärke, dazu die verwendete Variante (Welch oder Student) und die
 geprüften Voraussetzungen.
 
-## Abgrenzung zu verwandten Methoden
+### Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt des t-Tests für zwei Stichproben |
 |---|---|
@@ -207,15 +211,9 @@ geprüften Voraussetzungen.
 | [Einfache lineare Regression](../regression/einfache-lineare-regression.qmd) | derselbe Vergleich als Modell, mit metrischem statt zweistufigem Prädiktor |
 | [Multiple lineare Regression](../regression/multiple-lineare-regression.qmd) | weitere Einflussgrössen sollen konstant gehalten werden |
 
-## Beispiele
+## Beispiel 1: Zwei Maschinen
 
-Jedes Beispiel steht in einem eigenen Reiter.
-
-:::: {.panel-tabset}
-
-### Beispiel 1: Zwei Maschinen
-
-#### Frage und Datenlage
+### Frage und Datenlage
 
 Eine Fertigung hat zwei Maschinen, die dasselbe Blechteil schneiden. Von jeder
 werden fünfzehn Teile vermessen, erfasst wird die Dicke in Millimetern. Die
@@ -226,11 +224,11 @@ Die Zielgrösse ist metrisch, es gibt genau zwei Gruppen, und die Teile stammen
 aus getrennten Läufen. Damit ist der t-Test für zwei unabhängige Stichproben das
 passende Verfahren.
 
-#### Voraussetzungen prüfen
+### Voraussetzungen prüfen
 
 ::: {.panel-tabset}
 
-##### R
+#### R
 
 ```{r}
 #| label: fig-b1-voraussetzungen-r
@@ -257,7 +255,7 @@ round(c(mittel_a = mean(maschine_a), mittel_b = mean(maschine_b),
         sd_a = sd(maschine_a), sd_b = sd(maschine_b)), 4)
 ```
 
-##### Python
+#### Python
 
 ```{python}
 #| label: fig-b1-voraussetzungen-py
@@ -299,11 +297,11 @@ Die Boxplots zeigen zwei symmetrische Verteilungen ohne einzelne weit entfernte
 Punkte, und in beiden QQ-Plots liegen die Punkte nah an der Geraden. Die
 Voraussetzungen sind erfüllt.
 
-#### Rechnung
+### Rechnung
 
 ::: {.panel-tabset}
 
-##### R
+#### R
 
 ```{r}
 #| label: b1-rechnung-r
@@ -312,7 +310,7 @@ t.test(wert ~ maschine, data = dicke)
 effectsize::cohens_d(wert ~ maschine, data = dicke)
 ```
 
-##### Python
+#### Python
 
 ```{python}
 #| label: b1-rechnung-py
@@ -322,7 +320,7 @@ print(b1.round(4).T)
 
 :::
 
-#### Output Zeile für Zeile
+### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
 |---|---|---|---|
@@ -343,7 +341,7 @@ Der Vorzeichenvergleich zwischen den Sprachen: R gibt `t = -2.669` und
 pingouin berichtet den Betrag der Effektstärke. Die Richtung liest man an den
 Mittelwerten ab, nie am Vorzeichen von d allein.
 
-#### Interpretation und Ergebnissatz
+### Interpretation und Ergebnissatz
 
 Praktisch bedeutsam ist nicht der p-Wert, sondern das Intervall. Läge die
 Toleranz der Fertigung bei 0.10 mm, dann wäre die Frage nicht beantwortet,
@@ -359,20 +357,20 @@ Auswertung festgelegt.
 > 0.046 bis 0.360 mm, t(24.4) = -2.67, p = 0.013, Cohens d = -0.97
 > (Welch-Test, zweiseitig).
 
-### Beispiel 2: Zu wenig Daten
+## Beispiel 2: Zu wenig Daten
 
-#### Frage und Datenlage
+### Frage und Datenlage
 
 Dieselbe Fragestellung, aber nur zehn Teile je Maschine, und die Mittelwerte
 liegen diesmal nur sechs Hundertstel Millimeter auseinander. Das Beispiel zeigt,
 was ein nicht signifikantes Ergebnis aussagt und vor allem, was es nicht
 aussagt.
 
-#### Rechnung
+### Rechnung
 
 ::: {.panel-tabset}
 
-##### R
+#### R
 
 ```{r}
 #| label: b2-rechnung-r
@@ -382,7 +380,7 @@ klein_b <- c(12.20, 11.85, 12.35, 12.00, 11.95, 12.40, 12.10, 11.80, 12.30, 12.0
 t.test(klein_a, klein_b)
 ```
 
-##### Python
+#### Python
 
 ```{python}
 #| label: b2-rechnung-py
@@ -396,7 +394,7 @@ print(pg.ttest(klein_a, klein_b, correction=True).round(4).T)
 
 :::
 
-#### Output Zeile für Zeile
+### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -408,7 +406,7 @@ print(pg.ttest(klein_a, klein_b, correction=True).round(4).T)
 | `cohen_d` | 0.35 | Ein kleiner bis mittlerer Effekt wäre mit diesen Daten durchaus vereinbar. |
 | `power` (nur Python) | rund 0.12 | Bei diesem Umfang und diesem Effekt hätte der Test einen echten Unterschied nur in etwa einem von acht Fällen gefunden. |
 
-#### Interpretation und Ergebnissatz
+### Interpretation und Ergebnissatz
 
 Der häufigste Fehler an dieser Stelle ist der Satz "es gibt keinen Unterschied".
 Die Daten sagen etwas anderes: Sie reichen nicht aus, um einen Unterschied
@@ -433,20 +431,20 @@ den nötigen Umfang zu bestimmen.
 > lässt Unterschiede in beide Richtungen zu; die Datenlage erlaubt keine Aussage
 > über Gleichwertigkeit.
 
-### Beispiel 3: Schiefe und Ausreisser
+## Beispiel 3: Schiefe und Ausreisser
 
-#### Frage und Datenlage
+### Frage und Datenlage
 
 Ein Support vergleicht die Wartezeit bis zur ersten Antwort zwischen zwei
 Kanälen, je zwölf Anfragen, gemessen in Minuten. Wartezeiten sind fast immer
 rechtsschief: Viele Anfragen werden schnell beantwortet, wenige liegen lange
 liegen. Im Kanal B gibt es zusätzlich einen einzelnen Fall mit 30 Minuten.
 
-#### Voraussetzungen prüfen
+### Voraussetzungen prüfen
 
 ::: {.panel-tabset}
 
-##### R
+#### R
 
 ```{r}
 #| label: fig-b3-voraussetzungen-r
@@ -466,7 +464,7 @@ round(c(mittel_a = mean(kanal_a), median_a = median(kanal_a),
         sd_b = sd(kanal_b)), 3)
 ```
 
-##### Python
+#### Python
 
 ```{python}
 #| label: fig-b3-voraussetzungen-py
@@ -500,14 +498,14 @@ deutlich von der Geraden weg. Drittens beträgt die Standardabweichung in Kanal 
 dominierenden Einzelwert hindeutet. Bei zwölf Beobachtungen je Gruppe rettet der
 zentrale Grenzwertsatz das nicht mehr.
 
-#### Rechnung
+### Rechnung
 
 Gerechnet werden beide Verfahren nebeneinander, damit sichtbar wird, was auf dem
 Spiel steht.
 
 ::: {.panel-tabset}
 
-##### R
+#### R
 
 ```{r}
 #| label: b3-rechnung-r
@@ -516,7 +514,7 @@ t.test(kanal_a, kanal_b)
 wilcox.test(kanal_a, kanal_b)
 ```
 
-##### Python
+#### Python
 
 ```{python}
 #| label: b3-rechnung-py
@@ -526,7 +524,7 @@ print("Mann-Whitney p =", round(pg_wert(pg.mwu(kanal_a, kanal_b), "p-val"), 4))
 
 :::
 
-#### Output Zeile für Zeile
+### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -543,7 +541,7 @@ Kanal B durchgehend hinten. Der t-Test sieht dagegen die absoluten Abstände, un
 der Wert von 30 Minuten schlägt in der Streuung so stark durch, dass die
 Teststatistik einbricht.
 
-#### Interpretation und Ergebnissatz
+### Interpretation und Ergebnissatz
 
 Entscheidend ist, dass die Wahl des Verfahrens vor dem Blick auf die p-Werte
 getroffen wird. Wer beide rechnet und nachträglich das passendere Ergebnis
@@ -567,9 +565,9 @@ Fall, um den es eigentlich geht.
 > (Mann-Whitney, exakt, p = 0.045, n = 12 je Kanal; Median 1.25 gegenüber 3.20
 > Minuten). Auf einen Mittelwertvergleich wurde bewusst verzichtet.
 
-### Beispiel 4: Signifikant und belanglos
+## Beispiel 4: Signifikant und belanglos
 
-#### Frage und Datenlage
+### Frage und Datenlage
 
 Jetzt liegen aus jeder Maschine 5000 vermessene Teile vor, und der wahre
 Unterschied beträgt 0.03 mm, also weit unterhalb jeder Fertigungstoleranz. Um
@@ -578,11 +576,11 @@ zufällig gezogen, sondern als Quantile der Normalverteilung konstruiert. Beide
 Gruppen haben damit exakt dieselbe Streuung und unterscheiden sich um exakt
 0.03 mm.
 
-#### Rechnung
+### Rechnung
 
 ::: {.panel-tabset}
 
-##### R
+#### R
 
 ```{r}
 #| label: b4-rechnung-r
@@ -596,7 +594,7 @@ round(c(differenz = unname(diff(rev(gross$estimate))),
         t = unname(gross$statistic), p = gross$p.value), 5)
 ```
 
-##### Python
+#### Python
 
 ```{python}
 #| label: b4-rechnung-py
@@ -613,7 +611,7 @@ print(pg_auswahl(pg.ttest(gross_a, gross_b, correction=True),
 
 :::
 
-#### Output Zeile für Zeile
+### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -624,7 +622,7 @@ print(pg_auswahl(pg.ttest(gross_a, gross_b, correction=True),
 | Intervall | -0.046 bis -0.014 mm | Sehr eng. Der Unterschied ist präzise geschätzt und trotzdem winzig. |
 | `cohen_d` | 0.075 | Weit unter dem Anhaltspunkt 0.2 für einen kleinen Effekt. |
 
-#### Interpretation und Ergebnissatz
+### Interpretation und Ergebnissatz
 
 Hier trennen sich statistische und praktische Bedeutung sauber. Der p-Wert misst,
 wie gut sich der Unterschied vom Zufall abheben lässt, und das hängt am

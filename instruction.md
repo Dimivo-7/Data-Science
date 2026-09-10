@@ -1076,10 +1076,9 @@ Diese Regeln gelten weiter und werden hier nur benannt, nicht wiederholt:
 - [ ] Nichts in `docs/` oder `_freeze/` von Hand geändert
 - [ ] Beispieldaten fest eingetragen oder deterministisch konstruiert, nicht
       gezogen; jede Zahl im Fliesstext lokal nachgerechnet
-- [ ] Theorieteil steht ausserhalb des Tabsets (sonst fehlt er im
-      Inhaltsverzeichnis); Tabset nur um die Beispiele
-- [ ] Aeusseres Tabset mit `::::`, inneres mit `:::`; Ebenen `##`
-      Theorieabschnitte und `## Beispiele`, `###` Beispiel-Reiter, `####`
-      Abschnitte im Beispiel, `#####` R und Python
+- [ ] Methodenseite: Reiterleiste direkt unter der Einleitung, erster Reiter
+      "Theorie", danach ein Reiter je Beispiel
+- [ ] Aeusseres Tabset mit `::::`, inneres mit `:::`; Ebenen `##` Reiter
+      (Theorie, Beispiel 1, ...), `###` Abschnitte darin, `####` R und Python
 - [ ] Action-Log nach dem Push gelesen, Build grün
 - [ ] Bei rotem Build: Eintrag in `build-fehler.md`, bevor neu gepusht wird

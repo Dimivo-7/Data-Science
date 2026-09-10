@@ -32,6 +32,7 @@ Die Kurzfassung dessen, was die Einträge unten gelehrt haben:
 | Jede Zahl im Fliesstext vor dem Push nachrechnen | Ein grüner Build heisst nur, dass der Code lief, nicht dass der Text stimmt |
 | Chunk-Labels über die ganze Seite eindeutig halten | Doppelte Labels brechen das Rendern ab, und der Fehler nennt nur das Label |
 | Bei verschachtelten Divs bekommt das äussere mehr Doppelpunkte | Pandoc schliesst sonst am falschen Zaun |
+| Nach jedem Strukturwechsel die gerenderte Seite im Browser ansehen | Ein grüner Build sagt über die entstandene Struktur nichts |
 
 ---
 
@@ -100,25 +101,25 @@ scikit-learn pingouin` genügt, um jede Zahl zu prüfen, die im Text steht.
 
 ### 2026-09-10 — Tabsets leeren das Inhaltsverzeichnis
 
-**Symptom:** Kein Build-Fehler. Nach dem Umbau der Methodenseiten auf ein
-aeusseres Tabset "Theorie | Beispiel 1 | ..." enthielt das Inhaltsverzeichnis
-rechts nur noch zwei Eintraege: "Verstaendnisfragen" und "Verlinkte
-Ressourcen". Die gesamte Theorie und alle Beispielabschnitte fehlten.
+**Symptom:** Kein Build-Fehler. Auf den Methodenseiten mit dem Tabset
+"Theorie | Beispiel 1 | ..." enthaelt das Inhaltsverzeichnis rechts nur noch
+zwei Eintraege: "Verstaendnisfragen" und "Verlinkte Ressourcen". Die gesamte
+Theorie und alle Beispielabschnitte fehlen darin.
 
 **Ursache:** Quarto nimmt **saemtliche** Ueberschriften innerhalb eines
-Tabsets aus dem Inhaltsverzeichnis, nicht nur die Tab-Titel selbst. Alles, was
-im Tabset steht, ist im TOC unsichtbar, und Ctrl+F findet es in geschlossenen
-Tabs ebenfalls nicht. Die eingebaute Suche der Seite findet es weiterhin.
+Tabsets aus dem Inhaltsverzeichnis, nicht nur die Tab-Titel selbst. Ctrl+F im
+Browser findet Inhalte in geschlossenen Reitern ebenfalls nicht. Die eingebaute
+Suche der Seite findet sie weiterhin.
 
-**Regel:** Auf einer Nachschlageseite gehoert nur in ein Tabset, was
-nebeneinander gestellt werden soll. Der Theorieteil bleibt deshalb aus dem
-Tabset heraus und steht als normale `##`-Abschnitte oben; darunter folgt
-`## Beispiele` mit dem Tabset. Ergebnis: Die Theorie steht vollstaendig im
-TOC, die Beispiele sind Reiter, und das TOC endet mit "Beispiele",
-"Verstaendnisfragen", "Verlinkte Ressourcen".
+**Kein Fehler, sondern eine bewusste Entscheidung:** Die Reiterleiste soll
+direkt unter der Seitenbeschreibung stehen, mit dem Theorieteil als erstem
+Reiter. Die Reiter sind damit selbst die Navigation, und der Verlust im
+Inhaltsverzeichnis wird in Kauf genommen. Eine Zwischenfassung, die den
+Theorieteil aus dem Tabset heraushielt, wurde erprobt und wieder verworfen.
 
-**Wie es geprueft wird:** Nach dem Push die gerenderte Seite aufrufen und das
-Inhaltsverzeichnis ansehen. Ein gruener Build sagt darueber nichts.
+**Was daraus folgt:** Diese Wirkung vor dem Umbau einer Seite nennen, nicht
+danach. Und: Der gruene Build sagt ueber die gerenderte Struktur nichts, die
+Seite gehoert nach jedem Strukturwechsel im Browser angesehen.
 
 ---
 
@@ -133,6 +134,6 @@ Doppelpunkte als das äussere, endet das äussere zu früh, und die Beispiel-Tab
 verschwinden ohne Fehlermeldung.
 
 **Regel:** Das äussere Tabset öffnet mit `::::`, das innere mit `:::`. Die
-Überschriftenebenen auf einer Methodenseite: `##` für Theorieabschnitte und für
-`## Beispiele`, `###` für die Beispiel-Reiter, `####` für die Abschnitte im
-Beispiel, `#####` für R und Python. In jedem Tabset steht R zuerst.
+Überschriftenebenen auf einer Methodenseite: `##` für die Reiter (Theorie,
+Beispiel 1, Beispiel 2, ...), `###` für die Abschnitte darin, `####` für R und
+Python. In jedem Tabset steht R zuerst.
