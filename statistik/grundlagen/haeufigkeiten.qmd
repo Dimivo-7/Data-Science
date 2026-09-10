@@ -15,7 +15,29 @@ library(ggplot2)
 library(dplyr)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(42)
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1) {
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+}
+
+# 60 Zufriedenheitsangaben, ordinal
+u <- lehmer(7711, 60)
+zufriedenheit <- factor(ifelse(u < 0.2, "gering",
+                               ifelse(u < 0.7, "mittel", "hoch")),
+                        levels = c("gering", "mittel", "hoch"))
+
+# 300 Messwerte aus zwei ueberlagerten Gruppen
+werte <- c(normalwerte(7713, 150, 18, 2), normalwerte(7714, 150, 28, 3))
 ```
 
 ```{python}
@@ -24,18 +46,51 @@ set.seed(42)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0.0, streuung=1.0):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+
+
+stufen = ["gering", "mittel", "hoch"]
+u = lehmer(7711, 60)
+zufriedenheit = pd.Series(pd.Categorical(
+    np.where(u < 0.2, "gering", np.where(u < 0.7, "mittel", "hoch")),
+    categories=stufen, ordered=True))
+
+werte = np.concatenate([normalwerte(7713, 150, 18, 2),
+                        normalwerte(7714, 150, 28, 3)])
 ```
 
 ## Kernideen
 
-- Absolute, relative und kumulierte Häufigkeit
-- Die empirische Verteilungsfunktion als Summe der relativen Häufigkeiten
-- Klassenbildung bei stetigen Merkmalen ist eine Entscheidung mit Folgen
-- Stabdiagramm für Kategorien, Histogramm für klassierte Messwerte
+- **Absolute** Häufigkeit zählt, **relative** teilt durch $n$ und macht Gruppen
+  verschiedener Grösse vergleichbar, **kumulierte** summiert von unten auf.
+- Die kumulierte Häufigkeit setzt eine **Ordnung** voraus und ist bei nominalen
+  Merkmalen sinnlos.
+- Die **empirische Verteilungsfunktion** ist die kumulierte Häufigkeit für alle
+  Werte — sie bildet keine Klassen und enthält die vollständige Information.
+- Bei Kreuztabellen gibt es **drei** Prozentangaben (Zeile, Spalte, Gesamt), und
+  sie beantworten verschiedene Fragen.
+- Die **Klassenzahl** eines Histogramms ist eine inhaltliche Entscheidung, keine
+  technische Voreinstellung.
+- **Stabdiagramm** für Kategorien, **Histogramm** für klassierte Messwerte — die
+  Verwechslung ist ein Fehler in der Aussage, keine Geschmacksfrage.
+- Bei ungleich breiten Klassen trägt die **Fläche** die Information, nicht die
+  Höhe.
 
 ## Erklärung
 
@@ -52,47 +107,15 @@ Ein Merkmal mit tausend Beobachtungen lässt sich nicht ansehen. Die
 Häufigkeitsverteilung reduziert es auf die Frage, wie oft jede Ausprägung
 vorkommt, und ist damit die einfachste Form der Verdichtung.
 
-Drei Varianten beantworten drei verschiedene Fragen:
+| Variante | Was sie beantwortet | Setzt voraus |
+|---|---|---|
+| absolut $n_j$ | Wie viele? | nichts |
+| relativ $h_j = n_j / n$ | Welcher Anteil? | nichts |
+| kumuliert $\sum_{i \le j} h_i$ | Welcher Anteil erreicht höchstens diese Stufe? | eine **Ordnung** der Ausprägungen |
 
-::: panel-tabset
-## R
-
-```{r}
-#| label: haeufigkeit-r
-zufriedenheit <- factor(
-  sample(c("gering", "mittel", "hoch"), 60, replace = TRUE,
-         prob = c(0.2, 0.5, 0.3)),
-  levels = c("gering", "mittel", "hoch")
-)
-
-table(zufriedenheit)                        # absolut: wie viele?
-round(prop.table(table(zufriedenheit)), 3)  # relativ: welcher Anteil?
-cumsum(prop.table(table(zufriedenheit)))    # kumuliert: hoechstens diese Stufe
-```
-
-## Python
-
-```{python}
-#| label: haeufigkeit-py
-stufen = ["gering", "mittel", "hoch"]
-zufriedenheit = pd.Categorical(
-    rng.choice(stufen, size=60, p=[0.2, 0.5, 0.3]),
-    categories=stufen, ordered=True
-)
-s = pd.Series(zufriedenheit)
-
-print(s.value_counts().reindex(stufen))                     # absolut
-print(s.value_counts(normalize=True).reindex(stufen).round(3))  # relativ
-print(s.value_counts(normalize=True).reindex(stufen).cumsum()) # kumuliert
-```
-:::
-
-Die absolute Häufigkeit zählt. Die relative teilt durch die Gesamtzahl und macht
-damit Gruppen unterschiedlicher Grösse vergleichbar: Zwölf Ausfälle in einem
-Betrieb mit zwanzig Maschinen sind etwas anderes als zwölf in einem mit
-zweihundert. Die kumulierte Häufigkeit summiert von unten auf und beantwortet
-die Frage, welcher Anteil höchstens eine bestimmte Stufe erreicht. Sie setzt
-eine Ordnung voraus und ist bei nominalen Merkmalen sinnlos.
+Die relative Häufigkeit macht Gruppen unterschiedlicher Grösse vergleichbar:
+Zwölf Ausfälle in einem Betrieb mit zwanzig Maschinen sind etwas anderes als
+zwölf in einem mit zweihundert.
 
 ### Die empirische Verteilungsfunktion
 
@@ -101,101 +124,578 @@ gebildet, ergibt eine Funktion: Sie gibt zu jedem Wert an, welcher Anteil der
 Beobachtungen höchstens so gross ist. Weil die Daten endlich sind, springt sie
 an jedem beobachteten Wert und ist dazwischen konstant.
 
-::: panel-tabset
-## R
-
-```{r}
-#| label: fig-ecdf-r
-#| fig-cap: "Empirische Verteilungsfunktion. Jeder Sprung entspricht einer Beobachtung."
-x <- round(rnorm(40, mean = 20, sd = 4), 1)
-
-ggplot(data.frame(x), aes(x)) +
-  stat_ecdf(geom = "step", linewidth = 0.8) +
-  geom_hline(yintercept = 0.5, linetype = "dashed") +
-  labs(x = "Messwert", y = "Anteil höchstens so gross")
-```
-
-## Python
-
-```{python}
-#| label: fig-ecdf-py
-#| fig-cap: "Dieselbe Treppenfunktion mit matplotlib."
-x = np.round(rng.normal(20, 4, 40), 1)
-sortiert = np.sort(x)
-anteil = np.arange(1, len(x) + 1) / len(x)
-
-fig, ax = plt.subplots()
-ax.step(sortiert, anteil, where="post", linewidth=1.2)
-ax.axhline(0.5, linestyle="--", color="black", linewidth=0.8)
-ax.set_xlabel("Messwert")
-ax.set_ylabel("Anteil höchstens so gross")
-plt.show()
-```
-:::
-
-Aus dieser Kurve lässt sich jedes Quantil ablesen: Man geht auf der senkrechten
-Achse zum gewünschten Anteil und liest waagerecht ab. Die gestrichelte Linie
-bei 0.5 trifft die Kurve am Median. Diese Verbindung zwischen Häufigkeit und
-Kennzahl ist der Grund, warum die Verteilungsfunktion mehr ist als eine
+Aus ihr lässt sich jedes Quantil ablesen: Man geht auf der senkrechten Achse zum
+gewünschten Anteil und liest waagerecht ab. Diese Verbindung zwischen Häufigkeit
+und Kennzahl ist der Grund, warum die Verteilungsfunktion mehr ist als eine
 Darstellungsvariante.
 
-### Klassenbildung: eine Entscheidung mit Folgen
+### Klassenbildung
 
 Bei stetigen Merkmalen kommt fast jeder Wert nur einmal vor. Eine Auszählung
 brächte nichts, deshalb werden benachbarte Werte zu Klassen zusammengefasst.
-Wie viele Klassen gewählt werden, verändert das Bild erheblich:
+Die Klassenzahl verändert das Bild erheblich, und die gängigen Faustregeln
+liefern nur einen Startwert:
 
-::: panel-tabset
-## R
+| Regel | Formel | bei $n = 300$ |
+|---|---|---|
+| Wurzelregel | $\sqrt{n}$ | 17 |
+| Sturges | $1 + \log_2 n$ | 9 |
+| Rice | $2 \sqrt[3]{n}$ | 13 |
+
+Sturges unterstellt annähernd normalverteilte Daten und liefert bei grossen oder
+schiefen Stichproben zu wenige Klassen. In R ist es trotzdem die Voreinstellung
+von `hist()` — allerdings nur als Vorschlag, den die Funktion auf "schöne" Werte
+rundet.
+
+### Stabdiagramm oder Histogramm
+
+Beide zeigen Balken, meinen aber Verschiedenes.
+
+| | Stabdiagramm | Histogramm |
+|---|---|---|
+| Für | nominale und ordinale Merkmale | metrische Merkmale |
+| Balken | getrennt, mit Luft dazwischen | stossen aneinander |
+| Warum | zwischen Bern und Chur liegt nichts | der Wertebereich ist lückenlos |
+| Information trägt | die Höhe | bei gleichen Klassen die Höhe, bei ungleichen die **Fläche** |
+| Reihenfolge | bei nominal beliebig, bei ordinal fest | durch die Werte vorgegeben |
+
+::: {.note-box}
+Ein Balkendiagramm für ein stetiges Merkmal oder ein Histogramm für Kategorien
+ist keine Geschmacksfrage, sondern ein Fehler in der Aussage.
+:::
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Drei Häufigkeiten, drei Fragen
+
+#### Frage und Datenlage
+
+60 Zufriedenheitsangaben auf drei Stufen. Was sagen absolute, relative und
+kumulierte Häufigkeit jeweils?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: fig-klassen-r
-#| fig-cap: "Dieselben 300 Werte mit 5, 15 und 60 Klassen. Links verschwindet die Struktur, rechts entsteht Rauschen."
-#| fig-height: 3.2
-werte <- c(rnorm(150, 18, 2), rnorm(150, 28, 3))
+#| label: b1-haeuf-r
+table(zufriedenheit)                        # absolut: wie viele?
+round(prop.table(table(zufriedenheit)), 3)  # relativ: welcher Anteil?
+round(cumsum(prop.table(table(zufriedenheit))), 3)  # kumuliert
 
+# Der Modus: die haeufigste Auspraegung
+names(which.max(table(zufriedenheit)))
+```
+
+##### Python
+
+```{python}
+#| label: b1-haeuf-py
+print(zufriedenheit.value_counts().reindex(stufen))
+print(zufriedenheit.value_counts(normalize=True).reindex(stufen).round(3))
+print(zufriedenheit.value_counts(normalize=True)
+      .reindex(stufen).cumsum().round(3))
+
+print("Modus:", zufriedenheit.value_counts().idxmax())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Stufe | absolut | relativ | kumuliert |
+|---|---|---|---|
+| gering | 11 | 0.183 | 0.183 |
+| **mittel** | **30** | **0.500** | 0.683 |
+| hoch | 19 | 0.317 | **1.000** |
+| Summe | 60 | 1.000 | — |
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| **absolut** | Die reine Auszählung. Ohne die Angabe von $n$ ist sie nicht einzuordnen — 11 von 60 ist etwas anderes als 11 von 11 000. |
+| **relativ** | 18.3 Prozent geben eine geringe Zufriedenheit an. Diese Zahl ist mit einer anderen Erhebung vergleichbar, die absolute nicht. |
+| **kumuliert** | 68.3 Prozent geben höchstens "mittel" an. Der letzte Wert ist immer 1.000 — ist er es nicht, fehlen Beobachtungen oder es gibt fehlende Werte. |
+| **Modus** | "mittel". Bei nominalen Merkmalen das **einzige** zulässige Lagemass. |
+
+::: {.note-box}
+**Die kumulierte Zeile ist nur bei geordneten Merkmalen sinnvoll.** Bei einer
+Abteilungszugehörigkeit "68 Prozent gehören höchstens zur Verwaltung" zu
+schreiben, ist Unsinn — und beide Programme rechnen es trotzdem klaglos aus,
+weil sie die Kategorien alphabetisch sortieren.
+
+Der Schutz davor liegt im Datentyp: Ein geordneter Faktor beziehungsweise
+`Categorical(ordered=True)` hält die inhaltliche Reihenfolge fest, siehe
+[Skalenniveaus](skalenniveaus.qmd).
+
+Und die **Reihenfolge der Stufen** muss angegeben werden: Ohne `levels =`
+sortiert R alphabetisch, und dann steht "hoch" vor "mittel".
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Hälfte der 60 Befragten gibt eine mittlere Zufriedenheit an (n = 30,
+> 50.0 Prozent), 31.7 Prozent eine hohe und 18.3 Prozent eine geringe. Höchstens
+> mittel zufrieden sind 68.3 Prozent.
+
+### Beispiel 2: Kreuztabellen und die drei Prozentangaben
+
+#### Frage und Datenlage
+
+200 Beschäftigte, zwei Merkmale: Abteilung (drei Ausprägungen) und Schichtarbeit
+(ja/nein). Die Frage: Hängen die beiden zusammen — und welche Prozentangabe
+beantwortet das?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-haeuf-r
+u2 <- lehmer(7715, 200)
+abteilung <- ifelse(u2 < 0.4, "Produktion",
+                    ifelse(u2 < 0.75, "Verwaltung", "Verkauf"))
+anteil <- c(Produktion = 0.55, Verwaltung = 0.25, Verkauf = 0.35)
+schicht <- ifelse(lehmer(7716, 200) < anteil[abteilung], "ja", "nein")
+
+tab <- table(abteilung, schicht)
+addmargins(tab)
+
+round(prop.table(tab) * 100, 1)          # Gesamtanteile
+round(prop.table(tab, margin = 1), 3)    # Zeilenanteile: je Abteilung
+round(prop.table(tab, margin = 2), 3)    # Spaltenanteile: je Schichtstatus
+
+test <- chisq.test(tab)
+round(c(chi2 = test$statistic, df = test$parameter, p = test$p.value), 4)
+round(sqrt(test$statistic / (sum(tab) * (min(dim(tab)) - 1))), 3)   # Cramers V
+```
+
+##### Python
+
+```{python}
+#| label: b2-haeuf-py
+u2 = lehmer(7715, 200)
+abteilung = np.where(u2 < 0.4, "Produktion",
+                     np.where(u2 < 0.75, "Verwaltung", "Verkauf"))
+anteil = {"Produktion": 0.55, "Verwaltung": 0.25, "Verkauf": 0.35}
+u3 = lehmer(7716, 200)
+schicht = np.array(["ja" if u3[i] < anteil[abteilung[i]] else "nein"
+                    for i in range(200)])
+
+tab = pd.crosstab(abteilung, schicht, margins=True)
+print(tab)
+
+roh = pd.crosstab(abteilung, schicht)
+print((roh / roh.values.sum() * 100).round(1))
+print(roh.div(roh.sum(axis=1), axis=0).round(3))
+print(roh.div(roh.sum(axis=0), axis=1).round(3))
+
+chi2, p, dof, _ = stats.chi2_contingency(roh)
+print({"chi2": round(chi2, 4), "df": dof, "p": round(p, 4)})
+print("Cramers V:",
+      round(float(np.sqrt(chi2 / (roh.values.sum() * (min(roh.shape) - 1)))), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die absolute Tabelle:
+
+| | Schicht ja | Schicht nein | Summe |
+|---|---|---|---|
+| Produktion | **46** | 33 | **79** |
+| Verkauf | 16 | 34 | 50 |
+| Verwaltung | 19 | 52 | 71 |
+| **Summe** | **81** | **119** | **200** |
+
+Und dieselbe Tabelle dreimal in Prozent:
+
+| Prozentart | Bezugsgrösse | Produktion / ja | Beantwortet die Frage |
+|---|---|---|---|
+| **Gesamt** | alle 200 | **23.0 %** | "Welcher Anteil aller Beschäftigten arbeitet in der Produktion **und** im Schichtbetrieb?" |
+| **Zeile** | die 79 der Produktion | **58.2 %** | "Welcher Anteil **der Produktion** arbeitet Schicht?" |
+| **Spalte** | die 81 Schichtarbeitenden | **56.8 %** | "Welcher Anteil **der Schichtarbeitenden** gehört zur Produktion?" |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Drei Zahlen aus **einer** Zelle | 23.0, 58.2 und 56.8 Prozent — alle korrekt und alle etwas anderes. Wer "58 Prozent" ohne Bezugsgrösse schreibt, lässt offen, welche Frage beantwortet wurde. |
+| Für die Frage "hängt es zusammen" zählt die **Zeilenprozentzeile** | Produktion 58.2 Prozent, Verkauf 32.0 Prozent, Verwaltung 26.8 Prozent. Wären die Merkmale unabhängig, stünde überall derselbe Anteil, nämlich die 40.5 Prozent der Randverteilung. |
+| Die Randverteilungen | 81 von 200 arbeiten Schicht (40.5 Prozent); 79, 50 und 71 verteilen sich auf die Abteilungen. Sie beschreiben jedes Merkmal für sich, nicht den Zusammenhang. |
+| $\chi^2$(2) = 17.36, p < .001 | Der Zusammenhang ist mit Zufall nicht vereinbar. Ausführlich unter [Chi-Quadrat-Tests](../tests/chi-quadrat-tests.qmd). |
+| Cramers V = **0.295** | Das Effektmass: 0 heisst kein Zusammenhang, 1 vollständiger. Ein mittlerer Zusammenhang. |
+
+::: {.note-box}
+**Die Faustregel für die Wahl der Prozentart:** Prozentuiert wird entlang der
+**erklärenden** Variablen. Wenn die Abteilung erklärt, ob jemand Schicht
+arbeitet, gehören die Zeilenprozente in die Tabelle — dann summiert sich jede
+Zeile auf 100 Prozent und die Zeilen sind untereinander vergleichbar.
+
+Ein praktischer Test: Ändern sich die Prozentwerte, wenn man in einer Abteilung
+mehr Leute befragt? Bei Zeilenprozenten nicht, bei Gesamt- und Spaltenprozenten
+schon. Deshalb sind Zeilenprozente bei ungleich grossen Gruppen fast immer die
+richtige Wahl.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Schichtarbeit ist in der Produktion deutlich häufiger als in den übrigen
+> Abteilungen: 58.2 Prozent gegenüber 32.0 Prozent im Verkauf und 26.8 Prozent in
+> der Verwaltung ($\chi^2$(2) = 17.36, p < .001, Cramers V = 0.30, n = 200).
+
+### Beispiel 3: Die empirische Verteilungsfunktion
+
+#### Frage und Datenlage
+
+40 Messwerte. Die Verteilungsfunktion zeigt sie **alle**, ohne eine einzige
+Entscheidung über Klassen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-haeuf-r
+#| fig-cap: "Beispiel 3: empirische Verteilungsfunktion. Jeder Sprung entspricht einer Beobachtung."
+#| fig-height: 3.4
+x <- round(normalwerte(7712, 40, 20, 4), 1)
+
+ggplot(data.frame(x), aes(x)) +
+  stat_ecdf(geom = "step", linewidth = 0.8) +
+  geom_hline(yintercept = c(0.25, 0.5, 0.75), linetype = "dashed") +
+  labs(x = "Messwert", y = "Anteil höchstens so gross")
+
+round(c(n = length(x), minimum = min(x), q25 = quantile(x, 0.25),
+        median = median(x), q75 = quantile(x, 0.75), maximum = max(x)), 2)
+
+# Die Sprunghoehe ist immer 1/n, ausser bei Bindungen
+round(1 / length(x), 3)
+sum(duplicated(x))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-haeuf-py
+#| fig-cap: "Beispiel 3: dieselbe Treppenfunktion mit matplotlib."
+#| fig-height: 3.4
+x = np.round(normalwerte(7712, 40, 20, 4), 1)
+sortiert = np.sort(x)
+anteil = np.arange(1, len(x) + 1) / len(x)
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+achse.step(sortiert, anteil, where="post", linewidth=1.2, color="black")
+for hoehe in [0.25, 0.5, 0.75]:
+    achse.axhline(hoehe, linestyle="--", color="black", linewidth=0.6)
+achse.set_xlabel("Messwert")
+achse.set_ylabel("Anteil höchstens so gross")
+plt.tight_layout()
+plt.show()
+
+q25, q50, q75 = np.quantile(x, [0.25, 0.5, 0.75])
+print({"n": len(x), "minimum": x.min(), "q25": round(q25, 2),
+       "median": round(q50, 2), "q75": round(q75, 2), "maximum": x.max()})
+print("Sprunghöhe 1/n:", round(1 / len(x), 3))
+print("Bindungen:", len(x) - len(np.unique(x)))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert |
+|---|---|
+| n | 40 |
+| Minimum | 12.0 |
+| $Q_{25}$ | rund 17.4 |
+| **Median** | **19.30** |
+| $Q_{75}$ | rund 21.6 |
+| Maximum | 25.3 |
+| Sprunghöhe $1/n$ | **0.025** |
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| Die Kurve springt an jedem beobachteten Wert um **0.025** | Bei 40 Beobachtungen trägt jede genau ein Vierzigstel bei. Kommt ein Wert doppelt vor, springt die Kurve dort um das Doppelte. |
+| Die gestrichelten Linien bei 0.25, 0.5 und 0.75 | schneiden die Kurve an den drei Quartilen. **So liest man Quantile aus der Grafik ab** — waagerecht hinein, senkrecht heraus. |
+| Zwischen den Sprüngen ist die Kurve **waagrecht** | Dort liegt keine Beobachtung. Ein langer waagrechter Abschnitt ist eine Lücke in den Daten. |
+| Die Kurve beginnt bei 0 und endet bei 1 | Immer. Das ist der Unterschied zu einem Histogramm, dessen Höhe von der Klassenbreite abhängt. |
+
+::: {.note-box}
+**Warum diese Darstellung unterschätzt wird:** Sie enthält die **vollständige**
+Information der Stichprobe — aus ihr lässt sich jeder einzelne Wert
+zurückgewinnen. Ein Histogramm kann das nicht, weil es die Werte innerhalb einer
+Klasse zusammenwirft.
+
+Der Preis ist die Lesbarkeit: Die Form der Verteilung (schief, zweigipflig,
+symmetrisch) ist in einer Treppenkurve schwerer zu erkennen als in einem
+Histogramm. Ein steiler Abschnitt bedeutet viele Werte, ein flacher wenige — man
+liest also die **Steigung** statt der Höhe.
+
+Für den Vergleich **mehrerer** Gruppen ist sie dagegen die bessere Wahl: Drei
+Treppenkurven übereinander sind lesbar, drei Histogramme nicht.
+:::
+
+#### Interpretation
+
+Wo eine Darstellung frei von willkürlichen Entscheidungen sein soll, ist die
+Verteilungsfunktion die richtige. Wo die Form gezeigt werden soll, das
+Histogramm — und für beides braucht es Beispiel 4.
+
+### Beispiel 4: Die Klassenzahl entscheidet
+
+#### Frage und Datenlage
+
+300 Werte aus **zwei** überlagerten Gruppen (Schwerpunkte bei 18 und 28).
+Dieselben Daten, dreimal gezeichnet.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-haeuf-r
+#| fig-cap: "Beispiel 4: dieselben 300 Werte mit 5, 15 und 60 Klassen."
+#| fig-height: 3.2
 par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
 for (k in c(5, 15, 60)) {
   hist(werte, breaks = k, col = "grey75", border = "white",
        main = paste(k, "Klassen"), xlab = "Wert", ylab = "Anzahl")
 }
+par(mfrow = c(1, 1))
+
+# Die Faustregeln im Vergleich
+n <- length(werte)
+round(c(n = n, wurzel = sqrt(n), sturges = 1 + log2(n),
+        rice = 2 * n^(1 / 3),
+        spannweite = diff(range(werte))), 1)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: fig-klassen-py
-#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
-werte = np.concatenate([rng.normal(18, 2, 150), rng.normal(28, 3, 150)])
-
-fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2), sharey=False)
-for ax, k in zip(achsen, [5, 15, 60]):
-    ax.hist(werte, bins=k, color="0.75", edgecolor="white")
-    ax.set_title(f"{k} Klassen")
-    ax.set_xlabel("Wert")
+#| label: fig-b4-haeuf-py
+#| fig-cap: "Beispiel 4: dieselbe Gegenüberstellung mit matplotlib."
+#| fig-height: 3.2
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2))
+for achse, k in zip(achsen, [5, 15, 60]):
+    achse.hist(werte, bins=k, color="0.75", edgecolor="white")
+    achse.set_title(f"{k} Klassen")
+    achse.set_xlabel("Wert")
 achsen[0].set_ylabel("Anzahl")
-fig.tight_layout()
+plt.tight_layout()
 plt.show()
+
+n = len(werte)
+print({"n": n, "wurzel": round(np.sqrt(n), 1),
+       "sturges": round(1 + np.log2(n), 1),
+       "rice": round(2 * n ** (1 / 3), 1),
+       "spannweite": round(werte.max() - werte.min(), 1)})
 ```
+
 :::
 
-Die Daten stammen aus zwei überlagerten Gruppen. Mit fünf Klassen ist davon
-nichts zu sehen, mit sechzig geht die Struktur im Zufall unter. Die mittlere
-Wahl zeigt, was tatsächlich vorliegt. Eine Faustregel wie die Wurzel aus der
-Beobachtungszahl liefert einen Startwert; die Entscheidung bleibt inhaltlich
-und gehört im Bericht begründet, sobald sie vom Standard abweicht.
+#### Output Zeile für Zeile
+
+| Klassenzahl | Klassenbreite | Was zu sehen ist |
+|---|---|---|
+| **5** | rund 5 Einheiten | Ein einziger breiter Berg. Die beiden Gruppen sind **weggeglättet** — sie fallen in dieselben Klassen. |
+| **15** | rund 1.7 | Zwei Gipfel, klar getrennt. Das entspricht der Wahrheit. |
+| **60** | rund 0.4 | Ein zackiges Auf und Ab. Die zwei Gipfel sind noch erkennbar, aber jede einzelne Klasse enthält im Mittel nur fünf Werte, und deren Schwankung sieht aus wie Struktur. |
+
+| Faustregel | Wert bei $n = 300$ |
+|---|---|
+| Wurzelregel $\sqrt{n}$ | **17.3** |
+| Sturges $1 + \log_2 n$ | **9.2** |
+| Rice $2\sqrt[3]{n}$ | **13.4** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die Regeln liegen zwischen 9 und 17 | Und alle drei hätten hier funktioniert — die Zweigipfligkeit ist ab etwa 10 Klassen erkennbar. |
+| Sturges liefert am wenigsten | Die Regel leitet sich aus der Binomialverteilung ab und unterstellt annähernd normalverteilte Daten. Bei zweigipfligen oder schiefen Verteilungen glättet sie zu stark. |
+| Keine Regel kennt die **Daten** | Sie hängen alle nur an $n$. Eine Regel, die auch die Streuung einbezieht, ist Freedman-Diaconis: Klassenbreite $= 2 \cdot \text{IQR} / \sqrt[3]{n}$. |
+| Die Voreinstellung ist nicht neutral | R nimmt Sturges, matplotlib nimmt zehn Klassen. Wer die Voreinstellung übernimmt, hat die Entscheidung getroffen, ohne es zu merken. |
+
+::: {.note-box}
+**Was daraus für die Praxis folgt:** Die Klassenzahl wird **variiert**, bevor
+eine Grafik in einen Bericht kommt. Zeigt sich dieselbe Struktur bei 10, 15 und
+25 Klassen, ist sie da. Verschwindet sie bei kleiner Änderung, war sie Zufall.
+
+Und im Bericht gehört die gewählte Klassenzahl genannt, sobald sie von der
+Voreinstellung abweicht — genau wie jede andere Analyseentscheidung.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die 300 Messwerte verteilen sich zweigipflig mit Schwerpunkten bei rund 18 und
+> 28 (Histogramm mit 15 Klassen). Bei fünf Klassen ist die Struktur nicht mehr
+> erkennbar, bei sechzig überlagert Zufallsschwankung sie.
+
+### Beispiel 5: Stabdiagramm, Histogramm und die Klassenbreite
+
+#### Frage und Datenlage
+
+Zwei Fragen auf einmal: Wann welcher Diagrammtyp — und was tun, wenn die Klassen
+verschieden breit sind?
+
+Die Altersverteilung einer Belegschaft in den üblichen, **ungleich breiten**
+Klassen: bis 25 (26 Jahre), 26 bis 35 (10 Jahre), 36 bis 50 (15 Jahre), 51 bis
+65 (15 Jahre).
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-haeuf-r
+#| fig-cap: "Beispiel 5: links Kategorien mit Abstand, rechts ein Kontinuum ohne Lücken."
+#| fig-height: 3.2
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(table(zufriedenheit), col = "grey75",
+        main = "Stabdiagramm, ordinal", ylab = "Anzahl")
+hist(werte, breaks = 15, col = "grey75", border = "white",
+     main = "Histogramm, metrisch", xlab = "Wert", ylab = "Anzahl")
+par(mfrow = c(1, 1))
+```
+
+```{r}
+#| label: fig-b5b-haeuf-r
+#| fig-cap: "Beispiel 5: ungleich breite Altersklassen. Links die reine Häufigkeit, rechts die Häufigkeitsdichte."
+#| fig-height: 3.2
+klassen <- c("bis 25", "26-35", "36-50", "51-65")
+anzahl <- c(38, 52, 66, 44)
+breite <- c(26, 10, 15, 15)
+dichte <- anzahl / breite
+
+data.frame(klassen, anzahl, breite, dichte = round(dichte, 2))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(anzahl, names.arg = klassen, col = "grey75", space = 0,
+        main = "falsch: Häufigkeit als Höhe", ylab = "Anzahl")
+barplot(dichte, names.arg = klassen, col = "grey75", space = 0, width = breite,
+        main = "richtig: Dichte als Höhe", ylab = "Personen je Jahr")
+par(mfrow = c(1, 1))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-haeuf-py
+#| fig-cap: "Beispiel 5: beide Gegenüberstellungen in Python."
+#| fig-height: 5.5
+anzahl_z = zufriedenheit.value_counts().reindex(stufen)
+
+klassen = ["bis 25", "26-35", "36-50", "51-65"]
+anzahl = np.array([38, 52, 66, 44])
+breite = np.array([26, 10, 15, 15])
+dichte = anzahl / breite
+
+print(pd.DataFrame({"klasse": klassen, "anzahl": anzahl, "breite": breite,
+                    "dichte": dichte.round(2)}).to_string(index=False))
+
+fig, achsen = plt.subplots(2, 2, figsize=(7, 5.5))
+achsen[0, 0].bar(list(anzahl_z.index), anzahl_z.values, color="0.75", width=0.6)
+achsen[0, 0].set_title("Stabdiagramm, ordinal")
+achsen[0, 0].set_ylabel("Anzahl")
+achsen[0, 1].hist(werte, bins=15, color="0.75", edgecolor="white")
+achsen[0, 1].set_title("Histogramm, metrisch")
+achsen[0, 1].set_xlabel("Wert")
+
+achsen[1, 0].bar(klassen, anzahl, color="0.75", width=1.0, edgecolor="white")
+achsen[1, 0].set_title("falsch: Häufigkeit als Höhe")
+achsen[1, 0].set_ylabel("Anzahl")
+kanten = np.r_[0, np.cumsum(breite)]
+achsen[1, 1].bar(kanten[:-1], dichte, width=breite, align="edge",
+                 color="0.75", edgecolor="white")
+achsen[1, 1].set_xticks(kanten[:-1] + breite / 2)
+achsen[1, 1].set_xticklabels(klassen, fontsize=8)
+achsen[1, 1].set_title("richtig: Dichte als Höhe")
+achsen[1, 1].set_ylabel("Personen je Jahr")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Klasse | Anzahl | Breite (Jahre) | **Dichte** (Personen je Jahr) |
+|---|---|---|---|
+| bis 25 | 38 | 26 | **1.46** |
+| 26–35 | 52 | 10 | **5.20** |
+| 36–50 | **66** | 15 | **4.40** |
+| 51–65 | 44 | 15 | **2.93** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Nach **Anzahl** ist die Klasse 36–50 die grösste | 66 Personen. |
+| Nach **Dichte** ist es die Klasse 26–35 | 5.20 gegen 4.40 Personen je Jahrgang. **Die Rangfolge kehrt sich um.** |
+| Die Klasse "bis 25" sieht in der falschen Darstellung mittelgross aus | Mit 1.46 Personen je Jahrgang ist sie die **mit Abstand dünnste** — sie wirkt nur gross, weil sie 26 Jahrgänge zusammenfasst. |
+| Die Fläche trägt die Information | Breite mal Höhe ergibt wieder die Anzahl: $26 \cdot 1.46 = 38$. Genau deshalb ist die Dichte die richtige Höhe. |
+
+Und die Unterscheidung der beiden Diagrammtypen:
+
+| Woran man es erkennt | Stabdiagramm | Histogramm |
+|---|---|---|
+| Abstand zwischen den Balken | vorhanden | keiner |
+| Achsenbeschriftung | Kategorienamen | Zahlen mit Skala |
+| Umordnen der Balken | erlaubt (bei nominal) | verboten |
+
+::: {.note-box}
+**Ein verwandter Fehler, der noch häufiger vorkommt:** Ein Stabdiagramm mit
+Balken, deren Achse nicht bei null beginnt. Bei einem Histogramm ist die
+abgeschnittene Achse ausgeschlossen, weil die Fläche die Information trägt; bei
+Balken wird sie regelmässig verwendet, um kleine Unterschiede gross aussehen zu
+lassen.
+
+Die Regel: **Balkenlängen werden verglichen, also beginnt die Achse bei null.**
+Wer Unterschiede genauer zeigen will, nimmt einen Punktplot — dort vergleicht
+man Positionen, nicht Längen, und eine abgeschnittene Achse ist zulässig.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Altersverteilung ist in ungleich breiten Klassen erhoben. Aufgetragen wird
+> die Häufigkeitsdichte: Am stärksten besetzt ist die Klasse 26 bis 35 mit 5.2
+> Personen je Jahrgang, am schwächsten die Klasse bis 25 mit 1.5 — obwohl diese
+> in absoluten Zahlen nicht die kleinste ist.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
-In @fig-klassen-r sind dieselben 300 Werte mit 5, 15 und 60 Klassen
-dargestellt. Was zeigt der Vergleich?
+Eine Kreuztabelle nennt für die Zelle "Produktion und Schicht" die Zahl
+58.2 Prozent. Worauf bezieht sie sich?
 
-- [ ] Mehr Klassen sind immer genauer ~ Rechts geht die Struktur im Rauschen
+- [x] Auf die Beschäftigten der Produktion ~ Richtig, das ist der Zeilenanteil.
+      Die Gesamtprozente wären 23.0, die Spaltenprozente 56.8 — drei richtige
+      Zahlen für dieselbe Zelle, die verschiedene Fragen beantworten.
+- [ ] Auf alle Beschäftigten ~ Das wären die Gesamtprozente.
+- [ ] Auf die Schichtarbeitenden ~ Das wären die Spaltenprozente.
+:::
+
+::: {.quiz}
+Dieselben 300 Werte werden mit 5, 15 und 60 Klassen dargestellt. Was zeigt der
+Vergleich?
+
+- [ ] Mehr Klassen sind immer genauer ~ Bei sechzig geht die Struktur im Rauschen
       unter. Auflösung ist nicht dasselbe wie Erkenntnis.
-- [x] Die zwei überlagerten Gruppen sind nur bei der mittleren Wahl zu sehen ~
+- [x] Die zwei überlagerten Gruppen sind erst ab etwa zehn Klassen zu sehen ~
       Richtig. Zu wenige Klassen glätten die Struktur weg, zu viele lassen
       Zufall wie Struktur aussehen.
 - [ ] Die Klassenzahl beeinflusst nur das Aussehen, nicht die Aussage ~ Sie
-      beeinflusst genau die Aussage, wie das Bild zeigt.
+      beeinflusst genau die Aussage.
 :::
 
 ::: {.quiz}
@@ -210,68 +710,14 @@ Warum ist die empirische Verteilungsfunktion unabhängig von der Klassenzahl?
       Stichprobengrösse definiert.
 :::
 
-### Stabdiagramm oder Histogramm
-
-Beide zeigen Balken, meinen aber Verschiedenes, und die Verwechslung ist ein
-inhaltlicher Fehler.
-
-Das Stabdiagramm stellt getrennte Kategorien dar. Zwischen den Stäben bleibt
-Luft, weil zwischen Bern und Chur nichts liegt. Das Histogramm stellt ein
-Kontinuum dar, seine Balken stossen aneinander, weil der Bereich lückenlos
-abgedeckt ist.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: fig-stab-hist-r
-#| fig-cap: "Links Kategorien mit Abstand, rechts ein Kontinuum ohne Lücken."
-#| fig-height: 3.2
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-barplot(table(zufriedenheit), col = "grey75",
-        main = "Stabdiagramm, nominal/ordinal", ylab = "Anzahl")
-hist(werte, breaks = 15, col = "grey75", border = "white",
-     main = "Histogramm, metrisch", xlab = "Wert", ylab = "Anzahl")
-```
-
-## Python
-
-```{python}
-#| label: fig-stab-hist-py
-#| fig-cap: "Dieselbe Gegenüberstellung mit matplotlib."
-anzahl = s.value_counts().reindex(stufen)
-
-fig, (a, b) = plt.subplots(1, 2, figsize=(7, 3.2))
-a.bar(list(anzahl.index), anzahl.values, color="0.75", width=0.6)
-a.set_title("Stabdiagramm, nominal/ordinal")
-a.set_ylabel("Anzahl")
-b.hist(werte, bins=15, color="0.75", edgecolor="white")
-b.set_title("Histogramm, metrisch")
-b.set_xlabel("Wert")
-fig.tight_layout()
-plt.show()
-```
-:::
-
-Ein Detail, das häufig übergangen wird: Bei ungleich breiten Klassen trägt im
-Histogramm die Fläche die Information, nicht die Höhe. Wer dort einfach
-Häufigkeiten als Höhe aufträgt, verzerrt das Bild zugunsten der breiten
-Klassen. Die korrekte Grösse ist dann die Häufigkeitsdichte, also Häufigkeit
-geteilt durch Klassenbreite.
-
-::: {.note-box}
-Ein Balkendiagramm für ein stetiges Merkmal oder ein Histogramm für Kategorien
-ist keine Geschmacksfrage, sondern ein Fehler in der Aussage.
-:::
-
 ::: {.quiz}
-Eine Altersverteilung wird in den Klassen 0 bis 18, 19 bis 25 und 26 bis 65
-dargestellt. Was ist beim Zeichnen zu beachten?
+Eine Altersverteilung wird in den Klassen bis 25, 26 bis 35, 36 bis 50 und 51
+bis 65 dargestellt. Was ist beim Zeichnen zu beachten?
 
 - [x] Aufzutragen ist die Häufigkeitsdichte, nicht die Häufigkeit ~ Richtig.
-      Die Klassen sind 19, 7 und 40 Jahre breit. Trägt man die reinen
-      Häufigkeiten als Höhe auf, erscheint die letzte dominant, nur weil sie
-      mehr Jahre umfasst.
+      Die Klassen sind 26, 10, 15 und 15 Jahre breit. Trägt man die reinen
+      Häufigkeiten als Höhe auf, kehrt sich die Rangfolge um: Nach Anzahl ist
+      36 bis 50 die grösste Klasse, nach Dichte 26 bis 35.
 - [ ] Die Klassen müssen gleich viele Personen enthalten ~ Das ist nicht nötig
       und meist gar nicht möglich.
 - [ ] Nichts Besonderes, ein Histogramm ist ein Histogramm ~ Bei ungleichen
@@ -280,16 +726,31 @@ dargestellt. Was ist beim Zeichnen zu beachten?
 
 ::: {.quiz}
 Woran erkennt man in einer fremden Grafik, ob ein Histogramm oder ein
-Stabdiagramm gemeint war? Der Vergleich steht in @fig-stab-hist-r.
+Stabdiagramm gemeint war?
 
 - [ ] An der Farbe der Balken ~ Die Farbe trägt keine solche Information.
 - [x] Am Abstand zwischen den Balken und an der Achse ~ Richtig. Berühren sich
       die Balken über einer kontinuierlichen Achse, ist es ein Histogramm.
-      Stehen sie getrennt über beschrifteten Kategorien, ein Stabdiagramm.
+      Stehen sie getrennt über beschrifteten Kategorien, ein Stabdiagramm — und
+      dort darf man sie umordnen, im Histogramm nicht.
 - [ ] An der Anzahl der Balken ~ Beide können beliebig viele haben.
+:::
+
+::: {.quiz}
+Eine Auswertung nennt "höchstens mittel: 68 Prozent" für die Abteilungen eines
+Betriebs. Was ist daran falsch?
+
+- [x] Kumulierte Häufigkeiten setzen eine Ordnung voraus, die es hier nicht gibt
+      ~ Richtig. Abteilungen sind nominal; ihre Reihenfolge in der Tabelle ist
+      willkürlich, meist alphabetisch. Beide Programme rechnen die Summe
+      trotzdem klaglos aus.
+- [ ] 68 Prozent ist zu hoch für eine Kategorie ~ Die Höhe ist nicht das
+      Problem.
+- [ ] Es fehlt die Angabe von n ~ Sie fehlt tatsächlich, aber der eigentliche
+      Fehler liegt in der Kumulierung.
 :::
 
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
-
+- [Chi-Quadrat-Tests für Kreuztabellen](../tests/chi-quadrat-tests.qmd)
