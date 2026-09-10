@@ -1,14 +1,542 @@
 ---
 title: "Multiples Testen"
-description: "Bonferroni, Holm und FDR, und wann eine Korrektur nötig ist."
+description: "Warum viele Tests falsche Alarme erzeugen und wie Bonferroni, Holm und Benjamini-Hochberg gegensteuern."
 categories: ["Hypothesentests", "Interpretation", "R", "Python"]
-quelle: ["STATDA"]
+quelle: ["ESDS", "STATDA"]
 seitentyp: konzept
-stand: geruest
-order: 50
+stand: entwurf
+order: 60
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+# Zwoelf p-Werte aus einer Auswertung: zwei echte Effekte, zehn Zufallsbefunde.
+p_werte <- c(0.0001, 0.008, 0.019, 0.023, 0.041, 0.048,
+             0.11, 0.26, 0.34, 0.51, 0.68, 0.92)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.stats.multitest import multipletests
+from statsmodels.stats.power import TTestIndPower
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+p_werte = np.array([0.0001, 0.008, 0.019, 0.023, 0.041, 0.048,
+                    0.11, 0.26, 0.34, 0.51, 0.68, 0.92])
+```
+
 ## Kernideen
+
+- Ein Signifikanzniveau von 0.05 bedeutet: In fünf von hundert Fällen wird ein
+  Effekt behauptet, den es nicht gibt. Bei **einem** Test. Bei zwanzig Tests
+  liegt die Wahrscheinlichkeit für mindestens einen falschen Alarm bei 64
+  Prozent.
+- Das Problem entsteht nicht durch das Rechnen, sondern durch das **Auswählen**:
+  Wer viele Tests rechnet und den kleinsten p-Wert berichtet, hat eine Auswahl
+  getroffen, die der p-Wert nicht kennt.
+- Korrekturverfahren senken die Schwelle. Sie kosten dafür Power: Dieselbe
+  Studie findet nach der Korrektur weniger.
+- Es gibt zwei verschiedene Fehlerbegriffe, und sie verlangen verschiedene
+  Verfahren: die Wahrscheinlichkeit **mindestens eines** Fehlalarms (FWER) und
+  der **Anteil** der Fehlalarme unter den Funden (FDR).
+- Am wirksamsten ist es, die Zahl der Tests von vornherein klein zu halten und
+  vorab festzulegen, welche gerechnet werden.
 
 ## Erklärung
 
+### Wie schnell die Fehlerrate wächst
+
+Sind alle Nullhypothesen wahr und die Tests unabhängig, beträgt die
+Wahrscheinlichkeit für mindestens einen falschen Alarm $1 - (1-\alpha)^m$:
+
+| Anzahl Tests | Wahrscheinlichkeit mindestens eines Fehlalarms |
+|---|---|
+| 1 | 5.0 % |
+| 3 | 14.3 % |
+| 5 | 22.6 % |
+| 10 | 40.1 % |
+| 20 | 64.2 % |
+| 50 | 92.3 % |
+| 100 | 99.4 % |
+
+Bei zwanzig Tests ist ein falscher Alarm also der Normalfall, nicht die
+Ausnahme. Und zwanzig Tests sind schnell erreicht: Fünf Gruppen paarweise
+verglichen ergeben zehn Tests, drei Zielgrössen bei vier Gruppen ergeben
+achtzehn.
+
+### Wo überall unbemerkt mehrfach getestet wird
+
+| Situation | Anzahl Tests |
+|---|---|
+| Paarweise Vergleiche nach einer [Varianzanalyse](../tests/anova.qmd) | bei $k$ Gruppen: $k(k-1)/2$ |
+| Mehrere Zielgrössen in derselben Studie | eine je Zielgrösse |
+| Zwischenauswertungen während der Erhebung | eine je Blick auf die Daten |
+| Untergruppen nachträglich betrachten | eine je Untergruppe |
+| Mehrere Verfahren ausprobieren und das passende berichten | so viele wie ausprobiert |
+| Koeffizienten einer [Regression](../regression/multiple-lineare-regression.qmd) | einer je Prädiktor |
+
+Die letzten drei Zeilen sind die gefährlichen, weil dort meist gar nicht
+gezählt wird, wie viele Tests tatsächlich stattgefunden haben.
+
+### Zwei Fehlerbegriffe
+
+| Begriff | Was kontrolliert wird | Wann passend |
+|---|---|---|
+| FWER, familienweise Fehlerrate | Wahrscheinlichkeit für **mindestens einen** Fehlalarm in der ganzen Gruppe von Tests | wenn ein einziger falscher Befund teuer ist: Zulassung, Sicherheitsnachweis, Bestätigungsstudie |
+| FDR, False Discovery Rate | erwarteter **Anteil** falscher Befunde unter den verworfenen Hypothesen | bei explorativen Auswertungen mit vielen Tests, wenn die Funde ohnehin nachgeprüft werden |
+
+Der Unterschied ist praktisch bedeutsam. FWER auf 5 Prozent heisst: "Mit 95
+Prozent Wahrscheinlichkeit ist unter allen Befunden kein einziger falsch." FDR
+auf 5 Prozent heisst: "Von den Befunden sind im Mittel 5 Prozent falsch." Bei
+hundert Tests und zwanzig Funden erlaubt das eine Falschmeldung, das andere
+etwa eine unter den zwanzig.
+
+### Die drei Verfahren
+
+| Verfahren | Kontrolliert | Wie es rechnet | Schärfe |
+|---|---|---|---|
+| Bonferroni | FWER | jeder p-Wert mit $m$ multipliziert, gleichbedeutend mit Schwelle $\alpha/m$ | am strengsten, einfach zu erklären |
+| Holm | FWER | schrittweise: p-Werte sortieren, den kleinsten gegen $\alpha/m$ prüfen, den zweiten gegen $\alpha/(m-1)$ und so weiter, bis der erste nicht mehr verworfen wird | hält dasselbe Niveau wie Bonferroni, verwirft aber nie weniger |
+| Benjamini-Hochberg | FDR | sortieren, den $i$-ten gegen $\alpha \cdot i/m$ prüfen, vom grössten her rückwärts | deutlich mehr Funde, dafür ein anderes Versprechen |
+
+::: {.note-box}
+**Holm ist Bonferroni ohne Nachteil.** Beide kontrollieren die familienweise
+Fehlerrate gleich streng, aber Holm verwirft in jeder denkbaren Lage mindestens
+so viele Hypothesen wie Bonferroni und oft mehr. Es gibt deshalb keinen
+statistischen Grund, Bonferroni zu verwenden; der einzige Vorteil ist, dass sich
+"Schwelle geteilt durch Anzahl Tests" leichter erklären lässt.
+:::
+
+### Was die Korrektur kostet
+
+Eine gesenkte Schwelle senkt die Power. Bei einem mittleren Effekt und 64 Fällen
+je Gruppe:
+
+| Anzahl Tests | Schwelle nach Bonferroni | Power |
+|---|---|---|
+| 1 | 0.0500 | 0.80 |
+| 5 | 0.0100 | 0.59 |
+| 10 | 0.0050 | 0.49 |
+| 20 | 0.0025 | 0.40 |
+
+Wer die Zahl der Tests nicht begrenzt, verliert also an beiden Enden: ohne
+Korrektur falsche Alarme, mit Korrektur die Fähigkeit, echte Effekte zu finden.
+Der einzige Ausweg ist, vorab weniger zu testen, siehe
+[Power](power-stichprobenumfang.qmd).
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Wie schnell die Fehlerrate wächst
+
+#### Frage und Datenlage
+
+Alle Nullhypothesen sind wahr, es gibt also nichts zu finden. Wie oft wird
+trotzdem etwas gefunden?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-mt-r
+#| fig-cap: "Beispiel 1: Wahrscheinlichkeit mindestens eines falschen Alarms."
+#| fig-height: 3.4
+anzahl <- 1:100
+rate <- 1 - (1 - 0.05)^anzahl
+
+par(mar = c(4, 4, 3, 1))
+plot(anzahl, rate, type = "l", lwd = 2, col = "steelblue", ylim = c(0, 1),
+     xlab = "Anzahl Tests", ylab = "Wahrscheinlichkeit",
+     main = "Mindestens ein falscher Alarm")
+abline(h = 0.05, lty = 2, col = "firebrick")
+abline(v = c(5, 10, 20), lty = 3, col = "grey60")
+
+round(data.frame(tests = c(1, 3, 5, 10, 20, 50, 100),
+                 rate = 1 - 0.95^c(1, 3, 5, 10, 20, 50, 100)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-mt-py
+#| fig-cap: "Beispiel 1: dieselbe Kurve in Python."
+#| fig-height: 3.4
+anzahl = np.arange(1, 101)
+rate = 1 - 0.95 ** anzahl
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+achse.plot(anzahl, rate, color="steelblue", linewidth=2)
+achse.axhline(0.05, linestyle="--", color="firebrick")
+for x in (5, 10, 20):
+    achse.axvline(x, linestyle=":", color="0.6")
+achse.set_xlabel("Anzahl Tests")
+achse.set_ylabel("Wahrscheinlichkeit")
+achse.set_ylim(0, 1)
+achse.set_title("Mindestens ein falscher Alarm")
+plt.tight_layout()
+plt.show()
+
+for m in (1, 3, 5, 10, 20, 50, 100):
+    print(f"{m:4d} Tests: {1 - 0.95 ** m:.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Anzahl Tests | Wahrscheinlichkeit | Wie das zu lesen ist |
+|---|---|---|
+| 1 | 0.050 | Das versprochene Niveau. |
+| 3 | 0.143 | Schon drei paarweise Vergleiche nach einer Varianzanalyse verdreifachen die Rate fast. |
+| 5 | 0.226 | |
+| 10 | 0.401 | In vier von zehn Auswertungen mit zehn Tests steht mindestens ein falscher Befund. |
+| 20 | 0.642 | Der falsche Alarm ist jetzt wahrscheinlicher als kein falscher Alarm. |
+| 50 | 0.923 | |
+| 100 | 0.994 | Praktisch sicher. |
+
+Die Kurve steigt anfangs steil und flacht dann ab; die entscheidenden Schritte
+passieren zwischen einem und zwanzig Tests, also genau in dem Bereich, in dem
+sich die meisten Auswertungen bewegen.
+
+#### Interpretation
+
+Die Zahlen gelten unter der Annahme unabhängiger Tests. Bei abhängigen Tests,
+etwa mehreren Zielgrössen, die miteinander korrelieren, fällt die Rate etwas
+niedriger aus. Kleiner als das Einzelniveau wird sie aber nie, und die
+Grössenordnung bleibt.
+
+Wichtig ist die Umkehrung: Wenn in einer Auswertung mit zwanzig Tests genau ein
+Ergebnis knapp signifikant ist, dann ist das **kein** Befund, sondern die
+Erwartung.
+
+### Beispiel 2: Drei Korrekturen im Vergleich
+
+#### Frage und Datenlage
+
+Zwölf p-Werte aus einer Auswertung. Sechs liegen unter 0.05, davon einer sehr
+deutlich. Die Frage lautet: Was bleibt nach einer Korrektur übrig?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-mt-rechnung-r
+vergleich <- data.frame(
+  p = p_werte,
+  bonferroni = p.adjust(p_werte, method = "bonferroni"),
+  holm = p.adjust(p_werte, method = "holm"),
+  BH = p.adjust(p_werte, method = "BH")
+)
+round(vergleich, 4)
+
+colSums(vergleich < 0.05)
+```
+
+##### Python
+
+```{python}
+#| label: b2-mt-rechnung-py
+vergleich = pd.DataFrame({"p": p_werte})
+for methode, name in [("bonferroni", "bonferroni"), ("holm", "holm"),
+                      ("fdr_bh", "BH")]:
+    vergleich[name] = multipletests(p_werte, alpha=0.05, method=methode)[1]
+print(vergleich.round(4).to_string())
+
+print((vergleich < 0.05).sum())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| p | Bonferroni | Holm | Benjamini-Hochberg |
+|---|---|---|---|
+| 0.0001 | **0.0012** | **0.0012** | **0.0012** |
+| 0.0080 | 0.0960 | 0.0880 | **0.0480** |
+| 0.0190 | 0.2280 | 0.1900 | 0.0690 |
+| 0.0230 | 0.2760 | 0.2070 | 0.0690 |
+| 0.0410 | 0.4920 | 0.3280 | 0.0960 |
+| 0.0480 | 0.5760 | 0.3360 | 0.0960 |
+| 0.1100 | 1.0000 | 0.6600 | 0.1886 |
+| 0.2600 | 1.0000 | 1.0000 | 0.3900 |
+| … | | | |
+| **verworfen bei 0.05** | **1** | **1** | **2** |
+
+Ohne Korrektur wären sechs Hypothesen verworfen worden. Nach Bonferroni und Holm
+bleibt eine übrig, nach Benjamini-Hochberg zwei.
+
+Drei Beobachtungen zu den Zahlen:
+
+**Bonferroni multipliziert einfach mit 12.** Aus 0.008 wird 0.096, aus 0.0001
+wird 0.0012. Werte über 1 werden auf 1 gekappt.
+
+**Holm ist nie strenger als Bonferroni.** In der ersten Zeile sind beide gleich
+(0.0012), ab der zweiten liegt Holm darunter: 0.088 gegen 0.096, 0.190 gegen
+0.228, und mit wachsendem Rang wird der Abstand grösser. Der Grund ist der
+kleiner werdende Divisor.
+
+**Benjamini-Hochberg ist deutlich grosszügiger.** Der Wert 0.008 wird zu 0.048
+und bleibt damit knapp signifikant, während er bei den FWER-Verfahren
+ausscheidet. Das ist kein Fehler, sondern das andere Versprechen: BH garantiert
+nicht, dass unter den beiden Funden kein falscher ist, sondern dass im Mittel
+höchstens 5 Prozent der Funde falsch sind.
+
+::: {.note-box}
+**Korrigierte p-Werte sind eine Bequemlichkeit, keine echten p-Werte.** Sie
+werden so umgerechnet, dass man sie weiterhin gegen 0.05 halten kann. Ein
+"korrigierter p-Wert von 0.048" bedeutet nicht, dass die Wahrscheinlichkeit für
+diese Daten 4.8 Prozent beträgt, sondern nur: Bei einem FDR-Niveau von 0.048
+oder mehr wäre diese Hypothese verworfen worden.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Von zwölf Tests waren sechs bei einem unkorrigierten Niveau von 0.05
+> signifikant. Nach Holm-Korrektur bleibt einer (p korrigiert = 0.0012), nach
+> Benjamini-Hochberg bleiben zwei (0.0012 und 0.0480). Berichtet wird die
+> Holm-Korrektur, da ein einzelner falscher Befund die Folgeentscheidung
+> tragen würde.
+
+### Beispiel 3: Holm Schritt für Schritt
+
+#### Frage und Datenlage
+
+Das Holm-Verfahren wird oft als Zauberkasten verwendet. Es ist aber in vier
+Zeilen nachvollziehbar, und wer es einmal von Hand durchgeht, versteht auch,
+warum es an einer Stelle abbricht.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-mt-rechnung-r
+m <- length(p_werte)
+sortiert <- sort(p_werte)
+
+schritte <- data.frame(
+  rang = 1:m,
+  p = sortiert,
+  divisor = m:1,
+  schwelle = 0.05 / (m:1)
+)
+schritte$unter_schwelle <- schritte$p < schritte$schwelle
+round(schritte, 5)
+
+# Das Verfahren stoppt beim ersten FALSE; alles danach bleibt stehen
+erster_stopp <- which(!schritte$unter_schwelle)[1]
+cat("Verworfen werden die Raenge 1 bis", erster_stopp - 1, "\n")
+```
+
+##### Python
+
+```{python}
+#| label: b3-mt-rechnung-py
+m = len(p_werte)
+sortiert = np.sort(p_werte)
+
+schritte = pd.DataFrame({
+    "rang": np.arange(1, m + 1),
+    "p": sortiert,
+    "divisor": np.arange(m, 0, -1),
+    "schwelle": 0.05 / np.arange(m, 0, -1),
+})
+schritte["unter_schwelle"] = schritte["p"] < schritte["schwelle"]
+print(schritte.round(5).to_string(index=False))
+
+erster_stopp = int(np.argmin(schritte["unter_schwelle"].to_numpy()))
+print("Verworfen werden die Ränge 1 bis", erster_stopp)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Rang | p | Divisor | Schwelle | unter Schwelle? |
+|---|---|---|---|---|
+| 1 | 0.0001 | 12 | 0.00417 | **ja** |
+| 2 | 0.0080 | 11 | 0.00455 | **nein, STOPP** |
+| 3 | 0.0190 | 10 | 0.00500 | (wird nicht mehr geprüft) |
+| 4 | 0.0230 | 9 | 0.00556 | |
+
+Das Verfahren geht die sortierten p-Werte von unten durch und vergleicht jeden
+mit einer Schwelle, die von Rang zu Rang **steigt**: erst $\alpha/12$, dann
+$\alpha/11$ und so weiter. Beim ersten Wert, der seine Schwelle nicht
+unterschreitet, hört es auf, und alle folgenden bleiben unverworfen — auch
+solche, die ihre eigene Schwelle unterschritten hätten.
+
+Der zweite p-Wert ist mit 0.0080 knapp über seiner Schwelle von 0.00455. Läge er
+bei 0.004, wären beide verworfen, und der dritte Rang käme gegen 0.005 an die
+Reihe.
+
+::: {.note-box}
+**Warum das Abbrechen nötig ist.** Ohne die Stoppregel wäre das Verfahren keine
+gültige FWER-Kontrolle mehr. Die steigenden Schwellen sind nur deshalb zulässig,
+weil ein Rang erst geprüft wird, wenn alle kleineren verworfen wurden. Wer die
+Schwellen einzeln anwendet und die Stoppregel weglässt, hält das Niveau nicht
+ein.
+:::
+
+#### Interpretation
+
+Das Nachvollziehen lohnt sich, weil es zwei verbreitete Missverständnisse
+ausräumt. Erstens ist Holm **kein** Verfahren, das jeden p-Wert einzeln
+umrechnet; die Reihenfolge ist wesentlich. Zweitens erklärt es, warum das
+Ergebnis eines einzelnen Tests davon abhängt, welche **anderen** Tests
+mitgerechnet wurden — was zunächst befremdlich wirkt und der Kern der ganzen
+Sache ist.
+
+### Beispiel 4: Was die Korrektur kostet
+
+#### Frage und Datenlage
+
+Korrekturen sind nicht umsonst. Wie viel Power geht verloren?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-mt-rechnung-r
+library(pwr)
+
+for (m in c(1, 5, 10, 20)) {
+  alpha <- 0.05 / m
+  p <- pwr.t.test(n = 64, d = 0.5, sig.level = alpha)$power
+  n_noetig <- pwr.t.test(d = 0.5, power = 0.80, sig.level = alpha)$n
+  cat(sprintf("%2d Tests: alpha = %.4f  Power bei n = 64: %.4f  n fuer Power 0.80: %6.2f\n",
+              m, alpha, p, n_noetig))
+}
+```
+
+##### Python
+
+```{python}
+#| label: b4-mt-rechnung-py
+analyse = TTestIndPower()
+
+for m in (1, 5, 10, 20):
+    alpha = 0.05 / m
+    power = analyse.power(effect_size=0.5, nobs1=64, alpha=alpha)
+    n_noetig = analyse.solve_power(effect_size=0.5, power=0.80, alpha=alpha,
+                                   ratio=1.0)
+    print(f"{m:2d} Tests: alpha = {alpha:.4f}  Power bei n = 64: {power:.4f}"
+          f"  n für Power 0.80: {n_noetig:6.2f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Anzahl Tests | Schwelle | Power bei n = 64 je Gruppe | nötiges n für Power 0.80 |
+|---|---|---|---|
+| 1 | 0.0500 | 0.80 | 63.77 |
+| 5 | 0.0100 | 0.59 | 95.10 |
+| 10 | 0.0050 | 0.49 | 108.48 |
+| 20 | 0.0025 | 0.40 | 121.80 |
+
+Wer denselben Versuch mit zwanzig statt einem Test auswertet, halbiert die Power
+und bräuchte fast doppelt so viele Fälle, um sie zurückzugewinnen.
+
+#### Interpretation und Ergebnissatz
+
+Daraus folgt die praktisch wichtigste Konsequenz dieser Seite, und sie ist keine
+Rechenregel: **Die Zahl der Tests gehört vor der Auswertung festgelegt und klein
+gehalten.**
+
+| Vorgehen | Wirkung |
+|---|---|
+| Eine Hauptfragestellung vorab benennen | Der Haupttest bleibt unkorrigiert, alles Weitere ist ausdrücklich explorativ |
+| Zielgrössen zusammenfassen | Ein Gesamtmass statt fünf Einzelmasse ergibt einen Test statt fünf |
+| Gemeinsamen Test statt vieler Einzeltests | [Varianzanalyse](../tests/anova.qmd) statt paarweiser Vergleiche, gemeinsamer F-Test statt einzelner t-Tests |
+| Explorative Funde als solche kennzeichnen | Sie brauchen dann keine Korrektur, aber auch keine Signifikanzaussage |
+
+Der letzte Punkt ist der ehrlichste Ausweg. Ein exploratives Ergebnis darf
+berichtet werden, wenn dazugesagt wird, dass es aus einer ungeplanten Suche
+stammt und in einer neuen Erhebung zu prüfen ist.
+
+> Vorab festgelegt war eine Hauptfragestellung; die übrigen elf Vergleiche sind
+> explorativ. Für die Hauptfrage wurde ohne Korrektur auf dem 5-Prozent-Niveau
+> geprüft. Die explorativen Vergleiche sind nach Benjamini-Hochberg korrigiert
+> und als vorläufig gekennzeichnet.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Nach einer Varianzanalyse mit fünf Gruppen werden alle Paare verglichen. Wie
+viele Tests sind das, und wie hoch ist die Fehlerrate ohne Korrektur?
+
+- [x] Zehn Tests, rund 40 Prozent ~ Richtig. Bei fünf Gruppen gibt es
+      5·4/2 = 10 Paare. Ohne Korrektur liegt die Wahrscheinlichkeit für
+      mindestens einen falschen Alarm bei 1 - 0.95¹⁰ = 0.40.
+- [ ] Fünf Tests, rund 23 Prozent ~ Fünf Gruppen ergeben zehn Paare, nicht fünf.
+- [ ] Zehn Tests, weiterhin 5 Prozent ~ Die 5 Prozent gelten je Einzeltest, nicht
+      für die Gruppe von Tests.
+:::
+
+::: {.quiz}
+Warum sollte Holm gegenüber Bonferroni bevorzugt werden?
+
+- [x] Es hält dasselbe Niveau ein und verwirft nie weniger ~ Richtig. Holm ist
+      in jeder Lage mindestens so scharf wie Bonferroni und oft schärfer, bei
+      identischer Kontrolle der familienweisen Fehlerrate. Ein statistischer
+      Grund für Bonferroni existiert nicht.
+- [ ] Es ist weniger streng und findet deshalb mehr ~ Weniger streng im Sinne
+      eines schwächeren Versprechens ist es gerade nicht; das Versprechen ist
+      dasselbe.
+- [ ] Es kontrolliert die FDR statt der FWER ~ Das ist Benjamini-Hochberg.
+:::
+
+::: {.quiz}
+Benjamini-Hochberg auf 5 Prozent liefert zwanzig Funde. Was bedeutet das?
+
+- [x] Im Mittel ist etwa einer davon falsch ~ Richtig. Die FDR kontrolliert den
+      erwarteten Anteil falscher Befunde unter den Funden: 5 Prozent von zwanzig
+      ist einer. Das ist ein anderes Versprechen als "mit 95 Prozent
+      Wahrscheinlichkeit ist keiner falsch".
+- [ ] Mit 95 Prozent Wahrscheinlichkeit ist keiner falsch ~ Das wäre eine
+      FWER-Kontrolle, wie sie Bonferroni und Holm leisten.
+- [ ] Alle zwanzig sind mit 95 Prozent Wahrscheinlichkeit richtig ~ Die FDR sagt
+      nichts über einzelne Funde.
+:::
+
+::: {.quiz}
+Eine Auswertung mit zwanzig Tests liefert genau ein knapp signifikantes
+Ergebnis (p = 0.04). Wie ist das zu bewerten?
+
+- [x] Als Erwartungswert, nicht als Befund ~ Richtig. Bei zwanzig Tests unter
+      lauter wahren Nullhypothesen wird im Mittel einer signifikant. Ein
+      einzelnes knappes Ergebnis unter vielen Tests ist genau das, was der
+      Zufall liefert.
+- [ ] Als Befund, p liegt unter 0.05 ~ Die Schwelle 0.05 gilt für einen einzelnen
+      vorab festgelegten Test.
+- [ ] Als Befund, wenn er inhaltlich plausibel ist ~ Nachträgliche Plausibilität
+      ist kein Ersatz für eine vorab formulierte Hypothese; sie findet sich fast
+      immer.
+:::
+
 ## Verlinkte Ressourcen
+
+- [R-Dokumentation zu `p.adjust`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/p.adjust.html)
+- [statsmodels: multipletests](https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html)
+- [Power und Stichprobenumfang](power-stichprobenumfang.qmd)
