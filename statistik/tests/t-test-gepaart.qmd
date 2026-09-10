@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pingouin as pg
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
@@ -107,101 +108,6 @@ dürfen beliebig verteilt sein, solange ihre Differenzen es nicht sind.
 | Annähernd normalverteilte Differenzen | Nur die Differenzen, nicht die Ausgangswerte | [QQ-Plot](../wahrscheinlichkeit/qq-plots.qmd) der Differenzen | Bei kleinem n weicht die Fehlerrate ab | Wilcoxon oder Bootstrap |
 | Keine extremen Ausreisser in den Differenzen | Ein Paar bestimmt das Ergebnis nicht | Boxplot der Differenzen | Ergebnis hängt an einem Paar | Ursache prüfen, mit und ohne berichten |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-voraussetzungen-ttp-r
-#| fig-cap: "Verlauf je Maschine und Verteilung der Differenzen."
-#| fig-height: 3.4
-# feste Beispieldaten: 20 Maschinen mit sehr unterschiedlichem Verbrauch,
-# jede gewinnt durch die Wartung etwas, im Mittel rund 0.75 Einheiten
-vorher <- c(101.2, 88.4, 112.7, 95.1, 120.3, 78.9, 103.6, 91.5, 108.2, 84.7,
-            99.8, 115.4, 82.3, 106.9, 93.2, 118.1, 87.6, 110.5, 97.4, 104.3)
-gewinn <- c(0.8, 1.1, 0.4, 0.9, 0.6, 1.3, 0.2, 0.7, 1.0, 0.5,
-            0.9, 0.3, 1.2, 0.6, 0.8, 0.4, 1.1, 0.7, 0.5, 0.9)
-nachher <- vorher + gewinn
-differenz <- nachher - vorher
-
-par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
-matplot(rbind(vorher, nachher), type = "l", lty = 1, col = "grey50",
-        xaxt = "n", xlab = "", ylab = "Verbrauch", main = "Paare im Verlauf")
-axis(1, at = c(1, 2), labels = c("vorher", "nachher"))
-boxplot(differenz, main = "Differenzen", ylab = "nachher minus vorher")
-abline(h = 0, lty = 2)
-qqnorm(differenz, main = "QQ-Plot der Differenzen"); qqline(differenz)
-par(mfrow = c(1, 1))
-```
-
-## Python
-
-```{python}
-#| label: fig-voraussetzungen-ttp-py
-#| fig-cap: "Dieselbe Prüfung in Python."
-#| fig-height: 3.4
-import statsmodels.api as sm
-
-vorher = np.array([101.2, 88.4, 112.7, 95.1, 120.3, 78.9, 103.6, 91.5, 108.2,
-                   84.7, 99.8, 115.4, 82.3, 106.9, 93.2, 118.1, 87.6, 110.5,
-                   97.4, 104.3])
-gewinn = np.array([0.8, 1.1, 0.4, 0.9, 0.6, 1.3, 0.2, 0.7, 1.0, 0.5,
-                   0.9, 0.3, 1.2, 0.6, 0.8, 0.4, 1.1, 0.7, 0.5, 0.9])
-nachher = vorher + gewinn
-differenz = nachher - vorher
-
-fig, axes = plt.subplots(1, 3, figsize=(7, 3.4))
-for v, na in zip(vorher, nachher):
-    axes[0].plot([0, 1], [v, na], color="0.5", linewidth=0.8)
-axes[0].set_xticks([0, 1], ["vorher", "nachher"])
-axes[0].set_ylabel("Verbrauch")
-axes[0].set_title("Paare im Verlauf")
-axes[1].boxplot(differenz)
-axes[1].axhline(0, linestyle="--", color="black")
-axes[1].set_title("Differenzen")
-sm.qqplot(differenz, line="s", ax=axes[2])
-axes[2].set_title("QQ-Plot der Differenzen")
-plt.tight_layout()
-plt.show()
-```
-
-:::
-
-Im linken Bild ist zu sehen, worum es geht: die Maschinen liegen weit
-auseinander, aber fast jede Linie steigt. Genau diese gemeinsame Bewegung nutzt
-der gepaarte Test, und genau sie geht im ungepaarten Vergleich unter. Der
-Boxplot der Differenzen soll deutlich neben der Nulllinie liegen, der QQ-Plot
-der Differenzen nah an der Geraden.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-ttp-r
-t.test(nachher, vorher, paired = TRUE)
-
-effectsize::cohens_d(nachher, vorher, paired = TRUE)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-ttp-py
-print(pg.ttest(nachher, vorher, paired=True).round(4).T)
-```
-
-:::
-
-Die Daten sind fest vorgegeben und in beiden Sprachen identisch: 20 Maschinen
-mit Verbrauchswerten zwischen 79 und 121, und jede gewinnt durch die Wartung
-zwischen 0.2 und 1.3 Einheiten. Der Unterschied zwischen den Maschinen ist damit
-rund vierzigmal grösser als der gesuchte Effekt. Feste Daten statt Zufallszahlen
-haben hier einen Grund: die Aussage des Szenarios soll nicht davon abhängen,
-welche Stichprobe gerade gezogen wurde.
-
 ## Output lesen
 
 R, `t.test(..., paired = TRUE)`:
@@ -226,143 +132,6 @@ statt sie festzuschreiben. Zwei Unterschiede zu R:
 `effectsize` in R, weshalb die beiden Zahlen abweichen können; welche Fassung
 verwendet wurde, gehört deshalb in den Bericht. Und `CI95%` bezieht sich auf die
 mittlere Differenz, was hier die interessierende Grösse ist.
-
-## Ergebnisse interpretieren
-
-### Szenario A: der Gewinn der Paarung
-
-Derselbe Datensatz, einmal gepaart und einmal fälschlich ungepaart gerechnet.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-a-ttp-r
-gepaart   <- t.test(nachher, vorher, paired = TRUE)
-ungepaart <- t.test(nachher, vorher)
-
-round(c(p_gepaart = gepaart$p.value, p_ungepaart = ungepaart$p.value), 5)
-round(c(breite_gepaart = diff(gepaart$conf.int),
-        breite_ungepaart = diff(ungepaart$conf.int)), 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-ttp-py
-g = pg.ttest(nachher, vorher, paired=True)
-u = pg.ttest(nachher, vorher, paired=False)
-print("gepaart  ", round(pg_wert(g, "p-val"), 5), pg_wert(g, "ci95"))
-print("ungepaart", round(pg_wert(u, "p-val"), 5), pg_wert(u, "ci95"))
-```
-
-:::
-
-Der gepaarte Test findet den Effekt deutlich, der ungepaarte nicht, und das
-Konfidenzintervall des gepaarten Tests ist um ein Vielfaches schmaler. Der Grund
-steht in den Daten: die Streuung zwischen den Maschinen liegt bei etwa 12, die
-Streuung der Differenzen dagegen bei etwa 0.3. Wer die Paarung ignoriert, misst den
-Effekt an der falschen Streuung und übersieht ihn.
-
-Ergebnissatz: Nach der Wartung sinkt der Verbrauch im Mittel um den geschätzten
-Betrag (95-Prozent-Intervall wie ausgegeben, t(19) wie ausgegeben, p wie
-ausgegeben, n = 20 Paare).
-
-### Szenario B: kein nachweisbarer Effekt
-
-Dieselbe Struktur, aber die Massnahme wirkt nicht.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-ttp-r
-# dieselben Maschinen, aber die Massnahme wirkt nicht: die Differenzen
-# streuen um null
-vorher_b <- vorher
-differenz_b <- c(0.3, -0.4, 0.1, -0.2, 0.5, -0.3, 0.2, -0.5, 0.0, 0.4,
-                 -0.1, 0.3, -0.4, 0.2, -0.2, 0.1, -0.3, 0.5, -0.1, 0.0)
-nachher_b <- vorher_b + differenz_b
-
-t.test(nachher_b, vorher_b, paired = TRUE)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-ttp-py
-vorher_b = vorher
-differenz_b = np.array([0.3, -0.4, 0.1, -0.2, 0.5, -0.3, 0.2, -0.5, 0.0, 0.4,
-                        -0.1, 0.3, -0.4, 0.2, -0.2, 0.1, -0.3, 0.5, -0.1, 0.0])
-nachher_b = vorher_b + differenz_b
-
-print(pg.ttest(nachher_b, vorher_b, paired=True).round(4).T)
-```
-
-:::
-
-Die mittlere Differenz liegt nahe null, das Konfidenzintervall schliesst die
-Null ein, der p-Wert ist gross. Wichtig ist hier die Breite des Intervalls: Sie
-ist klein, weil die Paarung die Streuung zwischen den Maschinen entfernt. Das
-Ergebnis sagt also nicht nur "kein Nachweis", sondern grenzt den möglichen
-Effekt eng ein. Genau diese Kombination erlaubt die Aussage, dass ein
-praktisch bedeutsamer Effekt unwahrscheinlich ist, ohne dass daraus ein Beweis
-für Gleichheit wird.
-
-Ergebnissatz: Ein Effekt der Massnahme lässt sich nicht nachweisen (mittlere
-Differenz wie ausgegeben, 95-Prozent-Intervall wie ausgegeben, p wie ausgegeben,
-n = 20 Paare). Das Intervall schliesst Effekte oberhalb seiner Grenzen aus.
-
-### Szenario C: Fallstrick verlorene Zuordnung
-
-Die häufigste Panne ist keine statistische, sondern eine der Datenaufbereitung:
-Die beiden Messreihen liegen in verschiedener Reihenfolge vor, und die Paarung
-verbindet die falschen Werte.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-c-ttp-r
-falsch_sortiert <- rev(nachher)     # Zuordnung zerstoert, hier durch Umdrehen
-
-round(c(richtig = t.test(nachher, vorher, paired = TRUE)$p.value,
-        vertauscht = t.test(falsch_sortiert, vorher, paired = TRUE)$p.value), 5)
-
-round(c(sd_differenz_richtig = sd(nachher - vorher),
-        sd_differenz_vertauscht = sd(falsch_sortiert - vorher)), 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-ttp-py
-falsch_sortiert = nachher[::-1]     # Zuordnung zerstoert, hier durch Umdrehen
-
-print(round(pg_wert(pg.ttest(nachher, vorher, paired=True), "p-val"), 5),
-      round(pg_wert(pg.ttest(falsch_sortiert, vorher, paired=True), "p-val"), 5))
-print(round((nachher - vorher).std(ddof=1), 3),
-      round((falsch_sortiert - vorher).std(ddof=1), 3))
-```
-
-:::
-
-Erkennbar ist der Fehler an der Streuung der Differenzen: Sie springt von etwa
-0.3 auf die Grössenordnung der Streuung zwischen den Maschinen, also um mehr als
-das Vierzigfache. Der Mittelwert
-der Differenzen bleibt dabei nahezu unverändert, deshalb fällt der Fehler weder
-am Schätzwert noch an einer Fehlermeldung auf. Er zeigt sich nur daran, dass der
-Vorteil der Paarung plötzlich verschwunden ist.
-
-Das Vorgehen: Paare immer über einen Identifikator verbinden, nie über die
-Zeilenreihenfolge, und nach dem Zusammenführen prüfen, dass die Anzahl Paare
-stimmt und keine Zeile ohne Partner geblieben ist.
-
-Ergebnissatz: Die Zuordnung der Messungen erfolgte über die Maschinennummer;
-alle 20 Paare sind vollständig.
 
 ## Interpretationsfallen
 
@@ -416,6 +185,442 @@ Beispiel für eine Ergebnistabelle:
 | [Wilcoxon-Vorzeichen-Rangtest](nichtparametrische-tests.qmd) | die Differenzen sind deutlich schief oder enthalten Ausreisser |
 | [Varianzanalyse](anova.qmd) | mehr als zwei Messzeitpunkte an denselben Objekten |
 | [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) | gepaarte binäre Daten, dort der McNemar-Test |
+
+## Beispiele
+
+Alle Beispiele rechnen mit fest eingetragenen Zahlen, damit R und Python
+dieselben Daten sehen und jeder Wert im Text nachprüfbar ist.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Reaktionszeit vor und nach einer Schulung
+
+#### Frage und Datenlage
+
+Fünfzehn Personen bearbeiten dieselbe Aufgabe zweimal, einmal vor und einmal
+nach einer Schulung. Gemessen wird die Reaktionszeit in Millisekunden. Die Frage
+lautet: Hat sich die Reaktionszeit verändert, und um wie viel?
+
+Entscheidend ist die Struktur der Daten: Es sind nicht dreissig unabhängige
+Messungen, sondern fünfzehn Personen mit je zwei Werten. Personen unterscheiden
+sich stark voneinander, und genau dieser Unterschied interessiert hier nicht.
+Der gepaarte Test entfernt ihn, indem er nur mit den Differenzen je Person
+rechnet.
+
+#### Voraussetzungen prüfen
+
+Geprüft wird nicht die Verteilung der Messwerte, sondern die der **Differenzen**.
+Das ist der häufigste Missgriff auf dieser Seite.
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-gp-voraussetzungen-r
+#| fig-cap: "Beispiel 1: Werte je Person, Verteilung der Differenzen und QQ-Plot der Differenzen."
+#| fig-height: 3.2
+vorher  <- c(412, 498, 455, 530, 388, 472, 505, 441, 519, 463, 398, 486, 527, 450, 475)
+nachher <- c(394, 493, 430, 533, 374, 450, 497, 411, 525, 451, 379, 484, 501, 441, 460)
+differenz <- nachher - vorher
+
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+matplot(t(cbind(vorher, nachher)), type = "b", pch = 16, lty = 1,
+        col = "grey40", xaxt = "n", xlab = "", ylab = "Reaktionszeit (ms)",
+        main = "Je Person")
+axis(1, at = 1:2, labels = c("vorher", "nachher"))
+boxplot(differenz, main = "Differenzen", ylab = "Millisekunden")
+abline(h = 0, lty = 2, col = "firebrick")
+qqnorm(differenz, main = "QQ-Plot der Differenzen"); qqline(differenz)
+par(mfrow = c(1, 1))
+
+round(c(mittel_diff = mean(differenz), sd_diff = sd(differenz),
+        korrelation = cor(vorher, nachher)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-gp-voraussetzungen-py
+#| fig-cap: "Beispiel 1: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+vorher = np.array([412, 498, 455, 530, 388, 472, 505, 441, 519, 463,
+                   398, 486, 527, 450, 475])
+nachher = np.array([394, 493, 430, 533, 374, 450, 497, 411, 525, 451,
+                    379, 484, 501, 441, 460])
+differenz = nachher - vorher
+
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2))
+for v, n in zip(vorher, nachher):
+    achsen[0].plot([0, 1], [v, n], "o-", color="0.4", markersize=4)
+achsen[0].set_xticks([0, 1], ["vorher", "nachher"])
+achsen[0].set_ylabel("Reaktionszeit (ms)")
+achsen[0].set_title("Je Person")
+achsen[1].boxplot(differenz)
+achsen[1].axhline(0, linestyle="--", color="firebrick")
+achsen[1].set_title("Differenzen")
+achsen[1].set_ylabel("Millisekunden")
+sm.qqplot(differenz, line="s", ax=achsen[2])
+achsen[2].set_title("QQ-Plot der Differenzen")
+plt.tight_layout()
+plt.show()
+
+print("Mittel der Differenzen =", round(differenz.mean(), 4),
+      " SD =", round(differenz.std(ddof=1), 4),
+      " Korrelation =", round(np.corrcoef(vorher, nachher)[0, 1], 4))
+```
+
+:::
+
+Im linken Bild verläuft fast jede Linie nach unten: Die meisten Personen sind
+nachher schneller. Zugleich liegen die Linien weit auseinander, von knapp 390 bis
+über 530 Millisekunden. Diese Spanne zwischen den Personen ist rund viermal so
+gross wie die Veränderung innerhalb einer Person, und die Korrelation zwischen
+den beiden Messungen beträgt 0.98.
+
+Genau daraus zieht der gepaarte Test seine Schärfe: Was beide Messungen einer
+Person gemeinsam haben, kürzt sich in der Differenz heraus.
+
+Die Differenzen selbst sind unauffällig verteilt, der QQ-Plot zeigt keine
+Abweichung von Belang, und der Boxplot liegt vollständig unterhalb der Nulllinie.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-gp-rechnung-r
+t.test(nachher, vorher, paired = TRUE)
+
+effectsize::cohens_d(nachher, vorher, paired = TRUE)
+```
+
+##### Python
+
+```{python}
+#| label: b1-gp-rechnung-py
+print(pg.ttest(nachher, vorher, paired=True).round(4).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Variante | `Paired t-test` | gepaart gerechnet | Fehlt das Wort `Paired`, wurde `paired = TRUE` vergessen, und das Ergebnis ist ein anderes, siehe Beispiel 2. |
+| `t` | -4.744 | Die mittlere Differenz liegt 4.74 Standardfehler unter null. | Das Vorzeichen folgt der Reihenfolge der Argumente: `nachher` minus `vorher`, negativ heisst also schneller geworden. |
+| `df` | 14 | Freiheitsgrade | Anzahl **Paare** minus eins, nicht Anzahl Messungen minus eins. Bei 15 Personen mit 30 Messwerten sind es 14, nicht 28. |
+| `p-value` | 0.00031 | Wahrscheinlichkeit einer mindestens so grossen mittleren Differenz, wenn sich in Wahrheit nichts geändert hätte | Deutlich unter 0.05. |
+| `mean difference` | -13.07 | mittlere Veränderung in Millisekunden | Die eigentliche Effektgrösse. Nach der Schulung sind die Personen im Mittel 13 ms schneller. |
+| `95 percent confidence interval` | -18.97 bis -7.16 | Intervall für die **Differenz**, nicht für einen Mittelwert | Anders als beim Einstichprobentest steht hier direkt die interessierende Grösse. Plausibel ist eine Verbesserung zwischen 7 und 19 ms. |
+| Effektstärke in R | -1.23 | Differenz in Einheiten der Streuung **der Differenzen** | Das ist $d_z$: -13.07 geteilt durch 10.67. Er beantwortet die Frage "wie gross ist die Veränderung im Verhältnis dazu, wie unterschiedlich die Veränderungen ausfallen". |
+| `cohen_d` in Python | 0.27 | Differenz in Einheiten der Streuung **zwischen den Personen** | Nicht derselbe Wert und kein Fehler, sondern eine andere Definition, siehe den Kasten unten. |
+| `power` (nur Python) | 0.166 | Trefferwahrscheinlichkeit für den beobachteten Effekt | Niedrig, weil pingouin sie aus dem kleinen d von 0.27 berechnet und nicht aus $d_z$. Im Nachhinein berechnete Power ist ohnehin nur eingeschränkt aussagekräftig. |
+| `BF10` (nur Python) | 105.4 | Bayes-Faktor | Die Daten sind rund hundertmal wahrscheinlicher unter einer Veränderung als unter Gleichheit. |
+
+::: {.note-box}
+**Cohens d ist bei gepaarten Daten nicht eindeutig, und die beiden Sprachen
+wählen verschieden.** R gibt mit `effectsize::cohens_d(paired = TRUE)` den Wert
+-1.23 aus, pingouin gibt 0.27 aus. Beide sind richtig gerechnet, sie teilen nur
+durch etwas anderes:
+
+| | Nenner | Wert hier | Frage, die er beantwortet |
+|---|---|---|---|
+| $d_z$ (R) | Streuung der Differenzen, 10.67 ms | -1.23 | Wie deutlich ist die Veränderung im Verhältnis zu ihrer eigenen Schwankung? |
+| $d$ (pingouin) | gepoolte Streuung der beiden Messreihen, rund 47.9 ms | 0.27 | Wie gross ist die Veränderung im Verhältnis zu den Unterschieden zwischen Personen? |
+
+$d_z$ hängt an der Korrelation der beiden Messungen und wird gross, sobald die
+Paarung gut greift; er eignet sich für die Planung eines weiteren gepaarten
+Versuchs. Das gepoolte $d$ ist mit Effektstärken aus Zweistichprobenvergleichen
+vergleichbar und eignet sich für die Einordnung gegen Literaturwerte. Wer eine
+Effektstärke berichtet, schreibt deshalb dazu, welche gemeint ist; die blosse
+Angabe "d = 1.23" ist ohne diesen Zusatz nicht deutbar.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Berichtet wird die Veränderung in Millisekunden mit ihrem Intervall, nicht der
+p-Wert allein. Ob 13 ms viel sind, entscheidet die Sache: Bei einer Aufgabe mit
+Reaktionszeiten um 460 ms sind das rund drei Prozent.
+
+Und eine Grenze des Designs gehört dazu: Gemessen wurde vorher und nachher ohne
+Kontrollgruppe. Die Verbesserung kann von der Schulung kommen, ebenso gut aber
+vom blossen Wiederholen der Aufgabe. Der gepaarte Test misst die Veränderung,
+nicht ihre Ursache.
+
+> Nach der Schulung sind die Reaktionszeiten kürzer (vorher M = 467.9 ms,
+> SD = 44.9; nachher M = 454.9 ms, SD = 50.7; n = 15 Personen): mittlere
+> Veränderung -13.1 ms, 95-Prozent-Konfidenzintervall -19.0 bis -7.2 ms,
+> t(14) = -4.74, p < 0.001, $d_z$ = -1.23 (gepoolt: d = 0.27). Ohne
+> Kontrollgruppe lässt sich die
+> Veränderung nicht ursächlich der Schulung zuschreiben.
+
+### Beispiel 2: Was die Paarung ausmacht
+
+#### Frage und Datenlage
+
+Dieselben Daten wie in Beispiel 1, nur wird die Paarung diesmal ignoriert und
+mit `paired = FALSE` gerechnet. Das passiert in der Praxis leicht: Die Daten
+liegen in zwei Spalten, und die Zuordnung zur Person ist nicht sichtbar.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-gp-rechnung-r
+t.test(nachher, vorher, paired = TRUE)$p.value
+
+t.test(nachher, vorher, paired = FALSE)   # falsch gerechnet
+```
+
+##### Python
+
+```{python}
+#| label: b2-gp-rechnung-py
+richtig = pg.ttest(nachher, vorher, paired=True)
+falsch = pg.ttest(nachher, vorher, paired=False, correction=True)
+
+vergleich = pd.DataFrame({
+    "gepaart": [pg_wert(richtig, "t"), pg_wert(richtig, "dof"),
+                pg_wert(richtig, "p-val")],
+    "ungepaart": [pg_wert(falsch, "t"), pg_wert(falsch, "dof"),
+                  pg_wert(falsch, "p-val")],
+}, index=["T", "dof", "p"])
+print(vergleich.round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Gepaart | Ungepaart | Wie das zu lesen ist |
+|---|---|---|---|
+| `t` | -4.744 | -0.747 | Derselbe Unterschied von 13 ms, sechsmal kleinere Teststatistik. |
+| `df` | 14 | rund 27.6 | Ungepaart gibt es scheinbar mehr Freiheitsgrade, was nach mehr Information aussieht. Das Gegenteil ist der Fall. |
+| `p-value` | 0.00031 | 0.462 | Aus einem klaren Befund wird ein Nullbefund. |
+| Streuung im Nenner | SD der Differenzen: 10.7 ms | SD zwischen den Personen: rund 48 ms | Hier steckt die ganze Erklärung. |
+
+Der ungepaarte Test vergleicht zwei Mittelwerte und misst die Zufallsstreuung an
+den Unterschieden **zwischen** den Personen. Die betragen hier rund 48 ms und
+haben mit der Wirkung der Schulung nichts zu tun. Vor dieser Kulisse verschwindet
+eine Veränderung von 13 ms.
+
+Der gepaarte Test rechnet dagegen mit den fünfzehn Differenzen. Deren Streuung
+beträgt 10.7 ms, weil sich der Personenunterschied beim Subtrahieren heraushebt.
+Derselbe Effekt wird dadurch messbar.
+
+#### Interpretation und Ergebnissatz
+
+Die Lehre ist nicht "gepaart rechnen ist besser", sondern: Das Verfahren muss zum
+Erhebungsdesign passen. Bei gepaarten Daten ungepaart zu rechnen verschenkt
+Information und findet echte Effekte oft nicht. Der umgekehrte Fehler ist
+schwerwiegender: Unabhängige Daten gepaart zu rechnen erfindet eine Zuordnung,
+die es nicht gibt, und liefert Ergebnisse, die durch nichts gedeckt sind.
+
+Die Frage, an der sich das entscheidet, lautet immer gleich: Gibt es einen
+sachlichen Grund, warum Wert Nummer 7 der einen Reihe zu Wert Nummer 7 der
+anderen gehört? Dieselbe Person, dasselbe Werkstück, derselbe Standort. Wenn
+ja, ist es gepaart; wenn sich die Reihenfolge einer Spalte ohne Informationsverlust
+mischen liesse, ist es das nicht.
+
+> Die Auswertung erfolgte gepaart, da beide Messungen an denselben fünfzehn
+> Personen erhoben wurden. Eine ungepaarte Auswertung derselben Daten hätte den
+> Effekt nicht gefunden (t = -0.75, p = 0.46), weil sie die Unterschiede
+> zwischen den Personen als Zufallsstreuung behandelt.
+
+### Beispiel 3: Keine nachweisbare Veränderung
+
+#### Frage und Datenlage
+
+Zwölf Personen, dieselbe Aufgabe, aber statt einer Schulung liegt nur eine Woche
+zwischen den Messungen. Erwartet wird keine Veränderung; das Beispiel zeigt, wie
+ein Nullbefund bei gepaarten Daten aussieht.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-gp-rechnung-r
+vor_woche  <- c(412, 498, 455, 530, 388, 472, 505, 441, 519, 463, 398, 486)
+nach_woche <- c(416, 491, 457, 524, 393, 469, 513, 436, 520, 459, 405, 489)
+
+t.test(nach_woche, vor_woche, paired = TRUE)
+
+round(c(sd_differenzen = sd(nach_woche - vor_woche),
+        korrelation = cor(vor_woche, nach_woche)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b3-gp-rechnung-py
+vor_woche = np.array([412, 498, 455, 530, 388, 472, 505, 441, 519, 463, 398, 486])
+nach_woche = np.array([416, 491, 457, 524, 393, 469, 513, 436, 520, 459, 405, 489])
+
+print(pg.ttest(nach_woche, vor_woche, paired=True).round(4).T)
+print("SD der Differenzen =", round((nach_woche - vor_woche).std(ddof=1), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `mean difference` | 0.42 | Vier Zehntel Millisekunden. Praktisch null. |
+| `t` | 0.276 | Weit unter einem Standardfehler. |
+| `df` | 11 | Zwölf Paare minus eins. |
+| `p-value` | 0.788 | Die Daten sind mit "keine Veränderung" gut vereinbar. |
+| `95 percent confidence interval` | -2.91 bis 3.74 ms | Die aussagekräftigste Zeile, und hier ausnahmsweise eine starke Aussage: Das Intervall ist nur rund sieben Millisekunden breit. Veränderungen von mehr als vier Millisekunden sind mit diesen Daten kaum vereinbar. |
+| `cohen_d` | 0.08 | Vernachlässigbar. |
+
+#### Interpretation und Ergebnissatz
+
+Dieser Nullbefund ist deutlich mehr wert als der aus Beispiel 2 des
+[Einstichprobentests](t-test-eine-stichprobe.qmd). Der Grund ist das schmale
+Intervall: Weil die Paarung die Streuung auf 5.2 ms drückt, schliesst dieser
+Nullbefund grosse Veränderungen tatsächlich aus.
+
+Damit lässt sich mehr sagen als "nichts gefunden": Eine Veränderung von mehr als
+etwa vier Millisekunden ist mit den Daten nicht vereinbar. Ob das als Nachweis
+der Stabilität genügt, entscheidet die vorab festgelegte Toleranz. Formal sauber
+wäre auch hier ein Äquivalenztest, aber die Aussage des Intervalls geht in
+dieselbe Richtung und ist bereits belastbar.
+
+> Über eine Woche ohne Massnahme verändert sich die Reaktionszeit nicht
+> nachweisbar (mittlere Veränderung 0.4 ms, 95-Prozent-Konfidenzintervall -2.9
+> bis 3.7 ms, t(11) = 0.28, p = 0.79, n = 12 Personen). Das Intervall schliesst
+> Veränderungen von mehr als vier Millisekunden praktisch aus.
+
+### Beispiel 4: Ein Ausreisser in den Differenzen
+
+#### Frage und Datenlage
+
+Zwölf Personen, wieder eine Massnahme dazwischen. Elf Personen verbessern sich um
+rund zwölf Millisekunden, eine verschlechtert sich um 74. Solche Einzelfälle
+kommen vor: eine Störung während der Messung, ein Missverständnis der Aufgabe,
+ein technisches Problem.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-gp-voraussetzungen-r
+#| fig-cap: "Beispiel 4: elf ähnliche Differenzen und ein Ausreisser."
+#| fig-height: 3.2
+vor_m  <- c(412, 498, 455, 530, 388, 472, 505, 441, 519, 463, 398, 486)
+nach_m <- c(400, 486, 443, 517, 376, 460, 493, 429, 507, 451, 386, 560)
+diff_m <- nach_m - vor_m
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+stripchart(diff_m, method = "stack", pch = 16, main = "Differenzen je Person",
+           xlab = "Veränderung (ms)")
+abline(v = 0, lty = 2, col = "firebrick")
+qqnorm(diff_m, main = "QQ-Plot der Differenzen"); qqline(diff_m)
+par(mfrow = c(1, 1))
+
+round(c(mittel = mean(diff_m), median = median(diff_m), sd = sd(diff_m)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-gp-voraussetzungen-py
+#| fig-cap: "Beispiel 4: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+vor_m = np.array([412, 498, 455, 530, 388, 472, 505, 441, 519, 463, 398, 486])
+nach_m = np.array([400, 486, 443, 517, 376, 460, 493, 429, 507, 451, 386, 560])
+diff_m = nach_m - vor_m
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].plot(diff_m, np.zeros_like(diff_m), "o", color="0.3")
+achsen[0].axvline(0, linestyle="--", color="firebrick")
+achsen[0].set_yticks([])
+achsen[0].set_xlabel("Veränderung (ms)")
+achsen[0].set_title("Differenzen je Person")
+sm.qqplot(diff_m, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot der Differenzen")
+plt.tight_layout()
+plt.show()
+
+print("Mittel =", round(diff_m.mean(), 3), " Median =", round(np.median(diff_m), 3),
+      " SD =", round(diff_m.std(ddof=1), 3))
+```
+
+:::
+
+Mittelwert der Differenzen -4.9 ms, Median -12.0 ms, Standardabweichung 24.9 ms.
+Die Lücke zwischen Mittelwert und Median ist das Warnsignal: Ein einziger Wert
+zieht den Mittelwert um sieben Millisekunden nach oben und verdoppelt die
+Streuung. Im QQ-Plot liegt er weit ausserhalb.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-gp-rechnung-r
+t.test(nach_m, vor_m, paired = TRUE)
+
+wilcox.test(nach_m, vor_m, paired = TRUE)
+```
+
+##### Python
+
+```{python}
+#| label: b4-gp-rechnung-py
+t_wert, t_p = stats.ttest_rel(nach_m, vor_m)
+v_wert, v_p = stats.wilcoxon(diff_m)
+print("gepaarter t-Test     t =", round(t_wert, 4), " p =", round(t_p, 4))
+print("Wilcoxon (gepaart)   V =", v_wert, " p =", round(v_p, 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| t-Test `mean difference` | -4.92 | Sieht nach einer kleinen Verbesserung aus, beschreibt aber keine einzige der zwölf Personen: Elf verbesserten sich um zwölf, eine verschlechterte sich um 74. |
+| t-Test `t` | -0.685 | Der Standardfehler beträgt 7.2 ms, weil der eine Wert die Streuung verdoppelt. |
+| t-Test `p-value` | 0.507 | Nicht signifikant. |
+| t-Test Intervall | -20.71 bis 10.87 ms | Über 31 ms breit; es schliesst nichts aus. |
+| Wilcoxon `V` | 12 | Die Rangsumme der positiven Differenzen. Nur eine Person hat sich verschlechtert, deshalb ist der Wert klein. |
+| Wilcoxon `p-value` | 0.028 | Signifikant, also die gegenteilige Entscheidung. |
+
+#### Interpretation und Ergebnissatz
+
+Der Rangtest sieht, dass sich elf von zwölf Personen verbessert haben. Der
+t-Test sieht den Mittelwert der Differenzen, geteilt durch eine Streuung, die ein
+einzelner Wert bestimmt.
+
+Die Reihenfolge bleibt dieselbe wie immer: erst die Verteilung der Differenzen
+ansehen, dann das Verfahren wählen, dann rechnen. Und der auffällige Fall gehört
+in den Bericht, nicht in den Papierkorb. Wenn sich klären lässt, dass die Messung
+gestört war, wird sie mit Begründung ausgeschlossen; bleibt die Ursache offen,
+wird das Ergebnis mit und ohne den Fall berichtet.
+
+> Die Differenzen enthalten einen Extremwert (eine Verschlechterung um 74 ms bei
+> elf Verbesserungen um rund 12 ms), weshalb vorab rangbasiert ausgewertet wurde.
+> Die Reaktionszeit verkürzt sich (Wilcoxon für verbundene Stichproben, V = 12,
+> p = 0.028, n = 12; Median der Veränderung -12.0 ms). Ein Mittelwertvergleich
+> wäre an diesem Einzelfall gescheitert (t(11) = -0.69, p = 0.51).
+
+::::
 
 ## Verständnisfragen
 

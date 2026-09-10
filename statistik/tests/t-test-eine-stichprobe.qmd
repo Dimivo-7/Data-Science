@@ -26,6 +26,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import pingouin as pg
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
@@ -110,81 +111,14 @@ zweiseitige Test auf dem 5-Prozent-Niveau signifikant.
 | Sollwert unabhängig von den Daten | Der Referenzwert stammt aus der Sache, nicht aus der Stichprobe | Herkunft klären | Der Test prüft nichts | anderen Referenzwert wählen |
 | Keine extremen Ausreisser | Einzelne Werte bestimmen den Mittelwert nicht | Boxplot | Das Ergebnis hängt an wenigen Punkten | Ursache prüfen, mit und ohne berichten |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-voraussetzungen-tt1-r
-#| fig-cap: "Verteilung der Messwerte und QQ-Plot."
-#| fig-height: 3.2
-n <- 30
-dicke <- rnorm(n, mean = 12.18, sd = 0.35)
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-boxplot(dicke, horizontal = TRUE, main = "Messwerte", xlab = "Dicke (mm)")
-abline(v = 12, lty = 2)
-qqnorm(dicke, main = "QQ-Plot"); qqline(dicke)
-par(mfrow = c(1, 1))
-```
-
-## Python
-
-```{python}
-#| label: fig-voraussetzungen-tt1-py
-#| fig-cap: "Dieselbe Prüfung in Python."
-#| fig-height: 3.2
-rng = np.random.default_rng(2026)
-
-dicke = rng.normal(12.18, 0.35, 30)
-
-fig, axes = plt.subplots(1, 2, figsize=(7, 3.2))
-axes[0].boxplot(dicke, vert=False)
-axes[0].axvline(12, linestyle="--", color="black")
-axes[0].set_title("Messwerte")
-axes[0].set_xlabel("Dicke (mm)")
-sm.qqplot(dicke, line="s", ax=axes[1])
-axes[1].set_title("QQ-Plot")
-plt.tight_layout()
-plt.show()
-```
-
-:::
-
-Der Sollwert ist als gestrichelte Linie eingezeichnet. Liegt der Kasten des
-Boxplots deutlich neben ihr, ist bereits vor jeder Rechnung sichtbar, in welche
-Richtung das Ergebnis gehen wird. Im QQ-Plot sollen die Punkte nah an der
-Geraden liegen.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-tt1-r
-t.test(dicke, mu = 12)
-
-effectsize::cohens_d(dicke, mu = 12)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-tt1-py
-print(pg.ttest(dicke, 12).round(4).T)
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 30
-Werkstücke mit Erwartungswert 12.18 mm und Standardabweichung 0.35 mm, geprüft
-gegen den Sollwert 12 mm. Die wahre Abweichung beträgt also 0.18 mm.
+Geprüft wird vor der Rechnung und mit den Augen: Boxplot für Ausreisser,
+QQ-Plot für die Verteilungsform, der Vergleich von Mittelwert und Median für
+die Schiefe. Ein [Normalitätstest](normalitaetstests.qmd) beantwortet die
+falsche Frage, weil er bei kleinem n zu wenig und bei grossem n zu viel findet.
 
 ## Output lesen
 
-R, `t.test(x, mu = 12)`:
+R, `t.test(x, mu = sollwert)`:
 
 | Grösse | Was sie sagt | Faustregel oder Falle |
 |---|---|---|
@@ -194,10 +128,10 @@ R, `t.test(x, mu = 12)`:
 | `p-value` | Wahrscheinlichkeit dieser oder extremerer Daten bei gültigem Sollwert | keine Aussage über die Grösse der Abweichung |
 | `95 percent confidence interval` | Intervall für den wahren Mittelwert | nicht für die Differenz; der Sollwert wird daran gehalten |
 | `mean of x` | Stichprobenmittelwert | die Differenz zum Sollwert ist die berichtete Effektgrösse |
-| `alternative hypothesis` | Richtung | `true mean is not equal to 12` bestätigt den geprüften Wert |
+| `alternative hypothesis` | Richtung | `true mean is not equal to 500` nennt den tatsächlich geprüften Wert |
 | `Cohens d` | standardisierte Abweichung | Anhaltspunkte: 0.2 klein, 0.5 mittel, 0.8 gross |
 
-Python, `pg.ttest(x, 12)` liefert eine Zeile mit `T`, `dof`, `alternative`,
+Python, `pg.ttest(x, sollwert)` liefert eine Zeile mit `T`, `dof`, `alternative`,
 `p_val`, `CI95`, `cohen_d`, `BF10` und `power`; die Schreibweise dieser Spalten
 hat sich zwischen den pingouin-Versionen geändert, weshalb die Beispiele hier die
 Spalten nachschlagen statt sie festzuschreiben. Zwei Unterschiede sind zu
@@ -205,139 +139,6 @@ beachten: `CI95%` bezieht sich wie in R auf den Mittelwert selbst, nicht auf die
 Differenz zum Sollwert, und `power` bezieht sich auf den beobachteten Effekt,
 ist also im Nachhinein nur eingeschränkt aussagekräftig. Der Sollwert taucht in
 der Tabelle nicht auf und gehört deshalb ausdrücklich in den Bericht.
-
-## Ergebnisse interpretieren
-
-### Szenario A: klare Abweichung vom Sollwert
-
-Der Fall aus der Durchführung: 30 Werkstücke, wahre Abweichung 0.18 mm.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-a-tt1-r
-ergebnis <- t.test(dicke, mu = 12)
-round(c(mittelwert = unname(ergebnis$estimate),
-        abweichung = unname(ergebnis$estimate) - 12,
-        unten = ergebnis$conf.int[1], oben = ergebnis$conf.int[2],
-        p = ergebnis$p.value), 4)
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-tt1-py
-a = pg.ttest(dicke, 12)
-print(round(dicke.mean(), 4), round(dicke.mean() - 12, 4))
-print(pg_auswahl(a, "T", "dof", "p-val", "CI95%", "cohen-d").round(4).to_string(index=False))
-```
-
-:::
-
-Das Konfidenzintervall für den Mittelwert liegt vollständig oberhalb von 12, der
-p-Wert ist klein. Aussage: Die Fertigung liegt systematisch über dem Sollmass,
-und zwar um den geschätzten Betrag. Ob das zählt, entscheidet nicht der Test,
-sondern die Toleranz der Spezifikation. Liegt sie bei 0.5 mm, ist die Abweichung
-gesichert und trotzdem unkritisch.
-
-Ergebnissatz: Die mittlere Dicke liegt über dem Sollmass von 12 mm (M wie
-ausgegeben, Abweichung wie ausgegeben, 95-Prozent-Intervall wie ausgegeben,
-t(29) wie ausgegeben, p wie ausgegeben, Cohens d wie ausgegeben, n = 30).
-
-### Szenario B: keine nachweisbare Abweichung
-
-Dieselbe wahre Abweichung, aber nur acht Werkstücke.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-tt1-r
-set.seed(12)
-wenige <- rnorm(8, mean = 12.18, sd = 0.35)
-
-t.test(wenige, mu = 12)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-tt1-py
-rng_b = np.random.default_rng(12)
-wenige = rng_b.normal(12.18, 0.35, 8)
-
-print(pg.ttest(wenige, 12).round(4).T)
-```
-
-:::
-
-Das Konfidenzintervall enthält den Sollwert, der p-Wert liegt über 0.05. Das
-heisst nicht, dass die Fertigung das Sollmass trifft. Es heisst, dass acht
-Messungen nicht ausreichen, um eine Abweichung dieser Grösse nachzuweisen. Das
-Intervall zeigt, welche Abweichungen weiterhin möglich sind, und diese Spanne
-ist hier breit. Wer belegen will, dass die Abweichung klein ist, braucht einen
-Äquivalenztest mit vorab festgelegter Toleranz, nicht ein nicht signifikantes
-Ergebnis.
-
-Ergebnissatz: Eine Abweichung vom Sollmass lässt sich nicht nachweisen (Werte
-wie ausgegeben, n = 8). Das Konfidenzintervall lässt Abweichungen in beide
-Richtungen zu.
-
-### Szenario C: Fallstrick Ausreisser bei kleinem Umfang
-
-Ein einzelner Messfehler verschiebt Mittelwert und Standardabweichung
-gleichzeitig, und beides wirkt gegenläufig auf die Teststatistik.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-c-tt1-r
-set.seed(8)
-sauber <- rnorm(15, mean = 12.20, sd = 0.20)
-mit_fehler <- c(sauber, 15.9)          # ein Ablesefehler
-
-round(c(t_sauber = t.test(sauber, mu = 12)$statistic,
-        p_sauber = t.test(sauber, mu = 12)$p.value,
-        t_mit    = t.test(mit_fehler, mu = 12)$statistic,
-        p_mit    = t.test(mit_fehler, mu = 12)$p.value), 4)
-
-round(c(sd_sauber = sd(sauber), sd_mit = sd(mit_fehler)), 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-tt1-py
-rng_c = np.random.default_rng(8)
-sauber = rng_c.normal(12.20, 0.20, 15)
-mit_fehler = np.append(sauber, 15.9)
-
-for name, werte in [("sauber", sauber), ("mit Fehler", mit_fehler)]:
-    zeile = pg.ttest(werte, 12)
-    print(name, round(pg_wert(zeile, "t"), 3), round(pg_wert(zeile, "p-val"), 4),
-          round(werte.std(ddof=1), 3))
-```
-
-:::
-
-Der einzelne falsche Wert vergrössert den Mittelwert, aber er vergrössert die
-Standardabweichung stärker. Die Teststatistik wird dadurch kleiner, nicht
-grösser: aus einem klaren Ergebnis kann ein nicht signifikantes werden, obwohl
-die Abweichung in Wahrheit deutlicher ist. Erkennbar ist das am Boxplot und
-daran, dass die Standardabweichung nicht zu den übrigen Werten passt.
-
-Das Vorgehen: den Wert prüfen. Ist er ein Ablesefehler, wird er korrigiert oder
-entfernt, und das steht im Bericht. Ist er echt, gehört er in die Auswertung,
-und dann ist ein robustes Verfahren die bessere Wahl.
-
-Ergebnissatz: Ein Messwert von 15.9 mm wurde als Ablesefehler identifiziert und
-ausgeschlossen; berichtet wird das Ergebnis ohne diesen Wert (n = 15), zusätzlich
-zum Ergebnis mit allen Werten.
 
 ## Interpretationsfallen
 
@@ -388,6 +189,394 @@ Beispiel für eine Ergebnistabelle:
 | [Gepaarter t-Test](t-test-gepaart.qmd) | dieselben Objekte zweimal gemessen; rechnerisch ein Einstichprobentest auf den Differenzen gegen null |
 | [Nichtparametrische Tests](nichtparametrische-tests.qmd) | kleine, schiefe Stichprobe oder ordinale Werte |
 | [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) | die Zielgrösse ist kategorial |
+
+## Beispiele
+
+Alle Beispiele rechnen mit fest eingetragenen Zahlen, damit R und Python
+dieselben Daten sehen und jeder Wert im Text nachprüfbar ist.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Abfüllmenge gegen die Deklaration
+
+#### Frage und Datenlage
+
+Auf dem Etikett stehen 500 ml. Aus der laufenden Produktion werden zwanzig
+Flaschen ausgewogen. Die Frage lautet: Weicht die mittlere Abfüllmenge vom
+deklarierten Wert ab, und falls ja, um wie viel?
+
+Der Sollwert von 500 ml stammt aus der Deklaration, also von aussen und nicht
+aus den Daten. Damit ist die Grundbedingung des Verfahrens erfüllt.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-1s-voraussetzungen-r
+#| fig-cap: "Beispiel 1: Verteilung der Füllmengen und QQ-Plot."
+#| fig-height: 3.2
+fuellmenge <- c(498.2, 501.4, 497.6, 499.1, 502.3, 496.8, 500.5, 498.9,
+                497.2, 499.8, 496.4, 500.1, 498.5, 497.9, 499.4, 495.7,
+                498.0, 500.9, 497.3, 498.6)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+boxplot(fuellmenge, main = "Füllmenge", ylab = "Milliliter")
+abline(h = 500, lty = 2, col = "firebrick")
+qqnorm(fuellmenge, main = "QQ-Plot"); qqline(fuellmenge)
+par(mfrow = c(1, 1))
+
+round(c(n = length(fuellmenge), mittel = mean(fuellmenge),
+        sd = sd(fuellmenge), median = median(fuellmenge)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-1s-voraussetzungen-py
+#| fig-cap: "Beispiel 1: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+fuellmenge = np.array([498.2, 501.4, 497.6, 499.1, 502.3, 496.8, 500.5, 498.9,
+                       497.2, 499.8, 496.4, 500.1, 498.5, 497.9, 499.4, 495.7,
+                       498.0, 500.9, 497.3, 498.6])
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].boxplot(fuellmenge)
+achsen[0].axhline(500, linestyle="--", color="firebrick")
+achsen[0].set_title("Füllmenge")
+achsen[0].set_ylabel("Milliliter")
+sm.qqplot(fuellmenge, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot")
+plt.tight_layout()
+plt.show()
+
+print("n =", len(fuellmenge), " Mittel =", round(fuellmenge.mean(), 4),
+      " SD =", round(fuellmenge.std(ddof=1), 4),
+      " Median =", round(np.median(fuellmenge), 4))
+```
+
+:::
+
+Der Mittelwert liegt bei 498.73 ml, der Median bei 498.55 ml. Beide liegen dicht
+beieinander, die Verteilung ist also nicht nennenswert schief, und im QQ-Plot
+liegen die Punkte nah an der Geraden. Der Boxplot zeigt keinen weit entfernten
+Einzelwert. Die gestrichelte Linie beim Sollwert macht schon hier sichtbar,
+worum es geht: Der Kasten liegt vollständig unterhalb von 500.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-1s-rechnung-r
+t.test(fuellmenge, mu = 500)
+
+effectsize::cohens_d(fuellmenge, mu = 500)
+```
+
+##### Python
+
+```{python}
+#| label: b1-1s-rechnung-py
+print(pg.ttest(fuellmenge, 500).round(4).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Variante | `One Sample t-test` | eine Gruppe gegen einen festen Wert | Stünde dort `Two Sample`, wäre versehentlich ein zweiter Vektor übergeben worden. |
+| `t` | -3.281 | Der Mittelwert liegt 3.28 Standardfehler unter dem Sollwert. | Das negative Vorzeichen sagt die Richtung: zu wenig in der Flasche. |
+| `df` | 19 | Freiheitsgrade, n minus eins | Immer ganzzahlig, anders als beim Welch-Test für zwei Stichproben. |
+| `p-value` | 0.0039 | Wahrscheinlichkeit einer mindestens so grossen Abweichung, wenn im Mittel tatsächlich 500 ml abgefüllt würden | Deutlich unter 0.05. |
+| `95 percent confidence interval` | 497.92 bis 499.54 | Intervall für den **wahren Mittelwert**, nicht für die Differenz | Der Sollwert 500 liegt ausserhalb. Genau das ist der Grund für den signifikanten Test; ein p-Wert wird dafür gar nicht gebraucht. |
+| `mean of x` | 498.73 | Stichprobenmittelwert | Die berichtete Abweichung ist 498.73 minus 500, also -1.27 ml. |
+| `alternative hypothesis` | `true mean is not equal to 500` | zweiseitig, gegen 500 getestet | Diese Zeile ist die Kontrolle, dass der richtige Sollwert eingesetzt wurde. |
+| Cohens d | -0.73 | Abweichung in Einheiten der Streuung | Zwischen mittel und gross. Anders als die Zahl in Millilitern ist d von der Einheit unabhängig und damit über Messgrössen hinweg vergleichbar. |
+| `power` (nur Python) | 0.875 | Trefferwahrscheinlichkeit für den beobachteten Effekt | Im Nachhinein berechnet, siehe [Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd). |
+| `BF10` (nur Python) | 11.26 | Bayes-Faktor | Die Daten sind rund elfmal wahrscheinlicher unter einer Abweichung als unter exakter Einhaltung. |
+
+::: {.note-box}
+Das Konfidenzintervall bezieht sich in beiden Sprachen auf den Mittelwert
+selbst, nicht auf die Differenz zum Sollwert. Wer die Abweichung mit Intervall
+berichten will, zieht den Sollwert von beiden Grenzen ab: aus 497.92 bis 499.54
+wird -2.08 bis -0.46 ml.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Abfüllung liegt im Mittel 1.27 ml unter der Deklaration, und das Intervall
+sagt: plausibel sind Werte zwischen 0.46 und 2.08 ml zu wenig. Ob das zählt,
+entscheidet nicht der p-Wert, sondern die Vorgabe. Bei einer zulässigen
+Minusabweichung von 3 ml wäre die Sache unkritisch; bei 1 ml wäre sie es nicht,
+weil das Intervall bis 2.08 ml reicht.
+
+> Die Abfüllmenge unterschreitet die Deklaration von 500 ml (M = 498.73 ml,
+> SD = 1.73, n = 20): Abweichung -1.27 ml, 95-Prozent-Konfidenzintervall -2.08
+> bis -0.46 ml, t(19) = -3.28, p = 0.004, Cohens d = -0.73. Boxplot und QQ-Plot
+> zeigen keine Auffälligkeiten.
+
+### Beispiel 2: Keine nachweisbare Abweichung
+
+#### Frage und Datenlage
+
+Nach einer Nachjustierung der Anlage werden zwölf Flaschen geprüft. Dieselbe
+Frage, derselbe Sollwert. Das Beispiel zeigt, was ein Nullbefund aussagt und was
+er nicht aussagt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-1s-rechnung-r
+nachjustiert <- c(499.4, 501.8, 498.2, 500.6, 497.9, 502.4,
+                  499.1, 500.3, 498.7, 501.2, 499.8, 500.9)
+
+t.test(nachjustiert, mu = 500)
+```
+
+##### Python
+
+```{python}
+#| label: b2-1s-rechnung-py
+nachjustiert = np.array([499.4, 501.8, 498.2, 500.6, 497.9, 502.4,
+                         499.1, 500.3, 498.7, 501.2, 499.8, 500.9])
+
+print(pg.ttest(nachjustiert, 500).round(4).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `mean of x` | 500.025 | Die Abweichung beträgt 0.025 ml, also ein Vierzigstel Milliliter. |
+| `t` | 0.061 | Praktisch null. Solche Abweichungen entstehen laufend rein zufällig. |
+| `df` | 11 | n minus eins. |
+| `p-value` | 0.953 | So gross, wie ein p-Wert kaum werden kann. Die Daten sind mit exakter Einhaltung bestens vereinbar. |
+| `95 percent confidence interval` | 499.12 bis 500.93 | Die entscheidende Zeile. Der Sollwert liegt bequem im Intervall, aber das Intervall ist 1.8 ml breit: Abweichungen bis knapp ein Milliliter in beide Richtungen bleiben vereinbar. |
+| `cohen_d` | 0.018 | Vernachlässigbar. |
+| `power` (nur Python) | 0.050 | Der Test hatte bei diesem Effekt und diesem Umfang praktisch keine Aussicht, etwas zu finden. Der Wert entspricht genau dem Signifikanzniveau, und das ist kein Zufall: Bei einem Effekt von praktisch null ist die Trefferwahrscheinlichkeit gleich der Rate falscher Alarme. |
+
+#### Interpretation und Ergebnissatz
+
+Der Satz "die Anlage füllt korrekt ab" ist hier nicht gedeckt. Gedeckt ist: In
+diesen zwölf Flaschen ist keine Abweichung nachweisbar. Der Unterschied steht
+im Intervall, das Abweichungen bis 0.93 ml zulässt.
+
+Wer den Nachweis der Einhaltung wirklich braucht, formuliert ihn umgekehrt: Man
+legt vorab eine Toleranz fest, etwa 1 ml, und zeigt mit einem Äquivalenztest,
+dass die Abweichung innerhalb dieser Grenzen liegt. Der gewöhnliche t-Test kann
+das grundsätzlich nicht, weil seine Nullhypothese die Übereinstimmung ist und
+eine Nullhypothese nie bewiesen wird.
+
+> Nach der Nachjustierung ist keine Abweichung von der Deklaration nachweisbar
+> (M = 500.03 ml, SD = 1.42, n = 12; Abweichung 0.03 ml,
+> 95-Prozent-Konfidenzintervall -0.88 bis 0.93 ml, t(11) = 0.06, p = 0.95). Das
+> Intervall lässt Abweichungen bis rund 0.9 ml in beide Richtungen zu; ein
+> Nachweis der Einhaltung ist damit nicht erbracht.
+
+### Beispiel 3: Ein Ausreisser kippt das Ergebnis
+
+#### Frage und Datenlage
+
+Eine Vereinbarung nennt acht Minuten als Richtwert für eine Bearbeitung. Zwölf
+Vorgänge werden gemessen. Bearbeitungszeiten sind fast immer rechtsschief, und
+in dieser Reihe steckt zusätzlich ein Vorgang mit 30 Minuten.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-1s-voraussetzungen-r
+#| fig-cap: "Beispiel 3: rechtsschiefe Bearbeitungszeiten mit einem Extremwert."
+#| fig-height: 3.2
+bearbeitung <- c(7.9, 8.2, 8.4, 8.6, 8.9, 9.1, 9.4, 9.8, 10.2, 11.0, 12.5, 30.0)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+boxplot(bearbeitung, main = "Bearbeitungszeit", ylab = "Minuten")
+abline(h = 8, lty = 2, col = "firebrick")
+qqnorm(bearbeitung, main = "QQ-Plot"); qqline(bearbeitung)
+par(mfrow = c(1, 1))
+
+round(c(mittel = mean(bearbeitung), median = median(bearbeitung),
+        sd = sd(bearbeitung)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-1s-voraussetzungen-py
+#| fig-cap: "Beispiel 3: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+bearbeitung = np.array([7.9, 8.2, 8.4, 8.6, 8.9, 9.1, 9.4, 9.8,
+                        10.2, 11.0, 12.5, 30.0])
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].boxplot(bearbeitung)
+achsen[0].axhline(8, linestyle="--", color="firebrick")
+achsen[0].set_title("Bearbeitungszeit")
+achsen[0].set_ylabel("Minuten")
+sm.qqplot(bearbeitung, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot")
+plt.tight_layout()
+plt.show()
+
+print("Mittel =", round(bearbeitung.mean(), 3),
+      " Median =", round(np.median(bearbeitung), 3),
+      " SD =", round(bearbeitung.std(ddof=1), 3))
+```
+
+:::
+
+Mittelwert 11.17 Minuten, Median 9.25 Minuten, Standardabweichung 6.07. Die
+Streuung ist mehr als halb so gross wie der Mittelwert, und der QQ-Plot biegt am
+oberen Ende weit von der Geraden ab. Bei zwölf Werten hilft der zentrale
+Grenzwertsatz nicht mehr. Das Verfahren wird deshalb **vor** der Rechnung
+gewechselt.
+
+#### Rechnung
+
+Beide Verfahren stehen hier nebeneinander, damit sichtbar wird, was auf dem
+Spiel steht. Im Bericht erschiene nur der rangbasierte Test.
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-1s-rechnung-r
+t.test(bearbeitung, mu = 8)
+
+wilcox.test(bearbeitung, mu = 8)
+```
+
+##### Python
+
+```{python}
+#| label: b3-1s-rechnung-py
+t_wert, t_p = stats.ttest_1samp(bearbeitung, 8)
+v_wert, v_p = stats.wilcoxon(bearbeitung - 8)
+print("t-Test               t =", round(t_wert, 4), " p =", round(t_p, 4))
+print("Vorzeichen-Rangtest  V =", v_wert, " p =", round(v_p, 6))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| t-Test `mean of x` | 11.167 | Der Mittelwert liegt über drei Minuten über dem Richtwert, sieht also nach einer klaren Überschreitung aus. |
+| t-Test `t` | 1.807 | Und ist es trotzdem nicht: Der Standardfehler beträgt 1.75 Minuten, weil der eine Wert von 30 Minuten die Streuung aufbläht. |
+| t-Test `p-value` | 0.098 | Nicht signifikant. |
+| t-Test Intervall | 7.31 bis 15.02 | Fast acht Minuten breit und den Richtwert knapp einschliessend. Aus diesen Daten lässt sich über den Mittelwert nichts ableiten. |
+| Rangtest `V` | 1 | Die Rangsumme jener Differenzen, die unter null liegen. Von zwölf Vorgängen lag nur einer unter acht Minuten, deshalb ist der Wert so klein. |
+| Rangtest `p-value` | 0.00098 | Hochsignifikant, also die gegenteilige Entscheidung. |
+
+Zwei Verfahren, dieselben Daten, entgegengesetzte Schlüsse. Der Grund steht in
+der Datenreihe: Elf von zwölf Vorgängen dauern länger als acht Minuten. Der
+Rangtest sieht genau das. Der t-Test sieht stattdessen den Abstand des
+Mittelwerts zum Sollwert, geteilt durch eine Streuung, die ein einzelner Wert
+nach oben treibt.
+
+#### Interpretation und Ergebnissatz
+
+Die Entscheidung für den Rangtest fällt an der Voraussetzungsprüfung, nicht an
+den p-Werten. Wäre es umgekehrt, wäre das Testniveau verloren.
+
+Ebenso wichtig ist, was berichtet wird: Nach einem Rangtest spricht man über die
+zentrale Tendenz, nicht über den Mittelwert. Der Median von 9.25 Minuten
+beschreibt den typischen Vorgang; der Mittelwert von 11.17 Minuten beschreibt
+keinen einzigen der zwölf gemessenen Vorgänge auch nur annähernd.
+
+Der Wert von 30 Minuten gehört untersucht statt entfernt. Ein solcher Vorgang
+kann ein Erfassungsfehler sein, ein Sonderfall mit Rückfrage oder genau das
+Problem, um das es eigentlich geht.
+
+> Wegen deutlicher Rechtsschiefe und eines Extremwerts wurde vorab rangbasiert
+> geprüft. Die Bearbeitungszeit überschreitet den Richtwert von acht Minuten
+> (Vorzeichen-Rangtest, V = 1, p < 0.001, n = 12; Median 9.25 Minuten). Auf
+> einen Mittelwertvergleich wurde bewusst verzichtet.
+
+### Beispiel 4: Signifikant und trotzdem unerheblich
+
+#### Frage und Datenlage
+
+Eine automatische Kontrolle wiegt 4000 Flaschen. Die wahre mittlere Abweichung
+beträgt 0.15 ml, weit unterhalb jeder Toleranz. Damit beide Sprachen exakt
+dieselben Daten sehen, werden die Werte nicht gezogen, sondern als Quantile der
+Normalverteilung konstruiert.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-1s-rechnung-r
+gross <- 500.15 + 2.0 * qnorm(ppoints(4000))
+
+t.test(gross, mu = 500)
+```
+
+##### Python
+
+```{python}
+#| label: b4-1s-rechnung-py
+gross = 500.15 + 2.0 * stats.norm.ppf((np.arange(1, 4001) - 0.5) / 4000)
+
+print(pg_auswahl(pg.ttest(gross, 500),
+                 "T", "dof", "p_val", "p-val", "CI95", "CI95%",
+                 "cohen_d", "cohen-d").round(6).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `mean of x` | 500.15 | Die Abweichung beträgt 0.15 ml, hier exakt bekannt. |
+| `t` | 4.744 | Weit über der üblichen Schwelle von etwa 2. |
+| `df` | 3999 | n minus eins. |
+| `p-value` | 0.0000022 | Hochsignifikant. |
+| `95 percent confidence interval` | 500.088 bis 500.212 | Nur zwölf Hundertstel Milliliter breit. Die Abweichung ist sehr präzise geschätzt und trotzdem winzig. |
+| `cohen_d` | 0.075 | Weit unter dem Anhaltspunkt 0.2 für einen kleinen Effekt. |
+
+#### Interpretation und Ergebnissatz
+
+Hier lässt sich der Unterschied zwischen den beiden Fragen "ist die Abweichung
+vom Zufall unterscheidbar" und "ist die Abweichung wichtig" sauber ablesen. Die
+erste beantwortet der p-Wert, und seine Antwort hängt am Stichprobenumfang: Bei
+4000 Flaschen wird auch ein Fünfzehntel Milliliter sichtbar. Die zweite
+beantworten die Abweichung in Millilitern und Cohens d, und diese Zahlen ändern
+sich mit dem Umfang nicht.
+
+Deshalb wird die Relevanzschwelle vor der Auswertung festgelegt. Wer sie erst
+danach sucht, findet sie so, dass sie zum Ergebnis passt.
+
+> Die Abfüllmenge weicht statistisch nachweisbar von der Deklaration ab
+> (M = 500.15 ml, n = 4000, t(3999) = 4.74, p < 0.001). Die Abweichung beträgt
+> 0.15 ml (95-Prozent-Konfidenzintervall 0.09 bis 0.21 ml, Cohens d = 0.08) und
+> liegt damit weit innerhalb der zulässigen Toleranz; ein Eingriff in den Prozess
+> ist daraus nicht abzuleiten.
+
+::::
 
 ## Verständnisfragen
 
