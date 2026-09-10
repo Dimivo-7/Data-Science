@@ -1,32 +1,709 @@
 ---
 title: "Bootstrap und Resampling"
-description: "Verteilung einer Schätzung simulieren statt herleiten."
-categories: ["Resampling", "Schätzen", "Interpretation", "R", "Python"]
+description: "Konfidenzintervalle ohne Verteilungsannahme, auch für Kennzahlen ohne Formel."
+categories: ["Konfidenzintervall", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
-order: 60
+stand: entwurf
+order: 70
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+# Wartezeiten in Minuten, deutlich rechtsschief.
+warten <- c(1.2, 1.5, 1.8, 2.0, 2.1, 2.3, 2.5, 2.6, 2.8, 3.0,
+            3.1, 3.3, 3.5, 3.8, 4.0, 4.2, 4.5, 4.8, 5.1, 5.5,
+            5.9, 6.3, 6.8, 7.4, 8.0, 8.7, 9.5, 10.4, 11.5, 12.8,
+            14.3, 16.1, 18.4, 21.2, 24.8, 29.5, 35.9, 44.8, 57.6, 78.3)
+
+# Zufallszahlen aus dem Lehmer-Generator: s <- (16807 * s) mod 2147483647.
+# Alle Zwischenwerte bleiben unter 2^53 und sind damit in R und Python exakt
+# gleich. Dadurch liefern beide Sprachen dieselben Ziehungen; die eingebauten
+# Generatoren taeten das nicht.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+ziehungen <- function(werte, wiederholungen, saat = 42) {
+  n <- length(werte)
+  u <- lehmer(saat, wiederholungen * n)
+  index <- floor(u * n) + 1
+  matrix(werte[index], nrow = wiederholungen, ncol = n, byrow = TRUE)
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+warten = np.array([1.2, 1.5, 1.8, 2.0, 2.1, 2.3, 2.5, 2.6, 2.8, 3.0,
+                   3.1, 3.3, 3.5, 3.8, 4.0, 4.2, 4.5, 4.8, 5.1, 5.5,
+                   5.9, 6.3, 6.8, 7.4, 8.0, 8.7, 9.5, 10.4, 11.5, 12.8,
+                   14.3, 16.1, 18.4, 21.2, 24.8, 29.5, 35.9, 44.8, 57.6, 78.3])
+
+
+def lehmer(saat, anzahl):
+    """Derselbe Generator wie im R-Teil, damit die Ziehungen übereinstimmen."""
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def ziehungen(werte, wiederholungen, saat=42):
+    n = len(werte)
+    u = lehmer(saat, wiederholungen * n)
+    index = (u * n).astype(int)
+    return werte[index].reshape(wiederholungen, n)
+```
+
+Der Bootstrap zieht zufällig, und Zufallszahlen unterscheiden sich zwischen R
+und Python. Damit die Zahlen auf dieser Seite in beiden Sprachen
+übereinstimmen, kommt ein einfacher Generator zum Einsatz, der in beiden gleich
+rechnet. In der Praxis nimmt man die eingebauten Generatoren und setzt einen
+Seed.
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie unsicher ist eine Kennzahl, wenn keine Formel dafür existiert oder ihre Voraussetzungen verletzt sind? |
+| Eingang | eine Stichprobe und eine beliebige Kennzahl |
+| Was die Methode liefert | Standardfehler, Konfidenzintervall und die ganze Verteilung der Kennzahl |
+| R-Funktion | von Hand mit `sample()`, oder `boot::boot()` und `boot::boot.ci()` |
+| Python-Funktion | von Hand mit `np.random.choice()`, oder `scipy.stats.bootstrap()` |
+| Verwandte Methoden | [Schätzen und Konfidenzintervalle](schaetzen-konfidenzintervalle.qmd), [nichtparametrische Tests](../tests/nichtparametrische-tests.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Der Bootstrap ist die Antwort auf zwei Fragen, für die die klassische Statistik
+keine gute hat.
+
+**Erstens: Kennzahlen ohne Formel.** Für den Mittelwert gibt es einen
+Standardfehler, für den Median, den getrimmten Mittelwert, ein Verhältnis
+zweier Grössen oder den Unterschied zweier Korrelationen nicht ohne Weiteres.
+Der Bootstrap liefert ihn für jede Kennzahl, die sich ausrechnen lässt.
+
+**Zweitens: verletzte Verteilungsannahmen.** Bei stark schiefen Daten ist das
+t-Intervall symmetrisch, obwohl die Verteilung des Mittelwerts es nicht ist. Der
+Bootstrap bildet die Schiefe ab, siehe Beispiel 1.
+
+| Situation | Stattdessen |
+|---|---|
+| Voraussetzungen erfüllt, Kennzahl mit Formel | das klassische [Konfidenzintervall](schaetzen-konfidenzintervalle.qmd); es ist schneller und braucht keinen Zufall |
+| Sehr kleine Stichprobe | kein Bootstrap; er kann nur wiederverwenden, was vorhanden ist, siehe Beispiel 4 |
+| Es geht um extreme Quantile oder das Maximum | ungeeignet, aus demselben Grund |
+| Abhängige Daten, etwa Zeitreihen | Blockbootstrap statt gewöhnlichem Ziehen |
+| Es geht um einen Test statt um ein Intervall | Permutationstest, ein verwandtes Verfahren mit anderer Ziehung |
+
 ## Grundidee und Modell
 
-## Voraussetzungen und ihre Prüfung
+Die klassische Statistik fragt: Wie würde meine Kennzahl schwanken, wenn ich die
+Erhebung viele Male wiederholte? Beantwortet wird das über eine
+Verteilungsannahme und eine Formel.
 
-## Durchführung in R und Python
+Der Bootstrap beantwortet dieselbe Frage anders: Er behandelt die vorliegende
+Stichprobe als Ersatz für die Grundgesamtheit und zieht daraus wiederholt neue
+Stichproben, **mit Zurücklegen** und in derselben Grösse.
+
+| Schritt | Was passiert |
+|---|---|
+| 1 | Aus den $n$ Werten werden $n$ Werte mit Zurücklegen gezogen. Manche kommen mehrfach vor, andere gar nicht. |
+| 2 | Für diese Ziehung wird die Kennzahl berechnet. |
+| 3 | Schritte 1 und 2 werden $B$-mal wiederholt, üblicherweise 1000 bis 10 000 Mal. |
+| 4 | Die $B$ Werte bilden die Bootstrap-Verteilung der Kennzahl. |
+| 5 | Ihre Standardabweichung ist der Standardfehler, ihre Quantile ergeben das Intervall. |
+
+Das Zurücklegen ist wesentlich: Ohne es wäre jede Ziehung identisch mit der
+Ausgangsstichprobe. Im Mittel enthält eine Bootstrap-Ziehung rund 63 Prozent der
+ursprünglichen Werte, den Rest mehrfach.
+
+::: {.note-box}
+**Die entscheidende Annahme** lautet: Die Stichprobe ist repräsentativ für die
+Grundgesamtheit. Der Bootstrap ersetzt die Verteilungsannahme durch diese
+Annahme, er macht das Verfahren also nicht voraussetzungsfrei, sondern tauscht
+eine Voraussetzung gegen eine andere.
+
+Daraus folgt unmittelbar seine Grenze: Was in der Stichprobe nicht vorkommt,
+kann er nicht erfinden. Bei kleinen Stichproben ist diese Grenze eng, siehe
+Beispiel 4.
+:::
+
+### Die Intervallvarianten
+
+| Variante | Wie sie rechnet | Wann |
+|---|---|---|
+| Perzentil | die 2.5- und 97.5-Prozent-Quantile der Bootstrap-Verteilung | einfach, verständlich, für die meisten Fälle ausreichend |
+| Basic | spiegelt die Quantile am beobachteten Wert | wenn die Verzerrung gering ist |
+| BCa | korrigiert Verzerrung und Schiefe | die genaueste Variante, in `boot.ci()` und `scipy.stats.bootstrap()` enthalten |
+| Studentisiert | verwendet einen bootstrapten Standardfehler je Ziehung | am genauesten, aber rechenaufwendig |
+
+Auf dieser Seite steht das Perzentilintervall im Vordergrund, weil sich daran
+das Verfahren am besten erklären lässt. Für einen Bericht ist BCa vorzuziehen.
 
 ## Output lesen
 
-## Ergebnisse interpretieren
+| Grösse | Was sie sagt | Falle |
+|---|---|---|
+| Bootstrap-Standardfehler | Standardabweichung der $B$ Kennzahlwerte | ersetzt die Formel, nicht die Interpretation |
+| Verzerrung (bias) | Bootstrap-Mittel minus beobachteter Wert | kleine Werte sind normal; grosse deuten auf eine ungeeignete Kennzahl oder zu wenig Daten |
+| Perzentilintervall | Quantile der Bootstrap-Verteilung | bei starker Verzerrung zu optimistisch |
+| $B$ | Anzahl Wiederholungen | zu klein macht das Ergebnis vom Zufall abhängig, siehe Beispiel 3 |
+| Seed | Startwert des Generators | gehört ins Protokoll, sonst ist das Ergebnis nicht reproduzierbar |
 
 ## Interpretationsfallen
 
+- **Der Bootstrap erzeugt keine neuen Daten.** Er nutzt die vorhandenen
+  mehrfach. Bei acht Beobachtungen bleibt es bei acht verschiedenen Werten.
+- **Er repariert keine verzerrte Stichprobe.** Ist die Erhebung schief, ist es
+  das Ergebnis auch.
+- **Er ist bei kleinem n nicht besser als die Formel**, oft schlechter.
+- **Das Intervall hängt vom Seed ab.** Bei zu kleinem $B$ merklich, siehe
+  Beispiel 3.
+- **Für Maxima und extreme Quantile ist er ungeeignet**, weil die
+  Bootstrap-Verteilung den beobachteten Wertebereich nie verlässt.
+- **Bei abhängigen Daten braucht es einen Blockbootstrap.** Gewöhnliches Ziehen
+  zerstört die zeitliche Struktur und liefert zu schmale Intervalle.
+
 ## Ergebnis berichten
+
+> Für [Kennzahl] ergibt sich [Wert] (95-Prozent-Bootstrap-Konfidenzintervall
+> [unten] bis [oben], Perzentilmethode, B = [Anzahl] Ziehungen, Seed [Wert]).
+
+Genannt werden: die Kennzahl, die Intervallvariante, $B$, der Seed und der
+Grund, warum der Bootstrap statt einer Formel verwendet wurde. Die letzten
+beiden fehlen am häufigsten.
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt Bootstrap |
+|---|---|
+| [Konfidenzintervall](schaetzen-konfidenzintervalle.qmd) | Kennzahl mit Formel und erfüllten Voraussetzungen |
+| [Nichtparametrische Tests](../tests/nichtparametrische-tests.qmd) | es geht um einen Test, nicht um ein Intervall |
+| Permutationstest | Test ohne Verteilungsannahme; zieht ohne Zurücklegen und vertauscht Gruppenzugehörigkeiten |
+| Kreuzvalidierung | es geht um Vorhersagegüte, siehe [Modellauswahl](../regression/modellauswahl.qmd) |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Der Mittelwert bei schiefen Daten
+
+#### Frage und Datenlage
+
+Vierzig Wartezeiten in Minuten, deutlich rechtsschief: Der Median liegt bei 5.7
+Minuten, der Mittelwert bei 12.3, der grösste Wert bei 78.3. Gesucht ist ein
+Konfidenzintervall für den Mittelwert.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-boot-r
+#| fig-cap: "Beispiel 1: die rechtsschiefe Verteilung der Wartezeiten."
+#| fig-height: 3.2
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+hist(warten, breaks = 12, col = "grey85", main = "Wartezeiten",
+     xlab = "Minuten")
+qqnorm(warten, main = "QQ-Plot"); qqline(warten)
+par(mfrow = c(1, 1))
+
+round(c(n = length(warten), mittel = mean(warten), median = median(warten),
+        sd = sd(warten)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-boot-py
+#| fig-cap: "Beispiel 1: dieselbe Darstellung in Python."
+#| fig-height: 3.2
+import statsmodels.api as sm
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].hist(warten, bins=12, color="0.8", edgecolor="0.3")
+achsen[0].set_title("Wartezeiten")
+achsen[0].set_xlabel("Minuten")
+sm.qqplot(warten, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot")
+plt.tight_layout()
+plt.show()
+
+print("n =", len(warten), " Mittel =", round(warten.mean(), 4),
+      " Median =", round(np.median(warten), 4),
+      " SD =", round(warten.std(ddof=1), 4),
+      " Schiefe =", round(stats.skew(warten, bias=False), 4))
+```
+
+:::
+
+Die Schiefe beträgt 2.57, der Mittelwert liegt mehr als doppelt so hoch wie der
+Median, und der QQ-Plot biegt am oberen Ende weit von der Geraden ab. Bei 40
+Beobachtungen wirkt der zentrale Grenzwertsatz zwar schon, aber nicht so weit,
+dass die Verteilung des Mittelwerts symmetrisch wäre.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-boot-r
+#| fig-cap: "Beispiel 1: die Bootstrap-Verteilung des Mittelwerts."
+#| fig-height: 3.4
+B <- 2000
+zieh <- ziehungen(warten, B)
+mittel_boot <- rowMeans(zieh)
+
+par(mar = c(4, 4, 3, 1))
+hist(mittel_boot, breaks = 40, col = "grey85",
+     main = "Bootstrap-Verteilung des Mittelwerts", xlab = "Minuten")
+abline(v = mean(warten), lwd = 2, col = "steelblue")
+abline(v = quantile(mittel_boot, c(0.025, 0.975)), lty = 2, col = "firebrick")
+
+round(c(beobachtet = mean(warten),
+        boot_mittel = mean(mittel_boot),
+        verzerrung = mean(mittel_boot) - mean(warten),
+        boot_se = sd(mittel_boot)), 4)
+
+round(quantile(mittel_boot, c(0.025, 0.975)), 4)
+
+# Zum Vergleich das klassische t-Intervall
+round(t.test(warten)$conf.int, 4)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-boot-py
+#| fig-cap: "Beispiel 1: dieselbe Verteilung in Python."
+#| fig-height: 3.4
+B = 2000
+zieh = ziehungen(warten, B)
+mittel_boot = zieh.mean(axis=1)
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+achse.hist(mittel_boot, bins=40, color="0.85", edgecolor="0.4")
+achse.axvline(warten.mean(), linewidth=2, color="steelblue")
+for q in np.percentile(mittel_boot, [2.5, 97.5]):
+    achse.axvline(q, linestyle="--", color="firebrick")
+achse.set_title("Bootstrap-Verteilung des Mittelwerts")
+achse.set_xlabel("Minuten")
+plt.tight_layout()
+plt.show()
+
+print("beobachtet =", round(warten.mean(), 4),
+      " Bootstrap-Mittel =", round(mittel_boot.mean(), 4),
+      " Verzerrung =", round(mittel_boot.mean() - warten.mean(), 4),
+      " Bootstrap-SE =", round(mittel_boot.std(ddof=1), 4))
+print("Perzentilintervall:", np.percentile(mittel_boot, [2.5, 97.5]).round(4))
+
+se = warten.std(ddof=1) / np.sqrt(len(warten))
+tk = stats.t.ppf(0.975, len(warten) - 1)
+print("t-Intervall:       ",
+      np.round([warten.mean() - tk * se, warten.mean() + tk * se], 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| beobachteter Mittelwert | 12.295 | |
+| Bootstrap-Mittel | 12.160 | Der Mittelwert der 2000 Ziehungen. |
+| Verzerrung | -0.135 | Bootstrap-Mittel minus beobachteter Wert. Klein gegenüber dem Standardfehler von 2.54, also unbedenklich. |
+| Bootstrap-Standardfehler | 2.544 | Zum Vergleich: die Formel liefert $s/\sqrt{n}$ = 16.389/6.325 = 2.591. Die beiden liegen nah beieinander. |
+| Perzentilintervall | 7.807 bis 17.721 | |
+| t-Intervall | 7.054 bis 17.537 | |
+
+Der aufschlussreiche Vergleich steht in den letzten beiden Zeilen. Beide
+Intervalle sind ähnlich breit, aber verschieden **platziert**:
+
+| | untere Grenze | obere Grenze | Abstand nach unten | Abstand nach oben |
+|---|---|---|---|---|
+| t-Intervall | 7.054 | 17.537 | -5.241 | +5.241 |
+| Bootstrap | 7.807 | 17.721 | -4.488 | +5.426 |
+
+Das t-Intervall ist **exakt symmetrisch**, weil die Formel es so konstruiert.
+Das Bootstrap-Intervall ist es nicht: Es reicht 4.49 Minuten nach unten und 5.43
+nach oben. Genau das erwartet man bei rechtsschiefen Daten, denn der Mittelwert
+kann durch einzelne grosse Werte weiter nach oben als nach unten wandern.
+
+#### Interpretation und Ergebnissatz
+
+Der Bootstrap bildet hier eine Eigenschaft ab, die die Formel gar nicht abbilden
+kann. Bei n = 40 ist der Unterschied noch moderat; bei n = 15 wäre er
+erheblich, und dann wäre das t-Intervall an der unteren Grenze deutlich zu
+weit.
+
+Zugleich zeigt der Vergleich, dass die Formel nicht falsch ist: Die
+Standardfehler stimmen fast überein (2.54 gegen 2.59). Der Gewinn liegt in der
+Form des Intervalls, nicht in seiner Breite.
+
+> Die mittlere Wartezeit beträgt 12.3 Minuten (95-Prozent-Bootstrap-Konfidenz-
+> intervall 7.8 bis 17.7 Minuten, Perzentilmethode, B = 2000). Der Bootstrap
+> wurde wegen der deutlichen Rechtsschiefe (Schiefe 2.57) verwendet; das
+> klassische t-Intervall wäre mit 7.1 bis 17.5 symmetrisch und würde die
+> Schiefe der Verteilung nicht abbilden.
+
+### Beispiel 2: Kennzahlen ohne Formel
+
+#### Frage und Datenlage
+
+Für den Median gibt es keinen einfachen Standardfehler, für den getrimmten
+Mittelwert ebenso wenig. Der Bootstrap braucht keine Formel, sondern nur eine
+Rechenvorschrift.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-boot-rechnung-r
+kennzahlen <- list(
+  Mittelwert = function(m) rowMeans(m),
+  Median = function(m) apply(m, 1, median),
+  "getrimmt 10%" = function(m) apply(m, 1, mean, trim = 0.1)
+)
+
+ergebnis <- t(sapply(names(kennzahlen), function(name) {
+  verteilung <- kennzahlen[[name]](zieh)
+  beobachtet <- switch(name,
+                       "Mittelwert" = mean(warten),
+                       "Median" = median(warten),
+                       mean(warten, trim = 0.1))
+  c(beobachtet = beobachtet,
+    boot_se = sd(verteilung),
+    unten = unname(quantile(verteilung, 0.025)),
+    oben = unname(quantile(verteilung, 0.975)))
+}))
+round(ergebnis, 4)
+```
+
+##### Python
+
+```{python}
+#| label: b3-boot-rechnung-py
+kennzahlen = {
+    "Mittelwert": (warten.mean(), zieh.mean(axis=1)),
+    "Median": (np.median(warten), np.median(zieh, axis=1)),
+    "getrimmt 10%": (stats.trim_mean(warten, 0.1),
+                     np.array([stats.trim_mean(z, 0.1) for z in zieh])),
+}
+
+print(pd.DataFrame({
+    name: {
+        "beobachtet": beob,
+        "boot_se": vert.std(ddof=1),
+        "unten": np.percentile(vert, 2.5),
+        "oben": np.percentile(vert, 97.5),
+    }
+    for name, (beob, vert) in kennzahlen.items()
+}).T.round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kennzahl | beobachtet | Bootstrap-SE | 95-Prozent-Intervall | Wie das zu lesen ist |
+|---|---|---|---|---|
+| Mittelwert | 12.295 | 2.544 | 7.81 bis 17.72 | Stark von den grossen Werten geprägt. |
+| Median | 5.700 | 1.297 | 3.90 bis 8.75 | Halb so grosser Standardfehler, deutlich schmaleres Intervall, und inhaltlich die Zahl, die einen typischen Fall beschreibt. |
+| getrimmt 10 % | 8.397 | 1.984 | 5.59 bis 13.27 | Der Kompromiss: Die äussersten 10 Prozent auf jeder Seite werden weggelassen, der Rest gemittelt. |
+
+Für keine der beiden unteren Zeilen gibt es eine Standardformel. Der Bootstrap
+liefert sie ohne Zusatzaufwand, weil ihm gleichgültig ist, welche Kennzahl er
+berechnet.
+
+::: {.note-box}
+**Das Intervall des Medians ist auffällig grobkörnig**: Seine Grenzen sind 3.90
+und 8.75, also Mittelwerte benachbarter beobachteter Werte. Das liegt daran,
+dass der Median einer Ziehung immer einer der vorhandenen Werte ist oder das
+Mittel zweier davon. Die Bootstrap-Verteilung ist deshalb diskret, und bei
+kleinen Stichproben wird das zum Problem, siehe Beispiel 4.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Tabelle macht auch eine inhaltliche Entscheidung sichtbar. Welche der drei
+Kennzahlen berichtet wird, ist keine statistische Frage: Der Mittelwert zählt,
+wenn es um die Gesamtbelastung geht (alle Wartezeiten zusammen), der Median,
+wenn es um den typischen Fall geht.
+
+> Die mediane Wartezeit beträgt 5.7 Minuten (95-Prozent-Bootstrap-Konfidenz-
+> intervall 3.9 bis 8.8 Minuten, Perzentilmethode, B = 2000). Berichtet wird der
+> Median statt des Mittelwerts, weil die Verteilung stark rechtsschief ist und
+> der Mittelwert von 12.3 Minuten keinen typischen Fall beschreibt.
+
+### Beispiel 3: Wie viele Ziehungen braucht es?
+
+#### Frage und Datenlage
+
+$B$ ist frei wählbar. Zu wenige Ziehungen machen das Ergebnis vom Zufall
+abhängig, zu viele kosten nur Rechenzeit. Wo liegt die Grenze?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-boot-rechnung-r
+cat("Einfluss von B (Mittelwert, Saat 42):\n")
+for (b in c(200, 1000, 2000)) {
+  v <- rowMeans(ziehungen(warten, b))
+  cat(sprintf("  B = %5d: %.4f bis %.4f\n", b,
+              quantile(v, 0.025), quantile(v, 0.975)))
+}
+
+cat("\nEinfluss der Saat (B = 2000):\n")
+for (saat in c(1, 42, 12345)) {
+  v <- rowMeans(ziehungen(warten, 2000, saat = saat))
+  cat(sprintf("  Saat %6d: %.4f bis %.4f\n", saat,
+              quantile(v, 0.025), quantile(v, 0.975)))
+}
+```
+
+##### Python
+
+```{python}
+#| label: b4-boot-rechnung-py
+print("Einfluss von B (Mittelwert, Saat 42):")
+for b in (200, 1000, 2000):
+    v = ziehungen(warten, b).mean(axis=1)
+    unten, oben = np.percentile(v, [2.5, 97.5])
+    print(f"  B = {b:5d}: {unten:.4f} bis {oben:.4f}")
+
+print("\nEinfluss der Saat (B = 2000):")
+for saat in (1, 42, 12345):
+    v = ziehungen(warten, 2000, saat=saat).mean(axis=1)
+    unten, oben = np.percentile(v, [2.5, 97.5])
+    print(f"  Saat {saat:6d}: {unten:.4f} bis {oben:.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| B | Intervall | Wie das zu lesen ist |
+|---|---|---|
+| 200 | 7.503 bis 17.631 | Die untere Grenze liegt 0.30 Minuten neben dem Wert bei B = 2000. |
+| 1000 | 7.632 bis 18.044 | Die obere Grenze weicht um 0.32 ab. |
+| 2000 | 7.807 bis 17.721 | |
+
+| Saat bei B = 2000 | Intervall | Schwankung |
+|---|---|---|
+| 1 | 7.812 bis 17.498 | |
+| 42 | 7.807 bis 17.721 | |
+| 12345 | 7.912 bis 17.765 | rund 0.27 Minuten Spanne an der oberen Grenze |
+
+Bei B = 2000 schwanken die Grenzen je nach Seed noch um rund 0.3 Minuten. Ob das
+stört, hängt davon ab, wie genau berichtet wird: Für eine Angabe "7.8 bis 17.7"
+ist es relevant, für "rund 8 bis 18" nicht.
+
+::: {.note-box}
+**Faustregeln für B.** Für Standardfehler genügen 1000 Ziehungen. Für
+Perzentilintervalle sind 2000 bis 5000 üblich, weil die Quantile an den Rändern
+der Verteilung liegen und dort weniger Werte zur Verfügung stehen. Für BCa oder
+für sehr genaue Angaben sind 10 000 angebracht.
+
+Rechenzeit ist selten das Argument: 10 000 Ziehungen aus 40 Werten sind eine
+Sache von Sekundenbruchteilen. Auf dieser Seite steht B = 2000, weil die
+Rechnung im Build für jede Seite neu läuft.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Der Seed gehört ins Protokoll. Nicht weil das Ergebnis dadurch richtiger würde,
+sondern weil eine Bootstrap-Angabe ohne Seed nicht reproduzierbar ist: Wer sie
+nachrechnet, bekommt andere Grenzen und weiss nicht, ob das an einem Fehler
+liegt oder am Zufall.
+
+### Beispiel 4: Wo der Bootstrap versagt
+
+#### Frage und Datenlage
+
+Nur die ersten acht Wartezeiten: 1.2 bis 2.6 Minuten. Gesucht ist ein
+Konfidenzintervall für den Median. Der Bootstrap läuft anstandslos durch — und
+liefert etwas, das nicht brauchbar ist.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-boot-rechnung-r
+klein <- warten[1:8]
+klein
+
+zieh_klein <- ziehungen(klein, 2000)
+median_klein <- apply(zieh_klein, 1, median)
+
+round(c(median_beobachtet = median(klein),
+        unten = unname(quantile(median_klein, 0.025)),
+        oben = unname(quantile(median_klein, 0.975))), 4)
+
+cat("verschiedene Werte in der Bootstrap-Verteilung:",
+    length(unique(median_klein)), "\n")
+cat("Maximum der Bootstrap-Verteilung:", max(median_klein),
+    " Maximum der Daten:", max(klein), "\n")
+
+table(round(median_klein, 2))[1:8]
+```
+
+##### Python
+
+```{python}
+#| label: b5-boot-rechnung-py
+klein = warten[:8]
+print("Daten:", klein.tolist())
+
+zieh_klein = ziehungen(klein, 2000)
+median_klein = np.median(zieh_klein, axis=1)
+
+print("Median beobachtet =", round(float(np.median(klein)), 4))
+print("Perzentilintervall:", np.percentile(median_klein, [2.5, 97.5]).round(4))
+print("verschiedene Werte in der Bootstrap-Verteilung:",
+      len(np.unique(median_klein)))
+print("Maximum der Bootstrap-Verteilung:", median_klein.max(),
+      " Maximum der Daten:", klein.max())
+print(pd.Series(median_klein).round(2).value_counts().sort_index().head(8))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Median beobachtet | 2.050 | |
+| Perzentilintervall | 1.500 bis 2.500 | Sieht unauffällig aus. |
+| verschiedene Werte in der Bootstrap-Verteilung | **22** | Die ganze Verteilung besteht aus 22 verschiedenen Zahlen. Von einer glatten Verteilung, deren Quantile man ablesen könnte, kann keine Rede sein. |
+| Maximum der Bootstrap-Verteilung | 2.600 | **Genau das Maximum der Daten.** Der Bootstrap kann keinen Wert erzeugen, der nicht beobachtet wurde. |
+
+Das letzte ist der grundsätzliche Punkt: Die Bootstrap-Verteilung lebt
+ausschliesslich innerhalb der beobachteten Werte. Bei acht Beobachtungen sind
+das acht Zahlen, und aus deren Kombinationen entstehen 22 mögliche Mediane.
+
+::: {.note-box}
+**Zwei Regeln folgen daraus.**
+
+**Der Bootstrap braucht genügend Daten.** Als grobe Untergrenze gelten 20 bis 30
+Beobachtungen, für Kennzahlen an den Verteilungsrändern deutlich mehr. Bei
+kleinen Stichproben ist eine Formel mit Verteilungsannahme meist die bessere
+Wahl, auch wenn ihre Annahme unsicher ist.
+
+**Für Extremwerte ist er grundsätzlich ungeeignet.** Ein Konfidenzintervall für
+das Maximum wäre nach oben durch das beobachtete Maximum begrenzt, was
+offensichtlich falsch ist. Dasselbe gilt abgeschwächt für hohe Quantile wie das
+95-Prozent-Quantil.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Der Bootstrap warnt nicht. Er liefert für acht Beobachtungen ebenso bereitwillig
+ein Intervall wie für achthundert, und das Ergebnis sieht in beiden Fällen gleich
+aus. Die Prüfung, ob genug Daten vorliegen, muss deshalb vorher stattfinden.
+
+Ein nützlicher Blick: die Anzahl verschiedener Werte in der
+Bootstrap-Verteilung. Sind es wenige Dutzend, ist die Verteilung zu grobkörnig,
+um Quantile daraus abzulesen.
+
+> Für die acht Werte wurde kein Bootstrap-Intervall berechnet. Die
+> Bootstrap-Verteilung des Medians nimmt nur 22 verschiedene Werte an und ist
+> nach oben durch den grössten beobachteten Wert begrenzt; ein daraus
+> abgeleitetes Intervall wäre irreführend. Berichtet wird stattdessen die
+> Spannweite der Beobachtungen.
+
+::::
+
 ## Verständnisfragen
 
+::: {.quiz}
+Warum wird beim Bootstrap **mit** Zurücklegen gezogen?
+
+- [x] Ohne Zurücklegen wäre jede Ziehung identisch mit der Ausgangsstichprobe ~
+      Richtig. Zieht man $n$ aus $n$ ohne Zurücklegen, erhält man immer dieselben
+      Werte in anderer Reihenfolge, und jede Kennzahl wäre identisch. Erst das
+      Zurücklegen erzeugt Variation.
+- [ ] Um die Stichprobe zu vergrössern ~ Die Ziehung hat dieselbe Grösse wie das
+      Original; neue Information entsteht nicht.
+- [ ] Weil die Grundgesamtheit unendlich gross ist ~ Das Zurücklegen bildet das
+      ab, ist aber nicht der Grund für die Notwendigkeit.
+:::
+
+::: {.quiz}
+Das t-Intervall lautet 7.05 bis 17.54, das Bootstrap-Intervall 7.81 bis 17.72.
+Woher kommt der Unterschied?
+
+- [x] Das t-Intervall ist konstruktionsbedingt symmetrisch, das Bootstrap-
+      Intervall bildet die Rechtsschiefe ab ~ Richtig. Bei schiefen Daten ist die
+      Verteilung des Mittelwerts ebenfalls schief. Der Bootstrap reicht 4.5
+      Minuten nach unten und 5.4 nach oben, die Formel zwingend gleich weit in
+      beide Richtungen.
+- [ ] Eines der beiden ist falsch gerechnet ~ Beide sind korrekt; sie beruhen
+      auf verschiedenen Annahmen.
+- [ ] Der Bootstrap hat zu wenige Ziehungen verwendet ~ Der Unterschied in der
+      Symmetrie bleibt auch bei sehr grossem B bestehen.
+:::
+
+::: {.quiz}
+Eine Bootstrap-Verteilung aus 2000 Ziehungen nimmt nur 22 verschiedene Werte an.
+Was folgt daraus?
+
+- [x] Die Stichprobe ist zu klein für den Bootstrap ~ Richtig. Die
+      Bootstrap-Verteilung entsteht aus Kombinationen der beobachteten Werte.
+      Wenige verschiedene Ergebnisse bedeuten, dass zu wenige Ausgangswerte
+      vorliegen, und die Quantile werden dann grobkörnig und unzuverlässig.
+- [ ] B ist zu klein gewählt ~ Mehr Ziehungen erzeugen keine neuen Werte,
+      sondern nur häufigere Wiederholungen derselben 22.
+- [ ] Die Kennzahl ist ungeeignet ~ Der Median ist eine sinnvolle Kennzahl; das
+      Problem liegt am Umfang.
+:::
+
+::: {.quiz}
+Warum eignet sich der Bootstrap nicht für ein Konfidenzintervall des Maximums?
+
+- [x] Weil die Bootstrap-Verteilung den beobachteten Wertebereich nie verlässt ~
+      Richtig. Das Maximum jeder Ziehung ist höchstens so gross wie das grösste
+      beobachtete. Die obere Intervallgrenze wäre dadurch immer das beobachtete
+      Maximum, was als Schätzung offensichtlich zu klein ist.
+- [ ] Weil das Maximum keine stetige Kennzahl ist ~ Stetigkeit ist nicht das
+      Problem; der Median ist ebenfalls nicht stetig und funktioniert bei
+      genügend Daten.
+- [ ] Weil zu viele Ziehungen nötig wären ~ Auch mit beliebig vielen Ziehungen
+      bleibt die Grenze bestehen.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 5.2](https://www.statlearning.com/)
+- [R-Paket `boot`](https://cran.r-project.org/package=boot)
+- [scipy: bootstrap](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html)
