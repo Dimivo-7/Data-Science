@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Konfusionsmatrix, Sensitivität, ROC, AUC und die Wahl des Schwellenwerts.">
+<meta name="description" content="Konfusionsmatrix, Sensitivität, ROC und AUC richtig lesen.">
 
 <title>Klassifikationsgüte – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-465920036d67acc459edb9c5a85eb638.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -80,6 +118,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -1098,13 +1165,11 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#kurzsteckbrief" id="toc-kurzsteckbrief" class="nav-link active" data-scroll-target="#kurzsteckbrief">Kurzsteckbrief</a></li>
   <li><a href="#wann-diese-methode-wann-nicht" id="toc-wann-diese-methode-wann-nicht" class="nav-link" data-scroll-target="#wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</a></li>
   <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a></li>
-  <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
-  <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
   <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
@@ -1118,8 +1183,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-title">
 <h1 class="title">Klassifikationsgüte</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Klassifikation</div>
-    <div class="quarto-category">Modellvalidierung</div>
+    <div class="quarto-category">Regression</div>
     <div class="quarto-category">Interpretation</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
@@ -1128,7 +1192,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Konfusionsmatrix, Sensitivität, ROC, AUC und die Wahl des Schwellenwerts.
+    Konfusionsmatrix, Sensitivität, ROC und AUC richtig lesen.
   </div>
 </div>
 
@@ -1146,43 +1210,1082 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
+<p>Alle Beispiele rechnen mit deterministisch konstruierten Daten, damit R und Python dieselben Zahlen sehen. Die Hilfsfunktionen <code>auc()</code> und <code>guete()</code> stehen im Setup-Chunk und sind in beiden Sprachen gleich aufgebaut.</p>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Wie gut trennt ein Modell zwei Klassen, und wie gut ist es für eine konkrete Entscheidung?</td>
+</tr>
+<tr class="even">
+<td>Eingang</td>
+<td>vorhergesagte Wahrscheinlichkeiten oder Scores und die tatsächliche Klasse</td>
+</tr>
+<tr class="odd">
+<td>Was die Bewertung liefert</td>
+<td>Konfusionsmatrix, daraus Sensitivität, Spezifität, PPV, NPV, F1; schwellenunabhängig ROC-Kurve und AUC</td>
+</tr>
+<tr class="even">
+<td>R-Funktionen</td>
+<td><code>table()</code> für die Matrix; AUC über die Rangsumme oder das Paket <code>pROC</code></td>
+</tr>
+<tr class="odd">
+<td>Python-Funktionen</td>
+<td><code>sklearn.metrics</code> mit <code>confusion_matrix</code>, <code>roc_curve</code>, <code>roc_auc_score</code></td>
+</tr>
+<tr class="even">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/regression/logistische-regression.html">logistische Regression</a>, <a href="../../statistik/regression/modellauswahl.html">Modellauswahl</a></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Immer dann, wenn ein Modell eine binäre Zielgrösse vorhersagt und die Vorhersagen zu einer Entscheidung führen sollen. Die Bewertung zerfällt in zwei getrennte Fragen, die oft vermischt werden:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Frage</th>
+<th>Womit beantwortet</th>
+<th>Hängt von der Schwelle ab?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Wie gut trennt das Modell überhaupt?</td>
+<td>ROC-Kurve, AUC</td>
+<td>nein</td>
+</tr>
+<tr class="even">
+<td>Wie gut ist die Entscheidung bei dieser Schwelle?</td>
+<td>Konfusionsmatrix und alles daraus</td>
+<td>ja</td>
+</tr>
+</tbody>
+</table>
+<p>Ein Modell mit hoher AUC kann bei einer schlecht gewählten Schwelle unbrauchbare Entscheidungen liefern, und umgekehrt sagt eine gute Konfusionsmatrix nichts darüber, ob eine andere Schwelle besser wäre.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Zielgrösse metrisch</td>
+<td>Residualstreuung und R², siehe <a href="../../statistik/regression/multiple-lineare-regression.html">multiple lineare Regression</a></td>
+</tr>
+<tr class="even">
+<td>Mehr als zwei Klassen</td>
+<td>Konfusionsmatrix je Klasse, makro- oder mikrogemittelte Kennzahlen</td>
+</tr>
+<tr class="odd">
+<td>Es geht um die Auswahl zwischen Modellen</td>
+<td><a href="../../statistik/regression/modellauswahl.html">Modellauswahl</a>, zusätzlich zu diesen Kennzahlen</td>
+</tr>
+<tr class="even">
+<td>Die Wahrscheinlichkeiten selbst sollen stimmen</td>
+<td>Kalibrierung prüfen, nicht nur die Trennschärfe</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
-</section>
-<section id="voraussetzungen-und-ihre-prüfung" class="level2">
-<h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
-</section>
-<section id="durchführung-in-r-und-python" class="level2">
-<h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<p>Aus einer Schwelle und den vorhergesagten Wahrscheinlichkeiten entstehen vier Zahlen:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th>tatsächlich 1</th>
+<th>tatsächlich 0</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>vorhergesagt 1</strong></td>
+<td>richtig positiv (TP)</td>
+<td>falsch positiv (FP)</td>
+</tr>
+<tr class="even">
+<td><strong>vorhergesagt 0</strong></td>
+<td>falsch negativ (FN)</td>
+<td>richtig negativ (TN)</td>
+</tr>
+</tbody>
+</table>
+<p>Alle Kennzahlen sind Verhältnisse aus diesen vier Zahlen. Entscheidend ist, <strong>in welche Richtung</strong> geteilt wird:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kennzahl</th>
+<th>Formel</th>
+<th>Frage, die sie beantwortet</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Genauigkeit</td>
+<td><span class="math inline">\((TP+TN)/n\)</span></td>
+<td>Wie viele Fälle wurden richtig eingeordnet?</td>
+</tr>
+<tr class="even">
+<td>Sensitivität, Recall</td>
+<td><span class="math inline">\(TP/(TP+FN)\)</span></td>
+<td>Von den tatsächlichen Ereignissen: wie viele wurden gefunden?</td>
+</tr>
+<tr class="odd">
+<td>Spezifität</td>
+<td><span class="math inline">\(TN/(TN+FP)\)</span></td>
+<td>Von den tatsächlichen Nicht-Ereignissen: wie viele wurden richtig durchgelassen?</td>
+</tr>
+<tr class="even">
+<td>PPV, Precision</td>
+<td><span class="math inline">\(TP/(TP+FP)\)</span></td>
+<td>Von den Alarmen: wie viele waren echt?</td>
+</tr>
+<tr class="odd">
+<td>NPV</td>
+<td><span class="math inline">\(TN/(TN+FN)\)</span></td>
+<td>Von den Entwarnungen: wie viele waren richtig?</td>
+</tr>
+<tr class="even">
+<td>F1</td>
+<td>harmonisches Mittel aus PPV und Sensitivität</td>
+<td>ein Kompromiss zwischen Finden und Treffen</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> sehen ähnlich aus und verhalten sich völlig verschieden.</strong> <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> teilt durch die tatsächlichen Ereignisse, <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> durch die Alarme. Die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> ist deshalb von der Häufigkeit des Ereignisses <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre.">unabhängig</span>, der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> nicht. Bei seltenen Ereignissen bricht der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> ein, obwohl <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> unverändert gut bleiben. Das ist der Inhalt von Beispiel 2 und der häufigste Fehlschluss in diesem Gebiet.</p>
+</div>
+<p>Die ROC-Kurve entsteht, indem die Schwelle von 1 bis 0 durchlaufen wird und für jede <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> gegen 1 minus <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> aufgetragen wird. Die Fläche darunter, die AUC, hat eine anschauliche Bedeutung: <strong>Sie ist die Wahrscheinlichkeit, dass ein zufällig gewählter positiver Fall einen höheren Score bekommt als ein zufällig gewählter negativer.</strong> Bei 0.5 ist das Modell so gut wie Münzwurf, bei 1.0 trennt es perfekt.</p>
+<p>Daraus folgt auch, wie sich die AUC ohne Zusatzpaket berechnen lässt: Sie ist die Mann-Whitney-U-Statistik geteilt durch die Anzahl aller Paarvergleiche, siehe <a href="../../statistik/tests/nichtparametrische-tests.html">nichtparametrische Tests</a>.</p>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
-</section>
-<section id="ergebnisse-interpretieren" class="level2">
-<h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kennzahl</th>
+<th>Anhaltspunkt</th>
+<th>Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Genauigkeit</td>
+<td>keiner, sie hängt an der Klassenverteilung</td>
+<td>Bei 2 Prozent Ereignisanteil erreicht “immer nein” 98 Prozent</td>
+</tr>
+<tr class="even">
+<td>Sensitivität</td>
+<td>je nach Anwendung</td>
+<td>steigt immer, wenn die Schwelle sinkt</td>
+</tr>
+<tr class="odd">
+<td>Spezifität</td>
+<td>je nach Anwendung</td>
+<td>steigt immer, wenn die Schwelle steigt</td>
+</tr>
+<tr class="even">
+<td>PPV</td>
+<td>hängt an der Häufigkeit des Ereignisses</td>
+<td>nicht zwischen Studien mit verschiedener Häufigkeit vergleichbar</td>
+</tr>
+<tr class="odd">
+<td>F1</td>
+<td>für unausgewogene Klassen brauchbarer als Genauigkeit</td>
+<td>ignoriert die richtig negativen Fälle vollständig</td>
+</tr>
+<tr class="even">
+<td>AUC</td>
+<td>0.5 ist Zufall, 0.7 bis 0.8 brauchbar, über 0.9 sehr gut</td>
+<td>sagt nichts über die Kalibrierung und nichts über eine konkrete Schwelle</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong>Genauigkeit ist bei seltenen Ereignissen wertlos.</strong> Sie wird von der häufigen <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.">Klasse</span> dominiert.</li>
+<li><strong><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> lässt sich nicht zwischen Anwendungen vergleichen.</strong> Er hängt an der Häufigkeit des Ereignisses, nicht nur an der Güte des Modells.</li>
+<li><strong>Eine hohe AUC bedeutet nicht, dass die Wahrscheinlichkeiten stimmen.</strong> Ein Modell kann perfekt trennen und trotzdem durchweg zu hohe Werte ausgeben. Trennschärfe und Kalibrierung sind zwei Eigenschaften.</li>
+<li><strong><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> lassen sich nicht gleichzeitig maximieren.</strong> Jede Schwellenverschiebung tauscht das eine gegen das andere.</li>
+<li><strong>An denselben Daten gemessen sind alle Kennzahlen zu gut</strong>, siehe Beispiel 4.</li>
+<li><strong>Die Schwelle 0.5 ist eine Konvention.</strong> Sie unterstellt gleich teure Fehler.</li>
+<li><strong>F1 ignoriert die richtig negativen Fälle.</strong> Bei Anwendungen, in denen korrekte Entwarnungen zählen, ist er das falsche Mass.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<p>Vorlage:</p>
+<blockquote class="blockquote">
+<p>Bei einer Schwelle von [Wert] erkennt das Modell [TP] der [TP+FN] Ereignisse (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> [Wert]) und stuft [FP] der [FP+TN] Nicht-Ereignisse falsch ein (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> [Wert]). Von [TP+FP] Alarmen sind [TP] echt (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> [Wert]). Die AUC beträgt [Wert], gemessen auf [Trainings- oder Testdaten].</p>
+</blockquote>
+<p>Immer genannt werden: die Schwelle, die absolute Konfusionsmatrix, mindestens <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span>, die AUC, und <strong>auf welchen Daten</strong> gemessen wurde. Der letzte Punkt fehlt am häufigsten und entwertet die Angabe, wenn er fehlt.</p>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese zusätzlich</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/regression/logistische-regression.html">Logistische Regression</a></td>
+<td>dort entstehen die Wahrscheinlichkeiten, die hier bewertet werden</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/regression/modellauswahl.html">Modellauswahl</a></td>
+<td>die Wahl zwischen Modellen, nicht die Bewertung eines einzelnen</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/tests/chi-quadrat-tests.html">Chi-Quadrat-Tests</a></td>
+<td>die Konfusionsmatrix ist eine Kreuztabelle, aber die Fragestellung ist eine andere</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Beispiel 1: Die Konfusionsmatrix und was daraus folgt</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Beispiel 2: Wenn das Ereignis selten ist</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Beispiel 3: ROC-Kurve und die Wahl der Schwelle</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-4" role="tab" aria-controls="tabset-5-4" aria-selected="false" href="">Beispiel 4: Warum an denselben Daten gemessen zu gut ist</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>400 Fälle, davon 200 mit Ereignis. Ein Modell sagt aus einem Merkmal die Wahrscheinlichkeit vorher. Bei der üblichen Schwelle von 0.5 entsteht die Konfusionsmatrix.</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>modell <span class="ot">&lt;-</span> <span class="fu">glm</span>(ereignis <span class="sc">~</span> merkmal, <span class="at">family =</span> binomial, <span class="at">data =</span> daten)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>score <span class="ot">&lt;-</span> <span class="fu">predict</span>(modell, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>vorhersage <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(score <span class="sc">&gt;</span> <span class="fl">0.5</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(<span class="at">tatsaechlich =</span> daten<span class="sc">$</span>ereignis, <span class="at">vorhergesagt =</span> vorhersage)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            vorhergesagt
+tatsaechlich   0   1
+           0 144  56
+           1  57 143</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">guete</span>(daten<span class="sc">$</span>ereignis, vorhersage)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           TP            FP            FN            TN   Genauigkeit 
+     143.0000       56.0000       57.0000      144.0000        0.7175 
+Sensitivitaet   Spezifitaet           PPV           NPV            F1 
+       0.7150        0.7200        0.7186        0.7164        0.7168 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">auc</span>(daten<span class="sc">$</span>ereignis, score), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.8004</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>modell <span class="op">=</span> smf.logit(<span class="st">"ereignis ~ merkmal"</span>, data<span class="op">=</span>daten).fit(disp<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>score <span class="op">=</span> modell.predict(daten)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>vorhersage <span class="op">=</span> (score <span class="op">&gt;</span> <span class="fl">0.5</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.crosstab(daten[<span class="st">"ereignis"</span>], vorhersage,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>                  rownames<span class="op">=</span>[<span class="st">"tatsächlich"</span>], colnames<span class="op">=</span>[<span class="st">"vorhergesagt"</span>]))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>vorhergesagt    0    1
+tatsächlich           
+0             144   56
+1              57  143</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(guete(daten[<span class="st">"ereignis"</span>], vorhersage))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>TP               143.0000
+FP                56.0000
+FN                57.0000
+TN               144.0000
+Genauigkeit        0.7175
+Sensitivitaet      0.7150
+Spezifitaet        0.7200
+PPV                0.7186
+NPV                0.7164
+F1                 0.7168
+dtype: float64</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"AUC ="</span>, <span class="bu">round</span>(auc(daten[<span class="st">"ereignis"</span>], score), <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>AUC = 0.8004</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th>vorhergesagt 0</th>
+<th>vorhergesagt 1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>tatsächlich 0</strong></td>
+<td>144 (TN)</td>
+<td>56 (FP)</td>
+</tr>
+<tr class="even">
+<td><strong>tatsächlich 1</strong></td>
+<td>57 (FN)</td>
+<td>143 (TP)</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kennzahl</th>
+<th>Wert hier</th>
+<th>Rechnung</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Genauigkeit</td>
+<td>0.7175</td>
+<td>(143+144)/400</td>
+<td>Rund 72 Prozent aller Fälle richtig eingeordnet. Hier aussagekräftig, weil beide Klassen gleich häufig sind; in Beispiel 2 ist sie es nicht.</td>
+</tr>
+<tr class="even">
+<td>Sensitivität</td>
+<td>0.7150</td>
+<td>143/200</td>
+<td>Von den 200 tatsächlichen Ereignissen wurden 143 gefunden, 57 übersehen.</td>
+</tr>
+<tr class="odd">
+<td>Spezifität</td>
+<td>0.7200</td>
+<td>144/200</td>
+<td>Von den 200 Nicht-Ereignissen wurden 144 richtig durchgelassen, 56 fälschlich alarmiert.</td>
+</tr>
+<tr class="even">
+<td>PPV</td>
+<td>0.7186</td>
+<td>143/199</td>
+<td>Von den 199 Alarmen waren 143 echt.</td>
+</tr>
+<tr class="odd">
+<td>NPV</td>
+<td>0.7164</td>
+<td>144/201</td>
+<td>Von den 201 Entwarnungen waren 144 richtig.</td>
+</tr>
+<tr class="even">
+<td>F1</td>
+<td>0.7168</td>
+<td>harmonisches Mittel aus PPV und Sensitivität</td>
+<td>Fasst Finden und Treffen zusammen, ignoriert aber die 144 richtigen Entwarnungen.</td>
+</tr>
+<tr class="odd">
+<td>AUC</td>
+<td>0.8004</td>
+<td>Rangsumme der positiven Fälle</td>
+<td>Greift man je einen zufälligen positiven und negativen Fall heraus, hat der positive in 80 Prozent der Fälle den höheren Score.</td>
+</tr>
+</tbody>
+</table>
+<p>Dass hier alle fünf Verhältniszahlen um 0.72 liegen, ist kein Zufall, sondern eine Folge der ausgewogenen <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.">Klassen</span>: Bei gleich vielen Ereignissen und Nicht-Ereignissen fallen <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> zusammen. Beispiel 2 zeigt, was passiert, wenn das nicht so ist.</p>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Bei einer Schwelle von 0.5 erkennt das Modell 143 der 200 Ereignisse (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> 0.72) und stuft 56 der 200 Nicht-Ereignisse falsch ein (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> 0.72). Von 199 Alarmen sind 143 echt (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> 0.72). Die AUC beträgt 0.80, gemessen auf den Schätzdaten.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>2000 Fälle, davon 40 mit Ereignis, also 2 Prozent. Ein Prüfverfahren erkennt 90 Prozent der Ereignisse (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> 0.90) und lässt 90 Prozent der Nicht-Ereignisse richtig durch (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> 0.90). Beide Werte gelten gemeinhin als gut.</p>
+<p>Die Frage lautet: Wenn das Verfahren Alarm schlägt, wie wahrscheinlich ist das Ereignis dann tatsächlich?</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>n2 <span class="ot">&lt;-</span> <span class="dv">2000</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>lauf2 <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span>(n2 <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>selten <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(((lauf2 <span class="sc">*</span> <span class="dv">501</span>) <span class="sc">%%</span> n2) <span class="sc">&lt;</span> <span class="dv">40</span>)     <span class="co"># genau 40 Ereignisse</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>positiv <span class="ot">&lt;-</span> <span class="fu">which</span>(selten <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>negativ <span class="ot">&lt;-</span> <span class="fu">which</span>(selten <span class="sc">==</span> <span class="dv">0</span>)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>pruefung <span class="ot">&lt;-</span> <span class="fu">integer</span>(n2)</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>pruefung[positiv[<span class="dv">1</span><span class="sc">:</span><span class="dv">36</span>]] <span class="ot">&lt;-</span> <span class="dv">1</span>                          <span class="co"># 36 von 40 erkannt</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>pruefung[negativ[<span class="fu">seq</span>(<span class="dv">1</span>, <span class="fu">length</span>(negativ), <span class="at">by =</span> <span class="dv">10</span>)][<span class="dv">1</span><span class="sc">:</span><span class="dv">196</span>]] <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(<span class="at">tatsaechlich =</span> selten, <span class="at">alarm =</span> pruefung)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            alarm
+tatsaechlich    0    1
+           0 1764  196
+           1    4   36</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">guete</span>(selten, pruefung)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           TP            FP            FN            TN   Genauigkeit 
+      36.0000      196.0000        4.0000     1764.0000        0.9000 
+Sensitivitaet   Spezifitaet           PPV           NPV            F1 
+       0.9000        0.9000        0.1552        0.9977        0.2647 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">guete</span>(selten, <span class="fu">integer</span>(n2))                            <span class="co"># "immer nein"</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           TP            FP            FN            TN   Genauigkeit 
+         0.00          0.00         40.00       1960.00          0.98 
+Sensitivitaet   Spezifitaet           PPV           NPV            F1 
+         0.00          1.00           NaN          0.98           NaN </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>n2 <span class="op">=</span> <span class="dv">2000</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>lauf2 <span class="op">=</span> np.arange(n2)</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>selten <span class="op">=</span> (((lauf2 <span class="op">*</span> <span class="dv">501</span>) <span class="op">%</span> n2) <span class="op">&lt;</span> <span class="dv">40</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>positiv <span class="op">=</span> np.where(selten <span class="op">==</span> <span class="dv">1</span>)[<span class="dv">0</span>]</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>negativ <span class="op">=</span> np.where(selten <span class="op">==</span> <span class="dv">0</span>)[<span class="dv">0</span>]</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>pruefung <span class="op">=</span> np.zeros(n2, dtype<span class="op">=</span><span class="bu">int</span>)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>pruefung[positiv[:<span class="dv">36</span>]] <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>pruefung[negativ[::<span class="dv">10</span>][:<span class="dv">196</span>]] <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.crosstab(selten, pruefung,</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>                  rownames<span class="op">=</span>[<span class="st">"tatsächlich"</span>], colnames<span class="op">=</span>[<span class="st">"alarm"</span>]))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>alarm           0    1
+tatsächlich           
+0            1764  196
+1               4   36</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(guete(selten, pruefung))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>TP                 36.0000
+FP                196.0000
+FN                  4.0000
+TN               1764.0000
+Genauigkeit         0.9000
+Sensitivitaet       0.9000
+Spezifitaet         0.9000
+PPV                 0.1552
+NPV                 0.9977
+F1                  0.2647
+dtype: float64</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(guete(selten, np.zeros(n2, dtype<span class="op">=</span><span class="bu">int</span>)))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>TP                  0.00
+FP                  0.00
+FN                 40.00
+TN               1960.00
+Genauigkeit         0.98
+Sensitivitaet       0.00
+Spezifitaet         1.00
+PPV                  NaN
+NPV                 0.98
+F1                   NaN
+dtype: float64</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th>kein Alarm</th>
+<th>Alarm</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>kein Ereignis</strong></td>
+<td>1764</td>
+<td>196</td>
+</tr>
+<tr class="even">
+<td><strong>Ereignis</strong></td>
+<td>4</td>
+<td>36</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kennzahl</th>
+<th>Wert hier</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Sensitivität</td>
+<td>0.900</td>
+<td>Wie versprochen: 36 der 40 Ereignisse gefunden.</td>
+</tr>
+<tr class="even">
+<td>Spezifität</td>
+<td>0.900</td>
+<td>Ebenfalls wie versprochen: 1764 der 1960 richtig durchgelassen.</td>
+</tr>
+<tr class="odd">
+<td>Genauigkeit</td>
+<td>0.900</td>
+<td>Sieht gut aus und ist wertlos, siehe unten.</td>
+</tr>
+<tr class="even">
+<td><strong>PPV</strong></td>
+<td><strong>0.155</strong></td>
+<td><strong>Der eigentliche Befund.</strong> Von 232 Alarmen sind nur 36 echt. In 85 Prozent der Fälle ist der Alarm falsch.</td>
+</tr>
+<tr class="odd">
+<td>NPV</td>
+<td>0.998</td>
+<td>Eine Entwarnung ist dagegen fast immer richtig.</td>
+</tr>
+<tr class="even">
+<td>F1</td>
+<td>0.265</td>
+<td>Bricht mit dem PPV ein, weil er ihn zur Hälfte enthält.</td>
+</tr>
+<tr class="odd">
+<td>Genauigkeit bei “immer nein”</td>
+<td><strong>0.980</strong></td>
+<td>Wer schlicht nie Alarm schlägt, erreicht 98 Prozent Genauigkeit und damit <strong>mehr</strong> als das Prüfverfahren.</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong>Warum der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> einbricht, obwohl das Verfahren gut ist.</strong> Die 10 Prozent Fehlalarme beziehen sich auf 1960 Nicht-Ereignisse und ergeben 196 falsche Alarme. Die 90 Prozent Treffer beziehen sich auf 40 Ereignisse und ergeben 36 echte. Die falschen Alarme kommen aus einer 49-mal grösseren Grundmenge und überwiegen deshalb, obwohl ihre Rate niedriger ist.</p>
+<p>Daraus folgt eine Faustregel: <strong>Bei seltenen Ereignissen braucht ein brauchbarer <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> eine sehr hohe <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span>.</strong> Um hier auf einen <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> von 0.5 zu kommen, müsste die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> auf 0.982 steigen, also die Fehlalarmrate von 10 auf 1.8 Prozent fallen.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<p>Zwei Konsequenzen für die Praxis. Erstens gehört die Genauigkeit bei unausgewogenen <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.">Klassen</span> gar nicht erst in den Bericht; sie beschreibt hier nur, wie selten das Ereignis ist. Zweitens ist der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> die Zahl, die für die betroffene Person zählt: Nicht “das Verfahren erkennt 90 Prozent”, sondern “wenn es anschlägt, liegt es in 85 Prozent der Fälle falsch”.</p>
+<p>Deshalb ist ein <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> auch nicht zwischen Anwendungen übertragbar. Dasselbe Verfahren, angewendet auf eine Gruppe mit 20 statt 2 Prozent Ereignisanteil, käme auf einen <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> von 0.69.</p>
+<blockquote class="blockquote">
+<p>Bei einer Häufigkeit von 2 Prozent erkennt das Verfahren 36 der 40 Ereignisse (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> 0.90) bei 196 Fehlalarmen unter 1960 Nicht-Ereignissen (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> 0.90). Von 232 Alarmen sind 36 echt (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> 0.155). Die Genauigkeit von 0.90 ist hier nicht aussagekräftig: Ein Verfahren, das nie Alarm schlägt, erreicht 0.98.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>Die Daten aus Beispiel 1. Die Frage lautet: Was ändert sich, wenn die Schwelle verschoben wird, und wie beurteilt man das Modell <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre.">unabhängig</span> davon?</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>schwellen <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(<span class="fu">c</span>(<span class="dv">0</span>, score, <span class="dv">1</span>)), <span class="at">decreasing =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>punkte <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">sapply</span>(schwellen, <span class="cf">function</span>(s) {</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  v <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(score <span class="sc">&gt;</span> s)</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="at">fpr =</span> <span class="fu">sum</span>(v <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">0</span>) <span class="sc">/</span> <span class="fu">sum</span>(daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">0</span>),</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">tpr =</span> <span class="fu">sum</span>(v <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">/</span> <span class="fu">sum</span>(daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">1</span>))</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(punkte[, <span class="st">"fpr"</span>], punkte[, <span class="st">"tpr"</span>], <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"steelblue"</span>,</span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"1 - Spezifität"</span>, <span class="at">ylab =</span> <span class="st">"Sensitivität"</span>,</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="fu">paste</span>(<span class="st">"ROC, AUC ="</span>, <span class="fu">round</span>(<span class="fu">auc</span>(daten<span class="sc">$</span>ereignis, score), <span class="dv">3</span>)))</span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"grey60"</span>)</span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (s <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>)) {</span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>  v <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(score <span class="sc">&gt;</span> s)</span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">points</span>(<span class="fu">sum</span>(v <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">0</span>) <span class="sc">/</span> <span class="fu">sum</span>(daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">0</span>),</span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>         <span class="fu">sum</span>(v <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">/</span> <span class="fu">sum</span>(daten<span class="sc">$</span>ereignis <span class="sc">==</span> <span class="dv">1</span>),</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a>         <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>, <span class="at">cex =</span> <span class="fl">1.3</span>)</span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (s <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.35</span>, <span class="fl">0.5</span>, <span class="fl">0.65</span>, <span class="fl">0.8</span>)) {</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"Schwelle"</span>, s, <span class="st">":"</span>, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">guete</span>(daten<span class="sc">$</span>ereignis, <span class="fu">as.integer</span>(score <span class="sc">&gt;</span> s))[<span class="fu">c</span>(<span class="st">"Sensitivitaet"</span>,</span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a>                                                       <span class="st">"Spezifitaet"</span>,</span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>                                                       <span class="st">"PPV"</span>, <span class="st">"F1"</span>)])</span>
+<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Schwelle 0.2 : 
+Sensitivitaet   Spezifitaet           PPV            F1 
+       0.9600        0.2650        0.5664        0.7124 
+Schwelle 0.35 : 
+Sensitivitaet   Spezifitaet           PPV            F1 
+       0.8700        0.5200        0.6444        0.7404 
+Schwelle 0.5 : 
+Sensitivitaet   Spezifitaet           PPV            F1 
+       0.7150        0.7200        0.7186        0.7168 
+Schwelle 0.65 : 
+Sensitivitaet   Spezifitaet           PPV            F1 
+       0.5250        0.8750        0.8077        0.6364 
+Schwelle 0.8 : 
+Sensitivitaet   Spezifitaet           PPV            F1 
+       0.2700        0.9650        0.8852        0.4138 </code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-b3-kl-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b3-kl-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="klassifikationsguete_files/figure-html/fig-b3-kl-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Beispiel 3: ROC-Kurve mit den drei markierten Schwellen."><img src="klassifikationsguete_files/figure-html/fig-b3-kl-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b3-kl-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Beispiel 3: ROC-Kurve mit den drei markierten Schwellen.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>schwellen <span class="op">=</span> np.sort(np.unique(np.concatenate([[<span class="fl">0.0</span>], score.to_numpy(), [<span class="fl">1.0</span>]])))[::<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>fpr, tpr <span class="op">=</span> [], []</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>tatsaechlich <span class="op">=</span> daten[<span class="st">"ereignis"</span>].to_numpy()</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> s <span class="kw">in</span> schwellen:</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>    v <span class="op">=</span> (score.to_numpy() <span class="op">&gt;</span> s).astype(<span class="bu">int</span>)</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>    fpr.append(((v <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">0</span>)).<span class="bu">sum</span>() <span class="op">/</span> (tatsaechlich <span class="op">==</span> <span class="dv">0</span>).<span class="bu">sum</span>())</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>    tpr.append(((v <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">1</span>)).<span class="bu">sum</span>() <span class="op">/</span> (tatsaechlich <span class="op">==</span> <span class="dv">1</span>).<span class="bu">sum</span>())</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>fig, achse <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.6</span>))</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>achse.plot(fpr, tpr, color<span class="op">=</span><span class="st">"steelblue"</span>, linewidth<span class="op">=</span><span class="dv">2</span>)</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>achse.plot([<span class="dv">0</span>, <span class="dv">1</span>], [<span class="dv">0</span>, <span class="dv">1</span>], linestyle<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"0.6"</span>)</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> s <span class="kw">in</span> (<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>):</span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>    v <span class="op">=</span> (score.to_numpy() <span class="op">&gt;</span> s).astype(<span class="bu">int</span>)</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>    achse.plot(((v <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">0</span>)).<span class="bu">sum</span>() <span class="op">/</span> (tatsaechlich <span class="op">==</span> <span class="dv">0</span>).<span class="bu">sum</span>(),</span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>               ((v <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">1</span>)).<span class="bu">sum</span>() <span class="op">/</span> (tatsaechlich <span class="op">==</span> <span class="dv">1</span>).<span class="bu">sum</span>(),</span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>               <span class="st">"o"</span>, color<span class="op">=</span><span class="st">"firebrick"</span>, markersize<span class="op">=</span><span class="dv">7</span>)</span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>achse.set_xlabel(<span class="st">"1 - Spezifität"</span>)</span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a>achse.set_ylabel(<span class="st">"Sensitivität"</span>)</span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>achse.set_title(<span class="ss">f"ROC, AUC = </span><span class="sc">{</span>auc(daten[<span class="st">'ereignis'</span>], score)<span class="sc">:.3f}</span><span class="ss">"</span>)</span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b3-kl-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b3-kl-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="klassifikationsguete_files/figure-html/fig-b3-kl-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Beispiel 3: dieselbe Kurve in Python."><img src="klassifikationsguete_files/figure-html/fig-b3-kl-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b3-kl-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Beispiel 3: dieselbe Kurve in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> s <span class="kw">in</span> (<span class="fl">0.2</span>, <span class="fl">0.35</span>, <span class="fl">0.5</span>, <span class="fl">0.65</span>, <span class="fl">0.8</span>):</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>    k <span class="op">=</span> guete(daten[<span class="st">"ereignis"</span>], (score <span class="op">&gt;</span> s).astype(<span class="bu">int</span>))</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Schwelle </span><span class="sc">{</span>s<span class="sc">}</span><span class="ss">: Sens=</span><span class="sc">{</span>k[<span class="st">'Sensitivitaet'</span>]<span class="sc">:.4f}</span><span class="ss"> "</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"Spez=</span><span class="sc">{</span>k[<span class="st">'Spezifitaet'</span>]<span class="sc">:.4f}</span><span class="ss"> PPV=</span><span class="sc">{</span>k[<span class="st">'PPV'</span>]<span class="sc">:.4f}</span><span class="ss"> F1=</span><span class="sc">{</span>k[<span class="st">'F1'</span>]<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Schwelle 0.2: Sens=0.9600 Spez=0.2650 PPV=0.5664 F1=0.7124
+Schwelle 0.35: Sens=0.8700 Spez=0.5200 PPV=0.6444 F1=0.7404
+Schwelle 0.5: Sens=0.7150 Spez=0.7200 PPV=0.7186 F1=0.7168
+Schwelle 0.65: Sens=0.5250 Spez=0.8750 PPV=0.8077 F1=0.6364
+Schwelle 0.8: Sens=0.2700 Spez=0.9650 PPV=0.8852 F1=0.4138</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Schwelle</th>
+<th>Sensitivität</th>
+<th>Spezifität</th>
+<th>PPV</th>
+<th>F1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.20</td>
+<td>0.960</td>
+<td>0.265</td>
+<td>0.566</td>
+<td>0.712</td>
+</tr>
+<tr class="even">
+<td>0.35</td>
+<td>0.870</td>
+<td>0.520</td>
+<td>0.644</td>
+<td><strong>0.740</strong></td>
+</tr>
+<tr class="odd">
+<td>0.50</td>
+<td>0.715</td>
+<td>0.720</td>
+<td>0.719</td>
+<td>0.717</td>
+</tr>
+<tr class="even">
+<td>0.65</td>
+<td>0.525</td>
+<td>0.875</td>
+<td>0.808</td>
+<td>0.636</td>
+</tr>
+<tr class="odd">
+<td>0.80</td>
+<td>0.270</td>
+<td>0.965</td>
+<td>0.885</td>
+<td>0.414</td>
+</tr>
+</tbody>
+</table>
+<p>Drei Beobachtungen:</p>
+<p><strong><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> bewegen sich gegenläufig.</strong> Von 0.20 auf 0.80 fällt die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> von 0.96 auf 0.27, während die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> von 0.27 auf 0.97 steigt. Es gibt keine Schwelle, die beide gleichzeitig verbessert; jede Verschiebung ist ein Tausch.</p>
+<p><strong>Der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> steigt mit der Schwelle.</strong> Wer selten Alarm schlägt, hat unter seinen Alarmen einen höheren Anteil echter Fälle. Von 0.57 auf 0.89, und das ist der Grund, warum ein hoher <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> allein kein Gütezeichen ist: Er lässt sich immer erkaufen, indem man weniger oft Alarm schlägt.</p>
+<p><strong>F1 ist bei 0.35 am höchsten, nicht bei 0.5.</strong> Wer nach F1 optimiert, landet also nicht bei der Voreinstellung. Ob F1 das richtige Kriterium ist, entscheidet die Anwendung.</p>
+<p>Die AUC von 0.80 bleibt bei all dem unverändert, denn sie fasst die ganze Kurve zusammen. Sie beantwortet die Frage “wie gut trennt das Modell”, die Tabelle beantwortet die Frage “wie gut entscheidet es bei dieser Schwelle”.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Das Modell trennt die beiden <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.">Klassen</span> brauchbar (AUC 0.80). Bei einer Schwelle von 0.5 liegen <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> bei je 0.72. Eine Senkung auf 0.35 erhöht die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> auf 0.87 zulasten der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> (0.52) und maximiert F1 (0.74). Die Wahl richtet sich nach dem Kostenverhältnis der beiden Fehlerarten.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>Die 400 Fälle werden geteilt: 200 zum Schätzen, 200 zum Prüfen. Verglichen werden zwei Modelle. Das eine nutzt nur das echte Merkmal, das andere zusätzlich zwanzig Merkmale, die nichts mit dem Ereignis zu tun haben.</p>
+<p>Die Frage lautet: Welches Modell ist besser, und woran erkennt man das?</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>zusatz <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>, <span class="cf">function</span>(k) <span class="fu">richtung</span>(<span class="dv">3</span> <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> k)))</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(zusatz) <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">"z"</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>voll <span class="ot">&lt;-</span> <span class="fu">cbind</span>(daten, zusatz)</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>trainieren <span class="ot">&lt;-</span> voll[<span class="fu">seq</span>(<span class="dv">1</span>, <span class="fu">nrow</span>(voll), <span class="at">by =</span> <span class="dv">2</span>), ]</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>testen     <span class="ot">&lt;-</span> voll[<span class="fu">seq</span>(<span class="dv">2</span>, <span class="fu">nrow</span>(voll), <span class="at">by =</span> <span class="dv">2</span>), ]</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>sparsam <span class="ot">&lt;-</span> <span class="fu">glm</span>(ereignis <span class="sc">~</span> merkmal, <span class="at">family =</span> binomial, <span class="at">data =</span> trainieren)</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>ueppig  <span class="ot">&lt;-</span> <span class="fu">glm</span>(<span class="fu">as.formula</span>(<span class="fu">paste</span>(<span class="st">"ereignis ~ merkmal +"</span>,</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>                                <span class="fu">paste</span>(<span class="fu">names</span>(zusatz), <span class="at">collapse =</span> <span class="st">" + "</span>))),</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>               <span class="at">family =</span> binomial, <span class="at">data =</span> trainieren)</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>vergleich <span class="ot">&lt;-</span> <span class="cf">function</span>(modell, name) {</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>  s_tr <span class="ot">&lt;-</span> <span class="fu">predict</span>(modell, <span class="at">newdata =</span> trainieren, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>  s_te <span class="ot">&lt;-</span> <span class="fu">predict</span>(modell, <span class="at">newdata =</span> testen, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"%-9s AUC Training = %.4f   AUC Test = %.4f</span><span class="sc">\n</span><span class="st">"</span>, name,</span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a>              <span class="fu">auc</span>(trainieren<span class="sc">$</span>ereignis, s_tr), <span class="fu">auc</span>(testen<span class="sc">$</span>ereignis, s_te)))</span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"          Genauigkeit Training = %.4f   Test = %.4f</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a>              <span class="fu">guete</span>(trainieren<span class="sc">$</span>ereignis, <span class="fu">as.integer</span>(s_tr <span class="sc">&gt;</span> <span class="fl">0.5</span>))[<span class="st">"Genauigkeit"</span>],</span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a>              <span class="fu">guete</span>(testen<span class="sc">$</span>ereignis, <span class="fu">as.integer</span>(s_te <span class="sc">&gt;</span> <span class="fl">0.5</span>))[<span class="st">"Genauigkeit"</span>]))</span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a><span class="fu">vergleich</span>(sparsam, <span class="st">"sparsam"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>sparsam   AUC Training = 0.8096   AUC Test = 0.7911
+          Genauigkeit Training = 0.7200   Test = 0.7150</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vergleich</span>(ueppig, <span class="st">"üppig"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>üppig    AUC Training = 0.8886   AUC Test = 0.7388
+          Genauigkeit Training = 0.8050   Test = 0.6850</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>zusatz <span class="op">=</span> {<span class="ss">f"z</span><span class="sc">{</span>k<span class="sc">}</span><span class="ss">"</span>: richtung(<span class="dv">3</span> <span class="op">+</span> <span class="dv">2</span> <span class="op">*</span> k) <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">1</span>, <span class="dv">21</span>)}</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>voll <span class="op">=</span> daten.assign(<span class="op">**</span>zusatz)</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>trainieren <span class="op">=</span> voll.iloc[::<span class="dv">2</span>].reset_index(drop<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>testen <span class="op">=</span> voll.iloc[<span class="dv">1</span>::<span class="dv">2</span>].reset_index(drop<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>sparsam <span class="op">=</span> smf.logit(<span class="st">"ereignis ~ merkmal"</span>, data<span class="op">=</span>trainieren).fit(disp<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>ueppig <span class="op">=</span> smf.logit(<span class="st">"ereignis ~ merkmal + "</span> <span class="op">+</span> <span class="st">" + "</span>.join(zusatz),</span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>                   data<span class="op">=</span>trainieren).fit(disp<span class="op">=</span><span class="dv">0</span>, maxiter<span class="op">=</span><span class="dv">200</span>)</span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> vergleich(modell, name):</span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a>    s_tr <span class="op">=</span> modell.predict(trainieren)</span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a>    s_te <span class="op">=</span> modell.predict(testen)</span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>name<span class="sc">:9s}</span><span class="ss"> AUC Training = </span><span class="sc">{</span>auc(trainieren[<span class="st">'ereignis'</span>], s_tr)<span class="sc">:.4f}</span><span class="ss">"</span></span>
+<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"   AUC Test = </span><span class="sc">{</span>auc(testen[<span class="st">'ereignis'</span>], s_te)<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>    g_tr <span class="op">=</span> guete(trainieren[<span class="st">"ereignis"</span>], (s_tr <span class="op">&gt;</span> <span class="fl">0.5</span>).astype(<span class="bu">int</span>))</span>
+<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a>    g_te <span class="op">=</span> guete(testen[<span class="st">"ereignis"</span>], (s_te <span class="op">&gt;</span> <span class="fl">0.5</span>).astype(<span class="bu">int</span>))</span>
+<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"          Genauigkeit Training = </span><span class="sc">{</span>g_tr[<span class="st">'Genauigkeit'</span>]<span class="sc">:.4f}</span><span class="ss">"</span></span>
+<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"   Test = </span><span class="sc">{</span>g_te[<span class="st">'Genauigkeit'</span>]<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb35-21"><a href="#cb35-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-22"><a href="#cb35-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-23"><a href="#cb35-23" aria-hidden="true" tabindex="-1"></a>vergleich(sparsam, <span class="st">"sparsam"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>sparsam   AUC Training = 0.8096   AUC Test = 0.7911
+          Genauigkeit Training = 0.7200   Test = 0.7150</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>vergleich(ueppig, <span class="st">"üppig"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>üppig     AUC Training = 0.8886   AUC Test = 0.7388
+          Genauigkeit Training = 0.8050   Test = 0.6850</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Modell</th>
+<th>AUC Training</th>
+<th>AUC Test</th>
+<th>Genauigkeit Training</th>
+<th>Genauigkeit Test</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>nur das echte Merkmal</td>
+<td>0.810</td>
+<td><strong>0.791</strong></td>
+<td>0.720</td>
+<td>0.715</td>
+</tr>
+<tr class="even">
+<td>plus 20 wertlose Merkmale</td>
+<td><strong>0.889</strong></td>
+<td>0.739</td>
+<td>0.805</td>
+<td>0.685</td>
+</tr>
+</tbody>
+</table>
+<p>Das üppige Modell ist auf den Trainingsdaten deutlich besser (AUC 0.889 gegen 0.810) und auf neuen Daten deutlich schlechter (0.739 gegen 0.791). Die zwanzig Zusatzmerkmale enthalten <strong>keinerlei</strong> Information über das Ereignis; sie sind deterministisch konstruiertes Rauschen. Das Modell hat gelernt, die zufälligen Muster der 200 Trainingsfälle nachzubilden.</p>
+<p>Bemerkenswert ist auch die Grösse des Unterschieds beim sparsamen Modell: 0.810 gegen 0.791. Auch ein Modell mit zwei Parametern misst sich an den eigenen Daten etwas zu gut, nur eben wenig. Der Abstand zwischen Trainings- und Testwert wächst mit der Anzahl der Parameter.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<p>Daraus folgen zwei Regeln.</p>
+<p><strong>Jede berichtete Kennzahl braucht die Angabe, worauf sie gemessen wurde.</strong> Eine AUC von 0.89 ohne diesen Zusatz ist wertlos, weil sie an denselben Daten gemessen sein kann, mit denen das Modell gebaut wurde.</p>
+<p><strong>Modelle werden nicht an den Trainingsdaten verglichen.</strong> Wer das tut, wählt systematisch das komplexere Modell, denn mehr Parameter passen sich den vorliegenden Daten immer besser an. Der saubere Weg ist eine Trennung in Trainings- und Testdaten oder eine Kreuzvalidierung; für kleine Datensätze leisten AIC und BIC dasselbe auf rechnerischem Weg, siehe <a href="../../statistik/regression/modellauswahl.html">Modellauswahl</a>.</p>
+<blockquote class="blockquote">
+<p>Verglichen wurden zwei Modelle an einer Aufteilung in je 200 Trainings- und Testfälle. Das sparsame Modell erreicht auf den Testdaten eine AUC von 0.791, das um zwanzig wertlose Merkmale erweiterte nur 0.739, obwohl es auf den Trainingsdaten besser abschneidet (0.889 gegen 0.810). Berichtet werden die Testwerte des sparsamen Modells.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Prüfverfahren hat <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> 0.90 und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> 0.90. Das Ereignis tritt bei 2 Prozent auf. Wie oft liegt ein Alarm richtig?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+In rund 15 Prozent der Fälle
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die 10 Prozent Fehlalarme beziehen sich auf 98 Prozent der Fälle und ergeben viel mehr falsche als echte Alarme. Der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> beträgt 0.155.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+In 90 Prozent der Fälle
+</div>
+<div class="quiz__erklaerung">
+Das ist die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span>, und die beantwortet die umgekehrte Frage: Von den Ereignissen, wie viele werden gefunden?
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+In 98 Prozent der Fälle
+</div>
+<div class="quiz__erklaerung">
+Das ist die Genauigkeit eines Verfahrens, das nie Alarm schlägt.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Modell erreicht eine Genauigkeit von 0.98. Was folgt daraus?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Nichts, ohne die Klassenverteilung zu kennen
+</div>
+<div class="quiz__erklaerung">
+Richtig. Bei einem Ereignisanteil von 2 Prozent erreicht “immer nein” genau diesen Wert. Die Genauigkeit muss immer gegen diesen trivialen Vergleichswert gehalten werden.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Das Modell ist sehr gut
+</div>
+<div class="quiz__erklaerung">
+Nur wenn die <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.">Klassen</span> einigermassen ausgewogen sind.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Das Modell ist überangepasst
+</div>
+<div class="quiz__erklaerung">
+Dafür bräuchte es einen Vergleich zwischen Trainings- und Testdaten.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Modell hat auf den Trainingsdaten eine AUC von 0.89 und auf Testdaten 0.74, ein zweites 0.81 und 0.79. Welches ist besser?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Das zweite
+</div>
+<div class="quiz__erklaerung">
+Richtig. Entschieden wird an den Testdaten, und dort liegt das zweite vorn. Der grosse Abstand zwischen Trainings- und Testwert beim ersten ist das Kennzeichen der Überanpassung.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Das erste, es hat die höhere AUC
+</div>
+<div class="quiz__erklaerung">
+Die höhere AUC hat es nur auf den Daten, mit denen es gebaut wurde. Das ist kein Gütezeichen, sondern das erwartete Verhalten.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Beide gleich gut, die Unterschiede sind klein
+</div>
+<div class="quiz__erklaerung">
+0.74 gegen 0.79 ist ein spürbarer Unterschied, und die Richtung ist eindeutig.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum lässt sich ein hoher <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> immer erreichen?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Indem man die Schwelle anhebt und seltener Alarm schlägt
+</div>
+<div class="quiz__erklaerung">
+Richtig. Wer nur bei sehr hohen Scores Alarm schlägt, hat unter seinen wenigen Alarmen einen hohen Anteil echter Fälle. In Beispiel 3 steigt der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> von 0.57 auf 0.89, während die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> von 0.96 auf 0.27 fällt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Durch ein besseres Modell
+</div>
+<div class="quiz__erklaerung">
+Ein besseres Modell hilft, ist aber nicht nötig, um den <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> zu heben.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Gar nicht, der <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der tatsächlich Betroffenen unter allen positiv Getesteten. Hängt neben der Testgüte von der Prävalenz ab und wird deshalb häufig mit der Sensitivität verwechselt.">PPV</span> hängt nur an den Daten
+</div>
+<div class="quiz__erklaerung">
+Er hängt an der Schwelle und an der Häufigkeit des Ereignisses.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://www.statlearning.com/">An Introduction to Statistical Learning, Kapitel 4.4</a></li>
+<li><a href="https://scikit-learn.org/stable/modules/model_evaluation.html#classification-metrics">scikit-learn: Metriken für Klassifikation</a></li>
+<li><a href="../../statistik/regression/logistische-regression.html">Logistische Regression</a></li>
+</ul>
 
 
 </section>
@@ -1627,11 +2730,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 17:38</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 17:52</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
