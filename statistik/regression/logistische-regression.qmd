@@ -1,32 +1,690 @@
 ---
 title: "Logistische Regression"
-description: "Binäre Zielvariable, Odds Ratio, Deviance und die Deutung der Koeffizienten."
-categories: ["Logistische Regression", "Klassifikation", "Interpretation", "R", "Python"]
+description: "Binäre Zielgrösse modellieren, Odds Ratios und Wahrscheinlichkeiten lesen."
+categories: ["Regression", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
-order: 40
+stand: entwurf
+order: 30
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+# Anlagendaten, deterministisch konstruiert, damit R und Python exakt dieselben
+# Zahlen sehen: Grundlage sind Quantile der Normalverteilung und gleichmaessig
+# verteilte Werte, die je Groesse nach einer festen Regel umsortiert werden.
+n <- 200
+lauf <- 0:(n - 1)
+
+richtung <- function(faktor) qnorm(((lauf * faktor) %% n + 0.5) / n)
+gleich    <- function(faktor) ((lauf * faktor) %% n + 0.5) / n
+
+laufzeit <- round(pmax(6 + 3 * richtung(1), 0.5), 1)
+wartung  <- ifelse(gleich(63) < 0.5, "regelmaessig", "unregelmaessig")
+
+logit_wert <- -4.2 + 0.55 * laufzeit +
+  ifelse(wartung == "unregelmaessig", 1.3, 0)
+wahrscheinlichkeit <- 1 / (1 + exp(-logit_wert))
+
+anlagen <- data.frame(
+  ausfall = as.integer(wahrscheinlichkeit > gleich(89)),
+  laufzeit = laufzeit,
+  wartung = factor(wartung)
+)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+# Dieselbe Konstruktion wie im R-Teil.
+n = 200
+lauf = np.arange(n)
+
+
+def richtung(faktor):
+    return stats.norm.ppf(((lauf * faktor) % n + 0.5) / n)
+
+
+def gleich(faktor):
+    return ((lauf * faktor) % n + 0.5) / n
+
+
+laufzeit = np.round(np.clip(6 + 3 * richtung(1), 0.5, None), 1)
+wartung = np.where(gleich(63) < 0.5, "regelmaessig", "unregelmaessig")
+
+logit_wert = (-4.2 + 0.55 * laufzeit
+              + np.where(wartung == "unregelmaessig", 1.3, 0.0))
+wahrscheinlichkeit = 1 / (1 + np.exp(-logit_wert))
+
+anlagen = pd.DataFrame({
+    "ausfall": (wahrscheinlichkeit > gleich(89)).astype(int),
+    "laufzeit": laufzeit,
+    "wartung": wartung,
+})
+```
+
+Alle Beispiele rechnen mit demselben deterministisch konstruierten Datensatz:
+200 Anlagen mit der Angabe, ob innerhalb eines Jahres ein Ausfall auftrat, der
+Laufzeit in Jahren und der Wartungsart.
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie hängt die Wahrscheinlichkeit eines Ereignisses von mehreren Einflussgrössen ab? |
+| Zielvariable | binär: ja oder nein, 0 oder 1 |
+| Prädiktoren | beliebig viele, metrisch oder kategorial |
+| Was die Methode liefert | Koeffizienten auf der Logit-Skala, daraus Odds Ratios mit Konfidenzintervall, vorhergesagte Wahrscheinlichkeiten |
+| R-Funktion | `glm(y ~ x1 + x2, family = binomial, data = df)` |
+| Python-Funktion | `smf.logit("y ~ x1 + x2", data=df).fit()` |
+| Verwandte Methoden | [multiple lineare Regression](multiple-lineare-regression.qmd), [Klassifikationsgüte](klassifikationsguete.qmd), [Chi-Quadrat-Tests](../tests/chi-quadrat-tests.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Fällt eine Anlage aus, wird ein Kredit
+zurückgezahlt, klickt eine Besucherin, besteht eine Prüfung? Gemeinsam ist
+ihnen, dass die Zielgrösse genau zwei Ausprägungen hat und dass mehrere
+Einflussgrössen zugleich wirken.
+
+Warum nicht einfach eine lineare Regression auf 0 und 1? Sie liefert
+Vorhersagen unter 0 und über 1, die als Wahrscheinlichkeit sinnlos sind,
+unterstellt eine konstante Residuenstreuung, die bei binären Daten nicht
+existieren kann, und erzwingt einen geradlinigen Verlauf, obwohl
+Wahrscheinlichkeiten an den Rändern zwangsläufig abflachen.
+
+| Situation | Stattdessen |
+|---|---|
+| Zielgrösse metrisch | [multiple lineare Regression](multiple-lineare-regression.qmd) |
+| Zielgrösse mit mehr als zwei ungeordneten Stufen | multinomiale logistische Regression |
+| Zielgrösse mit geordneten Stufen | ordinale Regression, Proportional-Odds-Modell |
+| Zielgrösse ist eine Anzahl | Poisson- oder negative Binomialregression |
+| Zeit bis zum Ereignis, mit zensierten Fällen | [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) |
+| Nur zwei kategoriale Merkmale ohne weitere Einflussgrössen | [Chi-Quadrat-Test](../tests/chi-quadrat-tests.qmd) |
+
 ## Grundidee und Modell
+
+Modelliert wird nicht die Wahrscheinlichkeit selbst, sondern ihr Logarithmus
+der Chancen. Die Chance (englisch odds) ist das Verhältnis von Ereignis zu
+Gegenereignis:
+
+$$\text{Chance} = \frac{p}{1-p}, \qquad
+\log\left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots$$
+
+Diese Umformung löst genau die drei Probleme der linearen Regression: Der
+Logarithmus der Chancen kann jeden Wert zwischen minus und plus unendlich
+annehmen, während $p$ immer zwischen 0 und 1 bleibt.
+
+| Grösse | Bereich | Bedeutung |
+|---|---|---|
+| Wahrscheinlichkeit $p$ | 0 bis 1 | Anteil der Fälle mit Ereignis |
+| Chance $p/(1-p)$ | 0 bis unendlich | Bei $p = 0.5$ ist die Chance 1, also "eins zu eins" |
+| Logit $\log(p/(1-p))$ | minus bis plus unendlich | die Skala, auf der das Modell linear ist |
+
+Die Rücktransformation lautet:
+
+$$p = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + \dots)}}$$
+
+Geschätzt wird nicht mit kleinsten Quadraten, sondern mit der
+Maximum-Likelihood-Methode und einem iterativen Verfahren. Daraus folgen zwei
+praktische Unterschiede zur linearen Regression: Es gibt kein R², sondern nur
+Ersatzmasse, und die Schätzung kann scheitern, wenn die Gruppen zu sauber
+getrennt sind, siehe Beispiel 3.
+
+::: {.note-box}
+**Der Koeffizient ist nicht die Änderung der Wahrscheinlichkeit.** Er ist die
+Änderung des Logits. Exponenziert ergibt er das Odds Ratio, also den Faktor,
+um den sich die **Chance** ändert. Um wie viele Prozentpunkte sich die
+**Wahrscheinlichkeit** ändert, hängt davon ab, wo man startet. Das ist der
+wichtigste Punkt dieser Seite und der Inhalt von Beispiel 2.
+:::
 
 ## Voraussetzungen und ihre Prüfung
 
-## Durchführung in R und Python
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung |
+|---|---|---|---|
+| Unabhängige Beobachtungen | Jede Zeile ist ein eigener Fall | Erhebungsdesign | Standardfehler zu klein |
+| Binäre Zielgrösse | genau zwei Ausprägungen | Werte zählen | falsches Modell |
+| Linearität im Logit | Der Prädiktor wirkt geradlinig auf den Logit, nicht auf $p$ | Prädiktor gruppiert gegen den beobachteten Logit auftragen | Effekt wird verzerrt geschätzt |
+| Keine starke Multikollinearität | Prädiktoren messen nicht dasselbe | VIF wie bei der linearen Regression | Standardfehler wachsen |
+| Genug Ereignisse je Prädiktor | Faustregel: mindestens 10 Ereignisse je geschätztem Koeffizienten | Ereignisse zählen | Schätzung instabil, Intervalle unbrauchbar |
+| Keine vollständige Trennung | Kein Prädiktor trennt die Gruppen perfekt | Warnung des Programms, absurd grosse Koeffizienten | Schätzung existiert nicht, siehe Beispiel 3 |
 
 ## Output lesen
 
-## Ergebnisse interpretieren
+R, `summary(glm(..., family = binomial))`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `Estimate` | Koeffizient auf der **Logit-Skala** | nicht direkt deutbar; erst exponenziert ergibt er das Odds Ratio |
+| `Std. Error` | Unsicherheit auf der Logit-Skala | |
+| `z value` | Estimate durch Std. Error | heisst z, nicht t: die Verteilung ist nur näherungsweise normal |
+| `Pr(>|z|)` | p-Wert des Koeffizienten | |
+| `Null deviance` | Abweichung des Modells ohne Prädiktoren | Ausgangspunkt |
+| `Residual deviance` | Abweichung des angepassten Modells | Die Differenz zur Null-Devianz ist der Gewinn |
+| `AIC` | für Modellvergleiche | kleiner ist besser, siehe [Modellauswahl](modellauswahl.qmd) |
+| `Number of Fisher Scoring iterations` | Anzahl Iterationen | Werte über etwa 25 deuten auf Trennungsprobleme |
+| Warnung `fitted probabilities numerically 0 or 1 occurred` | Trennung | ernst nehmen, siehe Beispiel 3 |
+
+Python, `smf.logit(...).fit()`:
+
+| Ausgabe | Was sie sagt | Unterschied zu R |
+|---|---|---|
+| `coef`, `std err`, `z`, `P>|z|` | wie in R | nur andere Bezeichnung |
+| `[0.025 0.975]` | Konfidenzintervall auf der Logit-Skala | steht direkt in der Tabelle |
+| `Pseudo R-squ.` | McFadden-Pseudo-R² | in R nicht enthalten, dort aus den Devianzen zu bilden |
+| `Log-Likelihood`, `LL-Null`, `LLR p-value` | Anpassungsgüte und Gesamttest | in R als Devianzen ausgegeben, Devianz ist minus zweimal die Log-Likelihood |
+| keine Devianzen | fehlen | über `-2 * modell.llf` zu bekommen |
+
+::: {.note-box}
+**Konfidenzintervalle unterscheiden sich zwischen den Sprachen.** `confint()`
+in R rechnet über die Profil-Likelihood, statsmodels und `confint.default()`
+in R über die Wald-Näherung. Die Ergebnisse liegen meist nah beieinander,
+können bei kleinen Stichproben aber merklich abweichen. Auf dieser Seite wird
+`confint.default()` verwendet, damit R und Python vergleichbar bleiben; für
+einen Bericht ist die Profil-Variante die genauere Wahl.
+:::
 
 ## Interpretationsfallen
 
+- **Odds Ratio ist kein Risikoverhältnis.** Ein Odds Ratio von 3.8 bedeutet
+  nicht, dass das Ereignis 3.8 mal so häufig auftritt. Bei häufigen Ereignissen
+  überschätzt es das Risikoverhältnis deutlich.
+- **Derselbe Koeffizient bedeutet verschiedene Wahrscheinlichkeitsänderungen.**
+  Siehe Beispiel 2.
+- **Pseudo-R² ist nicht R².** Werte von 0.2 bis 0.4 gelten bereits als gute
+  Anpassung. Wer sie wie ein Bestimmtheitsmass liest, hält jedes Modell für
+  schlecht.
+- **Genauigkeit ist ein schlechtes Gütemass bei seltenen Ereignissen.** Bei
+  einem Ereignisanteil von 2 Prozent erreicht "immer nein" eine Genauigkeit von
+  98 Prozent, siehe [Klassifikationsgüte](klassifikationsguete.qmd).
+- **Die Schwelle 0.5 ist eine Konvention, keine Vorgabe.** Sie ergibt sich aus
+  der Annahme, dass beide Fehlerarten gleich teuer sind, siehe Beispiel 4.
+- **Vollständige Trennung ist kein gutes Zeichen.** Sie sieht nach einem
+  perfekten Modell aus und bedeutet, dass keine Schätzung existiert.
+- **Kausalität folgt auch hier nicht aus dem Modell.** Ein Koeffizient
+  beschreibt einen Zusammenhang bei konstant gehaltenen anderen Grössen, nicht
+  eine Wirkung.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> [Prädiktor] hängt mit [Ereignis] zusammen: Odds Ratio [Wert],
+> 95-Prozent-Konfidenzintervall [unten] bis [oben], p = [p]. Bei einer
+> Ausgangswahrscheinlichkeit von [p1] entspricht das [p2], also einer Änderung
+> um [Prozentpunkte] Prozentpunkte (n = [n], davon [Anzahl] Ereignisse).
+
+Genannt werden: Anzahl Beobachtungen **und** Anzahl Ereignisse, alle
+Koeffizienten als Odds Ratios mit Intervall, ein Anpassungsmass, und
+mindestens eine Übersetzung in Wahrscheinlichkeiten für eine konkrete
+Ausgangslage. Ohne diese Übersetzung bleibt das Ergebnis für die meisten Leser
+unzugänglich.
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt der logistischen Regression |
+|---|---|
+| [Multiple lineare Regression](multiple-lineare-regression.qmd) | Zielgrösse metrisch |
+| [Chi-Quadrat-Test](../tests/chi-quadrat-tests.qmd) | nur zwei kategoriale Merkmale, keine weiteren Einflussgrössen |
+| [Klassifikationsgüte](klassifikationsguete.qmd) | die Bewertung der Vorhersagen steht im Vordergrund |
+| [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) | es interessiert, **wann** das Ereignis eintritt, und es gibt zensierte Fälle |
+| Poisson-Regression | die Zielgrösse ist eine Anzahl statt ja oder nein |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Ausfall aus Laufzeit und Wartung
+
+#### Frage und Datenlage
+
+Von 200 Anlagen ist bekannt, ob sie im Beobachtungsjahr ausgefallen sind, wie
+viele Jahre sie schon laufen und ob sie regelmässig gewartet werden. Die Frage
+lautet: Wie wirken Laufzeit und Wartungsart auf die Ausfallwahrscheinlichkeit?
+
+#### Datenüberblick
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-log-ueberblick-r
+table(anlagen$wartung, anlagen$ausfall)
+
+round(c(anzahl = nrow(anlagen), ausfaelle = sum(anlagen$ausfall),
+        anteil = mean(anlagen$ausfall)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: b1-log-ueberblick-py
+print(pd.crosstab(anlagen["wartung"], anlagen["ausfall"]))
+print("n =", len(anlagen), " Ausfälle =", int(anlagen["ausfall"].sum()),
+      " Anteil =", round(anlagen["ausfall"].mean(), 3))
+```
+
+:::
+
+96 der 200 Anlagen sind ausgefallen, also 48 Prozent. Bei regelmässiger Wartung
+sind es 36 von 100, bei unregelmässiger 60 von 100. Damit ist die Faustregel
+"mindestens zehn Ereignisse je Koeffizient" mit grossem Abstand erfüllt: Zwei
+Koeffizienten stehen 96 Ereignissen gegenüber.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-log-rechnung-r
+modell <- glm(ausfall ~ laufzeit + wartung, family = binomial, data = anlagen)
+summary(modell)
+
+# Odds Ratios mit Wald-Intervall
+round(exp(cbind(OR = coef(modell), confint.default(modell))), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b1-log-rechnung-py
+modell = smf.logit("ausfall ~ laufzeit + C(wartung)", data=anlagen).fit(disp=0)
+print(modell.summary())
+
+odds = pd.DataFrame({
+    "OR": np.exp(modell.params),
+    "unten": np.exp(modell.conf_int()[0]),
+    "oben": np.exp(modell.conf_int()[1]),
+})
+print(odds.round(4))
+print("Devianzen:", round(-2 * modell.llnull, 3), "und",
+      round(-2 * modell.llf, 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `(Intercept)` Estimate | -3.3224 | Logit bei Laufzeit null und regelmässiger Wartung | Auf der Logit-Skala nicht deutbar. Exponenziert ergibt sich eine Chance von 0.036, also rund 1 zu 28. Eine Laufzeit von null kommt in den Daten nicht vor, der Wert ist also ohnehin eine Extrapolation. |
+| `laufzeit` Estimate | 0.4230 | Änderung des Logits je Betriebsjahr | Positiv, also steigt die Ausfallwahrscheinlichkeit mit der Laufzeit. Die Grösse ist auf dieser Skala nicht greifbar. |
+| `laufzeit` Std. Error | 0.0709 | | |
+| `laufzeit` z value | 5.963 | Estimate durch Std. Error | Heisst z und nicht t, weil die Verteilung nur näherungsweise normal ist. |
+| `laufzeit` Pr(>&#124;z&#124;) | < 0.001 | | |
+| `wartungunregelmaessig` Estimate | 1.3294 | Änderung des Logits gegenüber regelmässiger Wartung | Die Referenzstufe `regelmaessig` erscheint nicht in der Ausgabe; sie ist alphabetisch die erste. |
+| Odds Ratio `laufzeit` | 1.5266 | Faktor je Betriebsjahr | Die zentrale Zahl: Jedes zusätzliche Betriebsjahr multipliziert die **Chance** eines Ausfalls mit 1.53, erhöht sie also um 53 Prozent. |
+| Intervall `laufzeit` | 1.3284 bis 1.7543 | | Es enthält die 1 nicht, der Effekt ist also nachgewiesen. Die 1 spielt bei Odds Ratios die Rolle, die bei linearen Koeffizienten die 0 hat. |
+| Odds Ratio `wartung` | 3.7789 | Faktor für unregelmässige Wartung | Unregelmässig gewartete Anlagen haben eine 3.78 mal so hohe Ausfallchance wie regelmässig gewartete gleicher Laufzeit. |
+| Intervall `wartung` | 1.9205 bis 7.4358 | | Deutlich breiter als beim Laufzeiteffekt. Bei Odds Ratios ist das Intervall immer unsymmetrisch, weil auf der Logit-Skala symmetrisch gerechnet und dann exponenziert wird. |
+| `Null deviance` | 276.94 auf 199 df | Modell ohne Prädiktoren | |
+| `Residual deviance` | 215.60 auf 197 df | angepasstes Modell | Die Differenz von 61.34 ist der Gewinn durch die beiden Prädiktoren. Sie wird gegen eine Chi-Quadrat-Verteilung mit 2 Freiheitsgraden geprüft: p = 4.8e-14. |
+| `AIC` | 221.60 | für Modellvergleiche | Residual deviance plus zweimal die Anzahl Parameter. |
+| `Pseudo R-squ.` (nur Python) | 0.2215 | McFadden | **Nicht** wie R² zu lesen. Werte zwischen 0.2 und 0.4 gelten bereits als gute Anpassung. |
+
+#### Interpretation und Ergebnissatz
+
+Beide Effekte sind nachgewiesen, und beide lassen sich als Faktor auf die
+Chance beziffern. Was daraus für die Praxis folgt, zeigt aber erst die
+Übersetzung in Wahrscheinlichkeiten, und die steht in Beispiel 2.
+
+> Von 200 Anlagen fielen 96 aus (48 Prozent). Laufzeit und Wartungsart hängen
+> beide mit der Ausfallwahrscheinlichkeit zusammen (Likelihood-Quotienten-Test
+> über beide Prädiktoren: Devianzdifferenz 61.34 bei 2 Freiheitsgraden,
+> p < 0.001). Je Betriebsjahr steigt die Ausfallchance um den Faktor 1.53
+> (95-Prozent-Konfidenzintervall 1.33 bis 1.75, p < 0.001). Unregelmässig
+> gewartete Anlagen haben bei gleicher Laufzeit eine 3.78 mal so hohe
+> Ausfallchance (1.92 bis 7.44, p < 0.001). McFaddens Pseudo-R² beträgt 0.22.
+
+### Beispiel 2: Dasselbe Odds Ratio, verschiedene Wahrscheinlichkeiten
+
+#### Frage und Datenlage
+
+Das Odds Ratio für unregelmässige Wartung beträgt 3.78, unabhängig von der
+Laufzeit. Die Frage lautet: Um wie viele Prozentpunkte steigt dadurch die
+Ausfallwahrscheinlichkeit?
+
+Die Antwort ist: Das kommt darauf an. Und genau das ist der Punkt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-log-rechnung-r
+faelle <- expand.grid(
+  laufzeit = c(3, 6, 9),
+  wartung = c("regelmaessig", "unregelmaessig")
+)
+faelle$p <- round(predict(modell, newdata = faelle, type = "response"), 4)
+
+breit <- reshape(faelle, idvar = "laufzeit", timevar = "wartung",
+                 direction = "wide")
+names(breit) <- c("laufzeit", "p_regelmaessig", "p_unregelmaessig")
+breit$differenz_punkte <- round(
+  100 * (breit$p_unregelmaessig - breit$p_regelmaessig), 1)
+breit
+```
+
+##### Python
+
+```{python}
+#| label: b2-log-rechnung-py
+faelle = pd.DataFrame([(lz, w) for w in ("regelmaessig", "unregelmaessig")
+                       for lz in (3, 6, 9)],
+                      columns=["laufzeit", "wartung"])
+faelle["p"] = modell.predict(faelle).round(4)
+
+breit = faelle.pivot(index="laufzeit", columns="wartung", values="p")
+breit["differenz_punkte"] = (100 * (breit["unregelmaessig"]
+                                    - breit["regelmaessig"])).round(1)
+print(breit)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Laufzeit | p bei regelmässiger Wartung | p bei unregelmässiger | Differenz in Prozentpunkten |
+|---|---|---|---|
+| 3 Jahre | 0.114 | 0.327 | +21.3 |
+| 6 Jahre | 0.313 | 0.633 | +32.0 |
+| 9 Jahre | 0.619 | 0.860 | +24.1 |
+
+In allen drei Zeilen ist das Odds Ratio exakt 3.78. Nachrechnen für die erste
+Zeile: Die Chance steigt von 0.114/0.886 = 0.129 auf 0.327/0.673 = 0.486, und
+0.486 geteilt durch 0.129 ergibt 3.78.
+
+Die Änderung in Prozentpunkten schwankt dagegen zwischen 21 und 32. Sie ist am
+grössten in der Mitte, wo die Ausgangswahrscheinlichkeit nahe 50 Prozent liegt,
+und wird an beiden Rändern kleiner. Das ist keine Eigenheit dieser Daten,
+sondern folgt aus der Form der logistischen Kurve: Sie ist in der Mitte am
+steilsten und flacht zu beiden Seiten ab.
+
+::: {.note-box}
+**Warum das für den Bericht entscheidend ist.** Der Satz "unregelmässige
+Wartung verdreifacht das Ausfallrisiko" ist bei einer Ausgangswahrscheinlichkeit
+von 62 Prozent schlicht unmöglich: Das Dreifache wäre über 100 Prozent. Er
+verwechselt Chance mit Wahrscheinlichkeit.
+
+Korrekt ist entweder "die Ausfallchance ist 3.78 mal so hoch" oder eine Aussage
+in Prozentpunkten **für eine genannte Ausgangslage**: "Bei einer sechs Jahre
+alten Anlage steigt die Ausfallwahrscheinlichkeit von 31 auf 63 Prozent."
+:::
+
+#### Interpretation und Ergebnissatz
+
+Für einen Bericht gehören beide Angaben dazu: das Odds Ratio, weil es vom
+Ausgangspunkt unabhängig und damit übertragbar ist, und mindestens eine
+Übersetzung in Wahrscheinlichkeiten für eine typische Ausgangslage, weil erst
+sie greifbar wird.
+
+> Unregelmässige Wartung erhöht die Ausfallchance um den Faktor 3.78 (95-Prozent-
+> Konfidenzintervall 1.92 bis 7.44). Für eine sechs Jahre alte Anlage entspricht
+> das einer Ausfallwahrscheinlichkeit von 63 statt 31 Prozent, also 32
+> Prozentpunkten mehr; für eine drei Jahre alte Anlage 33 statt 11 Prozent, also
+> 21 Prozentpunkten mehr.
+
+### Beispiel 3: Vollständige Trennung
+
+#### Frage und Datenlage
+
+Sechzehn Bauteile, geprüft wird der Zusammenhang zwischen Prüftemperatur und
+Ausfall. In diesen Daten fällt **jedes** Bauteil ab 82 Grad aus und keines
+darunter. Der Prädiktor trennt die beiden Gruppen perfekt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-log-rechnung-r
+#| warning: true
+bauteile <- data.frame(
+  temperatur = c(62, 65, 68, 70, 72, 74, 76, 78, 82, 84, 86, 88, 90, 92, 95, 98),
+  ausfall    = c(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1)
+)
+
+getrennt <- glm(ausfall ~ temperatur, family = binomial, data = bauteile)
+summary(getrennt)
+```
+
+##### Python
+
+```{python}
+#| label: b3-log-rechnung-py
+import warnings
+
+bauteile = pd.DataFrame({
+    "temperatur": [62, 65, 68, 70, 72, 74, 76, 78,
+                   82, 84, 86, 88, 90, 92, 95, 98],
+    "ausfall": [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+})
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    getrennt = smf.logit("ausfall ~ temperatur", data=bauteile).fit(disp=0)
+print(getrennt.summary().tables[1])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Was zu sehen ist | Wie es zu lesen ist |
+|---|---|---|
+| `Estimate` für `temperatur` | ein sehr grosser Wert | Er wächst mit jeder Iteration weiter; das Verfahren strebt gegen unendlich. |
+| `Std. Error` | ein extrem grosser Wert, oft in der Grössenordnung von Tausenden | Das eigentliche Warnzeichen. Ein Standardfehler, der um Grössenordnungen über dem Schätzwert liegt, ist keine Unsicherheit, sondern ein Rechenabbruch. |
+| `Pr(>&#124;z&#124;)` | nahe 1 | Absurd: Der Prädiktor sagt die Zielgrösse perfekt vorher und ist trotzdem "nicht signifikant". |
+| `Residual deviance` | praktisch null | Das Modell passt perfekt, weil es die Daten auswendig lernt. |
+| Warnung in R | `fitted probabilities numerically 0 or 1 occurred` | Der eindeutige Hinweis. |
+| `Number of Fisher Scoring iterations` | 25, das Maximum | Das Verfahren ist nicht konvergiert, sondern abgebrochen worden. |
+
+::: {.note-box}
+**Die konkreten Zahlen sind hier bedeutungslos**, und zwar buchstäblich: Sie
+hängen davon ab, wann das Optimierungsverfahren abbricht, und unterscheiden
+sich deshalb zwischen R und Python und sogar zwischen Versionen desselben
+Pakets. Genau daran erkennt man das Problem. Bei einer normalen Schätzung
+liefern beide Sprachen dieselben Werte, wie Beispiel 1 zeigt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Es gibt keine Maximum-Likelihood-Schätzung. Jeder noch so grosse Koeffizient
+wird durch einen grösseren verbessert, weil sich die vorhergesagten
+Wahrscheinlichkeiten dadurch weiter an 0 und 1 annähern. Das Verfahren
+konvergiert nicht, es bricht ab.
+
+Was zu tun ist:
+
+| Vorgehen | Wann es passt |
+|---|---|
+| Firth-Korrektur (in R `logistf`, in Python `statsmodels` mit Penalisierung) | der Standardweg; sie liefert endliche Schätzwerte und brauchbare Intervalle |
+| Den trennenden Prädiktor weglassen | wenn er inhaltlich verzichtbar ist |
+| Kategorien zusammenfassen | wenn die Trennung von einer dünn besetzten Stufe kommt |
+| Mehr Daten erheben | Trennung tritt fast nur bei kleinen Stichproben auf |
+
+Nicht zulässig ist, das Ergebnis als "perfektes Modell" zu berichten. Das
+Modell hat nichts gelernt, es hat die sechzehn Fälle auswendig gelernt.
+
+> Die Prüftemperatur trennt ausgefallene und intakte Bauteile in diesen Daten
+> vollständig (alle Ausfälle ab 82 Grad, kein Ausfall darunter). Eine
+> logistische Regression liefert deshalb keine gültige Schätzung; berichtet wird
+> stattdessen die Trenngrenze mit dem Hinweis, dass n = 16 für eine Schätzung
+> nicht ausreicht.
+
+### Beispiel 4: Von Wahrscheinlichkeiten zu Entscheidungen
+
+#### Frage und Datenlage
+
+Das Modell aus Beispiel 1 liefert für jede Anlage eine Wahrscheinlichkeit. Für
+eine Entscheidung, etwa "vorsorglich warten oder nicht", braucht es eine
+Schwelle. Die Frage lautet: Welche?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-log-rechnung-r
+p_vorher <- predict(modell, type = "response")
+
+for (schwelle in c(0.3, 0.5, 0.7)) {
+  vorhersage <- as.integer(p_vorher > schwelle)
+  tp <- sum(vorhersage == 1 & anlagen$ausfall == 1)
+  fp <- sum(vorhersage == 1 & anlagen$ausfall == 0)
+  fn <- sum(vorhersage == 0 & anlagen$ausfall == 1)
+  tn <- sum(vorhersage == 0 & anlagen$ausfall == 0)
+  cat(sprintf(
+    "Schwelle %.1f: TP=%3d FP=%3d FN=%3d TN=%3d  Sensitivität=%.3f  Spezifität=%.3f  Genauigkeit=%.3f\n",
+    schwelle, tp, fp, fn, tn, tp / (tp + fn), tn / (tn + fp), (tp + tn) / nrow(anlagen)))
+}
+```
+
+##### Python
+
+```{python}
+#| label: b4-log-rechnung-py
+p_vorher = modell.predict(anlagen)
+tatsaechlich = anlagen["ausfall"].to_numpy()
+
+for schwelle in (0.3, 0.5, 0.7):
+    vorhersage = (p_vorher > schwelle).astype(int)
+    tp = int(((vorhersage == 1) & (tatsaechlich == 1)).sum())
+    fp = int(((vorhersage == 1) & (tatsaechlich == 0)).sum())
+    fn = int(((vorhersage == 0) & (tatsaechlich == 1)).sum())
+    tn = int(((vorhersage == 0) & (tatsaechlich == 0)).sum())
+    print(f"Schwelle {schwelle}: TP={tp:3d} FP={fp:3d} FN={fn:3d} TN={tn:3d}"
+          f"  Sensitivität={tp/(tp+fn):.3f}"
+          f"  Spezifität={tn/(tn+fp):.3f}"
+          f"  Genauigkeit={(tp+tn)/len(anlagen):.3f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schwelle | Richtig erkannte Ausfälle | Fehlalarme | Übersehene Ausfälle | Sensitivität | Spezifität | Genauigkeit |
+|---|---|---|---|---|---|---|
+| 0.3 | 85 | 53 | 11 | 0.885 | 0.490 | 0.680 |
+| 0.5 | 67 | 26 | 29 | 0.698 | 0.750 | 0.725 |
+| 0.7 | 40 | 9 | 56 | 0.417 | 0.913 | 0.675 |
+
+Dasselbe Modell, dieselben Wahrscheinlichkeiten, drei völlig verschiedene
+Entscheidungsverhalten. Bei einer Schwelle von 0.3 werden 85 der 96 Ausfälle
+vorhergesagt, dafür 53 Anlagen unnötig gewartet. Bei 0.7 sinken die Fehlalarme
+auf 9, dafür bleiben 56 Ausfälle unentdeckt.
+
+Bemerkenswert ist die Spalte Genauigkeit: Sie ist bei 0.5 am höchsten und
+unterscheidet sich zwischen 0.3 und 0.7 kaum. Sie ist damit gerade **nicht** das
+Kriterium, an dem sich die Wahl entscheidet.
+
+#### Interpretation und Ergebnissatz
+
+Die Schwelle ergibt sich aus den Kosten der beiden Fehlerarten, nicht aus der
+Statistik. Kostet ein übersehener Ausfall ein Vielfaches einer unnötigen
+Wartung, gehört die Schwelle nach unten. Ist die Wartung teuer und der Ausfall
+verkraftbar, nach oben.
+
+Die Voreinstellung 0.5 unterstellt, dass beide Fehler gleich teuer sind. Das ist
+selten der Fall und noch seltener geprüft.
+
+Zwei Warnungen zum Schluss. Erstens sind diese Kennzahlen an denselben Daten
+gemessen, mit denen das Modell geschätzt wurde; sie fallen deshalb zu gut aus.
+Belastbare Werte braucht getrennte Daten oder Kreuzvalidierung. Zweitens ist die
+Trennschärfe des Modells von der Schwelle unabhängig und wird mit der
+ROC-Kurve und dem AUC beurteilt. Beides steht auf der Seite
+[Klassifikationsgüte](klassifikationsguete.qmd).
+
+> Bei der üblichen Schwelle von 0.5 erkennt das Modell 67 der 96 Ausfälle
+> (Sensitivität 0.70) und stuft 26 der 104 intakten Anlagen falsch ein
+> (Spezifität 0.75). Eine Senkung der Schwelle auf 0.3 erhöht die Sensitivität
+> auf 0.89, verdoppelt aber die Fehlalarme. Die Wahl der Schwelle richtet sich
+> nach dem Kostenverhältnis der beiden Fehlerarten. Alle Kennzahlen sind an den
+> Schätzdaten gemessen und deshalb optimistisch.
+
+::::
+
 ## Verständnisfragen
 
+::: {.quiz}
+Ein Odds Ratio beträgt 3.78. Was folgt für die Wahrscheinlichkeit?
+
+- [x] Das kommt auf die Ausgangswahrscheinlichkeit an ~ Richtig. Das Odds Ratio
+      wirkt auf die Chance, nicht auf die Wahrscheinlichkeit. Bei einer
+      Ausgangswahrscheinlichkeit von 11 Prozent führt es zu 33 Prozent, bei 31
+      Prozent zu 63, bei 62 Prozent zu 86. Die Änderung in Prozentpunkten ist in
+      der Mitte am grössten.
+- [ ] Die Wahrscheinlichkeit ist 3.78 mal so hoch ~ Das wäre ein
+      Risikoverhältnis, und bei einer Ausgangswahrscheinlichkeit über 27 Prozent
+      käme dabei ein Wert über 1 heraus.
+- [ ] Die Wahrscheinlichkeit steigt um 3.78 Prozentpunkte ~ Das Odds Ratio ist
+      ein Faktor, keine Differenz.
+:::
+
+::: {.quiz}
+Ein Koeffizient hat einen Standardfehler von 1279 bei einem Schätzwert von 8.2,
+und R warnt `fitted probabilities numerically 0 or 1 occurred`. Was liegt vor?
+
+- [x] Vollständige Trennung: es existiert keine Schätzung ~ Richtig. Ein
+      Prädiktor trennt die Gruppen perfekt, das Optimierungsverfahren strebt
+      gegen unendlich und bricht ab. Die ausgegebenen Zahlen hängen nur davon
+      ab, wann es abbricht.
+- [ ] Ein besonders starker Effekt ~ Er sieht so aus und ist keiner. Ein
+      Standardfehler, der um Grössenordnungen über dem Schätzwert liegt, ist
+      keine Unsicherheit, sondern ein Rechenabbruch.
+- [ ] Multikollinearität ~ Sie erhöht Standardfehler ebenfalls, aber nicht um
+      diese Grössenordnung und ohne diese Warnung.
+:::
+
+::: {.quiz}
+Ein Modell erreicht ein McFadden-Pseudo-R² von 0.22. Wie ist das einzuordnen?
+
+- [x] Eine gute Anpassung; Werte zwischen 0.2 und 0.4 gelten als solche ~
+      Richtig. Pseudo-R² ist anders konstruiert als R² und erreicht selbst bei
+      sehr guten Modellen selten hohe Werte. Wer es wie ein Bestimmtheitsmass
+      liest, hält jedes logistische Modell für schlecht.
+- [ ] Schlecht, nur 22 Prozent der Streuung sind erklärt ~ Genau diese
+      Übertragung ist der Fehler; Pseudo-R² misst keinen Streuungsanteil.
+- [ ] Nicht beurteilbar ohne Vergleichsmodell ~ Für einen Modellvergleich ist
+      ein Vergleichsmodell nötig, für die Einordnung dieser Zahl nicht.
+:::
+
+::: {.quiz}
+Warum ist die Schwelle 0.5 nicht automatisch die richtige?
+
+- [x] Weil sie unterstellt, dass beide Fehlerarten gleich teuer sind ~ Richtig.
+      Ein übersehener Ausfall und eine unnötige Wartung kosten selten dasselbe.
+      Die Schwelle ist eine betriebswirtschaftliche Entscheidung, keine
+      statistische.
+- [ ] Weil sie die Genauigkeit nicht maximiert ~ In diesem Beispiel tut sie das
+      sogar. Genauigkeit ist nur nicht das entscheidende Kriterium.
+- [ ] Weil sie bei unausgeglichenen Klassen mathematisch unzulässig ist ~
+      Unzulässig ist sie nie, nur oft unpassend.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 4](https://www.statlearning.com/)
+- [R-Dokumentation zu `glm`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/glm.html)
+- [statsmodels: Logit](https://www.statsmodels.org/stable/generated/statsmodels.discrete.discrete_model.Logit.html)
