@@ -585,22 +585,23 @@ for name, reihe in kandidaten.items():
 
 #### Output Zeile für Zeile
 
-| Reihe | ADF p | KPSS p | Urteil |
-|---|---|---|---|
-| weisses Rauschen | **0.000** | 0.100 | stationär, beide einig |
-| mit Trend | 0.939 | **0.010** | nicht stationär, beide einig |
-| Trend differenziert | **0.000** | 0.100 | stationär (aber überdifferenziert, siehe Beispiel 3) |
-| mit Saison | **0.000** | 0.100 | **stationär — und das ist irreführend** |
-| Saison saisonal diff | **0.001** | 0.100 | stationär |
-| Zufallspfad | 0.713 | **0.010** | nicht stationär, beide einig |
-| Zufallspfad diff | **0.000** | 0.100 | stationär |
+| Reihe | ADF p, R | ADF p, Python | KPSS p | Urteil |
+|---|---|---|---|---|
+| weisses Rauschen | 0.010 | 0.000 | 0.100 | stationär, alle einig |
+| **mit Trend** | **0.010** | **0.939** | **0.010** | **hier widersprechen sich R und Python** |
+| Trend differenziert | 0.010 | 0.000 | 0.100 | stationär (aber überdifferenziert, siehe Beispiel 3) |
+| mit Saison | 0.010 | 0.000 | 0.100 | **stationär — und das ist irreführend** |
+| Saison saisonal diff | 0.010 | 0.001 | 0.100 | stationär |
+| Zufallspfad | 0.199 | 0.713 | **0.010** | nicht stationär, alle einig |
+| Zufallspfad diff | 0.010 | 0.000 | 0.100 | stationär |
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
-| **ADF p = 0.000** heisst stationär | Kleiner p-Wert verwirft die Nullhypothese "Einheitswurzel". |
-| **KPSS p = 0.100** heisst stationär | Grosser p-Wert kann die Nullhypothese "stationär" nicht verwerfen. **Umgekehrte Richtung.** |
-| Die Werte 0.100 und 0.010 wiederholen sich | Das sind die Ränder der Tabelle, aus der der KPSS-Test seine p-Werte interpoliert. "0.100" heisst "mindestens 0.1", "0.010" heisst "höchstens 0.01". Beide Programme geben dazu eine Warnung aus. |
-| **Die Saisonreihe gilt beiden Tests als stationär** | Und formal haben sie recht: Eine rein saisonale Reihe hat konstanten Mittelwert über ganze Perioden und keine Einheitswurzel. Für die Modellierung ist sie trotzdem nicht brauchbar — die Saison muss weg. |
+| **kleines ADF p** heisst stationär | Es verwirft die Nullhypothese "Einheitswurzel". |
+| **grosses KPSS p** heisst stationär | Es kann die Nullhypothese "stationär" nicht verwerfen. **Umgekehrte Richtung.** |
+| Die Werte 0.100 und 0.010 wiederholen sich | Das sind die Ränder der Tabellen, aus denen beide Tests ihre p-Werte interpolieren. "0.010" heisst "höchstens 0.01", "0.100" heisst "mindestens 0.1". Die Programme geben dazu eine Warnung aus. R kappt auch die ADF-Werte an diesen Grenzen, weshalb dort so oft genau 0.010 steht. |
+| **Die Reihe mit Trend: R sagt stationär, Python nicht** | Kein Fehler, sondern ein Unterschied in der Voreinstellung. `adf.test()` in R nimmt eine Regression **mit Trendterm** — es prüft also auf Trendstationarität und findet sie hier korrekt. `adfuller()` in Python nimmt voreingestellt nur eine Konstante (`regression="c"`) und sieht den Trend als Nichtstationarität. Mit `regression="ct"` stimmen beide überein. Wer den Test berichtet, nennt die Regressionsvariante dazu. |
+| **Die Saisonreihe gilt allen Tests als stationär** | Und formal haben sie recht: Eine rein saisonale Reihe hat konstanten Mittelwert über ganze Perioden und keine Einheitswurzel. Für die Modellierung ist sie trotzdem nicht brauchbar — die Saison muss weg. |
 
 ::: {.note-box}
 **Die wichtigste Lehre dieses Beispiels** steht in der Zeile "mit Saison": Beide
@@ -614,15 +615,15 @@ man richtig differenziert hat. Deshalb gilt die Rangfolge:
 > **Die Grafik entscheidet, der Test bestätigt.**
 
 Zwei weitere Einschränkungen: Der ADF-Test hat bei kurzen Reihen wenig Schärfe
-und findet eine Einheitswurzel dann nicht, obwohl sie vorliegt. Und beide Tests
-reagieren empfindlich auf die Wahl der Lag-Ordnung — `adf.test()` in R und
-`adfuller()` in Python wählen sie verschieden, weshalb die p-Werte leicht
-auseinanderliegen können.
+und findet eine Einheitswurzel dann nicht, obwohl sie vorliegt. Und die Zeile
+"mit Trend" zeigt, wie stark das Ergebnis an den Voreinstellungen hängt — ein
+weiterer Grund, dem Bild mehr zu trauen als dem p-Wert.
 :::
 
 #### Interpretation und Ergebnissatz
 
-> Die Reihe ist nicht stationär (ADF p = 0.71, KPSS p = 0.01). Nach einfacher
+> Die Reihe ist nicht stationär (ADF p = 0.20 in R beziehungsweise 0.71 in
+> Python, KPSS p = 0.01). Nach einfacher
 > Differenzenbildung sprechen beide Tests für Stationarität (ADF p < .001,
 > KPSS p > 0.1), und die ACF der differenzierten Reihe zeigt keine
 > Autokorrelation ausserhalb der Konfidenzgrenzen.
@@ -702,7 +703,7 @@ print("verlorene Werte:", len(mit_saison) - len(saison_diff))
 | | k=1 | k=6 | k=12 | k=24 |
 |---|---|---|---|---|
 | vorher | 0.708 | **-0.800** | **0.729** | **0.629** |
-| nachher | -0.076 | 0.063 | **-0.390** | -0.058 |
+| nachher | -0.076 | -0.044 | **-0.390** | -0.052 |
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|

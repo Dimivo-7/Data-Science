@@ -257,14 +257,14 @@ print(pd.DataFrame({
 
 | Jahr | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
 |---|---|---|---|---|---|---|
-| Mittel | rund 526 | 574 | 622 | 670 | 718 | 766 |
-| Spannweite | rund 155 | 155 | 155 | 155 | 155 | 155 |
+| Mittel | 525.8 | 582.4 | 621.1 | 670.2 | 725.0 | 775.8 |
+| Spannweite | 154 | 187 | 141 | 149 | 147 | 105 |
 
 | Frage | Antwort aus dem Bild | Woran |
 |---|---|---|
-| **Trend?** | Ja, steigend | Der Zeitplot steigt über sechs Jahre um rund 290 Einheiten; die Jahresmittel wachsen gleichmässig um etwa 48 je Jahr, also 4 je Monat. |
+| **Trend?** | Ja, steigend | Der Zeitplot steigt über sechs Jahre um rund 250 Einheiten; die Jahresmittel wachsen gleichmässig um etwa 50 je Jahr, also gut 4 je Monat. |
 | **Saison?** | Ja, mit Jahresperiode | Im Saisonplot liegen alle sechs Linien **parallel** übereinander: dieselbe Form, nur nach oben verschoben. Das ist die klarste Art, Saisonalität zu sehen — im Zeitplot verdeckt der Trend sie leicht. |
-| **Additiv oder multiplikativ?** | Additiv | Die Spannweite je Jahr bleibt konstant, während das Mittel um 45 Prozent steigt. Bei multiplikativer Struktur müsste sie mitwachsen (Beispiel 4). |
+| **Additiv oder multiplikativ?** | Additiv | Das Mittel steigt um 48 Prozent, die Spannweite schwankt dabei ohne Richtung um 150 herum (154, 187, 141, 149, 147, 105). Bei multiplikativer Struktur müsste sie **mitwachsen** — in Beispiel 4 tut sie das, von 179 auf 284. |
 | **Ausreisser oder Brüche?** | Keine | Kein einzelner Punkt fällt aus dem Muster, kein Niveausprung. |
 
 ::: {.note-box}
@@ -359,13 +359,17 @@ Die geschätzte Saisonfigur gegen die eingebauten Werte:
 | eingebaut | 51.7 | 64.5 | 60.0 | 39.5 | 8.3 | -25.0 | -51.7 | -64.5 | -60.0 | -39.5 | -8.3 | 25.0 |
 | Differenz | -5.2 | **11.0** | 6.1 | 2.7 | **-9.5** | 0.3 | -7.6 | **-8.4** | 2.3 | 1.6 | 7.5 | -0.8 |
 
+Die Schwankung der Spannweite ist selbst lehrreich: Bei nur zwölf Werten je Jahr
+ist der Abstand zwischen Maximum und Minimum eine sehr unruhige Kennzahl. Was
+zählt, ist die **Richtung** über die Jahre, nicht der einzelne Wert.
+
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
-| Trend bei $t = 13$ | **559.62**, von Hand wie aus der Funktion | Das zentrierte gleitende Mittel über 13 Werte mit halbem Gewicht an den Enden. Die 13 Werte reichen von Juli 2020 bis Juli 2021 — der Trendwert für Januar 2021 nutzt also ein halbes Jahr Zukunft. |
+| Trend bei $t = 13$ | **559.625**, von Hand wie aus der Funktion | Das zentrierte gleitende Mittel über 13 Werte mit halbem Gewicht an den Enden. Die 13 Werte reichen von Juli 2020 bis Juli 2021 — der Trendwert für Januar 2021 nutzt also ein halbes Jahr Zukunft. |
 | fehlende Trendwerte | **12** | Sechs am Anfang, sechs am Ende. Bei einer Periode von 12 fehlt an jedem Rand eine halbe Periode. **Deshalb taugt `decompose()` nicht zur Vorhersage** — für den aktuellsten Monat gibt es keinen Trend. |
 | Summe der Saisonfigur | **0.000** | Per Konstruktion. Die Figur wird so verschoben, dass sie sich über ein Jahr aufhebt; das Niveau steckt vollständig im Trend. |
 | Abweichungen der Figur | bis zu **11 Einheiten** | Die geschätzte Figur trifft die eingebaute nicht genau — bei sechs Wiederholungen und einem Rest mit Streuung 20 ist der Standardfehler je Monat etwa $20/\sqrt{6} = 8.2$. Die Abweichungen liegen in dieser Grössenordnung. |
-| Rest, Standardabweichung | **20.69** | Sehr nahe an der eingebauten 20. Die Zerlegung hat also im Wesentlichen alles gefunden, was es zu finden gab. |
+| Rest, Standardabweichung | **20.685** | Sehr nahe an der eingebauten 20. Die Zerlegung hat also im Wesentlichen alles gefunden, was es zu finden gab. |
 
 ::: {.note-box}
 **Die Abweichungen in der Saisonfigur sind kein Fehler des Verfahrens, sondern
@@ -484,20 +488,21 @@ Die Spannweite der geschätzten Saisonfigur, Jahr für Jahr:
 | Jahr | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
 |---|---|---|---|---|---|---|---|---|
 | `decompose` | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 |
-| **STL** | 96.6 | 92.9 | 105.6 | 115.4 | 120.8 | 133.9 | 164.0 | **193.8** |
+| **STL, R** | 106.7 | 107.7 | 110.3 | 115.1 | 117.3 | 130.6 | 136.8 | **140.1** |
+| **STL, Python** | 96.6 | 92.9 | 105.6 | 115.4 | 120.8 | 133.9 | 164.0 | **193.8** |
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
 | `decompose`: achtmal **111.3** | | Nicht ähnlich, sondern **identisch** — die Figur wird einmal geschätzt und in jedem Jahr wiederholt. Der Wert ist der Mittelwert über acht Jahre und beschreibt kein einziges davon richtig. |
-| STL: 96.6 wachsend auf 193.8 | fast eine Verdoppelung | Das Verfahren folgt der tatsächlichen Entwicklung. |
-| Rest sd `decompose` | **21.24** | |
-| Rest sd STL | **11.17** | Fast eine Halbierung. Was `decompose()` nicht in die Saison stecken kann, landet im Rest — dort steht also Struktur, die keine sein sollte. |
+| STL: von rund 100 auf 140 bis 194 wachsend | | Das Verfahren folgt der tatsächlichen Entwicklung. |
+| R und Python weichen dabei ab | 140.1 gegen 193.8 im letzten Jahr | Beide verwenden ein Glättungsfenster von 7 für die Saison, aber verschiedene Voreinstellungen für die inneren Iterationen und die Trendglättung. Das Fenster steuert, **wie schnell** sich die Figur ändern darf — R glättet hier stärker. Wer STL berichtet, nennt Fensterbreite und Umgebung dazu. |
+| Rest sd `decompose` | **21.24** in beiden | |
+| Rest sd STL | **16.81** in R, **11.17** in Python | In beiden Fällen deutlich kleiner. Was `decompose()` nicht in die Saison stecken kann, landet im Rest — dort steht also Struktur, die keine sein sollte. |
 
 Damit ist auch die Diagnose beschrieben: **Ein Rest, dessen Schwankungsbreite sich
 über die Jahre systematisch ändert, ist das Erkennungszeichen einer
-Saisonfigur, die nicht mehr passt.** Im Beispiel liegt der mittlere Betrag des
-Rests bei `decompose()` 2022 bei 8.9 und 2025 bei 27.2 — bei STL bleibt er
-durchgehend zwischen 3 und 12.
+Saisonfigur, die nicht mehr passt.** Bei `decompose()` wächst der Betrag des
+Rests gegen Ende der Reihe deutlich an, bei STL bleibt er ungefähr gleich.
 
 ::: {.note-box}
 **Was STL zusätzlich kann und was es kostet.** STL glättet Trend und Saison
@@ -513,10 +518,10 @@ zudem heruntergewichtet, statt die Figur zu verbiegen.
 
 #### Interpretation und Ergebnissatz
 
-> Die Saisonamplitude wächst über den Beobachtungszeitraum von rund 97 auf 194
-> Einheiten. Eine klassische Zerlegung mit starrer Saisonfigur bildet das nicht
-> ab und verschiebt die Differenz in den Rest (Standardabweichung 21.2 gegenüber
-> 11.2 bei STL); berichtet wird die STL-Zerlegung.
+> Die Saisonamplitude wächst über den Beobachtungszeitraum um rund 40 Prozent.
+> Eine klassische Zerlegung mit starrer Saisonfigur bildet das nicht ab und
+> verschiebt die Differenz in den Rest (Standardabweichung 21.2 gegenüber 16.8
+> bei STL mit `s.window = 7`); berichtet wird die STL-Zerlegung.
 
 ### Beispiel 4: Multiplikativ und der Logarithmus
 
@@ -613,12 +618,12 @@ Spannweite je Jahr:
 | Jahr | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
 |---|---|---|---|---|---|---|
 | roh | 179 | 159 | 218 | 225 | 218 | **284** |
-| logarithmiert | 0.3 | 0.3 | 0.3 | 0.3 | 0.2 | **0.3** |
+| logarithmiert | 0.320 | 0.254 | 0.295 | 0.274 | 0.226 | **0.262** |
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
 | Roh: 179 wächst auf 284 | Die Zacken werden mit dem Niveau höher — das Erkennungszeichen multiplikativer Struktur. Der Umsatz steigt im selben Zeitraum von rund 520 auf 1200, also um den Faktor 2.3; die Spannweite um den Faktor 1.6. |
-| Logarithmiert: durchgehend **0.3** | Nach dem Logarithmieren ist die Schwankungsbreite konstant. Genau das ist der Zweck: Aus einem konstanten **Verhältnis** wird eine konstante **Differenz**. |
+| Logarithmiert: zwischen **0.226 und 0.320**, ohne Richtung | Nach dem Logarithmieren schwankt die Breite nur noch zufällig, statt zu wachsen. Genau das ist der Zweck: Aus einem konstanten **Verhältnis** wird eine konstante **Differenz**. |
 | Rest sd additiv: 23.01 | Auf der Skala der Rohdaten. |
 | Rest sd multiplikativ: 0.0227 | Ein Faktor, kein Betrag: Der Rest schwankt um 2.3 Prozent um den Wert 1. |
 
@@ -643,8 +648,8 @@ es eine Korrektur um $e^{\sigma^2/2}$. Und Nullwerte sind nicht logarithmierbar.
 #### Interpretation und Ergebnissatz
 
 > Die Saisonschwankung wächst mit dem Niveau (Spannweite je Jahr von 179 auf 284
-> bei einem Anstieg des Niveaus um den Faktor 2.3); nach Logarithmierung ist sie
-> mit rund 0.3 konstant. Modelliert wird deshalb die logarithmierte Reihe mit
+> bei einem Anstieg des Niveaus um den Faktor 2.3); nach Logarithmierung schwankt
+> sie ohne Richtung zwischen 0.23 und 0.32. Modelliert wird deshalb die logarithmierte Reihe mit
 > additiver Zerlegung.
 
 ### Beispiel 5: Zwei Reihen mit Trend
