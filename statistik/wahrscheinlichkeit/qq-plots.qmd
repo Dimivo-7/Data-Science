@@ -14,7 +14,29 @@ order: 70
 library(ggplot2)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(42)
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# Stichproben aus verschiedenen Verteilungen, alle aus demselben Strom
+# gleichverteilter Zahlen ueber die Quantilfunktion
+stichprobe <- function(saat, art, n = 200) {
+  u <- lehmer(saat, n)
+  switch(art,
+    normal = qnorm(u),
+    rechtsschief = -log(u),
+    linksschief = log(u),
+    schwere_raender = qt(u, df = 3),
+    leichte_raender = 25 + 50 * u
+  )
+}
 ```
 
 ```{python}
@@ -27,16 +49,36 @@ from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def stichprobe(saat, art, n=200):
+    u = lehmer(saat, n)
+    return {"normal": stats.norm.ppf(u),
+            "rechtsschief": -np.log(u),
+            "linksschief": np.log(u),
+            "schwere_raender": stats.t.ppf(u, df=3),
+            "leichte_raender": 25 + 50 * u}[art]
 ```
 
 ## Kernideen
 
-- Der QQ-Plot vergleicht beobachtete Quantile mit theoretischen
-- Punkte auf der Geraden bedeuten Übereinstimmung mit der Referenzverteilung
-- Abweichungen an den Enden sind üblich, Bögen und S-Formen nicht
-- Er zeigt die Art der Abweichung, ein Test nur ihr Vorhandensein
-- Bei grossem n schlägt jeder Normalitätstest an, der Plot bleibt lesbar
+- Der QQ-Plot vergleicht **beobachtete** Quantile mit **theoretischen**.
+- Punkte auf der Geraden bedeuten Übereinstimmung mit der Referenzverteilung.
+- Er zeigt die **Art** der Abweichung; ein Test nur ihr Vorhandensein.
+- Die vier Muster: Krümmung heisst Schiefe, S-Form heisst schwere oder leichte
+  Ränder.
+- Abweichungen an den Enden sind bei kleinen Stichproben normal.
+- Bei grossem $n$ schlägt jeder Normalitätstest an, der Plot bleibt lesbar.
+- Die Referenzverteilung muss nicht die Normalverteilung sein.
 
 ## Erklärung
 
@@ -48,79 +90,610 @@ zugehörigen Tests stehen unter
 [Normalitätstests](../tests/normalitaetstests.qmd).
 :::
 
-### Der QQ-Plot
+### Wie ein QQ-Plot entsteht
 
 Ob eine Verteilungsannahme passt, lässt sich am Histogramm nur grob beurteilen,
-weil dessen Aussehen von der Klassenzahl abhängt. Der QQ-Plot ist präziser: Er
-trägt die beobachteten Quantile gegen die theoretisch erwarteten auf. Liegen
-die Punkte auf einer Geraden, passt die Annahme.
+weil dessen Aussehen von der Klassenzahl abhängt. Der QQ-Plot ist präziser und
+entsteht in drei Schritten:
 
-Der eigentliche Nutzen liegt darin, dass Abweichungen lesbar sind:
+1. Die $n$ Beobachtungen **sortieren**. Der kleinste Wert ist das empirische
+   $\tfrac{0.5}{n}$-Quantil, der zweitkleinste das $\tfrac{1.5}{n}$-Quantil und
+   so weiter.
+2. Zu jeder dieser Positionen das **theoretische** Quantil der Referenzverteilung
+   berechnen.
+3. Beides gegeneinander auftragen.
 
-::: panel-tabset
-## R
-
-```{r}
-#| label: fig-qq-r
-#| fig-cap: "Drei Stichproben im QQ-Plot: normal, rechtsschief, schwere Ränder."
-#| fig-height: 3.2
-par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
-
-qqnorm(rnorm(200), main = "normalverteilt"); qqline(rnorm(200))
-qqnorm(rexp(200), main = "rechtsschief"); qqline(rexp(200))
-qqnorm(rt(200, df = 3), main = "schwere Ränder"); qqline(rt(200, df = 3))
-```
-
-## Python
-
-```{python}
-#| label: fig-qq-py
-#| fig-cap: "Dieselben drei Muster mit scipy."
-fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2))
-proben = [("normalverteilt", rng.normal(size=200)),
-          ("rechtsschief", rng.exponential(size=200)),
-          ("schwere Ränder", rng.standard_t(df=3, size=200))]
-
-for ax, (titel, daten) in zip(achsen, proben):
-    stats.probplot(daten, dist="norm", plot=ax)
-    ax.set_title(titel)
-    ax.get_lines()[0].set_markersize(3)
-fig.tight_layout()
-plt.show()
-```
-:::
-
-Die Muster lassen sich merken. Eine durchgehende Krümmung zeigt Schiefe. Ein
-Abknicken an beiden Enden nach oben und unten zeigt schwerere Ränder als die
-Normalverteilung, also mehr extreme Werte als erwartet. Ein Abflachen an den
-Enden zeigt das Gegenteil.
+Passt die Annahme, liegen die Punkte auf einer Geraden — und zwar auf der mit
+Steigung $\sigma$ und Achsenabschnitt $\mu$. **Die Gerade wird nicht angepasst,
+sie folgt aus den Daten.**
 
 ::: {.note-box}
-Bei kleinen Stichproben streuen die Punkte an den Rändern immer stärker, weil
-dort die wenigsten Beobachtungen liegen. Leichte Abweichungen an den Enden sind
-normal und kein Beleg gegen die Annahme.
+**Warum $\tfrac{i - 0.5}{n}$ und nicht $\tfrac{i}{n}$?** Weil sonst der grösste
+Wert das 100-Prozent-Quantil wäre, und das ist bei einer unbegrenzten Verteilung
+unendlich. Es gibt mehrere gebräuchliche Korrekturen; R verwendet bei kleinen
+Stichproben $\tfrac{i - 3/8}{n + 1/4}$, `scipy` dieselbe Formel. Die Unterschiede
+sind in der Mitte unsichtbar und an den Rändern klein.
 :::
 
-::: {.quiz}
-Eine Dichtefunktion nimmt an einer Stelle den Wert 10 an. Ist das möglich?
+### Die vier Muster
 
-- [x] Ja, denn die Dichte ist keine Wahrscheinlichkeit ~ Richtig. Sie gibt
-      Wahrscheinlichkeit pro Einheit an. Bei einer Gleichverteilung zwischen 0
-      und 0.1 muss die Dichte 10 betragen, damit die Fläche eins ergibt.
-      Beschränkt ist die Fläche, nicht die Höhe.
-- [ ] Nein, Wahrscheinlichkeiten liegen zwischen null und eins ~ Das gilt für
-      Wahrscheinlichkeiten, und eine Dichte ist keine.
-- [ ] Nur bei diskreten Verteilungen ~ Dort gibt es gar keine Dichte, sondern
-      eine Wahrscheinlichkeitsfunktion, und deren Werte sind tatsächlich
-      begrenzt.
+| Bild | Bedeutung | Was in den Daten steckt |
+|---|---|---|
+| Punkte **auf** der Geraden | Annahme passt | |
+| durchgehende **Krümmung nach oben** (links unter, rechts über der Linie in einem Bogen) | **rechtsschief** | ein langer Rand nach rechts |
+| durchgehende **Krümmung nach unten** | **linksschief** | ein langer Rand nach links |
+| **S-Form**: links unter, rechts über der Geraden | **schwerere Ränder** | mehr extreme Werte als erwartet |
+| **umgekehrte S-Form**: links über, rechts unter | **leichtere Ränder** | weniger extreme Werte, etwa bei begrenzten Skalen |
+
+Der Unterschied zwischen Krümmung und S-Form ist der entscheidende: Eine
+Krümmung geht **in eine Richtung**, eine S-Form knickt an **beiden** Enden in
+entgegengesetzte Richtungen ab.
+
+### QQ-Plot oder Test?
+
+| | QQ-Plot | Normalitätstest |
+|---|---|---|
+| Sagt | **wie** abgewichen wird | **ob** abgewichen wird |
+| Bei kleinem $n$ | schwer zu lesen | findet fast nichts |
+| Bei grossem $n$ | bleibt lesbar | schlägt immer an |
+| Braucht | ein Urteil | eine Schwelle |
+
+Die praktische Empfehlung ist eindeutig: **Der Plot entscheidet, der Test
+ergänzt.** Der Grund steht in Beispiel 4.
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Ein QQ-Plot von Hand
+
+#### Frage und Datenlage
+
+Zehn Messwerte. Der QQ-Plot wird Schritt für Schritt gebaut, damit klar wird,
+was auf den Achsen steht.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-qq-r
+#| fig-cap: "Beispiel 1: links der selbst gebaute QQ-Plot, rechts der von qqnorm()."
+#| fig-height: 3.2
+x <- round(qnorm(lehmer(1122, 10), mean = 20, sd = 4), 1)
+sortiert <- sort(x)
+
+n <- length(x)
+position <- (seq_len(n) - 0.5) / n      # empirische Quantilstufen
+theoretisch <- qnorm(position)          # theoretische Quantile
+
+round(data.frame(rang = seq_len(n), wert = sortiert,
+                 position = round(position, 4),
+                 theoretisch = round(theoretisch, 4)), 4)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(theoretisch, sortiert, pch = 16, main = "von Hand",
+     xlab = "theoretisches Quantil", ylab = "beobachteter Wert")
+abline(a = mean(x), b = sd(x), lwd = 2)
+qqnorm(x, pch = 16, main = "qqnorm()")
+qqline(x, lwd = 2)
+par(mfrow = c(1, 1))
+
+round(c(mittel = mean(x), sd = sd(x),
+        steigung_der_geraden = coef(lm(sortiert ~ theoretisch))[2]), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-qq-py
+#| fig-cap: "Beispiel 1: derselbe Aufbau in Python."
+#| fig-height: 3.2
+x = np.round(stats.norm.ppf(lehmer(1122, 10), loc=20, scale=4), 1)
+sortiert = np.sort(x)
+
+n = len(x)
+position = (np.arange(1, n + 1) - 0.5) / n
+theoretisch = stats.norm.ppf(position)
+
+print(pd.DataFrame({"rang": np.arange(1, n + 1), "wert": sortiert,
+                    "position": position.round(4),
+                    "theoretisch": theoretisch.round(4)}).to_string(index=False))
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].scatter(theoretisch, sortiert, color="black")
+gitter = np.array([theoretisch.min(), theoretisch.max()])
+achsen[0].plot(gitter, x.mean() + x.std(ddof=1) * gitter, lw=2, color="black")
+achsen[0].set_title("von Hand")
+achsen[0].set_xlabel("theoretisches Quantil")
+achsen[0].set_ylabel("beobachteter Wert")
+stats.probplot(x, dist="norm", plot=achsen[1])
+achsen[1].set_title("probplot()")
+plt.tight_layout()
+plt.show()
+
+steigung, achsenabschnitt = np.polyfit(theoretisch, sortiert, 1)
+print({"mittel": round(float(x.mean()), 3),
+       "sd": round(float(x.std(ddof=1)), 3),
+       "steigung_der_geraden": round(float(steigung), 3)})
+```
+
 :::
+
+#### Output Zeile für Zeile
+
+| Rang | beobachteter Wert | Position $\tfrac{i-0.5}{10}$ | theoretisches Quantil |
+|---|---|---|---|
+| 1 | 10.5 | 0.05 | **-1.6449** |
+| 2 | 16.2 | 0.15 | -1.0364 |
+| 3 | 20.9 | 0.25 | -0.6745 |
+| 4 | 21.1 | 0.35 | -0.3853 |
+| 5 | 21.8 | 0.45 | -0.1257 |
+| 6 | 21.9 | 0.55 | 0.1257 |
+| 7 | 22.4 | 0.65 | 0.3853 |
+| 8 | 22.9 | 0.75 | 0.6745 |
+| 9 | 23.1 | 0.85 | 1.0364 |
+| 10 | 23.2 | 0.95 | **1.6449** |
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Die **Position** ist der Rang, auf 0 bis 1 umgerechnet | 0.05 bis 0.95 | Der kleinste von zehn Werten steht für das 5-Prozent-Quantil, nicht für das 10-Prozent-Quantil und nicht für das Minimum. |
+| Das **theoretische Quantil** ist $\Phi^{-1}(\text{Position})$ | -1.645 bis +1.645 | Bei der Standardnormalverteilung. Die Werte sind symmetrisch, weil die Positionen es sind. |
+| Die **Steigung** der Geraden | 3.399 | Ungefähr die Standardabweichung der Daten (4.027). Dass sie kleiner ausfällt, liegt an den beiden tiefen Werten links. |
+| Der **Achsenabschnitt** | 20.4 | Genau der Mittelwert. |
+| Die beiden linken Punkte liegen **unter** der Geraden | 10.5 und 16.2 | Bei zehn Beobachtungen ist das nicht deutbar — Beispiel 3 zeigt, wie stark die Ränder streuen. |
+
+::: {.note-box}
+**Was der QQ-Plot dem Histogramm voraushat:** Er braucht keine Klassenzahl. Ein
+Histogramm derselben zehn Werte sähe je nach Klassenbreite völlig verschieden
+aus; die zehn Punkte hier sind eindeutig bestimmt.
+
+**Und was er ihm nicht voraushat:** Er zeigt die Verteilung nicht direkt. Wer
+sehen will, ob es zwei Gipfel gibt, braucht das Histogramm — im QQ-Plot äussert
+sich Zweigipfligkeit als schwer erkennbare Stufe.
+:::
+
+#### Interpretation
+
+Die zehn Punkte liegen ungefähr auf einer Geraden. Bei $n = 10$ ist das aber
+kaum mehr als die Feststellung, dass nichts offensichtlich Falsches vorliegt.
+
+### Beispiel 2: Die vier Muster
+
+#### Frage und Datenlage
+
+Fünf Stichproben zu je 200 Werten, alle aus demselben Strom gleichverteilter
+Zufallszahlen über die jeweilige Quantilfunktion erzeugt: normal,
+rechtsschief, linksschief, mit schweren Rändern (t-Verteilung mit 3
+Freiheitsgraden) und mit leichten Rändern (Gleichverteilung).
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-qq-r
+#| fig-cap: "Beispiel 2: fünf Muster im QQ-Plot gegen die Normalverteilung."
+#| fig-height: 5
+arten <- c("normal", "rechtsschief", "linksschief",
+           "schwere_raender", "leichte_raender")
+
+par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+for (art in arten) {
+  d <- stichprobe(2233, art)
+  qqnorm(d, pch = 16, cex = 0.5, main = art)
+  qqline(d, lwd = 2)
+}
+plot.new()
+par(mfrow = c(1, 1))
+
+schiefe <- function(x) {
+  z <- (x - mean(x)) / sqrt(mean((x - mean(x))^2))
+  mean(z^3)
+}
+woelbung <- function(x) {
+  z <- (x - mean(x)) / sqrt(mean((x - mean(x))^2))
+  mean(z^4) - 3
+}
+
+for (art in arten) {
+  d <- stichprobe(2233, art)
+  cat(sprintf("%-16s Schiefe %+.3f | Wölbung %+.3f | Shapiro-Wilk p %.2e\n",
+              art, schiefe(d), woelbung(d), shapiro.test(d)$p.value))
+}
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-qq-py
+#| fig-cap: "Beispiel 2: dieselben fünf Muster in Python."
+#| fig-height: 5
+arten = ["normal", "rechtsschief", "linksschief",
+         "schwere_raender", "leichte_raender"]
+
+fig, achsen = plt.subplots(2, 3, figsize=(7, 5))
+for achse, art in zip(achsen.ravel(), arten):
+    stats.probplot(stichprobe(2233, art), dist="norm", plot=achse)
+    achse.set_title(art, fontsize=9)
+    achse.get_lines()[0].set_markersize(3)
+achsen.ravel()[-1].axis("off")
+plt.tight_layout()
+plt.show()
+
+for art in arten:
+    d = stichprobe(2233, art)
+    print(f"{art:16s} Schiefe {stats.skew(d):+.3f}"
+          f" | Wölbung {stats.kurtosis(d):+.3f}"
+          f" | Shapiro-Wilk p {stats.shapiro(d).pvalue:.2e}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Stichprobe | Schiefe | Wölbung | Shapiro-Wilk p | Muster im Plot |
+|---|---|---|---|---|
+| **normal** | +0.073 | -0.439 | **0.316** | Punkte auf der Geraden |
+| **rechtsschief** | **+1.363** | +1.529 | 6·10⁻¹³ | Bogen nach oben |
+| **linksschief** | **-1.363** | +1.529 | 6·10⁻¹³ | Bogen nach unten |
+| **schwere Ränder** | +0.832 | **+4.206** | 7·10⁻⁷ | S-Form, beide Enden weg von der Geraden |
+| **leichte Ränder** | -0.038 | **-1.347** | 1·10⁻⁷ | umgekehrte S-Form, beide Enden zur Geraden hin |
+
+| Beobachtung | Erklärung |
+|---|---|
+| **Schiefe** unterscheidet die beiden Bögen | +1.363 gegen -1.363, exakt gespiegelt — die linksschiefe Stichprobe ist die rechtsschiefe mit umgekehrtem Vorzeichen. |
+| **Wölbung** unterscheidet die beiden S-Formen | +4.21 gegen -1.35. Positive Wölbung heisst schwerere Ränder als die Normalverteilung, negative leichtere. Die Normalverteilung hat definitionsgemäss die Wölbung 0. |
+| Die **leichten Ränder** sind die Gleichverteilung | Sie hat gar keine Ränder — bei 25 und 75 ist Schluss. Im QQ-Plot äussert sich das darin, dass die äussersten Punkte **weniger** extrem sind, als die Normalverteilung erwarten liesse. |
+| Der **Test** unterscheidet nichts davon | Vier p-Werte zwischen 10⁻⁷ und 10⁻¹³ — alle "hochsignifikant nicht normal", ohne dass daraus hervorginge, **was** los ist. |
+
+::: {.note-box}
+**Warum die Art der Abweichung wichtiger ist als ihr Vorhandensein:**
+
+| Abweichung | Praktische Folge | Was hilft |
+|---|---|---|
+| **Schiefe** | Mittelwert ist nicht mehr der typische Wert; symmetrische Intervalle passen nicht | Transformation (Logarithmus), oder Median und Rangverfahren |
+| **schwere Ränder** | mehr Ausreisser als erwartet; Mittelwert und Standardabweichung werden instabil | robuste Verfahren, getrimmte Mittelwerte |
+| **leichte Ränder** | meist harmlos; Tests werden eher konservativ | nichts |
+
+Ein Test, der nur "nicht normal" meldet, führt zu keiner dieser drei
+Entscheidungen. Der Plot schon.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Stichprobe zeigt im QQ-Plot einen durchgehenden Bogen nach oben und eine
+> Schiefe von +1.36. Die Abweichung von der Normalverteilung ist eine
+> Rechtsschiefe; vor weiteren Auswertungen wird eine Logarithmierung geprüft.
+
+### Beispiel 3: Wie viel Streuung ist normal?
+
+#### Frage und Datenlage
+
+Die häufigste Fehldeutung: Punkte, die an den Enden von der Geraden abweichen,
+werden für einen Befund gehalten. Sechs Stichproben aus **derselben**
+Normalverteilung — dreimal mit $n = 20$, dreimal mit $n = 200$.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-qq-r
+#| fig-cap: "Beispiel 3: sechsmal dieselbe Normalverteilung. Oben n = 20, unten n = 200."
+#| fig-height: 4.6
+par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+for (n in c(20, 200)) {
+  for (k in 1:3) {
+    d <- qnorm(lehmer(5000 + 10 * k + n, n))
+    qqnorm(d, pch = 16, cex = 0.6, main = paste("n =", n))
+    qqline(d, lwd = 2)
+  }
+}
+par(mfrow = c(1, 1))
+
+for (n in c(20, 200)) {
+  for (k in 1:3) {
+    d <- qnorm(lehmer(5000 + 10 * k + n, n))
+    cat(sprintf("n = %3d, Stichprobe %d | Schiefe %+.3f | Shapiro-Wilk p %.3f\n",
+                n, k, schiefe(d), shapiro.test(d)$p.value))
+  }
+}
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-qq-py
+#| fig-cap: "Beispiel 3: dieselben sechs Stichproben in Python."
+#| fig-height: 4.6
+fig, achsen = plt.subplots(2, 3, figsize=(7, 4.6))
+for zeile, n in enumerate([20, 200]):
+    for k in range(1, 4):
+        d = stats.norm.ppf(lehmer(5000 + 10 * k + n, n))
+        stats.probplot(d, dist="norm", plot=achsen[zeile, k - 1])
+        achsen[zeile, k - 1].set_title(f"n = {n}", fontsize=9)
+        achsen[zeile, k - 1].get_lines()[0].set_markersize(3)
+plt.tight_layout()
+plt.show()
+
+for n in [20, 200]:
+    for k in range(1, 4):
+        d = stats.norm.ppf(lehmer(5000 + 10 * k + n, n))
+        print(f"n = {n:3d}, Stichprobe {k} | Schiefe {stats.skew(d):+.3f}"
+              f" | Shapiro-Wilk p {stats.shapiro(d).pvalue:.3f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Beobachtung | Erklärung |
+|---|---|
+| Alle sechs Stichproben stammen aus **exakt derselben** Normalverteilung | Jede Abweichung von der Geraden ist damit definitionsgemäss Zufall. |
+| Bei $n = 20$ weichen die Randpunkte **sichtbar** ab | Und zwar in jeder der drei Stichproben anders. Wer eine davon einzeln sähe, könnte "schwere Ränder" oder "leichte Schiefe" hineinlesen. |
+| Bei $n = 200$ liegen die Punkte **eng** an der Geraden | Auch dort noch am weitesten an den Enden. |
+| Die Shapiro-Wilk-p-Werte sind durchweg **unauffällig** | Was zu erwarten ist: Die Nullhypothese trifft ja zu. Nur bei einer von zwanzig Stichproben wäre ein p unter 0.05 zu erwarten. |
+
+::: {.note-box}
+**Warum die Ränder immer stärker streuen**, ist eine einfache Rechnung: Der
+grösste von $n$ Werten hat eine Verteilung, deren Streuung mit $n$ **wächst** —
+er kann beliebig weit hinausrutschen. Der Median dagegen wird mit wachsendem $n$
+immer genauer bestimmt.
+
+Deshalb sind die Punkte in der Mitte eines QQ-Plots verlässlich und die an den
+Enden nicht. Manche Umsetzungen zeichnen deshalb ein **Konfidenzband** ein — in R
+etwa `car::qqPlot()`, das die Punktweise-Streuung berücksichtigt. Wo es fehlt,
+muss man es im Kopf haben.
+
+**Die praktische Faustregel:** Unter etwa 30 Beobachtungen ist ein QQ-Plot nur
+für grobe Befunde brauchbar. Was dort wie eine Abweichung aussieht, ist meist
+keine.
+:::
+
+#### Interpretation
+
+Ein QQ-Plot wird nicht Punkt für Punkt gelesen, sondern auf ein **durchgehendes
+Muster** hin. Ein einzelner Ausreisser am Rand ist keins.
+
+### Beispiel 4: Wenn der Test anschlägt und der Plot gerade bleibt
+
+#### Frage und Datenlage
+
+Eine Verteilung, die von der Normalverteilung **praktisch bedeutungslos**
+abweicht: eine log-normale mit $\sigma = 0.15$, also eine Schiefe von rund 0.45.
+Getestet bei wachsender Stichprobengrösse.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-qq-r
+#| fig-cap: "Beispiel 4: dieselbe leicht schiefe Verteilung bei n = 50 und n = 5000."
+#| fig-height: 3.2
+leicht_schief <- function(n) exp(0.15 * qnorm(lehmer(4455, n)))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+for (n in c(50, 5000)) {
+  d <- leicht_schief(n)
+  qqnorm(d, pch = 16, cex = 0.4, main = paste("n =", n))
+  qqline(d, lwd = 2)
+}
+par(mfrow = c(1, 1))
+
+for (n in c(20, 50, 200, 1000, 5000)) {
+  d <- leicht_schief(n)
+  rein <- qnorm(lehmer(3344, n))
+  cat(sprintf("n = %4d | leicht schief: Schiefe %+.3f, p %.2e | rein normal: p %.3f\n",
+              n, schiefe(d), shapiro.test(d)$p.value,
+              shapiro.test(rein)$p.value))
+}
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-qq-py
+#| fig-cap: "Beispiel 4: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+def leicht_schief(n):
+    return np.exp(0.15 * stats.norm.ppf(lehmer(4455, n)))
+
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+for achse, n in zip(achsen, [50, 5000]):
+    stats.probplot(leicht_schief(n), dist="norm", plot=achse)
+    achse.set_title(f"n = {n}", fontsize=9)
+    achse.get_lines()[0].set_markersize(2)
+plt.tight_layout()
+plt.show()
+
+for n in [20, 50, 200, 1000, 5000]:
+    d = leicht_schief(n)
+    rein = stats.norm.ppf(lehmer(3344, n))
+    print(f"n = {n:4d} | leicht schief: Schiefe {stats.skew(d):+.3f},"
+          f" p {stats.shapiro(d).pvalue:.2e}"
+          f" | rein normal: p {stats.shapiro(rein).pvalue:.3f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| n | Schiefe | Shapiro-Wilk p (leicht schief) | Shapiro-Wilk p (rein normal) |
+|---|---|---|---|
+| 20 | +1.502 | **0.015** | 0.723 |
+| 50 | +1.480 | 4.8·10⁻⁴ | 0.077 |
+| 200 | +0.836 | 2.6·10⁻⁵ | 0.733 |
+| 1 000 | +0.531 | 1.0·10⁻⁸ | 0.317 |
+| **5 000** | **+0.479** | **2.2·10⁻²⁰** | 0.538 |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die Schiefe **sinkt** mit wachsendem n | Von 1.50 auf 0.48 — sie nähert sich dem wahren Wert der Verteilung an. Bei kleinen Stichproben ist die geschätzte Schiefe selbst sehr unsicher. |
+| Der p-Wert **fällt** um 18 Grössenordnungen | Und die Verteilung ändert sich dabei nicht. Was wächst, ist allein die Fähigkeit des Tests, eine feste Abweichung zu entdecken. |
+| Bei $n = 5000$ ist $p = 2 \cdot 10^{-20}$ | Für eine Verteilung, die im QQ-Plot fast gerade aussieht und deren Schiefe unter 0.5 liegt. **Statistisch hochsignifikant, praktisch bedeutungslos.** |
+| Die **rein normale** Stichprobe bleibt bei jedem n unauffällig | 0.08 bis 0.73. Der Test macht also keinen Fehler — er entdeckt korrekt, was da ist. |
+| Die beiden QQ-Plots | sehen bei n = 50 und n = 5000 fast gleich aus. Nur der zweite hat mehr Punkte. |
+
+::: {.note-box}
+**Das ist keine Schwäche des Tests, sondern seine Eigenschaft.** Ein
+Normalitätstest prüft die Nullhypothese "exakt normalverteilt", und die ist bei
+echten Daten praktisch immer falsch. Mit genügend Beobachtungen wird jede noch
+so kleine Abweichung nachweisbar.
+
+Daraus folgt die Umkehrung, die genauso wichtig ist: **Bei kleinen Stichproben
+findet der Test nichts**, gerade dort, wo die Normalitätsannahme am meisten
+zählt — denn bei grossem $n$ sorgt der
+[zentrale Grenzwertsatz](normalverteilung-zgws.qmd) ohnehin dafür, dass
+Mittelwertverfahren funktionieren.
+
+Der Test ist also genau dort blind, wo man ihn bräuchte, und genau dort
+empfindlich, wo man ihn nicht braucht. Deshalb: **Plot ansehen, Grössenordnung
+der Abweichung beurteilen, und die Frage stellen, ob das gewählte Verfahren
+darauf empfindlich reagiert.**
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Normalitätsannahme ist formal verletzt (Shapiro-Wilk p < .001 bei n =
+> 5000), die Abweichung ist mit einer Schiefe von 0.48 jedoch gering und im
+> QQ-Plot kaum erkennbar. Für Verfahren, die auf Mittelwerten beruhen, ist sie
+> bei dieser Stichprobengrösse ohne Belang.
+
+### Beispiel 5: Eine andere Referenzverteilung
+
+#### Frage und Datenlage
+
+Der QQ-Plot ist nicht auf die Normalverteilung festgelegt. Getestet wird eine
+Stichprobe von Wartezeiten gegen **zwei** Referenzen: die Normalverteilung und
+die Exponentialverteilung.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-qq-r
+#| fig-cap: "Beispiel 5: dieselben Wartezeiten gegen zwei Referenzverteilungen."
+#| fig-height: 3.2
+wartezeit <- -log(lehmer(6677, 300)) / 0.5      # exponential, Rate 0.5
+
+n <- length(wartezeit)
+position <- (seq_len(n) - 0.5) / n
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+qqnorm(wartezeit, pch = 16, cex = 0.5, main = "Referenz: Normalverteilung")
+qqline(wartezeit, lwd = 2)
+
+plot(qexp(position, rate = 0.5), sort(wartezeit), pch = 16, cex = 0.5,
+     main = "Referenz: Exponential", xlab = "theoretisches Quantil",
+     ylab = "beobachteter Wert")
+abline(a = 0, b = 1, lwd = 2)
+par(mfrow = c(1, 1))
+
+round(c(mittel = mean(wartezeit), sd = sd(wartezeit),
+        schiefe = schiefe(wartezeit),
+        erwartete_schiefe_exponential = 2), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-qq-py
+#| fig-cap: "Beispiel 5: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+wartezeit = -np.log(lehmer(6677, 300)) / 0.5
+
+n = len(wartezeit)
+position = (np.arange(1, n + 1) - 0.5) / n
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+stats.probplot(wartezeit, dist="norm", plot=achsen[0])
+achsen[0].set_title("Referenz: Normalverteilung", fontsize=9)
+achsen[0].get_lines()[0].set_markersize(3)
+
+achsen[1].scatter(stats.expon.ppf(position, scale=2), np.sort(wartezeit),
+                  s=8, color="black")
+grenze = [0, np.sort(wartezeit).max()]
+achsen[1].plot(grenze, grenze, lw=2, color="black")
+achsen[1].set_title("Referenz: Exponential", fontsize=9)
+achsen[1].set_xlabel("theoretisches Quantil")
+achsen[1].set_ylabel("beobachteter Wert")
+plt.tight_layout()
+plt.show()
+
+print({"mittel": round(float(wartezeit.mean()), 3),
+       "sd": round(float(wartezeit.std(ddof=1)), 3),
+       "schiefe": round(float(stats.skew(wartezeit)), 3),
+       "erwartete_schiefe_exponential": 2})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Referenz | Bild | Schluss |
+|---|---|---|
+| **Normalverteilung** | deutlicher Bogen nach oben | Die Annahme passt nicht. |
+| **Exponentialverteilung** | Punkte auf der Winkelhalbierenden | Die Annahme passt. |
+
+| Kennzahl | Wert | Erwartet bei Exponential mit Rate 0.5 |
+|---|---|---|
+| Mittelwert | rund 2 | $1/0.5 = 2$ |
+| Standardabweichung | rund 2 | ebenfalls $1/0.5 = 2$ |
+| Schiefe | rund 2 | genau 2, unabhängig von der Rate |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Bei der Exponentialverteilung ist die Referenzgerade die **Winkelhalbierende** | Weil die Rate hier bekannt vorgegeben wurde. Wäre sie zu schätzen, ergäbe sich wie beim Normalfall eine Gerade mit anderer Steigung. |
+| Mittelwert **gleich** Standardabweichung | Die charakteristische Eigenschaft der Exponentialverteilung. Sie allein ist schon ein brauchbarer erster Hinweis. |
+| Die Schiefe von 2 ist **fest** | Bei jeder Rate. Auch das ist prüfbar, ohne einen Plot zu zeichnen. |
+
+::: {.note-box}
+**Wann sich eine andere Referenz lohnt:**
+
+| Referenz | Typischer Anlass |
+|---|---|
+| Exponential | Wartezeiten, Lebensdauern, Abstände zwischen Ereignissen |
+| Weibull | Ausfallzeiten mit Alterung — siehe [Zensierung](../ueberlebenszeit/zensierung-ueberlebensfunktion.qmd) |
+| log-normal | Löhne, Preise, alles multiplikativ Entstehende |
+| t-Verteilung | Residuen mit mehr Ausreissern als erwartet |
+| Gleichverteilung | p-Werte unter der Nullhypothese, siehe [Hypothesentests](../inferenz/hypothesentests-grundlagen.qmd) |
+
+Der letzte Fall ist der praktisch nützlichste: Ein QQ-Plot der p-Werte aus vielen
+Tests gegen die Gleichverteilung zeigt sofort, ob mehr kleine p-Werte auftreten
+als unter der Nullhypothese zu erwarten.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Wartezeiten sind nicht normalverteilt (deutlicher Bogen im QQ-Plot,
+> Schiefe 2.0), passen aber gut zu einer Exponentialverteilung mit Rate 0.5:
+> Mittelwert und Standardabweichung stimmen mit 2.0 überein, und im QQ-Plot gegen
+> diese Referenz liegen die Punkte auf der Winkelhalbierenden.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Ein QQ-Plot zeigt Punkte, die links unterhalb und rechts oberhalb der Geraden
-liegen. Was heisst das? Die Muster stehen in @fig-qq-r nebeneinander.
+liegen, also eine S-Form. Was heisst das?
 
-- [ ] Die Daten sind rechtsschief ~ Schiefe zeigt sich als durchgehende
-      Krümmung, nicht als Abknicken an beiden Enden.
+- [ ] Die Daten sind rechtsschief ~ Schiefe zeigt sich als durchgehender Bogen in
+      eine Richtung, nicht als Abknicken an beiden Enden.
 - [x] Die Verteilung hat schwerere Ränder als die Normalverteilung ~ Richtig.
       An beiden Enden liegen extremere Werte, als das Modell erwarten lässt.
       Praktisch heisst das mehr Ausreisser, was Verfahren stört, die auf dem
@@ -130,18 +703,61 @@ liegen. Was heisst das? Die Muster stehen in @fig-qq-r nebeneinander.
 :::
 
 ::: {.quiz}
-Was sagt der zentrale Grenzwertsatz über die Ausgangsdaten aus, wenn diese
-stark schief verteilt sind?
+Bei n = 5000 ergibt ein Shapiro-Wilk-Test p = 2·10⁻²⁰, der QQ-Plot sieht aber
+fast gerade aus. Was folgt daraus?
 
-- [ ] Dass sie mit wachsender Stichprobe normalverteilt werden ~ Genau das sagt
-      er nicht. Die Einzelwerte bleiben schief, wie das linke Bild zeigt.
-- [x] Nichts, normal wird die Verteilung der Mittelwerte ~ Richtig. Rechts sind
-      Mittelwerte aus je dreissig Werten aufgetragen, und die sind glockenförmig.
-      Darauf beruhen Konfidenzintervall und t-Test.
-- [ ] Dass sie unabhängig sein müssen ~ Unabhängigkeit ist eine Voraussetzung
-      des Satzes, aber nicht seine Aussage.
+- [x] Die Abweichung ist nachweisbar, aber klein ~ Richtig. Mit wachsender
+      Stichprobe wird jede noch so kleine Abweichung signifikant, weil die
+      Nullhypothese "exakt normal" bei echten Daten praktisch immer falsch ist.
+      Entscheidend ist die Grössenordnung, nicht der p-Wert.
+- [ ] Der Plot ist falsch gezeichnet ~ Beide zeigen dieselben Daten korrekt.
+- [ ] Die Daten müssen transformiert werden ~ Nicht wegen des p-Werts. Ob eine
+      Transformation nötig ist, entscheidet die Grösse der Abweichung und die
+      Empfindlichkeit des geplanten Verfahrens.
+:::
+
+::: {.quiz}
+Sechs QQ-Plots aus derselben Normalverteilung sehen an den Rändern verschieden
+aus. Warum?
+
+- [x] Die äussersten Punkte streuen am stärksten, weil dort die wenigsten
+      Beobachtungen liegen ~ Richtig. Der grösste von n Werten hat eine breite
+      Verteilung, der Median eine enge. Deshalb wird ein QQ-Plot auf ein
+      durchgehendes Muster hin gelesen, nicht Punkt für Punkt.
+- [ ] Der Zufallszahlengenerator ist ungeeignet ~ Alle sechs stammen aus derselben
+      Verteilung; die Unterschiede sind der Zufall selbst.
+- [ ] Die Stichproben sind unterschiedlich gross ~ Je drei sind gleich gross, und
+      auch innerhalb dieser drei unterscheiden sich die Ränder.
+:::
+
+::: {.quiz}
+Wozu dient die Position $(i - 0.5)/n$ statt $i/n$?
+
+- [x] Sonst wäre der grösste Wert das 100-Prozent-Quantil, das bei unbegrenzten
+      Verteilungen unendlich ist ~ Richtig. Die Korrektur setzt jeden Rang in die
+      Mitte seines Anteilsintervalls. Es gibt mehrere gebräuchliche Varianten,
+      die sich nur an den Rändern leicht unterscheiden.
+- [ ] Um die Punkte gleichmässiger zu verteilen ~ Sie sind so oder so
+      gleichmässig verteilt.
+- [ ] Um den Mittelwert zu treffen ~ Mit dem Mittelwert hat die Korrektur nichts
+      zu tun.
+:::
+
+::: {.quiz}
+Eine Stichprobe hat Mittelwert 2.0, Standardabweichung 2.0 und Schiefe 2.0.
+Welche Verteilung liegt nahe?
+
+- [x] Die Exponentialverteilung ~ Richtig. Bei ihr sind Mittelwert und
+      Standardabweichung immer gleich, und die Schiefe beträgt unabhängig von der
+      Rate genau 2. Diese drei Kennzahlen ersetzen den QQ-Plot zwar nicht, sind
+      aber ein starker Hinweis.
+- [ ] Die Normalverteilung ~ Ihre Schiefe ist null.
+- [ ] Die Gleichverteilung ~ Ihre Schiefe ist ebenfalls null, und ihre
+      Standardabweichung ist deutlich kleiner als ihr Mittelwert.
 :::
 
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics, Kapitel zu Verteilungen](https://www.openintro.org/book/os/)
+- [Normalitätstests](../tests/normalitaetstests.qmd)
+- [Normalverteilung und zentraler Grenzwertsatz](normalverteilung-zgws.qmd)
