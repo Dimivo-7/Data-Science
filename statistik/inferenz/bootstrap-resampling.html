@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Verteilung einer Schätzung simulieren statt herleiten.">
+<meta name="description" content="Konfidenzintervalle ohne Verteilungsannahme, auch für Kennzahlen ohne Formel.">
 
 <title>Bootstrap und Resampling – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-465920036d67acc459edb9c5a85eb638.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -80,6 +118,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -339,7 +406,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren.">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +454,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -410,7 +477,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung" tabindex="0">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus.">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -510,7 +577,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge" tabindex="0">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" tabindex="0" data-topic="Werkzeuge" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht.">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -560,7 +627,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik" tabindex="0">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse.">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -601,19 +668,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik" tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit.">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik" tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik" tabindex="0">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft.">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis.">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik" tabindex="0">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden.">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -631,13 +698,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik" tabindex="0">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären.">Normalverteilung</span> und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind.">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik" tabindex="0">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder.">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -654,7 +721,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -672,19 +739,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/bootstrap-resampling.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Bootstrap und Resampling</span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Multiples Testen</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/inferenz/bootstrap-resampling.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Bootstrap und Resampling</span></a>
   </div>
 </li>
       </ul>
@@ -701,19 +768,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -725,7 +792,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik" tabindex="0">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus.">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1097,14 +1164,15 @@ ul.task-list li input[type="checkbox"] {
   <ul>
   <li><a href="#kurzsteckbrief" id="toc-kurzsteckbrief" class="nav-link active" data-scroll-target="#kurzsteckbrief">Kurzsteckbrief</a></li>
   <li><a href="#wann-diese-methode-wann-nicht" id="toc-wann-diese-methode-wann-nicht" class="nav-link" data-scroll-target="#wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</a></li>
-  <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a></li>
-  <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
-  <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
+  <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a>
+  <ul class="collapse">
+  <li><a href="#die-intervallvarianten" id="toc-die-intervallvarianten" class="nav-link" data-scroll-target="#die-intervallvarianten">Die Intervallvarianten</a></li>
+  </ul></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
   <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
@@ -1118,8 +1186,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-title">
 <h1 class="title">Bootstrap und Resampling</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Resampling</div>
-    <div class="quarto-category">Schätzen</div>
+    <div class="quarto-category">Konfidenzintervall</div>
     <div class="quarto-category">Interpretation</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
@@ -1128,7 +1195,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Verteilung einer Schätzung simulieren statt herleiten.
+    Konfidenzintervalle ohne Verteilungsannahme, auch für Kennzahlen ohne Formel.
   </div>
 </div>
 
@@ -1146,43 +1213,1082 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
+<p>Der Bootstrap zieht zufällig, und Zufallszahlen unterscheiden sich zwischen R und Python. Damit die Zahlen auf dieser Seite in beiden Sprachen übereinstimmen, kommt ein einfacher Generator zum Einsatz, der in beiden gleich rechnet. In der Praxis nimmt man die eingebauten Generatoren und setzt einen Seed.</p>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Wie unsicher ist eine Kennzahl, wenn keine Formel dafür existiert oder ihre Voraussetzungen verletzt sind?</td>
+</tr>
+<tr class="even">
+<td>Eingang</td>
+<td>eine Stichprobe und eine beliebige Kennzahl</td>
+</tr>
+<tr class="odd">
+<td>Was die Methode liefert</td>
+<td>Standardfehler, Konfidenzintervall und die ganze Verteilung der Kennzahl</td>
+</tr>
+<tr class="even">
+<td>R-Funktion</td>
+<td>von Hand mit <code>sample()</code>, oder <code>boot::boot()</code> und <code>boot::boot.ci()</code></td>
+</tr>
+<tr class="odd">
+<td>Python-Funktion</td>
+<td>von Hand mit <code>np.random.choice()</code>, oder <code>scipy.stats.bootstrap()</code></td>
+</tr>
+<tr class="even">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html">Schätzen und Konfidenzintervalle</a>, <a href="../../statistik/tests/nichtparametrische-tests.html">nichtparametrische Tests</a></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Der Bootstrap ist die Antwort auf zwei Fragen, für die die klassische Statistik keine gute hat.</p>
+<p><strong>Erstens: Kennzahlen ohne Formel.</strong> Für den Mittelwert gibt es einen <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt.">Standardfehler</span>, für den <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span>, den getrimmten Mittelwert, ein Verhältnis zweier Grössen oder den Unterschied zweier Korrelationen nicht ohne Weiteres. Der Bootstrap liefert ihn für jede Kennzahl, die sich ausrechnen lässt.</p>
+<p><strong>Zweitens: verletzte Verteilungsannahmen.</strong> Bei stark schiefen Daten ist das t-Intervall symmetrisch, obwohl die Verteilung des Mittelwerts es nicht ist. Der Bootstrap bildet die <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">Schiefe</span> ab, siehe Beispiel 1.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Voraussetzungen erfüllt, Kennzahl mit Formel</td>
+<td>das klassische <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html">Konfidenzintervall</a>; es ist schneller und braucht keinen Zufall</td>
+</tr>
+<tr class="even">
+<td>Sehr kleine Stichprobe</td>
+<td>kein Bootstrap; er kann nur wiederverwenden, was vorhanden ist, siehe Beispiel 4</td>
+</tr>
+<tr class="odd">
+<td>Es geht um extreme Quantile oder das Maximum</td>
+<td>ungeeignet, aus demselben Grund</td>
+</tr>
+<tr class="even">
+<td>Abhängige Daten, etwa Zeitreihen</td>
+<td>Blockbootstrap statt gewöhnlichem Ziehen</td>
+</tr>
+<tr class="odd">
+<td>Es geht um einen Test statt um ein Intervall</td>
+<td>Permutationstest, ein verwandtes Verfahren mit anderer Ziehung</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
+<p>Die klassische Statistik fragt: Wie würde meine Kennzahl schwanken, wenn ich die Erhebung viele Male wiederholte? Beantwortet wird das über eine Verteilungsannahme und eine Formel.</p>
+<p>Der Bootstrap beantwortet dieselbe Frage anders: Er behandelt die vorliegende Stichprobe als Ersatz für die Grundgesamtheit und zieht daraus wiederholt neue Stichproben, <strong>mit Zurücklegen</strong> und in derselben Grösse.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Schritt</th>
+<th>Was passiert</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Aus den <span class="math inline">\(n\)</span> Werten werden <span class="math inline">\(n\)</span> Werte mit Zurücklegen gezogen. Manche kommen mehrfach vor, andere gar nicht.</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Für diese Ziehung wird die Kennzahl berechnet.</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Schritte 1 und 2 werden <span class="math inline">\(B\)</span>-mal wiederholt, üblicherweise 1000 bis 10 000 Mal.</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Die <span class="math inline">\(B\)</span> Werte bilden die Bootstrap-Verteilung der Kennzahl.</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Ihre Standardabweichung ist der Standardfehler, ihre Quantile ergeben das Intervall.</td>
+</tr>
+</tbody>
+</table>
+<p>Das Zurücklegen ist wesentlich: Ohne es wäre jede Ziehung identisch mit der Ausgangsstichprobe. Im Mittel enthält eine Bootstrap-Ziehung rund 63 Prozent der ursprünglichen Werte, den Rest mehrfach.</p>
+<div class="note-box">
+<p><strong>Die entscheidende Annahme</strong> lautet: Die Stichprobe ist repräsentativ für die Grundgesamtheit. Der Bootstrap ersetzt die Verteilungsannahme durch diese Annahme, er macht das Verfahren also nicht voraussetzungsfrei, sondern tauscht eine Voraussetzung gegen eine andere.</p>
+<p>Daraus folgt unmittelbar seine Grenze: Was in der Stichprobe nicht vorkommt, kann er nicht erfinden. Bei kleinen Stichproben ist diese Grenze eng, siehe Beispiel 4.</p>
+</div>
+<section id="die-intervallvarianten" class="level3">
+<h3 class="anchored" data-anchor-id="die-intervallvarianten">Die Intervallvarianten</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variante</th>
+<th>Wie sie rechnet</th>
+<th>Wann</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Perzentil</td>
+<td>die 2.5- und 97.5-Prozent-Quantile der Bootstrap-Verteilung</td>
+<td>einfach, verständlich, für die meisten Fälle ausreichend</td>
+</tr>
+<tr class="even">
+<td>Basic</td>
+<td>spiegelt die Quantile am beobachteten Wert</td>
+<td>wenn die Verzerrung gering ist</td>
+</tr>
+<tr class="odd">
+<td>BCa</td>
+<td>korrigiert Verzerrung und Schiefe</td>
+<td>die genaueste Variante, in <code>boot.ci()</code> und <code>scipy.stats.bootstrap()</code> enthalten</td>
+</tr>
+<tr class="even">
+<td>Studentisiert</td>
+<td>verwendet einen bootstrapten Standardfehler je Ziehung</td>
+<td>am genauesten, aber rechenaufwendig</td>
+</tr>
+</tbody>
+</table>
+<p>Auf dieser Seite steht das Perzentilintervall im Vordergrund, weil sich daran das Verfahren am besten erklären lässt. Für einen Bericht ist BCa vorzuziehen.</p>
 </section>
-<section id="voraussetzungen-und-ihre-prüfung" class="level2">
-<h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
-</section>
-<section id="durchführung-in-r-und-python" class="level2">
-<h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
-</section>
-<section id="ergebnisse-interpretieren" class="level2">
-<h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Bootstrap-Standardfehler</td>
+<td>Standardabweichung der <span class="math inline">\(B\)</span> Kennzahlwerte</td>
+<td>ersetzt die Formel, nicht die Interpretation</td>
+</tr>
+<tr class="even">
+<td>Verzerrung (bias)</td>
+<td>Bootstrap-Mittel minus beobachteter Wert</td>
+<td>kleine Werte sind normal; grosse deuten auf eine ungeeignete Kennzahl oder zu wenig Daten</td>
+</tr>
+<tr class="odd">
+<td>Perzentilintervall</td>
+<td>Quantile der Bootstrap-Verteilung</td>
+<td>bei starker Verzerrung zu optimistisch</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(B\)</span></td>
+<td>Anzahl Wiederholungen</td>
+<td>zu klein macht das Ergebnis vom Zufall abhängig, siehe Beispiel 3</td>
+</tr>
+<tr class="odd">
+<td>Seed</td>
+<td>Startwert des Generators</td>
+<td>gehört ins Protokoll, sonst ist das Ergebnis nicht reproduzierbar</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong>Der Bootstrap erzeugt keine neuen Daten.</strong> Er nutzt die vorhandenen mehrfach. Bei acht Beobachtungen bleibt es bei acht verschiedenen Werten.</li>
+<li><strong>Er repariert keine verzerrte Stichprobe.</strong> Ist die Erhebung <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">schief</span>, ist es das Ergebnis auch.</li>
+<li><strong>Er ist bei kleinem n nicht besser als die Formel</strong>, oft schlechter.</li>
+<li><strong>Das Intervall hängt vom Seed ab.</strong> Bei zu kleinem <span class="math inline">\(B\)</span> merklich, siehe Beispiel 3.</li>
+<li><strong>Für Maxima und extreme Quantile ist er ungeeignet</strong>, weil die Bootstrap-Verteilung den beobachteten Wertebereich nie verlässt.</li>
+<li><strong>Bei abhängigen Daten braucht es einen Blockbootstrap.</strong> Gewöhnliches Ziehen zerstört die zeitliche Struktur und liefert zu schmale Intervalle.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<blockquote class="blockquote">
+<p>Für [Kennzahl] ergibt sich [Wert] (95-Prozent-Bootstrap-Konfidenzintervall [unten] bis [oben], Perzentilmethode, B = [Anzahl] Ziehungen, Seed [Wert]).</p>
+</blockquote>
+<p>Genannt werden: die Kennzahl, die Intervallvariante, <span class="math inline">\(B\)</span>, der Seed und der Grund, warum der Bootstrap statt einer Formel verwendet wurde. Die letzten beiden fehlen am häufigsten.</p>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt Bootstrap</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html">Konfidenzintervall</a></td>
+<td>Kennzahl mit Formel und erfüllten Voraussetzungen</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/tests/nichtparametrische-tests.html">Nichtparametrische Tests</a></td>
+<td>es geht um einen Test, nicht um ein Intervall</td>
+</tr>
+<tr class="odd">
+<td>Permutationstest</td>
+<td>Test ohne Verteilungsannahme; zieht ohne Zurücklegen und vertauscht Gruppenzugehörigkeiten</td>
+</tr>
+<tr class="even">
+<td>Kreuzvalidierung</td>
+<td>es geht um Vorhersagegüte, siehe <a href="../../statistik/regression/modellauswahl.html">Modellauswahl</a></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">Beispiel 1: Der Mittelwert bei schiefen Daten</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Beispiel 2: Kennzahlen ohne Formel</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-3" role="tab" aria-controls="tabset-6-3" aria-selected="false" href="">Beispiel 3: Wie viele Ziehungen braucht es?</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-4" role="tab" aria-controls="tabset-6-4" aria-selected="false" href="">Beispiel 4: Wo der Bootstrap versagt</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>Vierzig Wartezeiten in Minuten, deutlich <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">rechtsschief</span>: Der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span> liegt bei 5.7 Minuten, der Mittelwert bei 12.3, der grösste Wert bei 78.3. Gesucht ist ein <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervall</span> für den Mittelwert.</p>
+</section>
+<section id="voraussetzungen-prüfen" class="level4">
+<h4 class="anchored" data-anchor-id="voraussetzungen-prüfen">Voraussetzungen prüfen</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(warten, <span class="at">breaks =</span> <span class="dv">12</span>, <span class="at">col =</span> <span class="st">"grey85"</span>, <span class="at">main =</span> <span class="st">"Wartezeiten"</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Minuten"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(warten, <span class="at">main =</span> <span class="st">"QQ-Plot"</span>); <span class="fu">qqline</span>(warten)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">n =</span> <span class="fu">length</span>(warten), <span class="at">mittel =</span> <span class="fu">mean</span>(warten), <span class="at">median =</span> <span class="fu">median</span>(warten),</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="at">sd =</span> <span class="fu">sd</span>(warten)), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     n mittel median     sd 
+40.000 12.295  5.700 16.389 </code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-b1-boot-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-boot-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="bootstrap-resampling_files/figure-html/fig-b1-boot-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Beispiel 1: die rechtsschiefe Verteilung der Wartezeiten."><img src="bootstrap-resampling_files/figure-html/fig-b1-boot-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-boot-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Beispiel 1: die rechtsschiefe Verteilung der Wartezeiten.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> statsmodels.api <span class="im">as</span> sm</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>fig, achsen <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.2</span>))</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">0</span>].hist(warten, bins<span class="op">=</span><span class="dv">12</span>, color<span class="op">=</span><span class="st">"0.8"</span>, edgecolor<span class="op">=</span><span class="st">"0.3"</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">0</span>].set_title(<span class="st">"Wartezeiten"</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">0</span>].set_xlabel(<span class="st">"Minuten"</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>sm.qqplot(warten, line<span class="op">=</span><span class="st">"s"</span>, ax<span class="op">=</span>achsen[<span class="dv">1</span>])</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">1</span>].set_title(<span class="st">"QQ-Plot"</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b1-boot-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-boot-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="bootstrap-resampling_files/figure-html/fig-b1-boot-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Beispiel 1: dieselbe Darstellung in Python."><img src="bootstrap-resampling_files/figure-html/fig-b1-boot-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-boot-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Beispiel 1: dieselbe Darstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"n ="</span>, <span class="bu">len</span>(warten), <span class="st">" Mittel ="</span>, <span class="bu">round</span>(warten.mean(), <span class="dv">4</span>),</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>      <span class="st">" Median ="</span>, <span class="bu">round</span>(np.median(warten), <span class="dv">4</span>),</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>      <span class="st">" SD ="</span>, <span class="bu">round</span>(warten.std(ddof<span class="op">=</span><span class="dv">1</span>), <span class="dv">4</span>),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>      <span class="st">" Schiefe ="</span>, <span class="bu">round</span>(stats.skew(warten, bias<span class="op">=</span><span class="va">False</span>), <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>n = 40  Mittel = 12.295  Median = 5.7  SD = 16.389  Schiefe = 2.5706</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">Schiefe</span> beträgt 2.57, der Mittelwert liegt mehr als doppelt so hoch wie der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span>, und der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder.">QQ-Plot</span> biegt am oberen Ende weit von der Geraden ab. Bei 40 Beobachtungen wirkt der zentrale <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind.">Grenzwertsatz</span> zwar schon, aber nicht so weit, dass die Verteilung des Mittelwerts symmetrisch wäre.</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>B <span class="ot">&lt;-</span> <span class="dv">2000</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>zieh <span class="ot">&lt;-</span> <span class="fu">ziehungen</span>(warten, B)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>mittel_boot <span class="ot">&lt;-</span> <span class="fu">rowMeans</span>(zieh)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(mittel_boot, <span class="at">breaks =</span> <span class="dv">40</span>, <span class="at">col =</span> <span class="st">"grey85"</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Bootstrap-Verteilung des Mittelwerts"</span>, <span class="at">xlab =</span> <span class="st">"Minuten"</span>)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">mean</span>(warten), <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"steelblue"</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">quantile</span>(mittel_boot, <span class="fu">c</span>(<span class="fl">0.025</span>, <span class="fl">0.975</span>)), <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">beobachtet =</span> <span class="fu">mean</span>(warten),</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>        <span class="at">boot_mittel =</span> <span class="fu">mean</span>(mittel_boot),</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>        <span class="at">verzerrung =</span> <span class="fu">mean</span>(mittel_boot) <span class="sc">-</span> <span class="fu">mean</span>(warten),</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>        <span class="at">boot_se =</span> <span class="fu">sd</span>(mittel_boot)), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> beobachtet boot_mittel  verzerrung     boot_se 
+    12.2950     12.1596     -0.1354      2.5436 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">quantile</span>(mittel_boot, <span class="fu">c</span>(<span class="fl">0.025</span>, <span class="fl">0.975</span>)), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   2.5%   97.5% 
+ 7.8073 17.7205 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Zum Vergleich das klassische t-Intervall</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">t.test</span>(warten)<span class="sc">$</span>conf.int, <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1]  7.0535 17.5365
+attr(,"conf.level")
+[1] 0.95</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-b2-boot-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-boot-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="bootstrap-resampling_files/figure-html/fig-b2-boot-r-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Abbildung&nbsp;3: Beispiel 1: die Bootstrap-Verteilung des Mittelwerts."><img src="bootstrap-resampling_files/figure-html/fig-b2-boot-r-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-boot-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;3: Beispiel 1: die Bootstrap-Verteilung des Mittelwerts.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>B <span class="op">=</span> <span class="dv">2000</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>zieh <span class="op">=</span> ziehungen(warten, B)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>mittel_boot <span class="op">=</span> zieh.mean(axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>fig, achse <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.4</span>))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>achse.hist(mittel_boot, bins<span class="op">=</span><span class="dv">40</span>, color<span class="op">=</span><span class="st">"0.85"</span>, edgecolor<span class="op">=</span><span class="st">"0.4"</span>)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>achse.axvline(warten.mean(), linewidth<span class="op">=</span><span class="dv">2</span>, color<span class="op">=</span><span class="st">"steelblue"</span>)</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> q <span class="kw">in</span> np.percentile(mittel_boot, [<span class="fl">2.5</span>, <span class="fl">97.5</span>]):</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    achse.axvline(q, linestyle<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"firebrick"</span>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>achse.set_title(<span class="st">"Bootstrap-Verteilung des Mittelwerts"</span>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>achse.set_xlabel(<span class="st">"Minuten"</span>)</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b2-boot-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-boot-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="bootstrap-resampling_files/figure-html/fig-b2-boot-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="Abbildung&nbsp;4: Beispiel 1: dieselbe Verteilung in Python."><img src="bootstrap-resampling_files/figure-html/fig-b2-boot-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-boot-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;4: Beispiel 1: dieselbe Verteilung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"beobachtet ="</span>, <span class="bu">round</span>(warten.mean(), <span class="dv">4</span>),</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>      <span class="st">" Bootstrap-Mittel ="</span>, <span class="bu">round</span>(mittel_boot.mean(), <span class="dv">4</span>),</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>      <span class="st">" Verzerrung ="</span>, <span class="bu">round</span>(mittel_boot.mean() <span class="op">-</span> warten.mean(), <span class="dv">4</span>),</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>      <span class="st">" Bootstrap-SE ="</span>, <span class="bu">round</span>(mittel_boot.std(ddof<span class="op">=</span><span class="dv">1</span>), <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>beobachtet = 12.295  Bootstrap-Mittel = 12.1596  Verzerrung = -0.1354  Bootstrap-SE = 2.5436</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Perzentilintervall:"</span>, np.percentile(mittel_boot, [<span class="fl">2.5</span>, <span class="fl">97.5</span>]).<span class="bu">round</span>(<span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Perzentilintervall: [ 7.8073 17.7205]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>se <span class="op">=</span> warten.std(ddof<span class="op">=</span><span class="dv">1</span>) <span class="op">/</span> np.sqrt(<span class="bu">len</span>(warten))</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>tk <span class="op">=</span> stats.t.ppf(<span class="fl">0.975</span>, <span class="bu">len</span>(warten) <span class="op">-</span> <span class="dv">1</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"t-Intervall:       "</span>,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>      np.<span class="bu">round</span>([warten.mean() <span class="op">-</span> tk <span class="op">*</span> se, warten.mean() <span class="op">+</span> tk <span class="op">*</span> se], <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>t-Intervall:        [ 7.0535 17.5365]</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Wert hier</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>beobachteter Mittelwert</td>
+<td>12.295</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Bootstrap-Mittel</td>
+<td>12.160</td>
+<td>Der Mittelwert der 2000 Ziehungen.</td>
+</tr>
+<tr class="odd">
+<td>Verzerrung</td>
+<td>-0.135</td>
+<td>Bootstrap-Mittel minus beobachteter Wert. Klein gegenüber dem Standardfehler von 2.54, also unbedenklich.</td>
+</tr>
+<tr class="even">
+<td>Bootstrap-Standardfehler</td>
+<td>2.544</td>
+<td>Zum Vergleich: die Formel liefert <span class="math inline">\(s/\sqrt{n}\)</span> = 16.389/6.325 = 2.591. Die beiden liegen nah beieinander.</td>
+</tr>
+<tr class="odd">
+<td>Perzentilintervall</td>
+<td>7.807 bis 17.721</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>t-Intervall</td>
+<td>7.054 bis 17.537</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Der aufschlussreiche Vergleich steht in den letzten beiden Zeilen. Beide Intervalle sind ähnlich breit, aber verschieden <strong>platziert</strong>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>untere Grenze</th>
+<th>obere Grenze</th>
+<th>Abstand nach unten</th>
+<th>Abstand nach oben</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>t-Intervall</td>
+<td>7.054</td>
+<td>17.537</td>
+<td>-5.241</td>
+<td>+5.241</td>
+</tr>
+<tr class="even">
+<td>Bootstrap</td>
+<td>7.807</td>
+<td>17.721</td>
+<td>-4.488</td>
+<td>+5.426</td>
+</tr>
+</tbody>
+</table>
+<p>Das t-Intervall ist <strong>exakt symmetrisch</strong>, weil die Formel es so konstruiert. Das Bootstrap-Intervall ist es nicht: Es reicht 4.49 Minuten nach unten und 5.43 nach oben. Genau das erwartet man bei rechtsschiefen Daten, denn der Mittelwert kann durch einzelne grosse Werte weiter nach oben als nach unten wandern.</p>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<p>Der Bootstrap bildet hier eine Eigenschaft ab, die die Formel gar nicht abbilden kann. Bei n = 40 ist der Unterschied noch moderat; bei n = 15 wäre er erheblich, und dann wäre das t-Intervall an der unteren Grenze deutlich zu weit.</p>
+<p>Zugleich zeigt der Vergleich, dass die Formel nicht falsch ist: Die <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt.">Standardfehler</span> stimmen fast überein (2.54 gegen 2.59). Der Gewinn liegt in der Form des Intervalls, nicht in seiner Breite.</p>
+<blockquote class="blockquote">
+<p>Die mittlere Wartezeit beträgt 12.3 Minuten (95-Prozent-Bootstrap-Konfidenz- intervall 7.8 bis 17.7 Minuten, Perzentilmethode, B = 2000). Der Bootstrap wurde wegen der deutlichen Rechtsschiefe (<span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">Schiefe</span> 2.57) verwendet; das klassische t-Intervall wäre mit 7.1 bis 17.5 symmetrisch und würde die <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">Schiefe</span> der Verteilung nicht abbilden.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Für den <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span> gibt es keinen einfachen <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt.">Standardfehler</span>, für den getrimmten Mittelwert ebenso wenig. Der Bootstrap braucht keine Formel, sondern nur eine Rechenvorschrift.</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>kennzahlen <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Mittelwert =</span> <span class="cf">function</span>(m) <span class="fu">rowMeans</span>(m),</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Median =</span> <span class="cf">function</span>(m) <span class="fu">apply</span>(m, <span class="dv">1</span>, median),</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"getrimmt 10%"</span> <span class="ot">=</span> <span class="cf">function</span>(m) <span class="fu">apply</span>(m, <span class="dv">1</span>, mean, <span class="at">trim =</span> <span class="fl">0.1</span>)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>ergebnis <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">sapply</span>(<span class="fu">names</span>(kennzahlen), <span class="cf">function</span>(name) {</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  verteilung <span class="ot">&lt;-</span> kennzahlen[[name]](zieh)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  beobachtet <span class="ot">&lt;-</span> <span class="cf">switch</span>(name,</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>                       <span class="st">"Mittelwert"</span> <span class="ot">=</span> <span class="fu">mean</span>(warten),</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>                       <span class="st">"Median"</span> <span class="ot">=</span> <span class="fu">median</span>(warten),</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">mean</span>(warten, <span class="at">trim =</span> <span class="fl">0.1</span>))</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="at">beobachtet =</span> beobachtet,</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">boot_se =</span> <span class="fu">sd</span>(verteilung),</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">unten =</span> <span class="fu">unname</span>(<span class="fu">quantile</span>(verteilung, <span class="fl">0.025</span>)),</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">oben =</span> <span class="fu">unname</span>(<span class="fu">quantile</span>(verteilung, <span class="fl">0.975</span>)))</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>}))</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(ergebnis, <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             beobachtet boot_se  unten    oben
+Mittelwert      12.2950  2.5436 7.8073 17.7205
+Median           5.7000  1.2972 3.9000  8.7500
+getrimmt 10%     8.3969  1.9836 5.5938 13.2692</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>kennzahlen <span class="op">=</span> {</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Mittelwert"</span>: (warten.mean(), zieh.mean(axis<span class="op">=</span><span class="dv">1</span>)),</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Median"</span>: (np.median(warten), np.median(zieh, axis<span class="op">=</span><span class="dv">1</span>)),</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"getrimmt 10%"</span>: (stats.trim_mean(warten, <span class="fl">0.1</span>),</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>                     np.array([stats.trim_mean(z, <span class="fl">0.1</span>) <span class="cf">for</span> z <span class="kw">in</span> zieh])),</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.DataFrame({</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    name: {</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">"beobachtet"</span>: beob,</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>        <span class="st">"boot_se"</span>: vert.std(ddof<span class="op">=</span><span class="dv">1</span>),</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">"unten"</span>: np.percentile(vert, <span class="fl">2.5</span>),</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">"oben"</span>: np.percentile(vert, <span class="fl">97.5</span>),</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> name, (beob, vert) <span class="kw">in</span> kennzahlen.items()</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>}).T.<span class="bu">round</span>(<span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              beobachtet  boot_se   unten     oben
+Mittelwert       12.2950   2.5436  7.8073  17.7205
+Median            5.7000   1.2972  3.9000   8.7500
+getrimmt 10%      8.3969   1.9836  5.5938  13.2692</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kennzahl</th>
+<th>beobachtet</th>
+<th>Bootstrap-SE</th>
+<th>95-Prozent-Intervall</th>
+<th>Wie das zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Mittelwert</td>
+<td>12.295</td>
+<td>2.544</td>
+<td>7.81 bis 17.72</td>
+<td>Stark von den grossen Werten geprägt.</td>
+</tr>
+<tr class="even">
+<td>Median</td>
+<td>5.700</td>
+<td>1.297</td>
+<td>3.90 bis 8.75</td>
+<td>Halb so grosser Standardfehler, deutlich schmaleres Intervall, und inhaltlich die Zahl, die einen typischen Fall beschreibt.</td>
+</tr>
+<tr class="odd">
+<td>getrimmt 10 %</td>
+<td>8.397</td>
+<td>1.984</td>
+<td>5.59 bis 13.27</td>
+<td>Der Kompromiss: Die äussersten 10 Prozent auf jeder Seite werden weggelassen, der Rest gemittelt.</td>
+</tr>
+</tbody>
+</table>
+<p>Für keine der beiden unteren Zeilen gibt es eine Standardformel. Der Bootstrap liefert sie ohne Zusatzaufwand, weil ihm gleichgültig ist, welche Kennzahl er berechnet.</p>
+<div class="note-box">
+<p><strong>Das Intervall des <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Medians</span> ist auffällig grobkörnig</strong>: Seine Grenzen sind 3.90 und 8.75, also Mittelwerte benachbarter beobachteter Werte. Das liegt daran, dass der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span> einer Ziehung immer einer der vorhandenen Werte ist oder das Mittel zweier davon. Die Bootstrap-Verteilung ist deshalb diskret, und bei kleinen Stichproben wird das zum Problem, siehe Beispiel 4.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<p>Die Tabelle macht auch eine inhaltliche Entscheidung sichtbar. Welche der drei Kennzahlen berichtet wird, ist keine statistische Frage: Der Mittelwert zählt, wenn es um die Gesamtbelastung geht (alle Wartezeiten zusammen), der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span>, wenn es um den typischen Fall geht.</p>
+<blockquote class="blockquote">
+<p>Die mediane Wartezeit beträgt 5.7 Minuten (95-Prozent-Bootstrap-Konfidenz- intervall 3.9 bis 8.8 Minuten, Perzentilmethode, B = 2000). Berichtet wird der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span> statt des Mittelwerts, weil die Verteilung stark <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">rechtsschief</span> ist und der Mittelwert von 12.3 Minuten keinen typischen Fall beschreibt.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p><span class="math inline">\(B\)</span> ist frei wählbar. Zu wenige Ziehungen machen das Ergebnis vom Zufall abhängig, zu viele kosten nur Rechenzeit. Wo liegt die Grenze?</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Einfluss von B (Mittelwert, Saat 42):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Einfluss von B (Mittelwert, Saat 42):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (b <span class="cf">in</span> <span class="fu">c</span>(<span class="dv">200</span>, <span class="dv">1000</span>, <span class="dv">2000</span>)) {</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  v <span class="ot">&lt;-</span> <span class="fu">rowMeans</span>(<span class="fu">ziehungen</span>(warten, b))</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"  B = %5d: %.4f bis %.4f</span><span class="sc">\n</span><span class="st">"</span>, b,</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>              <span class="fu">quantile</span>(v, <span class="fl">0.025</span>), <span class="fu">quantile</span>(v, <span class="fl">0.975</span>)))</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  B =   200: 7.5031 bis 17.6306
+  B =  1000: 7.6320 bis 18.0444
+  B =  2000: 7.8073 bis 17.7205</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Einfluss der Saat (B = 2000):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Einfluss der Saat (B = 2000):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (saat <span class="cf">in</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">42</span>, <span class="dv">12345</span>)) {</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  v <span class="ot">&lt;-</span> <span class="fu">rowMeans</span>(<span class="fu">ziehungen</span>(warten, <span class="dv">2000</span>, <span class="at">saat =</span> saat))</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"  Saat %6d: %.4f bis %.4f</span><span class="sc">\n</span><span class="st">"</span>, saat,</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>              <span class="fu">quantile</span>(v, <span class="fl">0.025</span>), <span class="fu">quantile</span>(v, <span class="fl">0.975</span>)))</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Saat      1: 7.8121 bis 17.4978
+  Saat     42: 7.8073 bis 17.7205
+  Saat  12345: 7.9123 bis 17.7652</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Einfluss von B (Mittelwert, Saat 42):"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Einfluss von B (Mittelwert, Saat 42):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> b <span class="kw">in</span> (<span class="dv">200</span>, <span class="dv">1000</span>, <span class="dv">2000</span>):</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>    v <span class="op">=</span> ziehungen(warten, b).mean(axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    unten, oben <span class="op">=</span> np.percentile(v, [<span class="fl">2.5</span>, <span class="fl">97.5</span>])</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  B = </span><span class="sc">{</span>b<span class="sc">:5d}</span><span class="ss">: </span><span class="sc">{</span>unten<span class="sc">:.4f}</span><span class="ss"> bis </span><span class="sc">{</span>oben<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  B =   200: 7.5031 bis 17.6306
+  B =  1000: 7.6320 bis 18.0444
+  B =  2000: 7.8073 bis 17.7205</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Einfluss der Saat (B = 2000):"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Einfluss der Saat (B = 2000):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> saat <span class="kw">in</span> (<span class="dv">1</span>, <span class="dv">42</span>, <span class="dv">12345</span>):</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>    v <span class="op">=</span> ziehungen(warten, <span class="dv">2000</span>, saat<span class="op">=</span>saat).mean(axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>    unten, oben <span class="op">=</span> np.percentile(v, [<span class="fl">2.5</span>, <span class="fl">97.5</span>])</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  Saat </span><span class="sc">{</span>saat<span class="sc">:6d}</span><span class="ss">: </span><span class="sc">{</span>unten<span class="sc">:.4f}</span><span class="ss"> bis </span><span class="sc">{</span>oben<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Saat      1: 7.8121 bis 17.4978
+  Saat     42: 7.8073 bis 17.7205
+  Saat  12345: 7.9123 bis 17.7652</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>B</th>
+<th>Intervall</th>
+<th>Wie das zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>200</td>
+<td>7.503 bis 17.631</td>
+<td>Die untere Grenze liegt 0.30 Minuten neben dem Wert bei B = 2000.</td>
+</tr>
+<tr class="even">
+<td>1000</td>
+<td>7.632 bis 18.044</td>
+<td>Die obere Grenze weicht um 0.32 ab.</td>
+</tr>
+<tr class="odd">
+<td>2000</td>
+<td>7.807 bis 17.721</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Saat bei B = 2000</th>
+<th>Intervall</th>
+<th>Schwankung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>7.812 bis 17.498</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>42</td>
+<td>7.807 bis 17.721</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>12345</td>
+<td>7.912 bis 17.765</td>
+<td>rund 0.27 Minuten Spanne an der oberen Grenze</td>
+</tr>
+</tbody>
+</table>
+<p>Bei B = 2000 schwanken die Grenzen je nach Seed noch um rund 0.3 Minuten. Ob das stört, hängt davon ab, wie genau berichtet wird: Für eine Angabe “7.8 bis 17.7” ist es relevant, für “rund 8 bis 18” nicht.</p>
+<div class="note-box">
+<p><strong>Faustregeln für B.</strong> Für <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt.">Standardfehler</span> genügen 1000 Ziehungen. Für Perzentilintervalle sind 2000 bis 5000 üblich, weil die Quantile an den Rändern der Verteilung liegen und dort weniger Werte zur Verfügung stehen. Für BCa oder für sehr genaue Angaben sind 10 000 angebracht.</p>
+<p>Rechenzeit ist selten das Argument: 10 000 Ziehungen aus 40 Werten sind eine Sache von Sekundenbruchteilen. Auf dieser Seite steht B = 2000, weil die Rechnung im Build für jede Seite neu läuft.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<p>Der Seed gehört ins Protokoll. Nicht weil das Ergebnis dadurch richtiger würde, sondern weil eine Bootstrap-Angabe ohne Seed nicht <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">reproduzierbar</span> ist: Wer sie nachrechnet, bekommt andere Grenzen und weiss nicht, ob das an einem Fehler liegt oder am Zufall.</p>
+</section>
+</div>
+<div id="tabset-6-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>Nur die ersten acht Wartezeiten: 1.2 bis 2.6 Minuten. Gesucht ist ein <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervall</span> für den <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span>. Der Bootstrap läuft anstandslos durch — und liefert etwas, das nicht brauchbar ist.</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>klein <span class="ot">&lt;-</span> warten[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>]</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>klein</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1.2 1.5 1.8 2.0 2.1 2.3 2.5 2.6</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>zieh_klein <span class="ot">&lt;-</span> <span class="fu">ziehungen</span>(klein, <span class="dv">2000</span>)</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>median_klein <span class="ot">&lt;-</span> <span class="fu">apply</span>(zieh_klein, <span class="dv">1</span>, median)</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">median_beobachtet =</span> <span class="fu">median</span>(klein),</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>        <span class="at">unten =</span> <span class="fu">unname</span>(<span class="fu">quantile</span>(median_klein, <span class="fl">0.025</span>)),</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>        <span class="at">oben =</span> <span class="fu">unname</span>(<span class="fu">quantile</span>(median_klein, <span class="fl">0.975</span>))), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>median_beobachtet             unten              oben 
+             2.05              1.50              2.50 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"verschiedene Werte in der Bootstrap-Verteilung:"</span>,</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">length</span>(<span class="fu">unique</span>(median_klein)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>verschiedene Werte in der Bootstrap-Verteilung: 22 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Maximum der Bootstrap-Verteilung:"</span>, <span class="fu">max</span>(median_klein),</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">" Maximum der Daten:"</span>, <span class="fu">max</span>(klein), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Maximum der Bootstrap-Verteilung: 2.6  Maximum der Daten: 2.6 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(<span class="fu">round</span>(median_klein, <span class="dv">2</span>))[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>]</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ 1.2 1.35  1.5  1.6 1.65 1.75  1.8  1.9 
+   4   12   53    1   92   48  161  224 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>klein <span class="op">=</span> warten[:<span class="dv">8</span>]</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Daten:"</span>, klein.tolist())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Daten: [1.2, 1.5, 1.8, 2.0, 2.1, 2.3, 2.5, 2.6]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>zieh_klein <span class="op">=</span> ziehungen(klein, <span class="dv">2000</span>)</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>median_klein <span class="op">=</span> np.median(zieh_klein, axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Median beobachtet ="</span>, <span class="bu">round</span>(<span class="bu">float</span>(np.median(klein)), <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Median beobachtet = 2.05</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Perzentilintervall:"</span>, np.percentile(median_klein, [<span class="fl">2.5</span>, <span class="fl">97.5</span>]).<span class="bu">round</span>(<span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Perzentilintervall: [1.5 2.5]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"verschiedene Werte in der Bootstrap-Verteilung:"</span>,</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>      <span class="bu">len</span>(np.unique(median_klein)))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>verschiedene Werte in der Bootstrap-Verteilung: 22</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Maximum der Bootstrap-Verteilung:"</span>, median_klein.<span class="bu">max</span>(),</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>      <span class="st">" Maximum der Daten:"</span>, klein.<span class="bu">max</span>())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Maximum der Bootstrap-Verteilung: 2.6  Maximum der Daten: 2.6</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.Series(median_klein).<span class="bu">round</span>(<span class="dv">2</span>).value_counts().sort_index().head(<span class="dv">8</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>1.20      4
+1.35     12
+1.50     53
+1.60      1
+1.65     92
+1.75     48
+1.80    161
+1.90    224
+Name: count, dtype: int64</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Wert hier</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Median beobachtet</td>
+<td>2.050</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>Perzentilintervall</td>
+<td>1.500 bis 2.500</td>
+<td>Sieht unauffällig aus.</td>
+</tr>
+<tr class="odd">
+<td>verschiedene Werte in der Bootstrap-Verteilung</td>
+<td><strong>22</strong></td>
+<td>Die ganze Verteilung besteht aus 22 verschiedenen Zahlen. Von einer glatten Verteilung, deren Quantile man ablesen könnte, kann keine Rede sein.</td>
+</tr>
+<tr class="even">
+<td>Maximum der Bootstrap-Verteilung</td>
+<td>2.600</td>
+<td><strong>Genau das Maximum der Daten.</strong> Der Bootstrap kann keinen Wert erzeugen, der nicht beobachtet wurde.</td>
+</tr>
+</tbody>
+</table>
+<p>Das letzte ist der grundsätzliche Punkt: Die Bootstrap-Verteilung lebt ausschliesslich innerhalb der beobachteten Werte. Bei acht Beobachtungen sind das acht Zahlen, und aus deren Kombinationen entstehen 22 mögliche Mediane.</p>
+<div class="note-box">
+<p><strong>Zwei Regeln folgen daraus.</strong></p>
+<p><strong>Der Bootstrap braucht genügend Daten.</strong> Als grobe Untergrenze gelten 20 bis 30 Beobachtungen, für Kennzahlen an den Verteilungsrändern deutlich mehr. Bei kleinen Stichproben ist eine Formel mit Verteilungsannahme meist die bessere Wahl, auch wenn ihre Annahme unsicher ist.</p>
+<p><strong>Für Extremwerte ist er grundsätzlich ungeeignet.</strong> Ein <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervall</span> für das Maximum wäre nach oben durch das beobachtete Maximum begrenzt, was offensichtlich falsch ist. Dasselbe gilt abgeschwächt für hohe Quantile wie das 95-Prozent-Quantil.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<p>Der Bootstrap warnt nicht. Er liefert für acht Beobachtungen ebenso bereitwillig ein Intervall wie für achthundert, und das Ergebnis sieht in beiden Fällen gleich aus. Die Prüfung, ob genug Daten vorliegen, muss deshalb vorher stattfinden.</p>
+<p>Ein nützlicher Blick: die Anzahl verschiedener Werte in der Bootstrap-Verteilung. Sind es wenige Dutzend, ist die Verteilung zu grobkörnig, um Quantile daraus abzulesen.</p>
+<blockquote class="blockquote">
+<p>Für die acht Werte wurde kein Bootstrap-Intervall berechnet. Die Bootstrap-Verteilung des <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Medians</span> nimmt nur 22 verschiedene Werte an und ist nach oben durch den grössten beobachteten Wert begrenzt; ein daraus abgeleitetes Intervall wäre irreführend. Berichtet wird stattdessen die Spannweite der Beobachtungen.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum wird beim Bootstrap <strong>mit</strong> Zurücklegen gezogen?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Ohne Zurücklegen wäre jede Ziehung identisch mit der Ausgangsstichprobe
+</div>
+<div class="quiz__erklaerung">
+Richtig. Zieht man <span class="math inline">\(n\)</span> aus <span class="math inline">\(n\)</span> ohne Zurücklegen, erhält man immer dieselben Werte in anderer Reihenfolge, und jede Kennzahl wäre identisch. Erst das Zurücklegen erzeugt Variation.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Um die Stichprobe zu vergrössern
+</div>
+<div class="quiz__erklaerung">
+Die Ziehung hat dieselbe Grösse wie das Original; neue Information entsteht nicht.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Weil die Grundgesamtheit unendlich gross ist
+</div>
+<div class="quiz__erklaerung">
+Das Zurücklegen bildet das ab, ist aber nicht der Grund für die Notwendigkeit.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Das t-Intervall lautet 7.05 bis 17.54, das Bootstrap-Intervall 7.81 bis 17.72. Woher kommt der Unterschied?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Das t-Intervall ist konstruktionsbedingt symmetrisch, das Bootstrap- Intervall bildet die Rechtsschiefe ab
+</div>
+<div class="quiz__erklaerung">
+Richtig. Bei schiefen Daten ist die Verteilung des Mittelwerts ebenfalls <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief.">schief</span>. Der Bootstrap reicht 4.5 Minuten nach unten und 5.4 nach oben, die Formel zwingend gleich weit in beide Richtungen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Eines der beiden ist falsch gerechnet
+</div>
+<div class="quiz__erklaerung">
+Beide sind korrekt; sie beruhen auf verschiedenen Annahmen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Der Bootstrap hat zu wenige Ziehungen verwendet
+</div>
+<div class="quiz__erklaerung">
+Der Unterschied in der Symmetrie bleibt auch bei sehr grossem B bestehen.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Eine Bootstrap-Verteilung aus 2000 Ziehungen nimmt nur 22 verschiedene Werte an. Was folgt daraus?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Die Stichprobe ist zu klein für den Bootstrap
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die Bootstrap-Verteilung entsteht aus Kombinationen der beobachteten Werte. Wenige verschiedene Ergebnisse bedeuten, dass zu wenige Ausgangswerte vorliegen, und die Quantile werden dann grobkörnig und unzuverlässig.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+B ist zu klein gewählt
+</div>
+<div class="quiz__erklaerung">
+Mehr Ziehungen erzeugen keine neuen Werte, sondern nur häufigere Wiederholungen derselben 22.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Die Kennzahl ist ungeeignet
+</div>
+<div class="quiz__erklaerung">
+Der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span> ist eine sinnvolle Kennzahl; das Problem liegt am Umfang.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum eignet sich der Bootstrap nicht für ein <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervall</span> des Maximums?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Weil die Bootstrap-Verteilung den beobachteten Wertebereich nie verlässt
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das Maximum jeder Ziehung ist höchstens so gross wie das grösste beobachtete. Die obere Intervallgrenze wäre dadurch immer das beobachtete Maximum, was als Schätzung offensichtlich zu klein ist.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Weil das Maximum keine stetige Kennzahl ist
+</div>
+<div class="quiz__erklaerung">
+Stetigkeit ist nicht das Problem; der <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser.">Median</span> ist ebenfalls nicht stetig und funktioniert bei genügend Daten.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Weil zu viele Ziehungen nötig wären
+</div>
+<div class="quiz__erklaerung">
+Auch mit beliebig vielen Ziehungen bleibt die Grenze bestehen.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://www.statlearning.com/">An Introduction to Statistical Learning, Kapitel 5.2</a></li>
+<li><a href="https://cran.r-project.org/package=boot">R-Paket <code>boot</code></a></li>
+<li><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html">scipy: bootstrap</a></li>
+</ul>
 
 
 </section>
@@ -1627,11 +2733,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 18:35</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 18:49</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
