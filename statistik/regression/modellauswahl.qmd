@@ -1,32 +1,647 @@
 ---
 title: "Modellauswahl"
-description: "AIC, adjustiertes R², Modellvergleich und Validierung an neuen Daten."
-categories: ["Modellvalidierung", "Regression", "Interpretation", "R", "Python"]
+description: "F-Test, AIC, BIC und Kreuzvalidierung, und warum schrittweise Auswahl täuscht."
+categories: ["Regression", "Modelldiagnostik", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
-order: 60
+stand: entwurf
+order: 40
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+# 150 Faelle, zwei echte Praediktoren und sechs wertlose. Deterministisch
+# konstruiert, damit R und Python exakt dieselben Zahlen sehen.
+n <- 150
+lauf <- 0:(n - 1)
+
+richtung <- function(faktor) qnorm(((lauf * faktor) %% n + 0.5) / n)
+
+x1 <- round(20 + 5 * richtung(1), 2)
+x2 <- round(50 + 10 * richtung(23), 2)
+
+daten <- data.frame(
+  y = round(100 + 2.5 * x1 - 0.8 * x2 + 6 * richtung(41), 2),
+  x1 = x1,
+  x2 = x2
+)
+
+for (k in 1:6) {
+  daten[[paste0("z", k)]] <- round(richtung(c(7, 11, 13, 17, 19, 29)[k]), 3)
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from scipy import stats
+
+n = 150
+lauf = np.arange(n)
+
+
+def richtung(faktor):
+    return stats.norm.ppf(((lauf * faktor) % n + 0.5) / n)
+
+
+x1 = np.round(20 + 5 * richtung(1), 2)
+x2 = np.round(50 + 10 * richtung(23), 2)
+
+daten = pd.DataFrame({
+    "y": np.round(100 + 2.5 * x1 - 0.8 * x2 + 6 * richtung(41), 2),
+    "x1": x1,
+    "x2": x2,
+})
+
+for k, faktor in enumerate([7, 11, 13, 17, 19, 29], start=1):
+    daten[f"z{k}"] = np.round(richtung(faktor), 3)
+```
+
+Alle Beispiele rechnen mit demselben Datensatz: 150 Fälle, zwei Prädiktoren
+`x1` und `x2`, die tatsächlich auf `y` wirken, und sechs Grössen `z1` bis `z6`,
+die nichts damit zu tun haben. Weil die Wahrheit hier bekannt ist, lässt sich
+prüfen, welches Auswahlverfahren sie findet.
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Welche Prädiktoren gehören ins Modell? |
+| Eingang | mehrere angepasste Modelle auf denselben Daten |
+| Was die Verfahren liefern | F-Test für geschachtelte Modelle, AIC und BIC für beliebige, Kreuzvalidierungsfehler als direkte Schätzung der Vorhersagegüte |
+| R-Funktionen | `anova(m1, m2)`, `AIC()`, `BIC()`, `step()` |
+| Python-Funktionen | `sm.stats.anova_lm(m1, m2)`, `modell.aic`, `modell.bic` |
+| Verwandte Methoden | [multiple lineare Regression](multiple-lineare-regression.qmd), [Regressionsdiagnostik](regressionsdiagnostik.qmd), [Klassifikationsgüte](klassifikationsguete.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Modellauswahl beantwortet eine andere Frage als die
+[Diagnostik](regressionsdiagnostik.qmd). Die Diagnostik fragt, ob ein gegebenes
+Modell zulässig ist; die Auswahl fragt, welches von mehreren zulässigen
+vorzuziehen ist.
+
+Entscheidend ist zuerst eine Vorfrage, die kein Verfahren beantworten kann:
+**Wozu dient das Modell?**
+
+| Ziel | Welches Kriterium passt |
+|---|---|
+| Vorhersage neuer Fälle | Kreuzvalidierung, ersatzweise AIC |
+| Das wahre Modell finden | BIC; es bevorzugt sparsame Modelle stärker |
+| Eine bestimmte Wirkung schätzen | **gar keines.** Die Prädiktoren ergeben sich aus dem Fachwissen, nicht aus den Daten |
+| Beschreiben, was zusammenhängt | Fachwissen zuerst, Kennzahlen als Ergänzung |
+
+Die dritte Zeile ist die wichtigste. Wer den Effekt einer Grösse schätzen will
+und dafür Prädiktoren nach statistischen Kriterien auswählt, verzerrt genau die
+Schätzung, um die es geht. Welche Störgrössen kontrolliert werden müssen, ist
+eine inhaltliche Frage.
+
 ## Grundidee und Modell
 
-## Voraussetzungen und ihre Prüfung
+Jedes Kriterium wägt Anpassung gegen Sparsamkeit ab. Sie unterscheiden sich nur
+darin, wie teuer ein zusätzlicher Parameter ist.
 
-## Durchführung in R und Python
+| Kriterium | Formel im Kern | Preis je Parameter | Neigung |
+|---|---|---|---|
+| R² | erklärter Anteil | **null** | wählt immer das grösste Modell |
+| adjustiertes R² | R² mit Abzug je Parameter | klein | zu nachsichtig, siehe Beispiel 2 |
+| F-Test | Vergleich zweier geschachtelter Modelle | über das Signifikanzniveau | nur für geschachtelte Modelle |
+| AIC | $-2\log L + 2k$ | 2 | zielt auf gute Vorhersage |
+| BIC | $-2\log L + \log(n)\,k$ | $\log(n)$, hier 5.01 | zielt auf das wahre Modell |
+| Kreuzvalidierung | gemessener Fehler auf ungesehenen Daten | keine Formel, direkte Messung | die ehrlichste Antwort, aber rechenaufwendig |
+
+Zwei Modelle heissen **geschachtelt**, wenn das kleinere aus dem grösseren
+entsteht, indem man Koeffizienten auf null setzt. Nur dann ist der F-Test
+anwendbar. AIC, BIC und Kreuzvalidierung vergleichen auch nicht geschachtelte
+Modelle, solange sie auf **denselben Beobachtungen** beruhen.
+
+::: {.note-box}
+**AIC und BIC sind nur als Differenz deutbar.** Der absolute Wert hängt an
+Konstanten, die je nach Software mitgezählt werden oder nicht. R zählt die
+Reststreuung als zusätzlichen Parameter, statsmodels nicht; dadurch liegen die
+R-Werte um genau 2 (AIC) beziehungsweise $\log(n)$ (BIC) höher. Die
+Differenzen zwischen Modellen und damit die Rangfolge sind identisch, siehe
+Beispiel 2.
+
+Als Anhaltspunkt für die Grösse einer Differenz: unter 2 ist sie kaum
+bedeutsam, ab etwa 4 spricht sie deutlich für das kleinere Modell, ab 10 ist
+das grössere praktisch ausgeschlossen.
+:::
 
 ## Output lesen
 
-## Ergebnisse interpretieren
+| Ausgabe | Was sie sagt | Falle |
+|---|---|---|
+| `anova(m1, m2)` `F` und `Pr(>F)` | Bringen die zusätzlichen Terme gemeinsam etwas? | nur für geschachtelte Modelle auf identischen Daten |
+| `AIC()` | Vergleichswert, kleiner ist besser | absolute Höhe bedeutungslos |
+| `BIC()` | dasselbe mit strengerem Abzug | wählt bei grossem n deutlich sparsamer |
+| `Adjusted R-squared` | R² mit Abzug | zu nachsichtig; steigt oft noch, wenn AIC schon fällt |
+| `step()` in R | schrittweise Auswahl | die Ausgabe sieht objektiv aus und ist es nicht, siehe Beispiel 3 |
+| Kreuzvalidierungsfehler | geschätzter Fehler auf neuen Daten | hängt an der Aufteilung; bei kleinen Datensätzen schwankt er merklich |
 
 ## Interpretationsfallen
 
+- **R² ist als Auswahlkriterium unbrauchbar.** Es kann durch einen zusätzlichen
+  Prädiktor nie sinken.
+- **Adjustiertes R² ist zu nachsichtig.** In Beispiel 2 ist es für das Modell
+  mit sechs wertlosen Prädiktoren am höchsten.
+- **AIC und BIC lassen sich nicht zwischen Datensätzen vergleichen**, auch nicht
+  zwischen Modellen mit unterschiedlich vielen Zeilen. Fehlende Werte in einem
+  Prädiktor verkleinern die Zeilenzahl unbemerkt und machen den Vergleich
+  ungültig.
+- **Ein signifikanter Koeffizient nach schrittweiser Auswahl ist nicht
+  signifikant.** Der p-Wert unterstellt, dass die Frage vorab feststand.
+- **Die schrittweise Auswahl ist nicht reproduzierbar in ihrer Aussage.** Kleine
+  Änderungen an den Daten führen zu anderen Modellen.
+- **Kein Kriterium ersetzt Fachwissen.** Alle vergleichen nur die Modelle, die
+  man ihnen vorlegt.
+- **Das beste Modell nach AIC muss nicht gut sein.** Die Kriterien sind relativ;
+  sie sagen nichts darüber, ob das Gewinnermodell die Daten überhaupt angemessen
+  beschreibt. Das beantwortet die [Diagnostik](regressionsdiagnostik.qmd).
+
 ## Ergebnis berichten
+
+> Verglichen wurden [Anzahl] Modelle auf denselben [n] Beobachtungen. Gewählt
+> wurde [Modell] mit [Kriterium] = [Wert]; das nächstbeste Modell liegt um
+> [Differenz] darüber. Die Auswahl der Kandidaten erfolgte [Begründung].
+
+Genannt werden: welche Modelle verglichen wurden und warum diese, welches
+Kriterium mit welcher Begründung, die Werte aller Kandidaten und nicht nur des
+Gewinners, und ob eine schrittweise Auswahl stattfand. Der letzte Punkt ist
+keine Formalie: Er ändert die Deutung aller p-Werte im gewählten Modell.
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt der Modellauswahl |
+|---|---|
+| [Regressionsdiagnostik](regressionsdiagnostik.qmd) | die Frage lautet, ob ein Modell zulässig ist |
+| [Multiple lineare Regression](multiple-lineare-regression.qmd) | die Schätzung eines feststehenden Modells |
+| [Klassifikationsgüte](klassifikationsguete.qmd) | die Zielgrösse ist binär |
+| Regularisierung (Ridge, Lasso) | viele Prädiktoren im Verhältnis zu n; sie wählen und schätzen in einem Schritt |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Geschachtelte Modelle vergleichen
+
+#### Frage und Datenlage
+
+Lohnt sich `x2` zusätzlich zu `x1`? Und lohnen sich die sechs Grössen `z1` bis
+`z6` zusätzlich zu beiden? Beide Fragen betreffen geschachtelte Modelle, also
+ist der F-Test anwendbar.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-mw-rechnung-r
+m1   <- lm(y ~ x1, data = daten)
+m12  <- lm(y ~ x1 + x2, data = daten)
+mall <- lm(y ~ x1 + x2 + z1 + z2 + z3 + z4 + z5 + z6, data = daten)
+
+anova(m1, m12)
+anova(m12, mall)
+
+round(c(r2_x1 = summary(m1)$r.squared,
+        r2_x1x2 = summary(m12)$r.squared,
+        r2_alle = summary(mall)$r.squared), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b1-mw-rechnung-py
+m1 = smf.ols("y ~ x1", data=daten).fit()
+m12 = smf.ols("y ~ x1 + x2", data=daten).fit()
+mall = smf.ols("y ~ x1 + x2 + z1 + z2 + z3 + z4 + z5 + z6", data=daten).fit()
+
+print(sm.stats.anova_lm(m1, m12).round(4))
+print(sm.stats.anova_lm(m12, mall).round(4))
+print("R^2:", round(m1.rsquared, 4), round(m12.rsquared, 4),
+      round(mall.rsquared, 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Vergleich | F | df | p | Wie das zu lesen ist |
+|---|---|---|---|---|
+| `x1` gegen `x1 + x2` | 248.28 | 1 und 147 | < 0.001 | `x2` bringt einen massiven Gewinn. Die Residuenquadratsumme fällt von 14004 auf 5208. |
+| `x1 + x2` gegen alle acht | 1.869 | 6 und 141 | 0.090 | Die sechs Zusatzgrössen bringen **gemeinsam** nichts Nachweisbares, obwohl sie die Residuenquadratsumme rechnerisch weiter senken (von 5208 auf 4824). |
+
+| R² | Wert | Wie er zu lesen ist |
+|---|---|---|
+| `x1` | 0.6555 | |
+| `x1 + x2` | 0.8719 | |
+| alle acht | **0.8813** | Der höchste Wert, und trotzdem das schlechteste Modell. R² kann durch einen zusätzlichen Prädiktor nie sinken, auch nicht durch reines Rauschen. |
+
+::: {.note-box}
+**Warum der gemeinsame F-Test besser ist als sechs einzelne t-Tests.** In der
+Koeffiziententabelle des vollen Modells hat `z6` einen p-Wert von 0.051 und
+`z3` einen von 0.141. Wer die sechs einzeln ansieht und den kleinsten
+herausgreift, findet fast immer etwas: Bei sechs wirkungslosen Prädiktoren liegt
+die Wahrscheinlichkeit, dass mindestens einer unter 0.05 fällt, bei rund 26
+Prozent.
+
+Der F-Test prüft alle sechs in **einem** Test und beantwortet damit die Frage,
+die tatsächlich interessiert: Bringt diese Gruppe zusammen etwas?
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Aufnahme von `x2` verbessert das Modell deutlich (F(1, 147) = 248.3,
+> p < 0.001). Die sechs weiteren Grössen bringen gemeinsam keinen nachweisbaren
+> Gewinn (F(6, 141) = 1.87, p = 0.090), obwohl R² von 0.872 auf 0.881 steigt.
+> Berichtet wird das Modell mit `x1` und `x2`.
+
+### Beispiel 2: AIC, BIC und adjustiertes R² im Vergleich
+
+#### Frage und Datenlage
+
+Fünf Modelle, von leer bis voll besetzt. Welches wählt welches Kriterium? Und
+welches ist das richtige? Letzteres ist hier bekannt: `x1 + x2`.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-mw-rechnung-r
+m0   <- lm(y ~ 1, data = daten)
+m12z <- lm(y ~ x1 + x2 + z1, data = daten)
+
+uebersicht <- data.frame(
+  modell = c("nur Achsenabschnitt", "x1", "x1 + x2", "x1 + x2 + z1", "alle acht"),
+  parameter = c(1, 2, 3, 4, 9),
+  r2 = sapply(list(m0, m1, m12, m12z, mall), function(m) summary(m)$r.squared),
+  adj_r2 = sapply(list(m0, m1, m12, m12z, mall), function(m) summary(m)$adj.r.squared),
+  AIC = sapply(list(m0, m1, m12, m12z, mall), AIC),
+  BIC = sapply(list(m0, m1, m12, m12z, mall), BIC)
+)
+uebersicht[, 3:6] <- round(uebersicht[, 3:6], 4)
+uebersicht
+
+cat("bestes nach AIC:", uebersicht$modell[which.min(uebersicht$AIC)], "\n")
+cat("bestes nach BIC:", uebersicht$modell[which.min(uebersicht$BIC)], "\n")
+cat("bestes nach adj. R2:", uebersicht$modell[which.max(uebersicht$adj_r2)], "\n")
+```
+
+##### Python
+
+```{python}
+#| label: b2-mw-rechnung-py
+m0 = smf.ols("y ~ 1", data=daten).fit()
+m12z = smf.ols("y ~ x1 + x2 + z1", data=daten).fit()
+
+modelle = {"nur Achsenabschnitt": m0, "x1": m1, "x1 + x2": m12,
+           "x1 + x2 + z1": m12z, "alle acht": mall}
+uebersicht = pd.DataFrame({
+    "parameter": [int(m.df_model) + 1 for m in modelle.values()],
+    "r2": [m.rsquared for m in modelle.values()],
+    "adj_r2": [m.rsquared_adj for m in modelle.values()],
+    "AIC": [m.aic for m in modelle.values()],
+    "BIC": [m.bic for m in modelle.values()],
+}, index=list(modelle)).round(4)
+print(uebersicht)
+
+print("bestes nach AIC:    ", uebersicht["AIC"].idxmin())
+print("bestes nach BIC:    ", uebersicht["BIC"].idxmin())
+print("bestes nach adj. R2:", uebersicht["adj_r2"].idxmax())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Modell | Parameter | R² | adj. R² | AIC (Python) | AIC (R) | BIC (Python) | BIC (R) |
+|---|---|---|---|---|---|---|---|
+| nur Achsenabschnitt | 1 | 0.0000 | 0.0000 | 1268.01 | 1270.01 | 1271.02 | 1276.03 |
+| x1 | 2 | 0.6555 | 0.6532 | 1110.15 | 1112.15 | 1116.17 | 1121.18 |
+| **x1 + x2** (die Wahrheit) | 3 | 0.8719 | 0.8702 | 963.78 | 965.78 | **972.81** | **977.82** |
+| x1 + x2 + z1 | 4 | 0.8748 | 0.8722 | **962.36** | **964.36** | 974.40 | 979.42 |
+| alle acht | 9 | **0.8813** | **0.8746** | 964.30 | 966.30 | 991.39 | 996.40 |
+
+Vier Kriterien, drei verschiedene Antworten:
+
+| Kriterium | Wahl | Urteil |
+|---|---|---|
+| R² | alle acht | Falsch, und zwar immer: R² wählt stets das grösste Modell. |
+| adjustiertes R² | alle acht | Ebenfalls falsch. Der Abzug je Parameter ist zu klein, um sechs wertlose Prädiktoren auszuschliessen. |
+| AIC | x1 + x2 + z1 | Fast richtig; es nimmt einen wertlosen Prädiktor mit. `z1` korreliert zufällig mit 0.22 mit `y`. |
+| **BIC** | **x1 + x2** | Richtig. Der strengere Abzug von $\log(150) = 5.01$ je Parameter reicht aus. |
+
+Die AIC-Differenz zwischen `x1 + x2` und `x1 + x2 + z1` beträgt nur 1.42 und
+liegt damit unter der Schwelle von 2, ab der eine Differenz überhaupt beachtet
+wird. **Die beiden Modelle sind nach AIC praktisch gleichwertig**, und in einem
+solchen Fall wählt man das kleinere.
+
+::: {.note-box}
+**Warum die absoluten Werte zwischen R und Python auseinandergehen.** R zählt
+die Reststreuung $\sigma$ als eigenen Parameter, statsmodels nicht. R addiert
+deshalb $2 \cdot 1 = 2$ beim AIC und $\log(150) = 5.01$ beim BIC.
+
+Die Differenzen zwischen Modellen sind davon nicht betroffen, und nur sie
+zählen. Wer AIC-Werte aus zwei Programmen nebeneinanderstellt, muss trotzdem
+wissen, dass die Reihen gegeneinander verschoben sind.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Reihenfolge der Strenge lautet: R² < adjustiertes R² < AIC < BIC. Welches
+davon passt, hängt am Ziel. Wer vorhersagen will, ist mit AIC besser bedient;
+wer die tatsächlich wirksamen Grössen finden will, mit BIC. Dass BIC hier die
+Wahrheit trifft, ist kein Zufall, aber auch keine Garantie: Bei kleinerem n oder
+schwächeren Effekten übersieht BIC auch echte Prädiktoren.
+
+> Verglichen wurden fünf geschachtelte Modelle auf denselben 150 Beobachtungen.
+> BIC wählt `x1 + x2` (972.8; nächstbestes Modell 974.4), AIC wählt
+> `x1 + x2 + z1` (962.4), liegt damit aber nur 1.42 unter `x1 + x2` und ist
+> damit praktisch gleichwertig. Gewählt wurde `x1 + x2`.
+
+### Beispiel 3: Schrittweise Auswahl
+
+#### Frage und Datenlage
+
+Ein verbreitetes Verfahren: Man startet mit allen acht Prädiktoren und entfernt
+schrittweise jenen, dessen Wegfall den AIC am stärksten senkt, bis keine
+Verbesserung mehr möglich ist. Findet es die Wahrheit?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-mw-rechnung-r
+gewaehlt <- step(mall, direction = "backward", trace = 0)
+formula(gewaehlt)
+
+summary(gewaehlt)$coefficients
+```
+
+##### Python
+
+```{python}
+#| label: b3-mw-rechnung-py
+kandidaten = ["x1", "x2"] + [f"z{k}" for k in range(1, 7)]
+aktuell = list(kandidaten)
+
+while True:
+    jetzt = smf.ols("y ~ " + " + ".join(aktuell), data=daten).fit()
+    beste_aic, beste_var = jetzt.aic, None
+    for kandidat in aktuell:
+        rest = [v for v in aktuell if v != kandidat]
+        formel = "y ~ " + (" + ".join(rest) if rest else "1")
+        aic = smf.ols(formel, data=daten).fit().aic
+        if aic < beste_aic:
+            beste_aic, beste_var = aic, kandidat
+    if beste_var is None:
+        break
+    print(f"entferne {beste_var}: AIC {jetzt.aic:.2f} -> {beste_aic:.2f}")
+    aktuell.remove(beste_var)
+
+print("gewählt:", aktuell)
+gewaehlt = smf.ols("y ~ " + " + ".join(aktuell), data=daten).fit()
+print(gewaehlt.summary().tables[1])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Entfernt | AIC (Python) |
+|---|---|---|
+| Start | | 964.30 |
+| 1 | z5 | 962.59 |
+| 2 | z2 | 961.09 |
+| 3 | z4 | 960.31 |
+| Ende | | gewählt: `x1`, `x2`, `z1`, `z3`, `z6` |
+
+Das Verfahren behält **drei** der sechs wertlosen Prädiktoren. Und es sieht
+dabei völlig plausibel aus: Jeder Schritt senkt den AIC, das Verfahren
+konvergiert, und am Ende steht ein Modell mit fünf Prädiktoren, von denen die
+meisten einen kleinen p-Wert haben.
+
+::: {.note-box}
+**Warum die p-Werte im gewählten Modell nicht mehr gelten.** Ein p-Wert
+beantwortet die Frage: Wie wahrscheinlich wäre dieser Koeffizient, wenn der
+Prädiktor wirkungslos wäre und ich ihn **vorab** ausgewählt hätte? Bei
+schrittweiser Auswahl ist die zweite Bedingung verletzt. Die Prädiktoren sind
+gerade deshalb im Modell, weil sie in **diesen** Daten gut aussahen.
+
+Die Folge: Die p-Werte sind systematisch zu klein, die Konfidenzintervalle zu
+schmal, und die Koeffizienten sind vom Betrag her zu gross. In der Literatur
+heisst das Problem "selection bias" oder "the winner's curse". Es verschwindet
+nicht dadurch, dass man ein anderes Auswahlkriterium nimmt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Was daraus folgt, ist keine Verurteilung der schrittweisen Auswahl, sondern eine
+Einschränkung ihres Einsatzbereichs:
+
+| Zweck | Schrittweise Auswahl geeignet? |
+|---|---|
+| Ein Vorhersagemodell aus vielen Kandidaten bauen | bedingt, und nur mit Bewertung auf getrennten Daten |
+| Herausfinden, welche Grössen wirken | nein |
+| p-Werte und Intervalle berichten | nein, jedenfalls nicht ohne Korrektur |
+| Ein vorab begründetes Modell prüfen | die Frage stellt sich nicht |
+
+Der saubere Weg für die zweite Zeile ist: Kandidaten aus dem Fachwissen ableiten,
+das Modell vorab festlegen, und die Auswahl gar nicht erst den Daten überlassen.
+Wo das nicht geht, sind Regularisierungsverfahren wie Lasso die bessere Wahl,
+weil sie Auswahl und Schätzung in einem Schritt vornehmen und den Schrumpfeffekt
+einrechnen.
+
+> Eine rückwärts gerichtete schrittweise Auswahl nach AIC wählt `x1`, `x2`,
+> `z1`, `z3` und `z6`, also drei der sechs konstruktionsbedingt wirkungslosen
+> Grössen. Die p-Werte dieses Modells sind wegen der datengetriebenen Auswahl
+> nicht als Signifikanzaussagen zu lesen.
+
+### Beispiel 4: Kreuzvalidierung als Schiedsrichter
+
+#### Frage und Datenlage
+
+AIC und BIC schätzen die Vorhersagegüte über eine Formel. Die Kreuzvalidierung
+misst sie direkt: Das Modell wird auf einem Teil der Daten geschätzt und auf dem
+zurückgehaltenen Teil geprüft, und das für jeden Teil einmal.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-mw-rechnung-r
+cv_fehler <- function(spalten, k = 5) {
+  formel <- as.formula(paste("y ~", if (length(spalten)) paste(spalten, collapse = " + ") else "1"))
+  quadrate <- sapply(0:(k - 1), function(teil) {
+    ist_test <- (seq_len(nrow(daten)) - 1) %% k == teil
+    modell <- lm(formel, data = daten[!ist_test, ])
+    mean((daten$y[ist_test] - predict(modell, newdata = daten[ist_test, ]))^2)
+  })
+  sqrt(mean(quadrate))
+}
+
+kandidatenlisten <- list(
+  "nur Achsenabschnitt" = character(0),
+  "x1" = "x1",
+  "x1 + x2" = c("x1", "x2"),
+  "x1 + x2 + z1" = c("x1", "x2", "z1"),
+  "alle acht" = c("x1", "x2", paste0("z", 1:6))
+)
+
+round(sapply(kandidatenlisten, cv_fehler), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b4-mw-rechnung-py
+def cv_fehler(spalten, k=5):
+    formel = "y ~ " + (" + ".join(spalten) if spalten else "1")
+    quadrate = []
+    for teil in range(k):
+        ist_test = np.arange(len(daten)) % k == teil
+        modell = smf.ols(formel, data=daten[~ist_test]).fit()
+        rest = daten.loc[ist_test, "y"] - modell.predict(daten[ist_test])
+        quadrate.append(np.mean(rest ** 2))
+    return np.sqrt(np.mean(quadrate))
+
+
+kandidatenlisten = {
+    "nur Achsenabschnitt": [],
+    "x1": ["x1"],
+    "x1 + x2": ["x1", "x2"],
+    "x1 + x2 + z1": ["x1", "x2", "z1"],
+    "alle acht": ["x1", "x2"] + [f"z{k}" for k in range(1, 7)],
+}
+for name, spalten in kandidatenlisten.items():
+    print(f"{name:22s} {cv_fehler(spalten):.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Modell | Kreuzvalidierungsfehler | Residualstreuung im Gesamtmodell | Wie das zu lesen ist |
+|---|---|---|---|
+| nur Achsenabschnitt | 16.475 | 16.518 | Der Bezugswert: die blosse Streuung von `y`. |
+| x1 | 9.698 | 9.727 | Deutliche Verbesserung. |
+| x1 + x2 | 5.940 | 5.952 | Nochmals deutlich besser. |
+| x1 + x2 + z1 | **5.897** | 5.905 | Minimal besser, dieselbe Wahl wie beim AIC. |
+| alle acht | 6.414 | **5.849** | **Der entscheidende Vergleich.** Auf den eigenen Daten ist dieses Modell das beste (5.849), auf zurückgehaltenen Daten das zweitschlechteste (6.414). |
+
+Die letzte Zeile zeigt Überanpassung in Reinform. Die sechs wertlosen
+Prädiktoren senken die Residualstreuung im Gesamtmodell, weil sie sich an das
+Rauschen dieser 150 Fälle anpassen. Auf Fälle, die das Modell nicht gesehen hat,
+überträgt sich davon nichts, im Gegenteil: Der Fehler steigt um rund 9 Prozent
+gegenüber dem sparsamen Modell.
+
+Bemerkenswert ist auch, wie nah die Kreuzvalidierungsfehler bei den sparsamen
+Modellen an der Residualstreuung liegen (5.940 gegen 5.952). Solange ein Modell
+nicht überangepasst ist, schätzt die Residualstreuung den Vorhersagefehler
+brauchbar; die Schere öffnet sich erst mit der Anzahl der Parameter.
+
+::: {.note-box}
+Der Kreuzvalidierungsfehler hängt an der Aufteilung. Hier ist sie
+deterministisch (jeder fünfte Fall bildet einen Teil), damit die Zahlen
+nachprüfbar bleiben. In der Praxis wird zufällig aufgeteilt und die
+Kreuzvalidierung mehrfach wiederholt, weil einzelne Aufteilungen bei kleinen
+Datensätzen merklich schwanken.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Kreuzvalidierung ist die direkteste Antwort auf die Frage nach der
+Vorhersagegüte, weil sie sie misst statt schätzt. Ihr Preis ist Rechenzeit und
+die Abhängigkeit von der Aufteilung.
+
+Bemerkenswert ist die Übereinstimmung mit dem AIC: Beide wählen
+`x1 + x2 + z1`, und bei beiden ist der Vorsprung vor `x1 + x2` winzig. Das ist
+kein Zufall, sondern eine bekannte Eigenschaft: AIC ist asymptotisch äquivalent
+zur Kreuzvalidierung mit einem zurückgehaltenen Fall. Wer eines von beiden
+gerechnet hat, gewinnt durch das andere selten neue Erkenntnisse.
+
+> Eine fünffache Kreuzvalidierung bestätigt die Auswahl: Der Vorhersagefehler
+> beträgt 5.94 für `x1 + x2` und 5.90 für `x1 + x2 + z1`, während das Modell mit
+> allen acht Prädiktoren trotz kleinster Residualstreuung (5.85) den höchsten
+> Kreuzvalidierungsfehler der ernsthaften Kandidaten aufweist (6.41). Gewählt
+> wurde `x1 + x2`.
+
+::::
+
 ## Verständnisfragen
 
+::: {.quiz}
+Ein Modell mit sechs zusätzlichen, wirkungslosen Prädiktoren hat das höchste
+adjustierte R². Was folgt daraus?
+
+- [x] Das adjustierte R² ist als alleiniges Auswahlkriterium zu nachsichtig ~
+      Richtig. Sein Abzug je Parameter ist klein; er reicht oft nicht, um
+      wertlose Prädiktoren auszuschliessen. AIC ist strenger, BIC deutlich
+      strenger.
+- [ ] Die sechs Prädiktoren wirken doch ~ In diesem Beispiel ist die Wahrheit
+      bekannt: Sie sind konstruktionsbedingt wirkungslos.
+- [ ] Das adjustierte R² wurde falsch berechnet ~ Es ist korrekt berechnet, nur
+      für diesen Zweck ungeeignet.
+:::
+
+::: {.quiz}
+Zwei Modelle unterscheiden sich im AIC um 1.4. Welches wird gewählt?
+
+- [x] Das kleinere, denn eine Differenz unter 2 ist kaum bedeutsam ~ Richtig.
+      Bei praktisch gleichwertigen Modellen entscheidet die Sparsamkeit. Erst ab
+      einer Differenz von etwa 4 spricht der AIC deutlich für ein Modell.
+- [ ] Das mit dem kleineren AIC, egal wie klein der Abstand ist ~ Damit würde
+      man systematisch grössere Modelle wählen, weil zufällige Schwankungen
+      immer irgendeinen Vorteil erzeugen.
+- [ ] Keines, die Entscheidung braucht einen Test ~ AIC-Differenzen sind keine
+      Testgrössen; ein p-Wert gehört nicht dazu.
+:::
+
+::: {.quiz}
+Nach schrittweiser Auswahl hat ein Prädiktor p = 0.01. Wie ist das zu deuten?
+
+- [x] Gar nicht als Signifikanzaussage; der Prädiktor wurde anhand derselben
+      Daten ausgewählt ~ Richtig. Der p-Wert unterstellt, dass die Frage vorab
+      feststand. Bei datengetriebener Auswahl sind p-Werte zu klein,
+      Intervalle zu schmal und Koeffizienten zu gross.
+- [ ] Als gewöhnlicher p-Wert, die Auswahl ändert daran nichts ~ Sie ändert
+      genau die Bedingung, unter der der p-Wert definiert ist.
+- [ ] Er müsste mit der Anzahl der Schritte multipliziert werden ~ Eine so
+      einfache Korrektur gibt es nicht; das Problem ist grundsätzlicher.
+:::
+
+::: {.quiz}
+Ein Modell hat die kleinste Residualstreuung und zugleich den höchsten
+Kreuzvalidierungsfehler. Was liegt vor?
+
+- [x] Überanpassung ~ Richtig. Das Modell passt sich dem Rauschen der
+      vorliegenden Daten an, was die Residualstreuung senkt, aber auf neue Fälle
+      nicht übertragbar ist. Genau dafür ist die Kreuzvalidierung da.
+- [ ] Ein Rechenfehler, beide Masse müssten in dieselbe Richtung zeigen ~ Sie
+      zeigen bei sparsamen Modellen in dieselbe Richtung und laufen mit
+      wachsender Parameterzahl auseinander.
+- [ ] Die Aufteilung der Kreuzvalidierung ist ungünstig gewählt ~ Möglich bei
+      kleinen Unterschieden, aber nicht bei einem so deutlichen Muster.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 6](https://www.statlearning.com/)
+- [R-Dokumentation zu `step`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/step.html)
+- [Regressionsdiagnostik](regressionsdiagnostik.qmd)

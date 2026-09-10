@@ -4,7 +4,7 @@ Diese Datei hält fest, wo die Arbeit steht und wie es weitergeht. Sie liegt im
 Repo, damit der Stand auf jedem Rechner verfügbar ist und nicht in einem
 lokalen Gedächtnis hängt.
 
-Stand: 10. September 2026, Build grün, alles ausgeliefert.
+Stand: 10. September 2026, Bereiche Tests und Regression vollständig.
 
 ---
 
@@ -89,24 +89,19 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 |---|---|
 | `statistik/` | `verfahren-waehlen.qmd` (neu, vier Entscheidungsbäume als Mermaid) |
 | `statistik/tests/` | **vollständig**: t-Test eine Stichprobe, zwei Stichproben, gepaart, ANOVA, Chi-Quadrat, nichtparametrische Tests, Korrelationstests, Normalitätstests |
-| `statistik/regression/` | einfache lineare Regression, multiple lineare Regression, logistische Regression |
+| `statistik/regression/` | **vollständig**: einfache und multiple lineare Regression, logistische Regression, Regressionsdiagnostik, Modellauswahl, Klassifikationsgüte |
 | `statistik/multivariat/` | Hauptkomponentenanalyse |
 | `referenz/` | R und Python für die verwendeten Funktionen gefüllt (Verteilungen, Hypothesentests, Regression, Multivariat, Grafik) |
 
 ## Als Nächstes
 
-1. **`statistik/regression/` fertigstellen.** Regressionsdiagnostik,
-   Modellauswahl und Klassifikationsgüte sind leere Gerüste. Die
-   Klassifikationsgüte hat bereits einen Anknüpfungspunkt: Beispiel 4 der
-   logistischen Regression endet mit Konfusionsmatrix und Schwellenwahl und
-   verweist dorthin.
-2. **`statistik/inferenz/`.** Effektstärken, Power, multiples Testen, Bootstrap
+1. **`statistik/inferenz/`.** Effektstärken, Power, multiples Testen, Bootstrap
    sind Gerüste. Schätzen und Konfidenzintervalle sowie
    Hypothesentests-Grundlagen haben Inhalt, aber noch den alten Aufbau.
-3. **Die übrigen Bereiche umbauen**: Multivariat (ohne PCA), Überlebenszeit,
+2. **Die übrigen Bereiche umbauen**: Multivariat (ohne PCA), Überlebenszeit,
    Zeitreihen, Grundlagen, Wahrscheinlichkeit. Sie haben Inhalt, aber noch
    Szenarien statt Beispiel-Reiter.
-4. **Zwei fehlende Seiten anlegen.** Der Abgleich mit den beiden Modulplänen
+3. **Zwei fehlende Seiten anlegen.** Der Abgleich mit den beiden Modulplänen
    (`0_ESDS_…pdf` und `0_StatDa_…pdf`) ergab genau zwei Lücken:
    - Prüfverteilungen: t-, Chi-Quadrat- und F-Verteilung
    - Grundlagen der linearen Algebra für die Hauptkomponentenanalyse
