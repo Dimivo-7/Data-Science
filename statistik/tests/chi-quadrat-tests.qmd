@@ -116,134 +116,11 @@ Freiheitsgrad.
 | Erwartete Häufigkeiten mindestens fünf | Die Chi-Quadrat-Verteilung ist eine Näherung | `chisq.test(...)$expected` ansehen | Näherung unzuverlässig, in beide Richtungen | Kategorien zusammenfassen oder Fisher-Test |
 | Kategorien schliessen sich aus und sind vollständig | Jede Beobachtung passt in genau eine Zelle | Kategoriendefinition prüfen | Zellen sind nicht vergleichbar | Kategorien neu bilden |
 
-Die erwarteten Häufigkeiten sind der Punkt, der beim Berichten am häufigsten
-fehlt und der am meisten über die Tabelle sagt. Sie werden deshalb immer
-mitausgegeben:
-
-### Die Voraussetzung
-
-Die Chi-Quadrat-Verteilung ist eine Näherung, und sie wird unzuverlässig, wenn
-die erwarteten Häufigkeiten zu klein sind. Als Faustregel sollten alle
-erwarteten Häufigkeiten mindestens fünf betragen. R warnt von sich aus:
-
-```{r}
-#| label: warnung-r
-#| warning: true
-klein <- matrix(c(2, 8, 9, 3), nrow = 2)
-chisq.test(klein)
-```
-
-Zwei Auswege stehen offen: dünn besetzte Kategorien inhaltlich sinnvoll
-zusammenfassen, oder ein exaktes Verfahren verwenden.
-
-```{r}
-#| label: exakt-r
-fisher.test(klein)
-```
-
-::: {.quiz}
-Warum hat eine Kreuztabelle mit 4 Zeilen und 3 Spalten sechs Freiheitsgrade?
-
-- [x] Weil bei festen Randsummen nur drei mal zwei Zellen frei wählbar sind ~
-      Richtig. Sind sechs Zellen gefüllt, ergeben sich die übrigen zwangsläufig.
-      Die Freiheitsgrade zählen, wie viel an der Tabelle variieren kann.
-- [ ] Weil 4 plus 3 minus 1 gleich 6 ist ~ Das Ergebnis stimmt zufällig, die
-      Regel nicht. Bei 5 Zeilen und 3 Spalten käme man damit auf 7 statt auf 8.
-- [ ] Weil zwölf Zellen minus sechs Randsummen bleiben ~ Die Randsummen sind
-      sieben, und die Rechnung führt hier nur zufällig in die Nähe.
-:::
-
-## Durchführung in R und Python
-
-### Anpassungstest
-
-### Der Anpassungstest
-
-Hier ist eine Verteilung vorgegeben, und geprüft wird, ob die Daten dazu passen.
-Ein Betrieb behauptet, seine Ausschussgründe verteilten sich zu 20, 25, 30 und
-25 Prozent auf vier Kategorien:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: anpassung-r
-beobachtet <- c(38, 52, 60, 50)
-anteile    <- c(0.20, 0.25, 0.30, 0.25)
-
-test <- chisq.test(beobachtet, p = anteile)
-test$expected      # so viele waeren zu erwarten
-test
-```
-
-## Python
-
-```{python}
-#| label: anpassung-py
-beobachtet = np.array([38, 52, 60, 50])
-anteile = np.array([0.20, 0.25, 0.30, 0.25])
-erwartet = beobachtet.sum() * anteile
-
-print(erwartet)
-print(stats.chisquare(f_obs=beobachtet, f_exp=erwartet))
-```
-:::
-
-Die Freiheitsgrade betragen hier drei, also die Zahl der Kategorien minus eins.
-Der Grund ist, dass die Gesamtzahl festliegt: Sind drei Kategorien besetzt,
-ergibt sich die vierte zwangsläufig. Wird zusätzlich ein Parameter aus den
-Daten geschätzt, etwa der Mittelwert bei einer Anpassung an die
-Poissonverteilung, sinkt die Zahl um eins weiter.
-
-### Unabhängigkeitstest
-
-### Der Unabhängigkeitstest
-
-Bei zwei kategorialen Merkmalen lautet die Frage, ob sie zusammenhängen. Die
-erwarteten Häufigkeiten kommen dann nicht von aussen, sondern aus den
-Randsummen der Tabelle selbst, unter der Annahme der Unabhängigkeit.
-
-Für jede Zelle gilt:
-
-$$E_{ij} = \frac{\text{Zeilensumme}_i \cdot \text{Spaltensumme}_j}{n}$$
-
-Das ist genau die Regel aus [Bedingte Wahrscheinlichkeit und Bayes](../wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.qmd), nach der sich bei Unabhängigkeit
-die Wahrscheinlichkeiten multiplizieren.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: unabhaengigkeit-r
-tab <- matrix(c(30, 20, 10,
-                15, 35, 40), nrow = 2, byrow = TRUE,
-              dimnames = list(schicht = c("Früh", "Spät"),
-                              fehler  = c("Mass", "Oberfläche", "Material")))
-tab
-
-u <- chisq.test(tab)
-round(u$expected, 1)     # unter Unabhaengigkeit erwartet
-u
-```
-
-## Python
-
-```{python}
-#| label: unabhaengigkeit-py
-tab = pd.DataFrame([[30, 20, 10], [15, 35, 40]],
-                   index=["Früh", "Spät"],
-                   columns=["Mass", "Oberfläche", "Material"])
-print(tab)
-
-chi2, p, dof, erwartet = stats.chi2_contingency(tab)
-print(pd.DataFrame(erwartet, index=tab.index, columns=tab.columns).round(1))
-print({"chi2": round(chi2, 2), "p": float(f"{p:.3g}"), "df": dof})
-```
-:::
-
-Die Freiheitsgrade sind hier das Produkt aus um eins verminderten Zeilen- und
-Spaltenzahlen, also $(2-1)(3-1) = 2$. Wer sie falsch zählt, erhält einen
-p-Wert, der methodisch korrekt aussieht und trotzdem falsch ist.
+Die erwarteten Häufigkeiten sind die wichtigste Nebenausgabe des Tests. Sie
+entscheiden erstens, ob die Näherung überhaupt tragfähig ist, und sind zweitens
+die Grundlage jeder inhaltlichen Deutung: Erst der Vergleich von beobachtet und
+erwartet sagt, in welche Richtung eine Zelle abweicht. Sie werden deshalb immer
+mitausgegeben und gehören in den Bericht.
 
 ## Output lesen
 
@@ -273,164 +150,6 @@ Der häufigste stille Fehler in beiden Sprachen: `f_exp` beziehungsweise `p` mit
 Anteilen statt mit absoluten Häufigkeiten zu füllen. R normiert Anteile selbst,
 Python erwartet absolute Zahlen; wer das verwechselt, bekommt eine Zahl ohne
 Fehlermeldung.
-
-## Ergebnisse interpretieren
-
-### Szenario A: klarer Zusammenhang, und wo er sitzt
-
-### Welche Zelle den Ausschlag gibt
-
-Ein signifikantes Ergebnis sagt nur, dass es irgendwo eine Abweichung gibt.
-Wo, verraten die standardisierten Residuen. Werte über etwa zwei nach Betrag
-markieren die auffälligen Zellen:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: residuen-r
-round(u$stdres, 2)
-```
-
-## Python
-
-```{python}
-#| label: residuen-py
-resid = (tab.values - erwartet) / np.sqrt(erwartet)
-print(pd.DataFrame(resid, index=tab.index, columns=tab.columns).round(2))
-```
-:::
-
-```{r}
-#| label: fig-residuen-chi-r
-#| fig-cap: "Standardisierte Residuen. Massfehler treten in der Frühschicht deutlich häufiger auf als erwartet, Materialfehler in der Spätschicht."
-#| fig-height: 3.2
-lang <- as.data.frame(as.table(u$stdres))
-names(lang) <- c("schicht", "fehler", "residuum")
-
-ggplot(lang, aes(fehler, residuum, fill = schicht)) +
-  geom_col(position = "dodge", width = 0.7) +
-  geom_hline(yintercept = c(-2, 2), linetype = "dashed") +
-  labs(x = NULL, y = "standardisiertes Residuum", fill = "Schicht") +
-  theme(legend.position = "bottom")
-```
-
-Damit wird aus dem Testergebnis eine inhaltliche Aussage. Ohne diesen Schritt
-bliebe es bei der Feststellung, dass Schicht und Fehlerart zusammenhängen, ohne
-zu wissen, wie.
-
-Der Test allein sagt nur, dass Schicht und Fehlerart zusammenhängen. Erst die
-standardisierten Residuen machen daraus eine Aussage: Massfehler treten in der
-Frühschicht deutlich häufiger auf als bei Unabhängigkeit zu erwarten,
-Materialfehler in der Spätschicht. Das ist der Befund, mit dem sich weiterarbeiten
-lässt.
-
-Ergebnissatz: Fehlerart und Schicht hängen zusammen (Chi-Quadrat wie ausgegeben,
-df wie ausgegeben, p wie ausgegeben, n = 150). Auffällig sind Massfehler in der
-Frühschicht und Materialfehler in der Spätschicht (standardisierte Residuen wie
-ausgegeben).
-
-### Szenario B: kein Zusammenhang erkennbar
-
-Zwei Merkmale, die in den simulierten Daten nichts miteinander zu tun haben.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-chi-r
-set.seed(21)
-n_b <- 200
-schicht <- sample(c("Früh", "Spät"), n_b, replace = TRUE)
-fehler  <- sample(c("Mass", "Oberfläche", "Material"), n_b, replace = TRUE)
-
-tab_b <- table(schicht, fehler)
-tab_b
-
-b <- chisq.test(tab_b)
-round(b$expected, 1)
-b
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-chi-py
-rng_b = np.random.default_rng(21)
-n_b = 200
-schicht = rng_b.choice(["Früh", "Spät"], n_b)
-fehler = rng_b.choice(["Mass", "Oberfläche", "Material"], n_b)
-
-tab_b = pd.crosstab(schicht, fehler)
-print(tab_b)
-
-chi2_b, p_b, dof_b, erw_b = stats.chi2_contingency(tab_b)
-print(pd.DataFrame(erw_b, index=tab_b.index, columns=tab_b.columns).round(1))
-print(round(chi2_b, 3), round(p_b, 4), dof_b)
-```
-
-:::
-
-Die beobachteten Häufigkeiten liegen nah an den erwarteten, die Statistik ist
-klein, der p-Wert gross. Aussage: In diesen Daten ist kein Zusammenhang
-erkennbar. Das ist kein Beleg für Unabhängigkeit, und der Grund steht in den
-Zellhäufigkeiten: Bei sechs Zellen und 200 Beobachtungen lassen sich nur
-deutliche Zusammenhänge nachweisen. Wer Unabhängigkeit belegen will, braucht
-eine Aussage über die Effektstärke, etwa ein Konfidenzintervall für Cramérs V.
-
-Ergebnissatz: Ein Zusammenhang zwischen Schicht und Fehlerart lässt sich nicht
-nachweisen (Werte wie ausgegeben, n = 200).
-
-### Szenario C: Fallstrick zu kleine erwartete Häufigkeiten
-
-Der klassische Fall: eine dünn besetzte Tabelle, bei der die Näherung nicht mehr
-trägt. R warnt, Python schweigt.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-c-chi-r
-#| warning: true
-klein <- matrix(c(2, 8, 9, 3), nrow = 2,
-                dimnames = list(gruppe = c("A", "B"), ergebnis = c("ja", "nein")))
-klein
-
-k <- suppressWarnings(chisq.test(klein))
-round(k$expected, 2)
-c(chi_quadrat = round(unname(k$statistic), 3), p_naeherung = round(k$p.value, 4))
-
-fisher.test(klein)$p.value
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-chi-py
-klein = np.array([[2, 8], [9, 3]])
-
-chi2_k, p_k, dof_k, erw_k = stats.chi2_contingency(klein)
-print(erw_k.round(2))
-print(round(chi2_k, 3), round(p_k, 4))
-print(round(stats.fisher_exact(klein)[1], 4))
-```
-
-:::
-
-Erkennbar ist das Problem an den erwarteten Häufigkeiten: mehrere liegen unter
-fünf. Die Folge ist, dass der genäherte p-Wert und der exakte auseinanderfallen,
-und zwar ohne Regel, in welche Richtung. Python gibt hier keine Warnung aus, die
-Zahl sieht also genauso vertrauenswürdig aus wie sonst. Deshalb werden die
-erwarteten Häufigkeiten immer angesehen, nicht nur bei einer Warnmeldung.
-
-Das Vorgehen: dünn besetzte Kategorien inhaltlich sinnvoll zusammenfassen, oder
-den exakten Test nach Fisher rechnen. Zusammenfassen heisst inhaltlich
-begründet, nicht so lange, bis das Ergebnis passt.
-
-Ergebnissatz: Wegen erwarteter Häufigkeiten unter fünf wurde der exakte Test
-nach Fisher gerechnet (p wie ausgegeben, n = 22).
 
 ## Interpretationsfallen
 
@@ -482,7 +201,484 @@ Beispiel für eine Ergebnistabelle:
 | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) | die Zielgrösse ist metrisch |
 | [Logistische Regression](../regression/logistische-regression.qmd) | mehrere Einflussgrössen auf ein binäres Merkmal, mit Effektschätzung |
 
+## Beispiele
+
+Alle Beispiele rechnen mit fest eingetragenen Häufigkeiten, damit R und Python
+dieselben Tabellen sehen und jeder Wert im Text nachprüfbar ist.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Unabhängigkeit, und wo die Abweichung sitzt
+
+#### Frage und Datenlage
+
+An einer Linie werden 140 Ausfälle erfasst, jeder mit seiner Ursache
+(Werkzeugbruch oder Materialfehler) und der Schicht, in der er auftrat. Die
+Frage lautet: Hängen Ausfallursache und Schicht zusammen?
+
+| | Früh | Spät | Nacht | Summe |
+|---|---|---|---|---|
+| Werkzeug | 38 | 22 | 14 | 74 |
+| Material | 12 | 28 | 26 | 66 |
+| **Summe** | 50 | 50 | 40 | 140 |
+
+Beide Merkmale sind kategorial, jeder Ausfall zählt in genau eine Zelle, und die
+Summe der Tabelle ist die Anzahl der Ausfälle. Damit ist der
+Unabhängigkeitstest das passende Verfahren.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-chi-rechnung-r
+ausfaelle <- matrix(c(38, 22, 14,
+                      12, 28, 26),
+                    nrow = 2, byrow = TRUE,
+                    dimnames = list(ursache = c("Werkzeug", "Material"),
+                                    schicht = c("Früh", "Spät", "Nacht")))
+
+ergebnis <- chisq.test(ausfaelle)
+ergebnis
+
+round(ergebnis$expected, 2)
+round(ergebnis$stdres, 3)
+```
+
+##### Python
+
+```{python}
+#| label: b1-chi-rechnung-py
+ausfaelle = np.array([[38, 22, 14],
+                      [12, 28, 26]])
+zeilen = ["Werkzeug", "Material"]
+spalten = ["Früh", "Spät", "Nacht"]
+
+statistik, p_wert, fg, erwartet = stats.chi2_contingency(ausfaelle)
+print("Chi-Quadrat =", round(statistik, 4), " df =", fg,
+      " p =", round(p_wert, 6))
+print(pd.DataFrame(erwartet.round(2), index=zeilen, columns=spalten))
+
+# Standardisierte Residuen: scipy liefert sie nicht, R schon.
+n = ausfaelle.sum()
+zeilenanteil = ausfaelle.sum(axis=1) / n
+spaltenanteil = ausfaelle.sum(axis=0) / n
+nenner = np.sqrt(erwartet * np.outer(1 - zeilenanteil, 1 - spaltenanteil))
+print(pd.DataFrame(((ausfaelle - erwartet) / nenner).round(3),
+                   index=zeilen, columns=spalten))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Testname | `Pearson's Chi-squared test` | Unabhängigkeitstest | Bei einer 2x2-Tabelle stünde hier zusätzlich `with Yates' continuity correction`, siehe Beispiel 3. |
+| `X-squared` | 17.440 | Summe der normierten quadrierten Abweichungen über alle sechs Zellen | Für sich genommen ohne Bedeutung; sie hängt an Tabellengrösse und n. |
+| `df` | 2 | Freiheitsgrade | (Zeilen minus 1) mal (Spalten minus 1), also 1 mal 2. Bei festen Randsummen sind nur zwei Zellen frei wählbar, der Rest ergibt sich. |
+| `p-value` | 0.00016 | Wahrscheinlichkeit einer mindestens so grossen Abweichung bei Unabhängigkeit | Die beiden Merkmale hängen zusammen. Wo, sagt diese Zeile nicht. |
+| `$expected` kleinster Wert | 18.86 | kleinste erwartete Häufigkeit | Die Voraussetzung "mindestens fünf" ist deutlich erfüllt, die Näherung also tragfähig. Diese Zahl gehört geprüft, bevor der p-Wert gelesen wird. |
+| `$stdres` Werkzeug/Früh | +4.089 | standardisiertes Residuum | Der auffälligste Wert der Tabelle. In der Frühschicht treten deutlich mehr Werkzeugbrüche auf als bei Unabhängigkeit zu erwarten wäre. Beträge über etwa 2 gelten als auffällig. |
+| `$stdres` Werkzeug/Nacht | -2.677 | | In der Nachtschicht deutlich weniger Werkzeugbrüche als erwartet. |
+| `$stdres` Werkzeug/Spät | -1.565 | | Unauffällig. Die Spätschicht trägt wenig zum Befund bei. |
+
+::: {.note-box}
+Bei einer Tabelle mit zwei Zeilen sind die Residuen der zweiten Zeile exakt die
+negierten der ersten: +4.089 und -4.089. Das ist keine Redundanz, sondern folgt
+aus den festen Randsummen. Mehr Werkzeugbrüche in der Frühschicht heisst
+zwangsläufig weniger Materialfehler dort.
+:::
+
+#### Wie stark ist der Zusammenhang?
+
+Der p-Wert sagt nur, dass ein Zusammenhang besteht. Für seine Stärke gibt es
+Cramérs V, das zwischen 0 und 1 liegt und im Gegensatz zu Chi-Quadrat nicht mit
+n wächst.
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-chi-cramer-r
+cramers_v <- function(tabelle) {
+  test <- suppressWarnings(chisq.test(tabelle))
+  n <- sum(tabelle)
+  sqrt(as.numeric(test$statistic) / (n * (min(dim(tabelle)) - 1)))
+}
+
+round(cramers_v(ausfaelle), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b1-chi-cramer-py
+def cramers_v(tabelle):
+    statistik = stats.chi2_contingency(tabelle)[0]
+    n = tabelle.sum()
+    return np.sqrt(statistik / (n * (min(tabelle.shape) - 1)))
+
+
+print(round(cramers_v(ausfaelle), 4))
+```
+
+:::
+
+Cramérs V beträgt 0.353. Als Anhaltspunkte bei einem Freiheitsgrad in der
+kleineren Dimension gelten 0.1 klein, 0.3 mittel, 0.5 gross; der Zusammenhang
+ist also mittelstark. Die Formel ist $V = \sqrt{\chi^2 / (n \cdot (k-1))}$, wobei
+$k$ die kleinere der beiden Dimensionen ist.
+
+#### Interpretation und Ergebnissatz
+
+Der Befund ist erst mit den Residuen eine Aussage. "Ursache und Schicht hängen
+zusammen" ist inhaltlich leer; "in der Frühschicht überwiegen Werkzeugbrüche, in
+der Nachtschicht Materialfehler" ist eine Aussage, mit der sich arbeiten lässt.
+
+Was der Test **nicht** sagt: warum. Denkbar ist, dass in der Frühschicht andere
+Aufträge laufen, dass Werkzeuge morgens gewechselt werden oder dass die
+Erfassung je Schicht unterschiedlich genau ist. Ein Zusammenhang zweier Merkmale
+lässt offen, ob eines das andere verursacht oder ob ein drittes beide erklärt.
+
+> Ausfallursache und Schicht hängen zusammen, Chi-Quadrat(2, n = 140) = 17.44,
+> p < 0.001, Cramérs V = 0.35. Auffällig sind Werkzeugbrüche in der Frühschicht
+> (standardisiertes Residuum +4.09) und Materialfehler in der Nachtschicht
+> (+2.68); die Spätschicht ist unauffällig. Alle erwarteten Häufigkeiten liegen
+> über 18.
+
+### Beispiel 2: Anpassungstest gegen eine erwartete Verteilung
+
+#### Frage und Datenlage
+
+190 Ausfälle verteilen sich auf die fünf Arbeitstage einer Woche. Die Frage
+lautet: Treten sie gleichmässig über die Woche auf, oder häufen sie sich an
+bestimmten Tagen?
+
+| | Mo | Di | Mi | Do | Fr |
+|---|---|---|---|---|---|
+| beobachtet | 41 | 33 | 29 | 35 | 52 |
+| erwartet | 38 | 38 | 38 | 38 | 38 |
+
+Anders als in Beispiel 1 gibt es nur **ein** Merkmal. Verglichen wird nicht mit
+einem zweiten Merkmal, sondern mit einer von aussen vorgegebenen Verteilung,
+hier der Gleichverteilung über fünf Tage.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-chi-rechnung-r
+wochentage <- c(Mo = 41, Di = 33, Mi = 29, Do = 35, Fr = 52)
+
+anpassung <- chisq.test(wochentage)          # Gleichverteilung ist Voreinstellung
+anpassung
+
+round(anpassung$expected, 2)
+round(anpassung$residuals, 3)                # Pearson-Residuen
+```
+
+##### Python
+
+```{python}
+#| label: b2-chi-rechnung-py
+wochentage = np.array([41, 33, 29, 35, 52])
+tage = ["Mo", "Di", "Mi", "Do", "Fr"]
+erwartet_gleich = np.full(5, wochentage.sum() / 5)
+
+statistik, p_wert = stats.chisquare(wochentage, erwartet_gleich)
+print("Chi-Quadrat =", round(statistik, 4), " df =", len(wochentage) - 1,
+      " p =", round(p_wert, 6))
+print(pd.DataFrame({
+    "beobachtet": wochentage,
+    "erwartet": erwartet_gleich,
+    "Beitrag": ((wochentage - erwartet_gleich) ** 2 / erwartet_gleich).round(3),
+    "Residuum": ((wochentage - erwartet_gleich)
+                 / np.sqrt(erwartet_gleich)).round(3),
+}, index=tage))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Testname | `Chi-squared test for given probabilities` | Anpassungstest, nicht Unabhängigkeitstest. Der Name ist die Kontrolle, dass die richtige Variante lief. |
+| `X-squared` | 8.421 | Summe der fünf Beiträge. |
+| `df` | 4 | Kategorien minus eins. Bei fester Gesamtzahl sind nur vier der fünf Häufigkeiten frei. |
+| `p-value` | 0.077 | Knapp über 0.05, also kein Nachweis einer ungleichen Verteilung. |
+| Beitrag Freitag | 5.158 | Die aufschlussreichste Zahl. Der Freitag allein steuert 61 Prozent der gesamten Teststatistik bei; die übrigen vier Tage zusammen nur 3.26. |
+| Residuum Freitag | +2.27 | Am Freitag treten mehr Ausfälle auf als erwartet. |
+| Residuum Mittwoch | -1.46 | Am Mittwoch weniger, aber im unauffälligen Bereich. |
+
+#### Interpretation und Ergebnissatz
+
+Hier liegt die Lehre nicht im p-Wert, sondern im Umgang mit einem knappen
+Ergebnis. Drei Aussagen sind zu unterscheiden:
+
+| Aussage | Zulässig? |
+|---|---|
+| "Die Ausfälle verteilen sich gleichmässig über die Woche." | Nein. Nicht nachgewiesen ist nicht dasselbe wie gleichverteilt. |
+| "Es gibt keinen Wochentagseffekt." | Nein, aus demselben Grund. |
+| "Eine ungleiche Verteilung liess sich nicht nachweisen; auffällig ist der Freitag, der 61 Prozent der Teststatistik trägt." | Ja. |
+
+Der Freitag darf jetzt **nicht** nachträglich einzeln getestet werden. Wer nach
+einem nicht signifikanten Gesamttest die auffälligste Kategorie herausgreift und
+gegen den Rest prüft, hat sie anhand der Daten ausgewählt und das Testniveau
+verloren. Der saubere Weg ist eine neue Erhebung mit der nun vorab formulierten
+Hypothese "am Freitag treten mehr Ausfälle auf".
+
+::: {.note-box}
+Die Gleichverteilung ist in `chisq.test()` nur die Voreinstellung. Erwartet man
+etwas anderes, etwa weil am Freitag kürzer gearbeitet wird, übergibt man das über
+`p = c(...)`. Wichtig: R erwartet dort **Anteile**, die sich zu 1 summieren,
+`stats.chisquare()` dagegen **absolute** erwartete Häufigkeiten. Das ist der
+häufigste stille Fehler dieser Funktion, denn beide Sprachen rechnen ohne
+Fehlermeldung weiter.
+:::
+
+> Eine Abweichung von der Gleichverteilung über die Wochentage lässt sich nicht
+> nachweisen, Chi-Quadrat(4, n = 190) = 8.42, p = 0.077. Der Freitag trägt mit
+> einem Beitrag von 5.16 den grössten Anteil an der Teststatistik
+> (52 beobachtete gegenüber 38 erwarteten Ausfällen); eine gezielte Prüfung
+> dieser Hypothese erfordert neue Daten.
+
+### Beispiel 3: Zu kleine erwartete Häufigkeiten
+
+#### Frage und Datenlage
+
+Zwei Werkzeugtypen, je zehn Einsätze, erfasst wird, ob ein Fehler auftrat.
+
+| | Fehler | in Ordnung | Summe |
+|---|---|---|---|
+| neuer Typ | 9 | 1 | 10 |
+| alter Typ | 4 | 6 | 10 |
+| **Summe** | 13 | 7 | 20 |
+
+Zwanzig Beobachtungen in vier Zellen: Hier greift die Faustregel, dass alle
+erwarteten Häufigkeiten mindestens fünf betragen sollen.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-chi-voraussetzungen-r
+#| warning: true
+werkzeugtyp <- matrix(c(9, 1,
+                        4, 6),
+                      nrow = 2, byrow = TRUE,
+                      dimnames = list(typ = c("neu", "alt"),
+                                      ergebnis = c("Fehler", "in Ordnung")))
+
+test <- chisq.test(werkzeugtyp)
+round(test$expected, 2)
+```
+
+##### Python
+
+```{python}
+#| label: b3-chi-voraussetzungen-py
+werkzeugtyp = np.array([[9, 1],
+                        [4, 6]])
+
+erwartet = stats.chi2_contingency(werkzeugtyp)[3]
+print(pd.DataFrame(erwartet.round(2), index=["neu", "alt"],
+                   columns=["Fehler", "in Ordnung"]))
+print("kleinste erwartete Häufigkeit:", round(erwartet.min(), 2))
+```
+
+:::
+
+Die kleinste erwartete Häufigkeit beträgt 3.5 und liegt damit unter fünf. R gibt
+von sich aus die Warnung `Chi-squared approximation may be incorrect` aus.
+Python schweigt an dieser Stelle, weshalb die erwarteten Häufigkeiten dort von
+Hand geprüft werden müssen.
+
+#### Rechnung
+
+Drei Wege stehen offen. Sie werden hier nebeneinander gezeigt, weil sie zu
+verschiedenen Ergebnissen führen.
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-chi-rechnung-r
+#| warning: true
+chisq.test(werkzeugtyp, correct = FALSE)   # ohne Stetigkeitskorrektur
+chisq.test(werkzeugtyp)                    # mit Yates, in R Voreinstellung
+fisher.test(werkzeugtyp)                   # exakt
+```
+
+##### Python
+
+```{python}
+#| label: b3-chi-rechnung-py
+ohne = stats.chi2_contingency(werkzeugtyp, correction=False)
+mit = stats.chi2_contingency(werkzeugtyp, correction=True)
+exakt = stats.fisher_exact(werkzeugtyp)
+
+print("ohne Korrektur  Chi-Quadrat =", round(ohne[0], 4), " p =", round(ohne[1], 4))
+print("mit Yates       Chi-Quadrat =", round(mit[0], 4), " p =", round(mit[1], 4))
+print("Fisher exakt    Odds Ratio =", round(exakt[0], 2), " p =", round(exakt[1], 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Verfahren | Teststatistik | p-Wert | Entscheidung bei 5 Prozent |
+|---|---|---|---|
+| Chi-Quadrat ohne Korrektur | 5.494 | 0.019 | signifikant |
+| Chi-Quadrat mit Yates-Korrektur | 3.517 | 0.061 | nicht signifikant |
+| Exakter Test nach Fisher | Odds Ratio 13.5 | 0.057 | nicht signifikant |
+
+Drei Verfahren, dieselben zwanzig Beobachtungen, und die Entscheidung kippt.
+Die Yates-Korrektur zieht von jeder Abweichung 0.5 ab, bevor quadriert wird; das
+gleicht aus, dass die stetige Chi-Quadrat-Verteilung eine diskrete Zählgrösse
+annähert. Der Fisher-Test rechnet gar nicht mit einer Näherung, sondern zählt
+alle Tabellen ab, die bei festen Randsummen mindestens so extrem sind.
+
+::: {.note-box}
+Beide Sprachen korrigieren bei Vierfeldertafeln von sich aus: `chisq.test()`
+hat `correct = TRUE`, `stats.chi2_contingency()` hat `correction=True`. Wer die
+Korrektur abschaltet, weil eine Anleitung es so zeigt, bekommt den kleineren
+p-Wert und hier eine andere Entscheidung.
+
+Zwei Unterschiede bleiben trotzdem. Erstens gibt es die Korrektur **nur** bei
+2x2-Tabellen; bei grösseren Tabellen wie in Beispiel 1 ist der Schalter ohne
+Wirkung. Zweitens warnt R bei zu kleinen erwarteten Häufigkeiten von sich aus,
+scipy nicht. In Python muss die Prüfung deshalb von Hand erfolgen, so wie oben
+unter "Voraussetzungen prüfen".
+:::
+
+#### Interpretation und Ergebnissatz
+
+Bei zwanzig Beobachtungen und einer erwarteten Häufigkeit von 3.5 ist der
+Fisher-Test die richtige Wahl, und zwar unabhängig davon, welches Ergebnis er
+liefert. Die Entscheidung fällt an der Tabelle der erwarteten Häufigkeiten, nicht
+an den p-Werten.
+
+Das Odds Ratio von 13.5 ist dabei die inhaltlich interessante Zahl: Die Chance
+auf einen Fehler ist beim neuen Typ rund dreizehnmal so hoch. Dass dieser
+deutliche Unterschied trotzdem nicht signifikant wird, liegt allein am Umfang.
+Zehn Einsätze je Typ reichen nicht; das Konfidenzintervall des Odds Ratio, das
+`fisher.test()` mit ausgibt, macht diese Unsicherheit sichtbar.
+
+> Wegen einer erwarteten Häufigkeit von 3.5 wurde der exakte Test nach Fisher
+> verwendet. Ein Zusammenhang zwischen Werkzeugtyp und Fehlerauftreten lässt
+> sich nicht nachweisen (p = 0.057, n = 20), das geschätzte Odds Ratio beträgt
+> jedoch 13.5. Die Datenlage ist für eine Entscheidung zu dünn.
+
+### Beispiel 4: Signifikant bei grossem n, praktisch belanglos
+
+#### Frage und Datenlage
+
+Ein Test zweier Varianten einer Seite, je 10 000 Aufrufe. Erfasst wird, ob
+geklickt wurde.
+
+| | Klick | kein Klick | Summe | Klickrate |
+|---|---|---|---|---|
+| Variante A | 5200 | 4800 | 10 000 | 52.0 % |
+| Variante B | 5050 | 4950 | 10 000 | 50.5 % |
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-chi-rechnung-r
+varianten <- matrix(c(5200, 4800,
+                      5050, 4950),
+                    nrow = 2, byrow = TRUE,
+                    dimnames = list(variante = c("A", "B"),
+                                    ergebnis = c("Klick", "kein Klick")))
+
+chisq.test(varianten, correct = FALSE)
+
+round(cramers_v(varianten), 4)
+round(prop.table(varianten, margin = 1), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b4-chi-rechnung-py
+varianten = np.array([[5200, 4800],
+                      [5050, 4950]])
+
+statistik, p_wert, fg, erwartet = stats.chi2_contingency(varianten,
+                                                         correction=False)
+print("Chi-Quadrat =", round(statistik, 4), " df =", fg,
+      " p =", round(p_wert, 6))
+print("Cramérs V =", round(cramers_v(varianten), 4))
+print("Klickraten:", (varianten[:, 0] / varianten.sum(axis=1)).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `X-squared` | 4.503 | Über der kritischen Schwelle von 3.84 bei einem Freiheitsgrad. |
+| `df` | 1 | Vierfeldertafel. |
+| `p-value` | 0.034 | Signifikant auf dem 5-Prozent-Niveau. |
+| Cramérs V | 0.015 | Und hier steht die eigentliche Antwort: praktisch null. Der Anhaltspunkt für einen kleinen Zusammenhang liegt bei 0.1, also fast siebenmal höher. |
+| Klickraten | 52.0 % gegenüber 50.5 % | Der Unterschied beträgt 1.5 Prozentpunkte. |
+| standardisierte Residuen | ±2.122 | Knapp über der Auffälligkeitsschwelle von 2, aber bei 20 000 Beobachtungen sagt das wenig über die Grösse. |
+
+Chi-Quadrat wächst proportional mit n. Dieselben Klickraten bei je 1000 statt
+10 000 Aufrufen ergäben Chi-Quadrat 0.45 und p = 0.50, also einen glatten
+Nullbefund. An den Klickraten und an Cramérs V ändert der Umfang dagegen nichts.
+
+#### Interpretation und Ergebnissatz
+
+Ob 1.5 Prozentpunkte zählen, ist keine statistische Frage. Bei einer Million
+Aufrufen im Monat sind es 15 000 zusätzliche Klicks und damit womöglich eine
+klare Entscheidung; bei tausend Aufrufen sind es fünfzehn und damit belanglos.
+Genau deshalb wird die Relevanzschwelle vor der Auswertung festgelegt und nicht
+danach an das Ergebnis angepasst.
+
+Berichtet werden deshalb immer beide Ebenen: der Test für die Frage "vom Zufall
+unterscheidbar" und die Kennzahl in der Einheit der Sache für die Frage "wie
+gross". Der p-Wert allein beantwortet die zweite Frage nicht und wird bei
+grossem n regelmässig überinterpretiert.
+
+> Die Klickrate unterscheidet sich zwischen den Varianten,
+> Chi-Quadrat(1, n = 20 000) = 4.50, p = 0.034. Der Unterschied beträgt
+> 1.5 Prozentpunkte (52.0 % gegenüber 50.5 %), Cramérs V = 0.015 und damit
+> praktisch null. Ob der Unterschied eine Entscheidung trägt, hängt am Volumen
+> und nicht am p-Wert.
+
+::::
+
 ## Verständnisfragen
+
+::: {.quiz}
+Warum hat eine Kreuztabelle mit 4 Zeilen und 3 Spalten sechs Freiheitsgrade?
+
+- [x] Weil bei festen Randsummen nur drei mal zwei Zellen frei wählbar sind ~
+      Richtig. Sind sechs Zellen gefüllt, ergeben sich die übrigen zwangsläufig.
+      Die Freiheitsgrade zählen, wie viel an der Tabelle variieren kann.
+- [ ] Weil 4 plus 3 minus 1 gleich 6 ist ~ Das Ergebnis stimmt zufällig, die
+      Regel nicht. Bei 5 Zeilen und 3 Spalten käme man damit auf 7 statt auf 8.
+- [ ] Weil zwölf Zellen minus sechs Randsummen bleiben ~ Die Randsummen sind
+      sieben, und die Rechnung führt hier nur zufällig in die Nähe.
+:::
 
 ::: {.quiz}
 Ein Unabhängigkeitstest ergibt p = 0.002. Wie berichtet man das inhaltlich

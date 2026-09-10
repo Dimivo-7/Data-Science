@@ -48,7 +48,10 @@ werk_streuung <- rahmen(c1, c2, c3)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 import pingouin as pg
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
@@ -155,89 +158,6 @@ Darstellung; das letzte Szenario auf dieser Seite zeigt es an den Zahlen.
 | Gleiche Varianzen in allen Gruppen | Homoskedastizität | Boxplot, Levene-Test | Bei ungleichen Gruppengrössen wird das Niveau verfehlt | Welch-Variante |
 | Keine extremen Ausreisser | Einzelne Werte bestimmen Mittel und Varianz nicht | Boxplot | Das Ergebnis hängt an wenigen Punkten | Ursache prüfen, mit und ohne berichten |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-voraussetzungen-anova-r
-#| fig-cap: "Verteilung je Standort und QQ-Plot der Residuen."
-#| fig-height: 3.4
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-boxplot(durchsatz ~ standort, data = werk, main = "Durchsatz je Standort",
-        xlab = "Standort", ylab = "Stueck pro Stunde")
-
-modell <- aov(durchsatz ~ standort, data = werk)
-qqnorm(residuals(modell), main = "QQ-Plot der Residuen")
-qqline(residuals(modell))
-par(mfrow = c(1, 1))
-
-round(tapply(werk$durchsatz, werk$standort, sd), 2)
-leveneTest(durchsatz ~ standort, data = werk)
-```
-
-## Python
-
-```{python}
-#| label: fig-voraussetzungen-anova-py
-#| fig-cap: "Dieselbe Prüfung in Python."
-#| fig-height: 3.4
-import statsmodels.api as sm
-
-fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
-achsen[0].boxplot([a1, a2, a3])
-achsen[0].set_xticks([1, 2, 3], ["A", "B", "C"])
-achsen[0].set_title("Durchsatz je Standort")
-achsen[0].set_ylabel("Stueck pro Stunde")
-
-residuen = werk["durchsatz"] - werk.groupby("standort")["durchsatz"].transform("mean")
-sm.qqplot(residuen, line="s", ax=achsen[1])
-achsen[1].set_title("QQ-Plot der Residuen")
-plt.tight_layout()
-plt.show()
-
-print(werk.groupby("standort")["durchsatz"].std().round(2))
-print(pg.homoscedasticity(data=werk, dv="durchsatz", group="standort").round(4))
-```
-
-:::
-
-Im Boxplot interessieren Lage, Streuung und einzelne weit entfernte Punkte. Der
-QQ-Plot gehört zu den Residuen, nicht zu den Rohwerten: Dass die Gesamtverteilung
-mehrgipflig aussieht, ist bei verschiedenen Gruppenmittelwerten normal und kein
-Befund. Der Levene-Test prüft die gleichen Varianzen; ein grosser p-Wert ist kein
-Beweis für Gleichheit, sondern nur das Fehlen eines Hinweises auf Ungleichheit.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-anova-r
-modell <- aov(durchsatz ~ standort, data = werk)
-summary(modell)
-
-round(tapply(werk$durchsatz, werk$standort, mean), 2)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-anova-py
-print(pg.anova(data=werk, dv="durchsatz", between="standort", detailed=True).round(4))
-
-print(werk.groupby("standort")["durchsatz"].mean().round(2))
-```
-
-:::
-
-Beide Sprachen rechnen auf denselben festen Werten: je 15 Schichten an drei
-Standorten, gemessen in Stück pro Stunde. Die Standorte A und B liegen nah
-beieinander, C liegt darüber. Genau diese Lage macht den Unterschied zwischen der
-Gesamtfrage und den paarweisen Vergleichen sichtbar.
-
 ## Output lesen
 
 R, `summary(aov())`:
@@ -266,175 +186,6 @@ Form, also eine Zeile je Beobachtung mit einer Gruppenspalte, `aov()` über eine
 Formel und `pg.anova` über Spaltennamen. Und `pg.anova` liefert die Effektstärke
 gleich mit, während `summary()` nur die Quadratsummen zeigt, aus denen sie sich
 berechnen lässt.
-
-## Ergebnisse interpretieren
-
-### Szenario A: klarer Unterschied und paarweise Vergleiche
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-a-anova-r
-zusammenfassung <- summary(modell)[[1]]
-quadratsummen <- zusammenfassung[["Sum Sq"]]
-
-round(c(F = zusammenfassung[["F value"]][1],
-        p = zusammenfassung[["Pr(>F)"]][1],
-        eta_quadrat = quadratsummen[1] / sum(quadratsummen)), 4)
-
-TukeyHSD(modell)
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-anova-py
-tabelle = pg.anova(data=werk, dv="durchsatz", between="standort", detailed=True)
-print(tabelle[["F", "p_unc", "np2"]].iloc[[0]].round(4))
-
-print(pg.pairwise_tukey(data=werk, dv="durchsatz", between="standort").round(4))
-```
-
-:::
-
-Die Gesamtfrage ist beantwortet: Mindestens ein Standort weicht ab. Welcher, sagt
-erst der paarweise Vergleich. Nach Tukey unterscheidet sich C sowohl von A als
-auch von B, während A und B nicht unterscheidbar sind. Zu berichten sind beide
-Ebenen, und zwar in dieser Reihenfolge: erst das Gesamtergebnis mit Effektstärke,
-dann die Paarvergleiche mit ihren Intervallen.
-
-Das Tukey-Verfahren korrigiert dabei für die Anzahl der Vergleiche. Wer
-stattdessen drei einzelne t-Tests rechnet, bekommt kleinere p-Werte und eine
-höhere Rate falscher Alarme.
-
-Ergebnissatz: Der Durchsatz unterscheidet sich zwischen den drei Standorten
-(F wie ausgegeben, p wie ausgegeben, Eta-Quadrat wie ausgegeben). Der Unterschied
-geht auf Standort C zurück, der über A und B liegt; A und B unterscheiden sich
-nicht nachweisbar.
-
-### Szenario B: kein Nachweis, aber auch kein Ausschluss
-
-Dieselbe Frage an drei Standorten, deren Mittelwerte nur wenige Einheiten
-auseinanderliegen.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-anova-r
-modell_ohne <- aov(durchsatz ~ standort, data = werk_ohne)
-summary(modell_ohne)
-
-round(tapply(werk_ohne$durchsatz, werk_ohne$standort, mean), 2)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-anova-py
-print(pg.anova(data=werk_ohne, dv="durchsatz", between="standort",
-               detailed=True).round(4))
-print(werk_ohne.groupby("standort")["durchsatz"].mean().round(2))
-```
-
-:::
-
-Der p-Wert ist gross, und genau hier beginnt die Fehlinterpretation. Das Ergebnis
-heisst nicht, dass die Standorte gleich sind. Es heisst, dass die Daten bei diesem
-Umfang nicht ausreichen, um einen Unterschied dieser Grösse vom Zufall zu trennen.
-Die beobachteten Mittelwerte liegen mehrere Einheiten auseinander, und
-Unterschiede in dieser Grössenordnung bleiben nach diesem Befund möglich.
-
-Wer die Frage beantworten will, braucht mehr Beobachtungen, siehe
-[Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd), oder ein
-Äquivalenzverfahren mit vorab festgelegter Toleranz.
-
-Ergebnissatz: Ein Unterschied zwischen den Standorten ist nicht nachweisbar (F wie
-ausgegeben, p wie ausgegeben). Bei diesem Umfang bleiben Unterschiede in der
-Grössenordnung der beobachteten Mittelwertdifferenzen mit den Daten vereinbar.
-
-### Szenario C: Fallstrick ungleiche Varianzen bei ungleichen Gruppengrössen
-
-Drei Standorte mit sehr unterschiedlicher Streuung und unterschiedlichem Umfang:
-zehn Schichten mit ruhigem Betrieb, zwanzig mit stark schwankendem, dreissig mit
-ruhigem.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-c-anova-r
-round(rbind(mittel = tapply(werk_streuung$durchsatz, werk_streuung$standort, mean),
-            sd = tapply(werk_streuung$durchsatz, werk_streuung$standort, sd),
-            n = tapply(werk_streuung$durchsatz, werk_streuung$standort, length)), 2)
-
-leveneTest(durchsatz ~ standort, data = werk_streuung)
-
-summary(aov(durchsatz ~ standort, data = werk_streuung))
-oneway.test(durchsatz ~ standort, data = werk_streuung, var.equal = FALSE)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-anova-py
-print(werk_streuung.groupby("standort")["durchsatz"].agg(["mean", "std", "count"]).round(2))
-
-print(pg.homoscedasticity(data=werk_streuung, dv="durchsatz", group="standort").round(4))
-
-print(pg.anova(data=werk_streuung, dv="durchsatz", between="standort").round(4))
-print(pg.welch_anova(data=werk_streuung, dv="durchsatz", between="standort").round(4))
-```
-
-:::
-
-Die Standardabweichungen unterscheiden sich um ein Vielfaches, und die
-Gruppengrössen sind ungleich. Das ist die Lage, in der die gewöhnliche
-Varianzanalyse ihr Niveau verfehlt: Sitzt die grosse Streuung in der kleinen
-Gruppe, wird sie zu liberal, im umgekehrten Fall zu konservativ. Die
-Welch-Variante korrigiert die Freiheitsgrade und ist deshalb der sichere
-Standardfall.
-
-Zu vergleichen sind die beiden Ausgaben: gleicher Datensatz, andere
-Freiheitsgrade, anderer p-Wert. Berichtet wird die Welch-Variante, und zwar
-zusammen mit der Feststellung, dass die Varianzen ungleich sind.
-
-### Weiteres Szenario: dieselbe Rechnung als Regression
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-d-anova-r
-regression <- lm(durchsatz ~ standort, data = werk)
-summary(regression)
-```
-
-## Python
-
-```{python}
-#| label: szenario-d-anova-py
-import statsmodels.formula.api as smf
-
-regression = smf.ols("durchsatz ~ C(standort)", data=werk).fit()
-print(regression.summary().tables[1])
-print(f"F = {regression.fvalue:.4f}, p = {regression.f_pvalue:.6f}, "
-      f"R2 = {regression.rsquared:.4f}")
-```
-
-:::
-
-Der F-Wert der Regression stimmt mit dem der Varianzanalyse überein, und das
-Bestimmtheitsmass entspricht dem Eta-Quadrat aus Szenario A. Die Regression zeigt
-zusätzlich, wie die Gruppen kodiert werden: Eine Stufe wird zur Referenz, die
-übrigen Koeffizienten sind Differenzen zu ihr. Wer das versteht, kann die
-Varianzanalyse jederzeit um weitere Einflussgrössen erweitern, siehe
-[multiple lineare Regression](../regression/multiple-lineare-regression.qmd).
 
 ## Interpretationsfallen
 
@@ -491,6 +242,487 @@ Beispiel für eine Ergebnistabelle:
 | [Chi-Quadrat-Test](chi-quadrat-tests.qmd) | die Zielgrösse ist kategorial |
 | Varianzanalyse mit Messwiederholung | dieselben Objekte mehrfach gemessen |
 | [Effektstärken](../inferenz/effektstaerken.qmd) | die Grösse des Unterschieds steht im Vordergrund |
+
+## Beispiele
+
+Alle Beispiele rechnen mit den fest eingetragenen Daten aus dem Setup-Chunk:
+Durchsatz dreier Standorte in Stück pro Stunde. R und Python sehen dieselben
+Zahlen, jeder Wert im Text ist nachprüfbar.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Drei Standorte im Vergleich
+
+#### Frage und Datenlage
+
+An drei Standorten wird derselbe Artikel gefertigt. Von jedem liegen fünfzehn
+Schichten mit dem erreichten Durchsatz vor. Die Frage lautet: Unterscheiden sich
+die Standorte, und falls ja, welche?
+
+Die beiden Teilfragen brauchen zwei verschiedene Werkzeuge, und das ist der
+wichtigste Punkt dieser Seite. Die Varianzanalyse beantwortet nur die erste:
+Gibt es überhaupt einen Unterschied irgendwo? Welche Standorte sich unterscheiden,
+beantworten erst die Post-hoc-Vergleiche.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-av-voraussetzungen-r
+#| fig-cap: "Beispiel 1: Durchsatz je Standort und QQ-Plot der Residuen."
+#| fig-height: 3.2
+modell <- aov(durchsatz ~ standort, data = werk)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+boxplot(durchsatz ~ standort, data = werk, xlab = "Standort",
+        ylab = "Durchsatz (Stück/h)", main = "Je Standort")
+qqnorm(residuals(modell), main = "QQ-Plot der Residuen")
+qqline(residuals(modell))
+par(mfrow = c(1, 1))
+
+car::leveneTest(durchsatz ~ standort, data = werk)
+
+aggregate(durchsatz ~ standort, data = werk,
+          function(x) round(c(n = length(x), mittel = mean(x), sd = sd(x)), 3))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-av-voraussetzungen-py
+#| fig-cap: "Beispiel 1: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+modell = smf.ols("durchsatz ~ C(standort)", data=werk).fit()
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].boxplot([werk.loc[werk["standort"] == g, "durchsatz"] for g in "ABC"])
+achsen[0].set_xticks([1, 2, 3], list("ABC"))
+achsen[0].set_xlabel("Standort")
+achsen[0].set_ylabel("Durchsatz (Stück/h)")
+achsen[0].set_title("Je Standort")
+sm.qqplot(modell.resid, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot der Residuen")
+plt.tight_layout()
+plt.show()
+
+print(pg.homoscedasticity(data=werk, dv="durchsatz", group="standort").round(4))
+print(werk.groupby("standort")["durchsatz"].agg(["count", "mean", "std"]).round(3))
+```
+
+:::
+
+| Standort | n | Mittelwert | Standardabweichung |
+|---|---|---|---|
+| A | 15 | 102.36 | 5.84 |
+| B | 15 | 104.45 | 6.04 |
+| C | 15 | 111.97 | 6.97 |
+
+Die drei Streuungen liegen zwischen 5.8 und 7.0 und damit dicht beieinander; der
+Levene-Test bestätigt das mit p = 0.92. Ein **grosser** p-Wert ist hier die gute
+Nachricht, weil die Nullhypothese dieses Tests die Gleichheit der Varianzen ist.
+Der QQ-Plot der Residuen zeigt keine Auffälligkeit, und die Gruppen sind gleich
+gross. Die klassische Varianzanalyse ist anwendbar.
+
+Im Boxplot ist bereits sichtbar, worauf es hinausläuft: A und B liegen fast
+übereinander, C liegt deutlich höher.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-av-rechnung-r
+summary(modell)
+
+effectsize::eta_squared(modell)
+```
+
+##### Python
+
+```{python}
+#| label: b1-av-rechnung-py
+print(pg.anova(data=werk, dv="durchsatz", between="standort",
+               detailed=True).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die klassische Ausgabe der Varianzanalyse ist eine Tabelle mit zwei Zeilen. Sie
+zerlegt die gesamte Streuung des Durchsatzes in zwei Teile.
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `Df` Standort | 2 | Freiheitsgrade zwischen den Gruppen | Anzahl Gruppen minus eins. |
+| `Df` Residuals | 42 | Freiheitsgrade innerhalb | Gesamtzahl der Messungen minus Anzahl Gruppen, also 45 minus 3. |
+| `Sum Sq` Standort | 765.6 | Streuung **zwischen** den Standorten | Wie weit die drei Gruppenmittelwerte vom Gesamtmittelwert abweichen. |
+| `Sum Sq` Residuals | 1668.4 | Streuung **innerhalb** der Standorte | Wie weit die einzelnen Schichten von ihrem eigenen Gruppenmittelwert abweichen. Das ist die Zufallsstreuung, gegen die verglichen wird. |
+| `Mean Sq` Standort | 382.8 | Quadratsumme geteilt durch Freiheitsgrade | 765.6 geteilt durch 2. |
+| `Mean Sq` Residuals | 39.7 | dasselbe für die Residuen | 1668.4 geteilt durch 42. Die Wurzel daraus, rund 6.3 Stück pro Stunde, ist die typische Schwankung einer Schicht. |
+| `F value` | 9.636 | Verhältnis der beiden mittleren Quadrate | 382.8 geteilt durch 39.7. Die Streuung zwischen den Standorten ist knapp zehnmal so gross wie die zufällige Streuung innerhalb. Bei völlig gleichen Standorten läge F im Mittel bei etwa 1. |
+| `Pr(>F)` | 0.00036 | p-Wert des Gesamttests | Irgendwo zwischen den drei Standorten besteht ein Unterschied. Welche es sind, sagt diese Zeile **nicht**. |
+| `Eta2` | 0.3145 | Anteil der erklärten Streuung | 765.6 geteilt durch 2434.0. Rund 31 Prozent der Durchsatzschwankung gehen auf den Standort zurück, der Rest auf alles andere. Anhaltspunkte: 0.01 klein, 0.06 mittel, 0.14 gross. |
+
+::: {.note-box}
+$\eta^2$ ist dieselbe Zahl wie das Bestimmtheitsmass einer Regression auf
+denselben Daten, siehe Beispiel 4. Die Varianzanalyse ist kein eigenes
+Verfahren, sondern eine andere Darstellung eines linearen Modells.
+:::
+
+#### Post-hoc: welche Standorte unterscheiden sich?
+
+Der Gesamttest sagt nur, dass es irgendwo einen Unterschied gibt. Für die Frage,
+zwischen welchen Standorten, braucht es paarweise Vergleiche mit Korrektur für
+[multiples Testen](../inferenz/multiples-testen.qmd). Ohne Korrektur läge die
+Wahrscheinlichkeit eines falschen Alarms bei drei Vergleichen nicht bei 5, sondern
+bei bis zu rund 14 Prozent.
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-av-posthoc-r
+TukeyHSD(modell)
+```
+
+##### Python
+
+```{python}
+#| label: b1-av-posthoc-py
+print(pg.pairwise_tukey(data=werk, dv="durchsatz", between="standort").round(4))
+```
+
+:::
+
+| Vergleich | Differenz | 95-Prozent-Intervall | p (korrigiert) | Lesart |
+|---|---|---|---|---|
+| B gegen A | 2.09 | -3.50 bis 7.68 | 0.637 | Kein nachweisbarer Unterschied. Das Intervall enthält die Null und lässt Unterschiede in beide Richtungen zu. |
+| C gegen A | 9.61 | 4.02 bis 15.20 | 0.0004 | Deutlich. Standort C fertigt im Mittel rund zehn Stück pro Stunde mehr als A. |
+| C gegen B | 7.51 | 1.92 bis 13.10 | 0.0061 | Ebenfalls deutlich, wenn auch knapper. |
+
+Damit ist die eigentliche Frage beantwortet, und die Antwort ist präziser als
+"die Standorte unterscheiden sich": **C hebt sich von den beiden anderen ab, A
+und B unterscheiden sich nicht nachweisbar.**
+
+Die p-Werte sind korrigiert, das heisst sie sind grösser als ein einzelner
+t-Test ergäbe. Genau das ist beabsichtigt: Wer drei Vergleiche anstellt, hat drei
+Gelegenheiten für einen falschen Alarm, und die Korrektur bezahlt dafür mit
+etwas Schärfe.
+
+#### Interpretation und Ergebnissatz
+
+Berichtet werden beide Ebenen. Der Gesamttest rechtfertigt, dass überhaupt
+paarweise verglichen wurde; die paarweisen Intervalle sagen, worin der
+Unterschied besteht und wie gross er ist.
+
+Ob zehn Stück pro Stunde viel sind, entscheidet die Sache: Bei rund 105 Stück
+sind das etwa neun Prozent, über eine Schicht gerechnet also ein spürbarer
+Betrag. Der nächste Schritt wäre nicht ein weiterer Test, sondern die Frage,
+woran es liegt.
+
+> Der Durchsatz unterscheidet sich zwischen den drei Standorten
+> (F(2, 42) = 9.64, p < 0.001, $\eta^2$ = 0.31). Post-hoc nach Tukey liegt
+> Standort C über A (Differenz 9.6 Stück/h, 95-Prozent-Konfidenzintervall 4.0
+> bis 15.2, p < 0.001) und über B (7.5 Stück/h, 1.9 bis 13.1, p = 0.006); A und
+> B unterscheiden sich nicht nachweisbar (2.1 Stück/h, -3.5 bis 7.7, p = 0.64).
+> Varianzhomogenität war gegeben (Levene p = 0.92), n = 15 je Standort.
+
+### Beispiel 2: Kein nachweisbarer Unterschied
+
+#### Frage und Datenlage
+
+Dieselbe Fragestellung an drei anderen Standorten, wieder je fünfzehn Schichten.
+Das Beispiel zeigt, wie ein Nullbefund in der Varianzanalyse aussieht und warum
+danach **keine** Post-hoc-Vergleiche folgen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-av-rechnung-r
+modell_ohne <- aov(durchsatz ~ standort, data = werk_ohne)
+summary(modell_ohne)
+
+effectsize::eta_squared(modell_ohne)
+
+aggregate(durchsatz ~ standort, data = werk_ohne,
+          function(x) round(c(mittel = mean(x), sd = sd(x)), 3))
+```
+
+##### Python
+
+```{python}
+#| label: b2-av-rechnung-py
+print(pg.anova(data=werk_ohne, dv="durchsatz", between="standort",
+               detailed=True).round(4))
+print(werk_ohne.groupby("standort")["durchsatz"].agg(["mean", "std"]).round(3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Mittelwerte | 101.75 / 103.83 / 105.07 | Die Spanne beträgt 3.3 Stück pro Stunde. |
+| `Sum Sq` Standort | 84.1 | Die Streuung zwischen den Gruppen ist klein. |
+| `Sum Sq` Residuals | 2044.4 | Die Streuung innerhalb ist rund 24 Mal so gross. |
+| `Mean Sq` Standort / Residuals | 42.0 / 48.7 | Fast gleich gross. Genau das erwartet man, wenn die Gruppen sich nicht unterscheiden: Beide schätzen dann dieselbe Zufallsstreuung. |
+| `F value` | 0.864 | Kleiner als 1. Die Unterschiede zwischen den Standorten sind sogar etwas kleiner, als der Zufall allein erwarten liesse. |
+| `Pr(>F)` | 0.429 | Kein Nachweis. |
+| `Eta2` | 0.0395 | Rund vier Prozent, im Bereich dessen, was bei drei Gruppen und 45 Messungen rein zufällig entsteht. |
+
+::: {.note-box}
+Ein F-Wert unter 1 ist kein Fehler und kein Hinweis auf einen "negativen
+Effekt". F ist ein Verhältnis zweier Varianzschätzungen und schwankt um 1, wenn
+die Nullhypothese gilt. Ungefähr die Hälfte aller Nullbefunde liefert deshalb
+F kleiner als 1.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Nach diesem Ergebnis folgen **keine** Post-hoc-Vergleiche. Der Gesamttest ist
+das Eintrittsbillett; ohne ihn paarweise weiterzusuchen, bis sich ein Paar
+findet, ist genau der Fehler, gegen den die Varianzanalyse gebaut wurde.
+
+Und wie bei jedem Nullbefund gilt: Nicht nachweisbar ist nicht dasselbe wie
+gleich. Bei fünfzehn Schichten je Standort und einer Streuung von rund 7 Stück
+pro Stunde bleiben Unterschiede von mehreren Stück durchaus vereinbar; die
+Tukey-Intervalle würden das zeigen, wenn man sie berechnete.
+
+> Zwischen den drei Standorten ist kein Unterschied im Durchsatz nachweisbar
+> (F(2, 42) = 0.86, p = 0.43, $\eta^2$ = 0.04, n = 15 je Standort). Auf
+> paarweise Vergleiche wurde verzichtet, da der Gesamttest nicht signifikant
+> ist. Ein Nachweis der Gleichwertigkeit ist damit nicht erbracht.
+
+### Beispiel 3: Ungleiche Varianzen kippen das Ergebnis
+
+#### Frage und Datenlage
+
+Drei Standorte mit sehr verschiedenen Gruppengrössen und sehr verschiedener
+Streuung: zehn Schichten mit sehr gleichmässigem Betrieb, zwanzig mit stark
+schwankendem, dreissig mit mittlerem. Diese Kombination aus ungleichen
+Gruppengrössen und ungleichen Varianzen ist der Fall, in dem die klassische
+Varianzanalyse versagt.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-av-voraussetzungen-r
+#| fig-cap: "Beispiel 3: sehr unterschiedliche Streuung je Standort."
+#| fig-height: 3.2
+par(mar = c(4, 4, 3, 1))
+boxplot(durchsatz ~ standort, data = werk_streuung, xlab = "Standort",
+        ylab = "Durchsatz (Stück/h)", main = "Je Standort")
+
+car::leveneTest(durchsatz ~ standort, data = werk_streuung)
+
+aggregate(durchsatz ~ standort, data = werk_streuung,
+          function(x) round(c(n = length(x), sd = sd(x)), 3))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-av-voraussetzungen-py
+#| fig-cap: "Beispiel 3: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+fig, achse = plt.subplots(figsize=(7, 3.2))
+achse.boxplot([werk_streuung.loc[werk_streuung["standort"] == g, "durchsatz"]
+               for g in "ABC"])
+achse.set_xticks([1, 2, 3], list("ABC"))
+achse.set_xlabel("Standort")
+achse.set_ylabel("Durchsatz (Stück/h)")
+achse.set_title("Je Standort")
+plt.tight_layout()
+plt.show()
+
+print(pg.homoscedasticity(data=werk_streuung, dv="durchsatz",
+                          group="standort").round(6))
+print(werk_streuung.groupby("standort")["durchsatz"].agg(["count", "std"]).round(3))
+```
+
+:::
+
+| Standort | n | Standardabweichung |
+|---|---|---|
+| A | 10 | 1.95 |
+| B | 20 | 13.60 |
+| C | 30 | 3.91 |
+
+Standort B streut siebenmal so stark wie A, und die Gruppen sind unterschiedlich
+gross. Der Levene-Test liefert p = 0.0000012, also einen klaren Befund gegen die
+Varianzhomogenität. Damit ist die Voraussetzung der klassischen Varianzanalyse
+verletzt, und zwar in der ungünstigsten Konstellation: Die grösste Streuung
+gehört nicht zur grössten Gruppe.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-av-rechnung-r
+summary(aov(durchsatz ~ standort, data = werk_streuung))    # klassisch
+
+oneway.test(durchsatz ~ standort, data = werk_streuung,
+            var.equal = FALSE)                              # Welch
+
+kruskal.test(durchsatz ~ standort, data = werk_streuung)    # rangbasiert
+```
+
+##### Python
+
+```{python}
+#| label: b3-av-rechnung-py
+print(pg.anova(data=werk_streuung, dv="durchsatz",
+               between="standort").round(4))
+print(pg.welch_anova(data=werk_streuung, dv="durchsatz",
+                     between="standort").round(6))
+h_wert, h_p = stats.kruskal(
+    *[werk_streuung.loc[werk_streuung["standort"] == g, "durchsatz"]
+      for g in "ABC"])
+print("Kruskal-Wallis  H =", round(h_wert, 4), " p =", round(h_p, 6))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Verfahren | Teststatistik | p-Wert | Wie das zu lesen ist |
+|---|---|---|---|
+| Klassische Varianzanalyse | F(2, 57) = 2.356 | 0.104 | Kein Nachweis. Dieses Ergebnis ist nicht vertrauenswürdig, weil die Voraussetzung verletzt ist. |
+| Welch-Varianzanalyse | F(2, 31.9) = 19.467 | 0.0000030 | Ein klarer Befund auf denselben Daten. |
+| Kruskal-Wallis | H(2) = 10.421 | 0.0055 | Ebenfalls signifikant, rangbasiert und damit gegen die Streuungsunterschiede robust. |
+
+Die Erklärung steht in der Konstruktion des F-Werts. Der Nenner der klassischen
+Varianzanalyse ist eine **gemeinsame** Schätzung der Zufallsstreuung über alle
+Gruppen hinweg. Standort B mit seiner Streuung von 13.6 zieht diese gemeinsame
+Schätzung nach oben und macht damit auch die Unterschiede zwischen A und C
+unsichtbar, obwohl diese beiden Gruppen sehr gleichmässig messen.
+
+Die Welch-Variante schätzt die Streuung je Gruppe getrennt und gewichtet
+entsprechend. Sie zahlt dafür mit gebrochenen Freiheitsgraden, hier 31.9 statt
+57, und findet den Unterschied trotzdem.
+
+::: {.note-box}
+Die Welch-Variante ist bei ungleichen Gruppengrössen der sicherere Standardfall,
+genau wie beim [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd). Sie
+kostet fast nichts, wenn die Varianzen tatsächlich gleich sind, und rettet das
+Ergebnis, wenn sie es nicht sind. In R ist sie über `oneway.test()` zu haben,
+nicht über `aov()`.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Wahl fällt an der Voraussetzungsprüfung, also am Levene-Test und am Boxplot,
+und sie fällt vor dem Blick auf die p-Werte. Hier führt sie zur Welch-Variante.
+
+Bemerkenswert ist der Nebenbefund: Die Streuung selbst ist ein Ergebnis. Ein
+Standort, dessen Durchsatz zwischen 74 und 131 Stück schwankt, hat ein anderes
+Problem als einen zu niedrigen Mittelwert, und dieses Problem findet kein
+Mittelwertvergleich.
+
+> Die Varianzhomogenität ist deutlich verletzt (Levene p < 0.001;
+> Standardabweichungen 1.95, 13.60 und 3.91 bei n = 10, 20 und 30), weshalb die
+> Welch-Variante verwendet wurde. Der Durchsatz unterscheidet sich zwischen den
+> Standorten (F(2, 31.9) = 19.47, p < 0.001). Die klassische Varianzanalyse
+> hätte den Unterschied nicht gefunden (F(2, 57) = 2.36, p = 0.10). Zusätzlich
+> auffällig ist die stark erhöhte Streuung an Standort B.
+
+### Beispiel 4: Dieselbe Rechnung als Regression
+
+#### Frage und Datenlage
+
+Die Daten aus Beispiel 1, diesmal als lineares Modell gerechnet. Das Beispiel
+zeigt, dass Varianzanalyse und Regression nicht zwei Verfahren sind, sondern zwei
+Ausgabeformate desselben Modells.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-av-rechnung-r
+linear <- lm(durchsatz ~ standort, data = werk)
+summary(linear)
+
+anova(linear)
+```
+
+##### Python
+
+```{python}
+#| label: b4-av-rechnung-py
+linear = smf.ols("durchsatz ~ C(standort)", data=werk).fit()
+print(linear.summary().tables[1])
+print("F =", round(linear.fvalue, 4), " p =", round(linear.f_pvalue, 8),
+      " R^2 =", round(linear.rsquared, 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `(Intercept)` | 102.36 | Mittelwert der Referenzgruppe | Das ist exakt der Mittelwert von Standort A. R wählt die erste Faktorstufe als Referenz, hier alphabetisch A. |
+| `standortB` | 2.09 | Differenz B minus A | Dieselbe Zahl wie im Tukey-Vergleich B gegen A. |
+| `standortC` | 9.61 | Differenz C minus A | Ebenso. |
+| `Pr(>|t|)` für `standortB` | 0.368 | p-Wert dieses Vergleichs | **Nicht** derselbe wie bei Tukey (dort 0.637), weil hier keine Korrektur für multiples Testen erfolgt. |
+| `F-statistic` | 9.636 auf 2 und 42 df | Gesamttest des Modells | Exakt der F-Wert der Varianzanalyse. |
+| `Multiple R-squared` | 0.3145 | Anteil erklärter Streuung | Exakt das $\eta^2$ der Varianzanalyse. |
+| `anova(linear)` | dieselbe Tabelle wie `summary(aov(...))` | | Beide Ausgaben stammen aus demselben angepassten Modell. |
+
+#### Interpretation und Ergebnissatz
+
+Drei Dinge folgen daraus, und alle drei sind praktisch nützlich.
+
+**Erstens** ist die Wahl zwischen `aov()` und `lm()` eine Frage der Darstellung,
+nicht des Verfahrens. `aov()` zeigt die Zerlegung der Streuung, `lm()` zeigt die
+Differenzen zu einer Referenzgruppe. Wen die Grösse der Unterschiede interessiert,
+ist mit der Regressionsausgabe besser bedient.
+
+**Zweitens** erklärt es, warum der [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd)
+ein Sonderfall ist: Bei zwei Gruppen hat das Modell einen einzigen Koeffizienten,
+und dann gilt F gleich t im Quadrat.
+
+**Drittens** öffnet es den Weg zu allem, was die Varianzanalyse allein nicht
+kann. Weitere Einflussgrössen, metrische Kovariaten, Wechselwirkungen: Sobald das
+Modell als Regression geschrieben ist, kommen sie einfach als weitere Terme
+dazu, siehe [multiple lineare Regression](../regression/multiple-lineare-regression.qmd).
+
+Die Voreinstellung der Referenzgruppe verdient Aufmerksamkeit: R nimmt die erste
+Faktorstufe, also die alphabetisch erste. Wer eine inhaltlich sinnvolle
+Referenz braucht, etwa den Hauptstandort, setzt sie mit `relevel()`
+beziehungsweise über `Treatment(reference=...)` in der Formel. Sonst berichtet
+man Differenzen zu einer Gruppe, die nur durch ihren Anfangsbuchstaben
+ausgezeichnet ist.
+
+> Ein lineares Modell mit dem Standort als Faktor liefert dieselben Ergebnisse
+> wie die Varianzanalyse (F(2, 42) = 9.64, p < 0.001, R² = 0.31 entspricht
+> $\eta^2$). Gegenüber Standort A liegt B um 2.1 Stück/h höher (p = 0.37) und C
+> um 9.6 Stück/h (p < 0.001); die p-Werte sind hier unkorrigiert und deshalb
+> kleiner als die Tukey-Werte.
+
+::::
 
 ## Verständnisfragen
 
