@@ -4,7 +4,8 @@ Diese Datei hält fest, wo die Arbeit steht und wie es weitergeht. Sie liegt im
 Repo, damit der Stand auf jedem Rechner verfügbar ist und nicht in einem
 lokalen Gedächtnis hängt.
 
-Stand: 10. September 2026, Bereiche Tests und Regression vollständig.
+Stand: 10. September 2026, Bereiche Tests, Regression, Inferenz und Multivariat
+vollständig; Überlebenszeit begonnen.
 
 ---
 
@@ -90,22 +91,64 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `statistik/` | `verfahren-waehlen.qmd` (neu, vier Entscheidungsbäume als Mermaid) |
 | `statistik/tests/` | **vollständig**: t-Test eine Stichprobe, zwei Stichproben, gepaart, ANOVA, Chi-Quadrat, nichtparametrische Tests, Korrelationstests, Normalitätstests |
 | `statistik/regression/` | **vollständig**: einfache und multiple lineare Regression, logistische Regression, Regressionsdiagnostik, Modellauswahl, Klassifikationsgüte |
-| `statistik/multivariat/` | Hauptkomponentenanalyse |
+| `statistik/inferenz/` | **vollständig**: Schätzen und Konfidenzintervalle, Hypothesentest-Grundlagen, Effektstärken, Power, multiples Testen, Bootstrap |
+| `statistik/multivariat/` | **vollständig**: Hauptkomponentenanalyse, Faktorenanalyse, Distanzmasse, k-Means, hierarchisches Clustering, Clustergüte |
+| `statistik/ueberlebenszeit/` | Kaplan-Meier |
 | `referenz/` | R und Python für die verwendeten Funktionen gefüllt (Verteilungen, Hypothesentests, Regression, Multivariat, Grafik) |
 
 ## Als Nächstes
 
-1. **`statistik/inferenz/`.** Effektstärken, Power, multiples Testen, Bootstrap
-   sind Gerüste. Schätzen und Konfidenzintervalle sowie
-   Hypothesentests-Grundlagen haben Inhalt, aber noch den alten Aufbau.
-2. **Die übrigen Bereiche umbauen**: Multivariat (ohne PCA), Überlebenszeit,
-   Zeitreihen, Grundlagen, Wahrscheinlichkeit. Sie haben Inhalt, aber noch
-   Szenarien statt Beispiel-Reiter.
-3. **Zwei fehlende Seiten anlegen.** Der Abgleich mit den beiden Modulplänen
+1. **`statistik/ueberlebenszeit/`**: Log-Rank-Test, Cox-Modell, Zensierung und
+   Überlebensfunktion. Alle drei teilen den Abo-Datensatz aus `kaplan-meier.qmd`
+   (Lehmer-Saaten 7001/7002/7003) — dieselbe Vorschrift übernehmen, damit die
+   Seiten zusammenpassen.
+2. **`statistik/zeitreihen/`**: Grundlagen, Stationarität und ACF/PACF,
+   Glättung, ARIMA/SARIMA.
+3. **`statistik/grundlagen/`** (5 Seiten) und **`statistik/wahrscheinlichkeit/`**
+   (7 Seiten).
+4. **Zwei fehlende Seiten anlegen.** Der Abgleich mit den beiden Modulplänen
    (`0_ESDS_…pdf` und `0_StatDa_…pdf`) ergab genau zwei Lücken:
    - Prüfverteilungen: t-, Chi-Quadrat- und F-Verteilung
    - Grundlagen der linearen Algebra für die Hauptkomponentenanalyse
      (Matrizen, Eigenwerte, Eigenvektoren)
+
+## Der Lehmer-Generator als Standardweg für Beispieldaten
+
+Für grössere Datensätze hat sich der Lehmer-Generator gegenüber den
+umsortierten Quantilen durchgesetzt, weil er beliebig viele **unkorrelierte**
+Ströme liefert, ohne dass man Faktoren suchen muss:
+
+```r
+lehmer <- function(saat, anzahl) {
+  s <- saat; raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) { s <- (16807 * s) %% 2147483647; raus[k] <- s / 2147483647 }
+  raus
+}
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1)
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+```
+
+In Python identisch mit `stats.norm.ppf`. Daraus lassen sich auch andere
+Verteilungen bilden: gleichverteilt `von + (bis - von) * u`, exponentiell
+`-log(u) / rate`, binär `u < p`.
+
+**Verschiedene Saaten für verschiedene Variablen**, sonst sind sie identisch.
+Der Generator hat eine Periode von gut zwei Milliarden, überlappende Ströme sind
+bei den hier verwendeten Längen kein Thema.
+
+## Bekannte Abweichungen zwischen R und Python
+
+Diese Unterschiede sind echt und gehören auf den Seiten benannt, nicht
+weggerechnet:
+
+| Stelle | Abweichung |
+|---|---|
+| `scale()` gegen `StandardScaler` | R teilt durch die Standardabweichung mit Nenner n-1, Python mit n. Alle quadrierten Abstände unterscheiden sich um n/(n-1); Anteile und Aufteilungen bleiben gleich. |
+| `psych::fa` gegen `factor_analyzer` | Ladungen stimmen auf drei Stellen, Kommunalitäten weichen um Tausendstel ab; bei obliquer Rotation sind die Varianzanteile ohnehin nicht eindeutig definiert. |
+| `cluster::daisy` gegen selbstgebautes Gower | Geordnete Faktoren nach Podani (Ränge mit Bindungen) gegen schlichte Rangdifferenz. |
+| `survfit` gegen `KaplanMeierFitter` | Konfidenzband auf der Log- gegen die Log-Log-Skala. Mit `conf.type = "log-log"` stimmen sie überein. |
+| `clusGap` gegen selbstgebaute Gap-Statistik | `clusGap` zieht seine Referenzdaten zufällig; für reproduzierbare Zahlen selbst implementieren. |
+| Median ohne Erreichen von 0.5 | R gibt `NA`, Python `inf`. |
 
 ## Zwei offene Kleinigkeiten
 

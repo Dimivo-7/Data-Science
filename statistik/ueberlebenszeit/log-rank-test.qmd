@@ -13,14 +13,24 @@ order: 30
 #| include: false
 library(survival)
 
-set.seed(2026)
+# Derselbe Abo-Datensatz wie auf der Seite zu Kaplan-Meier, deterministisch
+# erzeugt, damit R und Python dieselben Zahlen zeigen.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
 
 n <- 400
-vertrag <- factor(sample(c("Jahr", "Monat"), n, replace = TRUE, prob = c(0.45, 0.55)),
+vertrag <- factor(ifelse(lehmer(7001, n) < 0.55, "Monat", "Jahr"),
                   levels = c("Jahr", "Monat"))
-distanz <- round(runif(n, 0.5, 15), 1)
+distanz <- round(0.5 + 14.5 * lehmer(7002, n), 1)
 rate <- 0.018 * exp(0.85 * (vertrag == "Monat") + 0.045 * distanz)
-zeit_ereignis <- rexp(n, rate)
+zeit_ereignis <- -log(lehmer(7003, n)) / rate
 stichtag <- 24
 
 abo <- data.frame(
@@ -43,13 +53,21 @@ from lifelines.statistics import logrank_test
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
 
-rng = np.random.default_rng(2026)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
 
 n = 400
-vertrag = rng.choice(["Jahr", "Monat"], n, p=[0.45, 0.55])
-distanz = rng.uniform(0.5, 15, n).round(1)
+vertrag = np.where(lehmer(7001, n) < 0.55, "Monat", "Jahr")
+distanz = (0.5 + 14.5 * lehmer(7002, n)).round(1)
 rate = 0.018 * np.exp(0.85 * (vertrag == "Monat") + 0.045 * distanz)
-zeit_ereignis = rng.exponential(1 / rate)
+zeit_ereignis = -np.log(lehmer(7003, n)) / rate
 stichtag = 24
 
 abo = pd.DataFrame({
@@ -110,6 +128,11 @@ $$\chi^2 = \frac{(O_1 - E_1)^2}{V}$$
 | $V$ | Varianz der Differenz, aus der Anzahl unter Risiko je Zeitpunkt |
 | Freiheitsgrade | Anzahl Gruppen minus eins |
 
+Der Erwartungswert an einem Zeitpunkt $t_i$ ist $E_{1i} = d_i \cdot n_{1i} / n_i$
+— die Ereignisse dieses Zeitpunkts, aufgeteilt nach dem Anteil der Gruppe an
+allen unter Risiko. Man kann das als eine Kette von Vierfeldertafeln lesen, eine
+je Ereigniszeitpunkt, deren Abweichungen aufsummiert werden.
+
 Die Nullhypothese lautet, dass die Überlebensfunktionen der Gruppen identisch
 sind. Weil der Test über alle Zeitpunkte summiert, ist er am schärfsten, wenn der
 Unterschied in eine Richtung geht und über die Zeit ähnlich bleibt. Genau das ist
@@ -125,78 +148,6 @@ seine Stärke und seine Schwäche.
 | Kurven kreuzen sich nicht | Der Unterschied wechselt nicht die Richtung | Kaplan-Meier-Kurven ansehen | Test verliert Schärfe, kann nichts finden, obwohl Unterschiede bestehen | abschnittsweise vergleichen, gewichtete Varianten |
 | Genügend Ereignisse | Nicht die Fallzahl zählt, sondern die Ereigniszahl | Ereignisse je Gruppe zählen | Test hat kaum Schärfe | Beobachtungszeit verlängern, Gruppen zusammenfassen |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-voraussetzungen-lr-r
-#| fig-cap: "Die Kurven trennen sich früh und kreuzen sich nicht. Genau dafür ist der Test gebaut."
-kurven <- survfit(Surv(zeit, status) ~ vertrag, data = abo)
-
-table(vertrag = abo$vertrag, ereignis = abo$status)
-
-plot(kurven, col = c("#2166ac", "#b2182b"), lwd = 2, mark.time = TRUE,
-     xlab = "Monate", ylab = "Anteil ohne Kündigung", ylim = c(0, 1))
-legend("bottomleft", legend = c("Jahresvertrag", "Monatsvertrag"),
-       col = c("#2166ac", "#b2182b"), lwd = 2, bty = "n")
-```
-
-## Python
-
-```{python}
-#| label: fig-voraussetzungen-lr-py
-#| fig-cap: "Dieselbe Prüfung in Python: Ereigniszahlen je Gruppe und die Kurven."
-print(pd.crosstab(abo["vertrag"], abo["status"]))
-
-fig, ax = plt.subplots()
-for name, farbe in [("Jahr", "#2166ac"), ("Monat", "#b2182b")]:
-    teil = abo[abo["vertrag"] == name]
-    KaplanMeierFitter().fit(teil["zeit"], teil["status"], label=name) \
-        .plot_survival_function(ax=ax, ci_show=False, color=farbe)
-ax.set_xlabel("Monate")
-ax.set_ylabel("Anteil ohne Kündigung")
-ax.set_ylim(0, 1)
-plt.show()
-```
-
-:::
-
-Die Kreuztabelle zeigt, wie viele Ereignisse je Gruppe vorliegen; das ist die
-Grösse, die über die Schärfe des Tests entscheidet, nicht die Gruppengrösse. Die
-Kurven trennen sich früh und laufen dann parallel, sie kreuzen sich nicht: der
-günstige Fall.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-lr-r
-survdiff(Surv(zeit, status) ~ vertrag, data = abo)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-lr-py
-jahr = abo[abo["vertrag"] == "Jahr"]
-monat = abo[abo["vertrag"] == "Monat"]
-
-ergebnis = logrank_test(jahr["zeit"], monat["zeit"],
-                        event_observed_A=jahr["status"],
-                        event_observed_B=monat["status"])
-ergebnis.print_summary(decimals=3)
-```
-
-:::
-
-Die Daten sind dieselben wie unter [Kaplan-Meier](kaplan-meier.qmd): 400 Abos,
-Monats- und Jahresverträge, Kündigungsrisiko abhängig von Vertragsart und
-Distanz, Stichtag nach 24 Monaten.
-
 ## Output lesen
 
 R, `survdiff()`:
@@ -207,7 +158,7 @@ R, `survdiff()`:
 | `Observed` | beobachtete Ereignisse je Gruppe | die Grösse, die zählt |
 | `Expected` | erwartete Ereignisse unter gleicher Hazard-Rate | berücksichtigt die Zeit unter Risiko |
 | `(O-E)^2/E` | Beitrag der Gruppe zur Statistik | zeigt, welche Gruppe die Abweichung treibt |
-| `(O-E)^2/V` | varianzgewichteter Beitrag | näher an der Teststatistik |
+| `(O-E)^2/V` | varianzgewichteter Beitrag | bei zwei Gruppen in beiden Zeilen gleich und identisch mit `Chisq` |
 | `Chisq` | Teststatistik | ohne Freiheitsgrade nicht deutbar |
 | `df` | Freiheitsgrade, Gruppen minus eins | bei zwei Gruppen eins |
 | `p` | p-Wert | keine Aussage über die Grösse des Unterschieds |
@@ -227,205 +178,10 @@ Python, `logrank_test(...).print_summary()`:
 
 Was in Python fehlt, sind die beobachteten und erwarteten Ereignisse je Gruppe.
 Die Richtung muss man sich also getrennt verschaffen, etwa über die
-Kaplan-Meier-Mediane oder eine Kreuztabelle. Wer den vollständigen Vergleich
-braucht, rechnet zusätzlich ein [Cox-Modell](cox-modell.qmd), dessen Hazard Ratio
-Richtung und Grösse in einer Zahl liefert.
-
-## Ergebnisse interpretieren
-
-### Szenario A: deutlicher Unterschied
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-a-lr-r
-test <- survdiff(Surv(zeit, status) ~ vertrag, data = abo)
-
-round(data.frame(
-  beobachtet = test$obs,
-  erwartet = round(test$exp, 1),
-  verhaeltnis = round(test$obs / test$exp, 2)
-), 2)
-
-round(c(chisq = test$chisq, p = 1 - pchisq(test$chisq, df = 1)), 5)
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-lr-py
-print("Chi-Quadrat:", round(ergebnis.test_statistic, 3),
-      "| p:", round(ergebnis.p_value, 6))
-
-for name in ["Jahr", "Monat"]:
-    teil = abo[abo["vertrag"] == name]
-    km = KaplanMeierFitter().fit(teil["zeit"], teil["status"])
-    print(name, "| Ereignisse:", int(teil["status"].sum()),
-          "| Median:", round(float(km.median_survival_time_), 1))
-```
-
-:::
-
-Der p-Wert ist sehr klein, die Nullhypothese gleicher Überlebensfunktionen wird
-verworfen. Die Richtung steht in der Gegenüberstellung von beobachteten und
-erwarteten Ereignissen: Bei Monatsverträgen sind mehr Kündigungen beobachtet als
-erwartet, bei Jahresverträgen weniger.
-
-Was der Test nicht sagt: um wie viel. Dafür braucht es die Mediane, die Anteile
-zu festen Zeitpunkten oder ein Hazard Ratio.
-
-Ergebnissatz: Die Laufzeit unterscheidet sich zwischen den Vertragsarten
-(Log-Rank-Test, Chi-Quadrat(1) wie ausgegeben, p wie ausgegeben). Bei
-Monatsverträgen traten mehr Kündigungen auf als unter gleicher Hazard-Rate
-erwartet; der Median liegt bei dem ausgegebenen Wert gegenüber dem der
-Jahresverträge.
-
-### Szenario B: kein nachweisbarer Unterschied
-
-Zwei Gruppen, die sich in den simulierten Daten nicht unterscheiden.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-lr-r
-set.seed(31)
-n_b <- 200
-gruppe_b <- factor(rep(c("A", "B"), each = n_b / 2))
-zeit_b <- rexp(n_b, 0.03)          # gleiche Rate in beiden Gruppen
-abo_b <- data.frame(
-  zeit = pmin(zeit_b, 24),
-  status = as.integer(zeit_b <= 24),
-  gruppe = gruppe_b
-)
-
-survdiff(Surv(zeit, status) ~ gruppe, data = abo_b)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-lr-py
-rng_b = np.random.default_rng(31)
-n_b = 200
-zeit_b = rng_b.exponential(1 / 0.03, n_b)
-abo_b = pd.DataFrame({
-    "zeit": np.minimum(zeit_b, 24),
-    "status": (zeit_b <= 24).astype(int),
-    "gruppe": np.repeat(["A", "B"], n_b // 2),
-})
-
-a = abo_b[abo_b["gruppe"] == "A"]
-b = abo_b[abo_b["gruppe"] == "B"]
-logrank_test(a["zeit"], b["zeit"],
-             event_observed_A=a["status"],
-             event_observed_B=b["status"]).print_summary(decimals=3)
-```
-
-:::
-
-Beobachtete und erwartete Ereignisse liegen nah beieinander, der p-Wert ist
-gross. Der richtige Schluss: In diesen Daten ist kein Unterschied nachweisbar.
-Nicht: Die Gruppen sind gleich. Bei rund hundert Beobachtungen je Gruppe und
-einem Teil davon zensiert bleibt die Zahl der Ereignisse klein, und damit ist die
-Schärfe des Tests begrenzt. Wer Gleichheit zeigen will, braucht ein
-Äquivalenzargument, nicht ein grosses p.
-
-Ergebnissatz: Ein Unterschied zwischen den Gruppen lässt sich nicht nachweisen
-(Log-Rank-Test, Werte wie ausgegeben, Ereignisse je Gruppe wie ausgegeben).
-
-### Szenario C: Fallstrick kreuzende Kurven
-
-Der Test summiert über die Zeit. Wenn eine Gruppe früh schlechter und später
-besser abschneidet, heben sich die Beiträge auf, und der Test findet nichts,
-obwohl deutliche Unterschiede bestehen.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-c-lr-r
-#| fig-cap: "Kreuzende Kurven: früh liegt A schlechter, später besser. Der Log-Rank-Test sieht davon fast nichts."
-#| fig-height: 3.4
-set.seed(5)
-m <- 250
-# Gruppe A: hohes Risiko in den ersten sechs Monaten, danach sehr niedrig
-frueh <- rexp(m, 0.16)
-spaet <- 6 + rexp(m, 0.008)
-a_zeit <- ifelse(frueh <= 6, frueh, spaet)
-# Gruppe B: konstantes mittleres Risiko
-b_zeit <- rexp(m, 0.045)
-
-kreuz <- data.frame(
-  zeit = pmin(c(a_zeit, b_zeit), 24),
-  status = as.integer(c(a_zeit, b_zeit) <= 24),
-  gruppe = factor(rep(c("A", "B"), each = m))
-)
-
-kurven_kreuz <- survfit(Surv(zeit, status) ~ gruppe, data = kreuz)
-plot(kurven_kreuz, col = c("#2166ac", "#b2182b"), lwd = 2,
-     xlab = "Monate", ylab = "Anteil ohne Ereignis", ylim = c(0, 1))
-legend("bottomleft", legend = c("A", "B"), col = c("#2166ac", "#b2182b"),
-       lwd = 2, bty = "n")
-
-survdiff(Surv(zeit, status) ~ gruppe, data = kreuz)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-lr-py
-rng_c = np.random.default_rng(5)
-m = 250
-frueh = rng_c.exponential(1 / 0.16, m)
-spaet = 6 + rng_c.exponential(1 / 0.008, m)
-a_zeit = np.where(frueh <= 6, frueh, spaet)
-b_zeit = rng_c.exponential(1 / 0.045, m)
-
-kreuz = pd.DataFrame({
-    "zeit": np.minimum(np.concatenate([a_zeit, b_zeit]), 24),
-    "status": (np.concatenate([a_zeit, b_zeit]) <= 24).astype(int),
-    "gruppe": np.repeat(["A", "B"], m),
-})
-
-ka = kreuz[kreuz["gruppe"] == "A"]
-kb = kreuz[kreuz["gruppe"] == "B"]
-logrank_test(ka["zeit"], kb["zeit"],
-             event_observed_A=ka["status"],
-             event_observed_B=kb["status"]).print_summary(decimals=3)
-
-# Getrennt nach Zeitabschnitt sieht man, was der Gesamttest verwischt
-for grenze in [(0, 6), (6, 24)]:
-    teil = kreuz[(kreuz["zeit"] > grenze[0]) & (kreuz["zeit"] <= grenze[1])]
-    ta, tb = teil[teil["gruppe"] == "A"], teil[teil["gruppe"] == "B"]
-    p = logrank_test(ta["zeit"], tb["zeit"],
-                     event_observed_A=ta["status"],
-                     event_observed_B=tb["status"]).p_value
-    print(f"Monate {grenze[0]} bis {grenze[1]}: p = {p:.4f}")
-```
-
-:::
-
-Erkennbar ist das Problem nicht an der Statistik, sondern an der Grafik: Die
-Kurven kreuzen sich. Der Gesamttest fasst früh und spät zusammen, und weil die
-Abweichungen entgegengesetzte Vorzeichen haben, kürzen sie sich weitgehend
-heraus. Die abschnittsweise Betrachtung zeigt, was verloren geht.
-
-Das Vorgehen: Zuerst immer die Kurven ansehen, dann den Test rechnen. Kreuzen sie
-sich, ist die Frage "unterscheiden sich die Gruppen" falsch gestellt; richtig ist
-"wann unterscheiden sie sich". Dann werden Zeitabschnitte getrennt betrachtet
-oder ein Modell mit zeitabhängigem Effekt verwendet, siehe
-[Cox-Modell](cox-modell.qmd). Gewichtete Varianten des Tests, die frühe oder
-späte Unterschiede betonen, sind eine weitere Möglichkeit, müssen aber vorher
-festgelegt werden.
-
-Ergebnissatz: Die Kurven kreuzen sich; ein einzelner Log-Rank-Test ist deshalb
-nicht aussagekräftig. Berichtet wird der Vergleich getrennt für die ersten sechs
-Monate und die Zeit danach (p-Werte wie ausgegeben).
+Kaplan-Meier-Mediane oder eine eigene Rechnung (Beispiel 1 zeigt sie). Wer den
+vollständigen Vergleich braucht, rechnet zusätzlich ein
+[Cox-Modell](cox-modell.qmd), dessen Hazard Ratio Richtung und Grösse in einer
+Zahl liefert.
 
 ## Interpretationsfallen
 
@@ -460,13 +216,6 @@ Gruppe, beobachtete gegenüber erwarteten Ereignissen als Richtungsangabe, die
 Mediane oder Anteile zu festen Zeitpunkten, und die Feststellung, dass die
 Kurven sich nicht kreuzen.
 
-Beispiel für eine Ergebnistabelle:
-
-| Gruppe | n | Ereignisse | erwartet | Median | Anteil nach 12 Monaten |
-|---|---|---|---|---|---|
-| A | | | | | |
-| B | | | | | |
-
 ## Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt des Log-Rank-Tests |
@@ -476,6 +225,542 @@ Beispiel für eine Ergebnistabelle:
 | Gewichtete Varianten des Tests | frühe oder späte Unterschiede sollen betont werden, vorab festgelegt |
 | [Chi-Quadrat-Test](../tests/chi-quadrat-tests.qmd) | nur der Anteil zu einem festen Zeitpunkt, ohne Zeitverlauf |
 | [Mann-Whitney](../tests/nichtparametrische-tests.qmd) | keine Zensierung vorhanden |
+
+## Beispiele
+
+Beispiel 1 rechnet den Test an zehn Fällen vollständig von Hand nach. Die
+Beispiele 2 und 3 verwenden den Abo-Datensatz aus
+[Kaplan-Meier](kaplan-meier.qmd) (400 Fitnessabos, Stichtag nach 24 Monaten);
+die Beispiele 4 und 5 zwei eigens dafür konstruierte Datensätze.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Der Test von Hand
+
+#### Frage und Datenlage
+
+Zehn Fälle, fünf je Gruppe. Das Pluszeichen markiert eine Zensierung:
+
+| Zeit | 2 | 3 | 3 | 4⁺ | 5 | 6 | 7 | 8⁺ | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Gruppe | A | A | B | A | B | B | A | B | A | B |
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-lr-r
+klein <- data.frame(
+  zeit   = c(2, 3, 3, 4, 5, 6, 7, 8, 9, 10),
+  gruppe = factor(c("A", "A", "B", "A", "B", "B", "A", "B", "A", "B")),
+  status = c(1, 1, 1, 0, 1, 1, 1, 0, 1, 1)
+)
+
+# Schritt fuer Schritt: je Ereigniszeitpunkt eine Vierfeldertafel
+zeitpunkte <- sort(unique(klein$zeit[klein$status == 1]))
+schritte <- t(sapply(zeitpunkte, function(tt) {
+  unter_risiko <- klein$zeit >= tt
+  n_gesamt <- sum(unter_risiko)
+  n_a <- sum(unter_risiko & klein$gruppe == "A")
+  d <- sum(klein$zeit == tt & klein$status == 1)
+  d_a <- sum(klein$zeit == tt & klein$status == 1 & klein$gruppe == "A")
+  e_a <- d * n_a / n_gesamt
+  v <- if (n_gesamt > 1) d * (n_a / n_gesamt) * (1 - n_a / n_gesamt) *
+    (n_gesamt - d) / (n_gesamt - 1) else 0
+  c(t = tt, n = n_gesamt, n_A = n_a, d = d, d_A = d_a,
+    E_A = round(e_a, 4), V = round(v, 4))
+}))
+schritte
+
+zusammen <- colSums(schritte[, c("d_A", "E_A", "V")])
+chi2 <- (zusammen["d_A"] - zusammen["E_A"])^2 / zusammen["V"]
+round(c(zusammen, chisq = chi2, p = 1 - pchisq(chi2, df = 1)), 4)
+
+# und zum Vergleich die fertige Funktion
+survdiff(Surv(zeit, status) ~ gruppe, data = klein)
+```
+
+##### Python
+
+```{python}
+#| label: b1-lr-py
+from scipy import stats
+
+klein = pd.DataFrame({
+    "zeit": [2, 3, 3, 4, 5, 6, 7, 8, 9, 10],
+    "gruppe": list("AABABBABAB"),
+    "status": [1, 1, 1, 0, 1, 1, 1, 0, 1, 1],
+})
+
+zeitpunkte = sorted(set(klein.loc[klein["status"] == 1, "zeit"]))
+schritte = []
+for tt in zeitpunkte:
+    unter_risiko = klein["zeit"] >= tt
+    n_gesamt = int(unter_risiko.sum())
+    n_a = int((unter_risiko & (klein["gruppe"] == "A")).sum())
+    ereignis = (klein["zeit"] == tt) & (klein["status"] == 1)
+    d = int(ereignis.sum())
+    d_a = int((ereignis & (klein["gruppe"] == "A")).sum())
+    anteil = n_a / n_gesamt
+    v = (d * anteil * (1 - anteil) * (n_gesamt - d) / (n_gesamt - 1)
+         if n_gesamt > 1 else 0.0)
+    schritte.append({"t": tt, "n": n_gesamt, "n_A": n_a, "d": d, "d_A": d_a,
+                     "E_A": round(d * anteil, 4), "V": round(v, 4)})
+
+schritte = pd.DataFrame(schritte)
+print(schritte.to_string(index=False))
+
+O, E, V = schritte[["d_A", "E_A", "V"]].sum()
+chi2 = (O - E) ** 2 / V
+print(f"O_A = {O}  E_A = {E:.4f}  V = {V:.4f}")
+print(f"chi2 = {chi2:.4f}  p = {1 - stats.chi2.cdf(chi2, df=1):.4f}")
+
+a = klein[klein["gruppe"] == "A"]
+b = klein[klein["gruppe"] == "B"]
+logrank_test(a["zeit"], b["zeit"], a["status"], b["status"]).print_summary(
+    decimals=4)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Eine Zeile je Ereigniszeitpunkt:
+
+| $t_i$ | unter Risiko $n_i$ | davon A | Ereignisse $d_i$ | davon A | erwartet $E_{Ai}$ | Varianz $V_i$ |
+|---|---|---|---|---|---|---|
+| 2 | 10 | 5 | 1 | 1 | $1 \cdot \tfrac{5}{10} = 0.5000$ | 0.2500 |
+| 3 | 9 | 4 | 2 | 1 | $2 \cdot \tfrac{4}{9} = 0.8889$ | 0.4321 |
+| 5 | 6 | 2 | 1 | 0 | $1 \cdot \tfrac{2}{6} = 0.3333$ | 0.2222 |
+| 6 | 5 | 2 | 1 | 0 | 0.4000 | 0.2400 |
+| 7 | 4 | 2 | 1 | 1 | 0.5000 | 0.2500 |
+| 9 | 2 | 1 | 1 | 1 | 0.5000 | 0.2500 |
+| 10 | 1 | 0 | 1 | 0 | 0.0000 | 0.0000 |
+| **Summe** | | | | **4** | **3.1222** | **1.6443** |
+
+$$\chi^2 = \frac{(4 - 3.1222)^2}{1.6443} = \frac{0.7705}{1.6443} = 0.4686,
+\qquad p = 0.494$$
+
+| Schritt | Was er zeigt |
+|---|---|
+| Der zensierte Fall bei $t = 4$ | taucht **nirgends** als eigene Zeile auf, senkt aber ab $t = 5$ die Spalten $n_i$ und $n_{Ai}$. Genau wie bei [Kaplan-Meier](kaplan-meier.qmd). |
+| $E_{Ai}$ bei $t = 3$ | Zwei Ereignisse, vier von neun unter Risiko gehören zu A → erwartet werden 0.889 Ereignisse in A. Beobachtet wird eines. |
+| Die Erwartung ist **nie ganzzahlig** | Sie ist keine Zählung, sondern ein Anteil. Erst die Summe ist mit der beobachteten Zählung vergleichbar. |
+| $V_i$ bei $t = 10$ ist null | Nur noch ein Fall unter Risiko, und der gehört zu B: An diesem Zeitpunkt ist nichts mehr zu verteilen. Der Schritt trägt zur Statistik nichts bei. |
+| $O_A = 4$ gegen $E_A = 3.12$ | Gruppe A hatte etwas mehr Ereignisse als erwartet — eine Abweichung in der Grössenordnung eines knappen Ereignisses. |
+| $\chi^2 = 0.47$, $p = 0.49$ | Vollkommen mit Zufall vereinbar. Bei sieben Ereignissen insgesamt wäre auch schwer etwas anderes zu erwarten. |
+
+::: {.note-box}
+Die Varianz $V_i$ ist die der hypergeometrischen Verteilung: Aus $n_i$ Fällen,
+von denen $n_{Ai}$ zu A gehören, werden $d_i$ "gezogen" (die Ereignisse). Der
+Faktor $\frac{n_i - d_i}{n_i - 1}$ ist die Korrektur für das Ziehen **ohne
+Zurücklegen** — er wird null, wenn alle Verbliebenen ein Ereignis haben, weil
+dann nichts mehr zufällig ist.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Ein Unterschied zwischen den Gruppen lässt sich nicht nachweisen
+> (Log-Rank-Test, $\chi^2$(1) = 0.47, p = 0.49; 4 beobachtete gegenüber 3.1
+> erwarteten Ereignissen in Gruppe A bei insgesamt 7 Ereignissen).
+
+### Beispiel 2: Vor dem Test die Kurven
+
+#### Frage und Datenlage
+
+Zwei Dinge gehören geprüft, bevor der Test gerechnet wird: ob genügend
+**Ereignisse** vorliegen — nicht Fälle — und ob die Kurven sich **kreuzen**.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-lr-r
+#| fig-cap: "Beispiel 2: die Kurven trennen sich früh und kreuzen sich nicht. Genau dafür ist der Test gebaut."
+table(vertrag = abo$vertrag, ereignis = abo$status)
+
+kurven <- survfit(Surv(zeit, status) ~ vertrag, data = abo)
+
+par(mar = c(4, 4, 2, 1))
+plot(kurven, col = c("#2166ac", "#b2182b"), lwd = 2, mark.time = TRUE,
+     xlab = "Monate", ylab = "Anteil ohne Kündigung", ylim = c(0, 1))
+legend("bottomleft", legend = c("Jahresvertrag", "Monatsvertrag"),
+       col = c("#2166ac", "#b2182b"), lwd = 2, bty = "n")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-lr-py
+#| fig-cap: "Beispiel 2: dieselbe Prüfung in Python."
+print(pd.crosstab(abo["vertrag"], abo["status"]))
+
+fig, achse = plt.subplots()
+for name, farbe in [("Jahr", "#2166ac"), ("Monat", "#b2182b")]:
+    teil = abo[abo["vertrag"] == name]
+    KaplanMeierFitter().fit(teil["zeit"], teil["status"], label=name) \
+        .plot_survival_function(ax=achse, ci_show=False, color=farbe)
+achse.set_xlabel("Monate")
+achse.set_ylabel("Anteil ohne Kündigung")
+achse.set_ylim(0, 1)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Vertragsart | zensiert (0) | Ereignis (1) | n |
+|---|---|---|---|
+| Jahr | 101 | **64** | 165 |
+| Monat | 52 | **183** | 235 |
+
+| Prüfpunkt | Befund | Bewertung |
+|---|---|---|
+| Ereignisse je Gruppe | 64 und 183 | Reichlich. Als grobe Faustregel gelten etwa zehn Ereignisse je Gruppe als untere Grenze für einen aussagekräftigen Test; hier ist das um ein Vielfaches erfüllt. |
+| Fälle je Gruppe | 165 und 235 | Diese Zahlen sind **nicht** die entscheidenden. Ein Datensatz mit 5000 Fällen und 8 Ereignissen liefert einen schwachen Test. |
+| Verlauf der Kurven | trennen sich in den ersten Monaten und bleiben getrennt | Kein Kreuzen. Der Unterschied hat über den ganzen Zeitraum dasselbe Vorzeichen — der Fall, für den der Test gebaut ist. |
+| Zensierungsanteil je Gruppe | 61 Prozent gegen 22 Prozent | Ungleich, aber unproblematisch: Die Zensierung ist rein administrativ (alle am Stichtag), und dass die Gruppe mit dem geringeren Risiko den Stichtag häufiger erreicht, ist die Folge des Effekts, nicht seine Ursache. |
+
+#### Interpretation
+
+Beide Voraussetzungen sind erfüllt; der Test darf gerechnet werden. Diese
+Reihenfolge — erst Kurven, dann Test — ist keine Formalie, wie Beispiel 5 zeigt.
+
+### Beispiel 3: Der Test auf den Abo-Daten
+
+#### Frage und Datenlage
+
+Unterscheidet sich die Laufzeit von Monats- und Jahresverträgen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-lr-r
+test <- survdiff(Surv(zeit, status) ~ vertrag, data = abo)
+test
+
+data.frame(
+  beobachtet = test$obs,
+  erwartet = round(test$exp, 1),
+  verhaeltnis = round(test$obs / test$exp, 2)
+)
+
+# Die Groesse des Unterschieds steht nicht im Test, sondern hier
+summary(survfit(Surv(zeit, status) ~ vertrag, data = abo), times = c(12, 24))
+```
+
+##### Python
+
+```{python}
+#| label: b3-lr-py
+jahr = abo[abo["vertrag"] == "Jahr"]
+monat = abo[abo["vertrag"] == "Monat"]
+
+ergebnis = logrank_test(jahr["zeit"], monat["zeit"],
+                        event_observed_A=jahr["status"],
+                        event_observed_B=monat["status"])
+ergebnis.print_summary(decimals=3)
+
+
+def beobachtet_erwartet(daten, spalte, gruppe):
+    """Was lifelines nicht ausgibt: O und E je Gruppe."""
+    zeit, status = daten["zeit"].values, daten["status"].values
+    ist_gruppe = (daten[spalte] == gruppe).values
+    O = E = 0.0
+    for tt in sorted(set(zeit[status == 1])):
+        unter_risiko = zeit >= tt
+        ereignis = (zeit == tt) & (status == 1)
+        O += (ereignis & ist_gruppe).sum()
+        E += ereignis.sum() * (unter_risiko & ist_gruppe).sum() / unter_risiko.sum()
+    return O, E
+
+
+for name in ["Jahr", "Monat"]:
+    O, E = beobachtet_erwartet(abo, "vertrag", name)
+    km = KaplanMeierFitter().fit(abo.loc[abo["vertrag"] == name, "zeit"],
+                                 abo.loc[abo["vertrag"] == name, "status"])
+    anteile = km.survival_function_at_times([12, 24]).round(3).values
+    print(f"{name:6s} O = {O:5.0f}  E = {E:6.1f}  O/E = {O / E:.2f}"
+          f"  S(12) = {anteile[0]:.3f}  S(24) = {anteile[1]:.3f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Gruppe | n | beobachtet $O$ | erwartet $E$ | $O/E$ | $\hat{S}(12)$ | $\hat{S}(24)$ |
+|---|---|---|---|---|---|---|
+| Jahresvertrag | 165 | 64 | **128.9** | **0.50** | 0.812 | 0.612 |
+| Monatsvertrag | 235 | 183 | **118.1** | **1.55** | 0.460 | 0.221 |
+| gesamt | 400 | 247 | 247.0 | | | |
+
+$$\chi^2(1) = 69.66, \qquad p = 7 \cdot 10^{-17}$$
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| $E$ summiert sich auf 247 | | Die Erwartungen verteilen genau die tatsächlich eingetretenen Ereignisse auf die Gruppen um. Deshalb ist $O - E$ in einer Gruppe immer das Negative der anderen: -64.9 und +64.9. |
+| $O/E = 0.50$ bei Jahresverträgen | halb so viele Kündigungen wie erwartet | Bei gleichem Risiko in beiden Gruppen wären hier 129 Kündigungen aufgetreten. Es waren 64. |
+| $O/E = 1.55$ bei Monatsverträgen | rund die Hälfte mehr als erwartet | **Die Richtung des Effekts steht hier und nirgendwo sonst im Testergebnis.** |
+| $\chi^2(1) = 69.66$ | | Bei einem Freiheitsgrad. Der kritische Wert für 5 Prozent liegt bei 3.84 — der beobachtete Wert übertrifft ihn um das Achtzehnfache. |
+| $p = 7 \cdot 10^{-17}$ | praktisch null | Berichtet wird "p < .001". Weitere Stellen anzugeben, suggeriert eine Genauigkeit, die der Test nicht hat. |
+| $\hat{S}(12)$: 0.812 gegen 0.460 | | **Das** ist die Grösse des Unterschieds. Sie steht nicht im Test. |
+
+::: {.note-box}
+Das Verhältnis $O/E$ liegt nahe bei dem, was ein [Cox-Modell](cox-modell.qmd) als
+Hazard Ratio schätzen würde ($1.55 / 0.50 \approx 3.1$), ist aber **kein**
+Effektmass im eigentlichen Sinn: Es hat keinen Standardfehler, kein
+Konfidenzintervall, und es hängt an der Zusammensetzung der Risikomengen. Als
+Richtungsangabe taugt es, als berichtete Effektstärke nicht.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Laufzeit unterscheidet sich deutlich zwischen den Vertragsarten
+> (Log-Rank-Test, $\chi^2$(1) = 69.7, p < .001, n = 400 mit 247 Kündigungen). Bei
+> Monatsverträgen traten 183 Kündigungen gegenüber 118 unter gleichem Risiko
+> erwarteten auf, bei Jahresverträgen 64 gegenüber 129. Nach zwölf Monaten
+> bestehen noch 46.0 Prozent der Monats- und 81.2 Prozent der Jahresverträge.
+
+### Beispiel 4: Ein Nullbefund
+
+#### Frage und Datenlage
+
+Zwei Gruppen zu je 100 Fällen, die aus **derselben** Verteilung stammen. Der Test
+sollte nichts finden — und was heisst das dann?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-lr-r
+n_b <- 200
+zeit_b <- -log(lehmer(3131, n_b)) / 0.03          # gleiche Rate in beiden Gruppen
+
+abo_b <- data.frame(
+  zeit = pmin(zeit_b, 24),
+  status = as.integer(zeit_b <= 24),
+  gruppe = factor(rep(c("A", "B"), times = n_b / 2))
+)
+
+survdiff(Surv(zeit, status) ~ gruppe, data = abo_b)
+table(gruppe = abo_b$gruppe, ereignis = abo_b$status)
+```
+
+##### Python
+
+```{python}
+#| label: b4-lr-py
+n_b = 200
+zeit_b = -np.log(lehmer(3131, n_b)) / 0.03
+
+abo_b = pd.DataFrame({
+    "zeit": np.minimum(zeit_b, 24),
+    "status": (zeit_b <= 24).astype(int),
+    "gruppe": np.tile(["A", "B"], n_b // 2),
+})
+
+a = abo_b[abo_b["gruppe"] == "A"]
+b = abo_b[abo_b["gruppe"] == "B"]
+logrank_test(a["zeit"], b["zeit"],
+             event_observed_A=a["status"],
+             event_observed_B=b["status"]).print_summary(decimals=3)
+
+for name in ["A", "B"]:
+    O, E = beobachtet_erwartet(abo_b, "gruppe", name)
+    print(f"Gruppe {name}: O = {O:.0f}  E = {E:.1f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Gruppe | n | beobachtet | erwartet | Differenz |
+|---|---|---|---|---|
+| A | 100 | 50 | 50.2 | -0.2 |
+| B | 100 | 51 | 50.8 | +0.2 |
+
+$$\chi^2(1) = 0.002, \qquad p = 0.96$$
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| $O$ und $E$ praktisch identisch | Genau das Bild, das unter der Nullhypothese zu erwarten ist. |
+| $\chi^2 = 0.002$ | Nahe null. Solche Werte sind unter der Nullhypothese normal, aber nicht "besonders bestätigend" — auch $\chi^2 = 2.5$ wäre unauffällig. |
+| $p = 0.96$ | Ein hoher p-Wert ist **kein** Beleg für Gleichheit. Er sagt nur: Diese Daten sind mit gleichen Kurven vereinbar. |
+| 101 Ereignisse insgesamt | Die entscheidende Zahl für die Aussagekraft. Mit 101 Ereignissen würde ein Hazard Ratio von etwa 1.5 zuverlässig gefunden, eines von 1.15 aber meist nicht. |
+
+::: {.note-box}
+**Was ein Nullbefund berichtsfähig macht:** die Angabe, wie gross ein Effekt hätte
+sein müssen, um bei dieser Ereigniszahl entdeckt zu werden. Praktisch geschieht
+das über ein [Cox-Modell](cox-modell.qmd): Sein Konfidenzintervall für das Hazard
+Ratio zeigt unmittelbar, welche Effektgrössen die Daten noch zulassen — dieselbe
+Logik wie beim [Konfidenzintervall](../inferenz/schaetzen-konfidenzintervalle.qmd)
+gegenüber dem p-Wert.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Ein Unterschied zwischen den Gruppen lässt sich nicht nachweisen
+> (Log-Rank-Test, $\chi^2$(1) = 0.00, p = 0.96; 50 gegenüber 51 Ereignissen bei je
+> 100 Fällen). Ob kleinere Unterschiede bestehen, lässt sich mit dieser
+> Ereigniszahl nicht entscheiden.
+
+### Beispiel 5: Kreuzende Kurven
+
+#### Frage und Datenlage
+
+Der wichtigste Fallstrick des Verfahrens. Zwei Gruppen zu je 250 Fällen:
+
+- **Gruppe A** hat in den ersten sechs Monaten ein hohes Risiko, danach ein sehr
+  niedriges — das Muster einer Operation mit früher Komplikationsgefahr und
+  gutem Verlauf danach.
+- **Gruppe B** hat durchgehend ein mittleres Risiko.
+
+Die beiden Kurven kreuzen sich. Was macht der Test daraus?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-lr-r
+#| fig-cap: "Beispiel 5: kreuzende Kurven. Früh liegt A schlechter, später deutlich besser."
+#| fig-height: 3.6
+m <- 250
+frueh <- -log(lehmer(5151, m)) / 0.16              # A: hohes Risiko bis Monat 6
+spaet <- 6 - log(lehmer(5252, m)) / 0.004          # A: danach sehr niedrig
+a_zeit <- ifelse(frueh <= 6, frueh, spaet)
+b_zeit <- -log(lehmer(5353, m)) / 0.075            # B: konstant mittel
+
+kreuz <- data.frame(
+  zeit = pmin(c(a_zeit, b_zeit), 24),
+  status = as.integer(c(a_zeit, b_zeit) <= 24),
+  gruppe = factor(rep(c("A", "B"), each = m))
+)
+
+par(mar = c(4, 4, 2, 1))
+plot(survfit(Surv(zeit, status) ~ gruppe, data = kreuz),
+     col = c("#2166ac", "#b2182b"), lwd = 2,
+     xlab = "Monate", ylab = "Anteil ohne Ereignis", ylim = c(0, 1))
+legend("topright", legend = c("A", "B"), col = c("#2166ac", "#b2182b"),
+       lwd = 2, bty = "n")
+
+survdiff(Surv(zeit, status) ~ gruppe, data = kreuz)
+```
+
+##### Python
+
+```{python}
+#| label: b5-lr-py
+m = 250
+frueh = -np.log(lehmer(5151, m)) / 0.16
+spaet = 6 - np.log(lehmer(5252, m)) / 0.004
+a_zeit = np.where(frueh <= 6, frueh, spaet)
+b_zeit = -np.log(lehmer(5353, m)) / 0.075
+
+roh = np.concatenate([a_zeit, b_zeit])
+kreuz = pd.DataFrame({
+    "zeit": np.minimum(roh, 24),
+    "status": (roh <= 24).astype(int),
+    "gruppe": np.repeat(["A", "B"], m),
+})
+
+ka, kb = kreuz[kreuz["gruppe"] == "A"], kreuz[kreuz["gruppe"] == "B"]
+logrank_test(ka["zeit"], kb["zeit"],
+             event_observed_A=ka["status"],
+             event_observed_B=kb["status"]).print_summary(decimals=3)
+
+for name in ["A", "B"]:
+    teil = kreuz[kreuz["gruppe"] == name]
+    km = KaplanMeierFitter().fit(teil["zeit"], teil["status"])
+    werte = km.survival_function_at_times([6, 24]).round(3).values
+    print(f"{name}: S(6) = {werte[0]:.3f}  S(24) = {werte[1]:.3f}"
+          f"  Ereignisse: {int(teil['status'].sum())}")
+
+# Getrennt nach Zeitabschnitt: erst alles bei Monat 6 zensieren, dann
+# nur die betrachten, die Monat 6 ueberlebt haben
+frueh_teil = kreuz.assign(
+    z=np.minimum(kreuz["zeit"], 6),
+    s=((kreuz["status"] == 1) & (kreuz["zeit"] <= 6)).astype(int))
+spaet_teil = kreuz[kreuz["zeit"] > 6]
+
+for name, daten, zs in [("Monate 0 bis 6", frueh_teil, ("z", "s")),
+                        ("Monate 6 bis 24", spaet_teil, ("zeit", "status"))]:
+    ta = daten[daten["gruppe"] == "A"]
+    tb = daten[daten["gruppe"] == "B"]
+    t = logrank_test(ta[zs[0]], tb[zs[0]], ta[zs[1]], tb[zs[1]])
+    print(f"{name}: chi2 = {t.test_statistic:.2f}, p = {t.p_value:.3g}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Zuerst die Kurven in Zahlen:
+
+| Gruppe | $\hat{S}(6)$ | $\hat{S}(24)$ | Ereignisse |
+|---|---|---|---|
+| A | **0.372** | **0.356** | 161 |
+| B | **0.632** | **0.204** | 199 |
+
+Nach sechs Monaten steht A **deutlich schlechter** (37 gegen 63 Prozent), nach 24
+Monaten **deutlich besser** (36 gegen 20 Prozent). Die Kurven kreuzen sich.
+
+Und nun die Tests:
+
+| Vergleich | $\chi^2$ | p |
+|---|---|---|
+| **Gesamter Zeitraum** | **0.004** | **0.95** |
+| Monate 0 bis 6 | 37.60 | $9 \cdot 10^{-10}$ |
+| Monate 6 bis 24 | 86.61 | $1 \cdot 10^{-20}$ |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Der Gesamttest findet **nichts** | $\chi^2 = 0.004$ ist so nahe an null, wie es überhaupt geht. Ein Bericht, der nur diese Zeile enthält, sagt "kein Unterschied nachweisbar" — bei zwei Gruppen, die kaum verschiedener sein könnten. |
+| Beide Teilabschnitte finden **sehr viel** | Und zwar mit entgegengesetztem Vorzeichen: In den ersten sechs Monaten hat A mehr Ereignisse als erwartet, danach dramatisch weniger. |
+| Warum sich das aufhebt | Der Test summiert $O_i - E_i$ über alle Zeitpunkte, **bevor** er quadriert. Frühe positive und späte negative Abweichungen kürzen sich in dieser Summe. Erst danach wird das Quadrat gebildet — es ist also nicht so, dass Abweichungen "unabhängig vom Vorzeichen" zählen würden. |
+| Woran man es erkennt | Nur am **Bild**. Die Teststatistik selbst gibt keinen Hinweis auf das Problem; ein kleines $\chi^2$ sieht bei kreuzenden Kurven genauso aus wie bei tatsächlich gleichen Kurven. |
+
+::: {.note-box}
+**Die abschnittsweisen p-Werte sind hier eine Veranschaulichung, kein
+Berichtsergebnis.** Wer die Grenze bei sechs Monaten nach dem Blick auf die
+Kurven wählt, hat einen an den Daten optimierten Schnitt gesetzt, und die
+p-Werte sind dadurch zu klein. Zulässig ist das Vorgehen nur mit einer vorab aus
+der Sache begründeten Grenze — hier etwa "Ende der postoperativen Phase".
+
+Die sauberen Alternativen: ein [Cox-Modell](cox-modell.qmd) mit zeitabhängigem
+Effekt, das den Wechsel selbst schätzt, oder eine vorab festgelegte gewichtete
+Variante des Tests (Gehan-Wilcoxon betont frühe, Fleming-Harrington je nach
+Parameter frühe oder späte Unterschiede).
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Überlebenskurven kreuzen sich bei etwa sechs Monaten; Gruppe A hat früh ein
+> deutlich höheres, später ein deutlich niedrigeres Risiko. Ein einzelner
+> Log-Rank-Test über den ganzen Zeitraum ($\chi^2$(1) = 0.00, p = 0.95) ist
+> deshalb nicht aussagekräftig — die gegenläufigen Abweichungen heben sich auf.
+> Berichtet werden die Anteile zu festen Zeitpunkten (nach 6 Monaten 37.2 gegen
+> 63.2 Prozent, nach 24 Monaten 35.6 gegen 20.4 Prozent) und ein Modell mit
+> zeitabhängigem Effekt.
+
+::::
 
 ## Verständnisfragen
 
@@ -493,12 +778,13 @@ Der Test ergibt p = 0.6, die Gruppen haben je 150 Beobachtungen, aber nur 18 und
 :::
 
 ::: {.quiz}
-Die Kaplan-Meier-Kurven kreuzen sich bei etwa acht Monaten. Der Log-Rank-Test
-ergibt p = 0.7. Wie ist das zu deuten?
+Die Kaplan-Meier-Kurven kreuzen sich bei etwa sechs Monaten. Der Log-Rank-Test
+über den ganzen Zeitraum ergibt p = 0.95. Wie ist das zu deuten?
 
 - [x] Der Test ist hier nicht aussagekräftig, weil sich die Beiträge aufheben ~
-      Richtig. Er summiert über die Zeit; entgegengesetzte Abweichungen kürzen
-      sich. Die Frage muss lauten, wann sich die Gruppen unterscheiden.
+      Richtig. Er summiert die Abweichungen über die Zeit, bevor er quadriert;
+      entgegengesetzte Abweichungen kürzen sich. Die Frage muss lauten, **wann**
+      sich die Gruppen unterscheiden.
 - [ ] Die Gruppen sind über den ganzen Verlauf gleich ~ Genau das widerlegen die
       kreuzenden Kurven.
 - [ ] Die Kurven kreuzen sich nur zufällig ~ Möglich, aber dann zeigt man es an
@@ -510,7 +796,8 @@ Warum liefert der Log-Rank-Test kein Effektmass?
 
 - [x] Weil er beobachtete gegen erwartete Ereignisse stellt, ohne ein Modell für
       die Grösse des Unterschieds ~ Richtig. Er ist ein reiner Test. Ein
-      Effektmass liefert das Cox-Modell mit dem Hazard Ratio.
+      Effektmass liefert das Cox-Modell mit dem Hazard Ratio, samt
+      Konfidenzintervall.
 - [ ] Weil das Effektmass in der Statistik steht, man muss es nur umrechnen ~ Aus
       Chi-Quadrat lässt sich kein Hazard Ratio gewinnen.
 - [ ] Weil die Zensierung ein Effektmass unmöglich macht ~ Das Cox-Modell schätzt
@@ -518,15 +805,29 @@ Warum liefert der Log-Rank-Test kein Effektmass?
 :::
 
 ::: {.quiz}
-In einer Gruppe sind 40 Ereignisse beobachtet, 28 erwartet. Was heisst das?
+In einer Gruppe sind 183 Ereignisse beobachtet, 118 erwartet. Was heisst das?
 
 - [x] In dieser Gruppe traten mehr Ereignisse auf als bei gleichem Risiko zu
       erwarten wäre ~ Richtig. Die erwarteten Ereignisse berücksichtigen die Zeit
-      unter Risiko. Mehr beobachtete als erwartete heisst höheres Risiko.
+      unter Risiko. Mehr beobachtete als erwartete heisst höheres Risiko — und
+      das ist die einzige Stelle, an der die **Richtung** des Effekts im
+      Testergebnis steht.
 - [ ] Die Gruppe ist grösser als die andere ~ Die Gruppengrösse steckt bereits in
       der Erwartung.
 - [ ] Das Ergebnis ist damit signifikant ~ Ob die Abweichung mit Zufall
       vereinbar ist, entscheidet der p-Wert.
+:::
+
+::: {.quiz}
+Warum ist der erwartete Wert je Gruppe nie eine ganze Zahl?
+
+- [x] Weil er die Ereignisse jedes Zeitpunkts nach dem Anteil unter Risiko
+      aufteilt ~ Richtig. Bei zwei Ereignissen und vier von neun unter Risiko in
+      Gruppe A werden 0.889 Ereignisse erwartet. Erst die Summe über alle
+      Zeitpunkte ist mit der beobachteten Zählung vergleichbar.
+- [ ] Weil gerundet wird ~ Es wird nicht gerundet; der Wert ist exakt ein Anteil.
+- [ ] Weil zensierte Fälle anteilig gezählt werden ~ Zensierte Fälle zählen gar
+      nicht als Ereignis, sie verkleinern nur die Anzahl unter Risiko.
 :::
 
 ## Verlinkte Ressourcen
