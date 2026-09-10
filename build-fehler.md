@@ -37,6 +37,34 @@ Die Kurzfassung dessen, was die Einträge unten gelehrt haben:
 
 ## Einträge
 
+### 2026-09-10 — Glossar markiert Wörter in der Navigation
+
+**Symptom:** In der Seitenleiste links und im Brotkrumenpfad standen
+Menüeinträge wie "Linux und Shell" oder "Schätzen und Konfidenzintervalle"
+mit gepunktetem Unterstrich und Glossar-Tooltip mitten im Wort.
+
+**Ursache:** `glossary.lua` markierte nicht nur den Seitentext. Der erste
+Erklärungsversuch, Pandoc wende den Filter zusätzlich auf die Metadaten an,
+war falsch: Ein Umbau auf `doc.blocks:walk()` änderte nichts. Tatsächlich baut
+Quarto Seitenleiste, Brotkrumenpfad und Navigationsleiste als Elemente ins
+Dokument ein, **bevor** die Filter aus `format.html.filters` laufen. Der Titel
+einer Seite wird markiert und danach in jedes Menü übernommen.
+
+**Regel:** Der Inhaltsfilter überspringt jetzt Container mit
+Navigationskennungen und -klassen (`quarto-sidebar`, `menu-text`,
+`quarto-title-breadcrumbs`, `navbar` und weitere), sowohl bei Divs als auch bei
+Spans. Zusätzlich steht in `styles.scss` eine Sicherung, die `.glossary-term`
+innerhalb dieser Container optisch neutralisiert. Die Sicherung ist Absicht:
+Quarto kann die Klassennamen mit einer neuen Version ändern, und dann fällt
+nur die Lua-Sperre aus, nicht die Darstellung.
+
+**Was daraus zu lernen ist:** Beim ersten Fix wurde eine Vermutung über die
+Ursache umgesetzt, ohne sie zu prüfen. Bei einem Werkzeug, das nur im Build
+läuft, kostet jede unbelegte Vermutung einen vollen Durchlauf. Erst am Ergebnis
+messen, dann die nächste Änderung.
+
+---
+
 ### 2026-09-10 — pingouin 0.6 benennt Ausgabespalten um
 
 **Symptom:** `KeyError: 'p-unc'` beim Rendern der ANOVA-Seite; später auf

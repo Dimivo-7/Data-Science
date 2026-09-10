@@ -1,0 +1,263 @@
+---
+title: "Verfahren wählen"
+description: "Entscheidungsbäume und eine Entscheidungstabelle: von der Fragestellung zum passenden Verfahren."
+categories: ["Hypothesentests", "Regression", "Dimensionsreduktion", "Interpretation"]
+quelle: ["ESDS", "STATDA"]
+seitentyp: konzept
+stand: entwurf
+order: 5
+---
+
+Diese Seite beantwortet eine einzige Frage: Welches Verfahren passt zu meiner
+Fragestellung und meinen Daten? Sie erklärt keine Methode, sondern führt zu
+ihr. Jede Endstation verweist auf die Seite, die das Verfahren dann
+durchrechnet und den Output erklärt.
+
+## Die vier Fragen vor jeder Wahl
+
+Bevor ein Diagramm hilft, müssen vier Dinge geklärt sein. Sie stehen bewusst
+vor den Bäumen, weil ein Baum nur so gut ist wie die Antworten, mit denen man
+ihn betritt.
+
+| Frage | Warum sie entscheidet | Wo sie beantwortet wird |
+|---|---|---|
+| Was ist die Zielgrösse und welches [Skalenniveau](grundlagen/skalenniveaus.qmd) hat sie? | Metrisch erlaubt Mittelwerte, ordinal nur Ränge, nominal nur Häufigkeiten. Das schliesst die meisten Verfahren bereits aus. | [Skalenniveaus](grundlagen/skalenniveaus.qmd) |
+| Geht es um einen Unterschied, einen Zusammenhang oder um Struktur? | Unterschiede führen zu Tests, Zusammenhänge zu Korrelation und Regression, Struktur zu Reduktion und Clustering. | die drei Bäume unten |
+| Sind die Beobachtungen unabhängig oder gehören sie paarweise zusammen? | Gepaarte Daten ungepaart auszuwerten verschenkt Information und findet echte Effekte oft nicht. | [gepaarter t-Test](tests/t-test-gepaart.qmd) |
+| Sind die Voraussetzungen des Verfahrens erfüllt? | Sie entscheiden zwischen Hauptverfahren und Ausweichverfahren. | die jeweilige Methodenseite |
+
+::: {.note-box}
+Die Antworten stehen fest, **bevor** ein p-Wert gerechnet wird. Wer beide
+Verfahren rechnet und danach das mit dem angenehmeren Ergebnis berichtet, hat
+kein Testniveau mehr, sondern eine Erzählung. Zulässig ist es, ein zweites
+Verfahren als Sensitivitätsanalyse zu zeigen, solange das Hauptverfahren vorab
+benannt wurde.
+:::
+
+## Unterschiede zwischen Gruppen
+
+Die Frage lautet: Unterscheiden sich zwei oder mehr Gruppen in einer Grösse?
+Das ist das Feld der [Hypothesentests](inferenz/hypothesentests-grundlagen.qmd).
+
+```{mermaid}
+%%| label: fig-baum-unterschiede
+%%| fig-cap: "Vom Skalenniveau der Zielgrösse zum passenden Test."
+flowchart TD
+    S["Unterschied zwischen Gruppen"] --> N{"Skalenniveau der Zielgrösse?"}
+
+    N -->|"metrisch"| M{"Wie viele Gruppen?"}
+    N -->|"ordinal"| O["rangbasiert vergleichen"]
+    N -->|"nominal"| K{"Wie viele Merkmale?"}
+
+    M -->|"eine, gegen Sollwert"| M1{"Voraussetzungen erfüllt?"}
+    M -->|"zwei, unabhängig"| M2{"Voraussetzungen erfüllt?"}
+    M -->|"zwei, gepaart"| M3{"Voraussetzungen erfüllt?"}
+    M -->|"mehr als zwei"| M4{"Voraussetzungen erfüllt?"}
+
+    M1 -->|"ja"| E1["t-Test für eine Stichprobe"]
+    M1 -->|"nein"| E2["Wilcoxon-Vorzeichen-Rangtest"]
+    M2 -->|"ja"| E3["t-Test für zwei Stichproben, Welch"]
+    M2 -->|"nein"| E4["Mann-Whitney-U-Test"]
+    M3 -->|"ja"| E5["gepaarter t-Test"]
+    M3 -->|"nein"| E6["Wilcoxon-Vorzeichen-Rangtest"]
+    M4 -->|"ja"| E7["Varianzanalyse"]
+    M4 -->|"nein"| E8["Kruskal-Wallis-Test"]
+
+    E7 --> P["Post-hoc-Vergleiche mit Korrektur"]
+    E8 --> P
+
+    O --> E4
+    K -->|"eines, gegen erwartete Verteilung"| E9["Chi-Quadrat-Anpassungstest"]
+    K -->|"zwei, Unabhängigkeit"| K2{"Erwartete Häufigkeiten überall mindestens 5?"}
+    K2 -->|"ja"| E10["Chi-Quadrat-Unabhängigkeitstest"]
+    K2 -->|"nein"| E11["exakter Test nach Fisher"]
+```
+
+| Datenlage | Verfahren | Wenn Voraussetzungen verletzt |
+|---|---|---|
+| Metrisch, eine Gruppe gegen einen festen Sollwert | [t-Test für eine Stichprobe](tests/t-test-eine-stichprobe.qmd) | [Wilcoxon-Vorzeichen-Rangtest](tests/nichtparametrische-tests.qmd) |
+| Metrisch, zwei unabhängige Gruppen | [t-Test für zwei Stichproben](tests/t-test-zwei-stichproben.qmd), Welch-Variante als Standardfall | [Mann-Whitney](tests/nichtparametrische-tests.qmd) oder [Bootstrap](inferenz/bootstrap-resampling.qmd) |
+| Metrisch, dieselben Objekte zweimal gemessen | [gepaarter t-Test](tests/t-test-gepaart.qmd) auf den Differenzen | [Wilcoxon](tests/nichtparametrische-tests.qmd) |
+| Metrisch, mehr als zwei Gruppen | [Varianzanalyse](tests/anova.qmd), danach Post-hoc mit [Korrektur](inferenz/multiples-testen.qmd) | [Kruskal-Wallis](tests/nichtparametrische-tests.qmd) |
+| Ordinale Zielgrösse | rangbasierte Verfahren, siehe [nichtparametrische Tests](tests/nichtparametrische-tests.qmd) | entfällt, sie sind bereits die Ausweichvariante |
+| Ein kategoriales Merkmal gegen eine erwartete Verteilung | [Chi-Quadrat-Anpassungstest](tests/chi-quadrat-tests.qmd) | exakte Varianten bei kleinen Häufigkeiten |
+| Zwei kategoriale Merkmale, Frage nach Unabhängigkeit | [Chi-Quadrat-Unabhängigkeitstest](tests/chi-quadrat-tests.qmd) | [exakter Test nach Fisher](tests/chi-quadrat-tests.qmd) |
+
+Zwei Abzweigungen werden regelmässig falsch genommen. Die erste ist die
+Paarung: Vorher- und Nachher-Messungen an denselben Objekten sind gepaart, auch
+wenn die Tabelle sie in zwei Spalten führt. Die zweite ist der Schritt von zwei
+auf mehr als zwei Gruppen. Drei Gruppen paarweise durchzutesten erhöht die Rate
+falscher Alarme; dafür gibt es die [Varianzanalyse](tests/anova.qmd) und
+anschliessend Korrekturen für [multiples Testen](inferenz/multiples-testen.qmd).
+
+## Zusammenhang und Vorhersage
+
+Die Frage lautet: Hängen zwei Grössen zusammen, und lässt sich die eine aus der
+anderen vorhersagen? Der Unterschied zwischen beiden Teilen ist die Richtung.
+Ein Zusammenhang ist symmetrisch, eine Vorhersage nicht.
+
+```{mermaid}
+%%| label: fig-baum-zusammenhang
+%%| fig-cap: "Von der Art der Zielgrösse zum passenden Modell."
+flowchart TD
+    S["Zusammenhang oder Vorhersage"] --> Z{"Gibt es eine Zielgrösse, die vorhergesagt werden soll?"}
+
+    Z -->|"nein, nur die Enge des Zusammenhangs"| C{"Zusammenhang linear und Ausreisser unauffällig?"}
+    C -->|"ja"| C1["Korrelation nach Pearson"]
+    C -->|"nein"| C2["Korrelation nach Spearman"]
+    C1 --> C3["Korrelationstest"]
+    C2 --> C3
+
+    Z -->|"ja"| Y{"Art der Zielgrösse?"}
+    Y -->|"metrisch"| Y1{"Wie viele Einflussgrössen?"}
+    Y -->|"binär"| Y2["logistische Regression"]
+    Y -->|"Zeit bis zu einem Ereignis, teils zensiert"| Y3{"Was wird gefragt?"}
+    Y -->|"metrisch, über die Zeit erhoben"| Y4{"Werte zeitlich abhängig?"}
+
+    Y1 -->|"eine"| R1["einfache lineare Regression"]
+    Y1 -->|"mehrere"| R2["multiple lineare Regression"]
+    R1 --> D["Regressionsdiagnostik"]
+    R2 --> D
+    Y2 --> G["Klassifikationsgüte"]
+
+    Y3 -->|"Verlauf beschreiben"| U1["Kaplan-Meier"]
+    Y3 -->|"zwei Gruppen vergleichen"| U2["Log-Rank-Test"]
+    Y3 -->|"Einflussgrössen einbeziehen"| U3["Cox-Modell"]
+
+    Y4 -->|"ja"| T1["Zeitreihenmodelle, ARIMA"]
+    Y4 -->|"nein"| R2
+```
+
+| Fragestellung | Verfahren | Anschluss |
+|---|---|---|
+| Wie eng hängen zwei metrische Grössen zusammen? | [Korrelation](grundlagen/korrelation.qmd), Pearson bei linearem Zusammenhang, sonst Spearman | [Korrelationstests](tests/korrelationstests.qmd) |
+| Wie ändert sich y je Einheit von x, mit einer Einflussgrösse? | [einfache lineare Regression](regression/einfache-lineare-regression.qmd) | [Regressionsdiagnostik](regression/regressionsdiagnostik.qmd) |
+| Dasselbe mit mehreren Einflussgrössen, oder eine soll konstant gehalten werden | [multiple lineare Regression](regression/multiple-lineare-regression.qmd) | [Modellauswahl](regression/modellauswahl.qmd) |
+| Zielgrösse ist ja oder nein | [logistische Regression](regression/logistische-regression.qmd) | [Klassifikationsgüte](regression/klassifikationsguete.qmd) |
+| Zeit bis zu einem Ereignis, nicht alle Fälle beobachtet | [Zensierung und Überlebensfunktion](ueberlebenszeit/zensierung-ueberlebensfunktion.qmd), dann [Kaplan-Meier](ueberlebenszeit/kaplan-meier.qmd) | [Log-Rank](ueberlebenszeit/log-rank-test.qmd), [Cox-Modell](ueberlebenszeit/cox-modell.qmd) |
+| Messwerte über die Zeit, zeitlich voneinander abhängig | [Zeitreihen-Grundlagen](zeitreihen/zeitreihen-grundlagen.qmd), [Stationarität](zeitreihen/stationaritaet-acf-pacf.qmd) | [Glättung](zeitreihen/glaettung-einfache-verfahren.qmd), [ARIMA](zeitreihen/arima-sarima.qmd) |
+
+Die häufigste Fehlabzweigung liegt ganz rechts: Messwerte, die über die Zeit
+erhoben wurden, sind fast nie unabhängig. Eine gewöhnliche Regression
+unterstellt Unabhängigkeit, meldet aber nichts, wenn sie fehlt; die
+Standardfehler werden dann zu klein und die p-Werte zu optimistisch. Der
+Durbin-Watson-Wert im Modelloutput ist der erste Hinweis darauf.
+
+## Struktur ohne Zielgrösse
+
+Die Frage lautet: Was steckt in den Daten, wenn es gar keine Zielgrösse gibt?
+Diese Verfahren heissen unüberwacht, weil ihnen niemand sagt, was richtig ist.
+Entsprechend gibt es hier keinen p-Wert und keine Entscheidung, sondern nur
+eine mehr oder weniger brauchbare Beschreibung.
+
+```{mermaid}
+%%| label: fig-baum-struktur
+%%| fig-cap: "Verdichten oder gruppieren: die beiden Wege ohne Zielgrösse."
+flowchart TD
+    S["Struktur ohne Zielgrösse"] --> W{"Was soll zusammengefasst werden?"}
+
+    W -->|"Variablen verdichten"| V{"Was ist das Ziel?"}
+    W -->|"Beobachtungen gruppieren"| B["Distanzmass und Standardisierung festlegen"]
+
+    V -->|"Varianz verdichten, neue Kennzahlen bilden"| V1["Hauptkomponentenanalyse"]
+    V -->|"dahinterliegende Ursachen modellieren"| V2["Faktorenanalyse"]
+    V1 --> V3{"Alle Eigenwerte nahe 1?"}
+    V3 -->|"ja"| V4["nichts zu verdichten, Analyse abbrechen"]
+    V3 -->|"nein"| V5["Komponenten deuten und benennen"]
+
+    B --> B1{"Anzahl Gruppen vorab bekannt?"}
+    B1 -->|"ja"| B2["k-Means"]
+    B1 -->|"nein"| B3["hierarchisches Clustering, Dendrogramm"]
+    B2 --> B4["Clustergüte prüfen"]
+    B3 --> B4
+```
+
+| Ziel | Verfahren | Worauf zu achten ist |
+|---|---|---|
+| Viele korrelierte Variablen zu wenigen verdichten | [Hauptkomponentenanalyse](multivariat/hauptkomponentenanalyse.qmd) | ohne Standardisierung entscheidet die Einheit; sind alle Eigenwerte nahe 1, gibt es nichts zu verdichten |
+| Dahinterliegende, nicht direkt messbare Grössen modellieren | [Faktorenanalyse](multivariat/faktorenanalyse.qmd) | anderes Ziel als die Komponentenanalyse, nicht nur eine andere Rechnung |
+| Beobachtungen in Gruppen einteilen, Anzahl bekannt | [k-Means](multivariat/k-means.qmd) | setzt etwa gleich grosse, kugelförmige Gruppen voraus |
+| Beobachtungen gruppieren, Anzahl unbekannt | [hierarchisches Clustering](multivariat/hierarchisches-clustering.qmd) | die Anzahl wird am Dendrogramm abgelesen, nicht vorgegeben |
+| In beiden Fällen zuerst | [Distanzmasse](multivariat/distanzmasse.qmd) | die Wahl von Distanz und Skalierung bestimmt das Ergebnis stärker als der Algorithmus |
+| In beiden Fällen danach | [Clustergüte](multivariat/clusterguete.qmd) | ein Algorithmus liefert immer Gruppen, auch in strukturlosen Daten |
+
+## Was der Baum nicht leistet
+
+Ein Entscheidungsbaum ist eine Landkarte, kein Autopilot. Vier Dinge bleiben
+ausserhalb:
+
+- **Er ersetzt die Voraussetzungsprüfung nicht.** Der Knoten "Voraussetzungen
+  erfüllt?" ist im Diagramm eine Verzweigung und in der Praxis ein Blick auf
+  Streudiagramm, Boxplot, [QQ-Plot](wahrscheinlichkeit/qq-plots.qmd) und
+  Residuen.
+- **Er kennt die Fragestellung nicht.** Ob ein Unterschied oder ein
+  Zusammenhang interessiert, ist eine inhaltliche Entscheidung, keine
+  statistische.
+- **Er sagt nichts über die Datenqualität.** Fehlende Werte, Ausreisser und
+  Erhebungsfehler entscheiden häufiger über das Ergebnis als die Wahl des
+  Verfahrens.
+- **Er endet, wo die Arbeit anfängt.** Nach der Wahl folgen Durchführung,
+  Interpretation jedes einzelnen Werts und der Ergebnissatz. Dafür sind die
+  Methodenseiten da.
+
+## Verständnisfragen
+
+::: {.quiz}
+Vorher- und Nachher-Werte von 30 Personen liegen in zwei Spalten einer Tabelle.
+Welcher Weg im Baum ist richtig?
+
+- [x] Metrisch, zwei gepaarte Messungen ~ Richtig. Die beiden Spalten gehören
+      zu denselben Personen. Die Form der Tabelle sagt darüber nichts; massgeblich
+      ist, ob dieselben Objekte zweimal gemessen wurden.
+- [ ] Metrisch, zwei unabhängige Gruppen ~ Das wäre der Fall, wenn es zwei
+      verschiedene Personengruppen wären. Hier verschenkt dieser Weg Information
+      und findet echte Effekte oft nicht.
+- [ ] Metrisch, mehr als zwei Gruppen ~ Es sind zwei Messzeitpunkte, nicht mehr.
+:::
+
+::: {.quiz}
+Der Umsatz je Monat über fünf Jahre soll aus der Werbeausgabe vorhergesagt
+werden. Was spricht gegen eine gewöhnliche lineare Regression?
+
+- [x] Monatswerte sind zeitlich voneinander abhängig ~ Richtig. Die Regression
+      unterstellt unabhängige Beobachtungen. Bei Zeitreihen ist das fast nie
+      erfüllt; die Standardfehler werden zu klein und die p-Werte zu optimistisch.
+      Der Durbin-Watson-Wert im Output ist der erste Hinweis.
+- [ ] Der Umsatz ist nicht normalverteilt ~ Die Normalverteilungsannahme betrifft
+      die Residuen, nicht die Zielgrösse selbst.
+- [ ] Es gibt zu wenige Beobachtungen ~ 60 Monatswerte sind für eine Regression
+      nicht wenig; das Problem liegt in ihrer Abhängigkeit.
+:::
+
+::: {.quiz}
+Der Baum führt bei nicht erfüllten Voraussetzungen zum Rangtest. Darf man
+zuerst beide Tests rechnen und dann entscheiden?
+
+- [x] Nein, die Wahl fällt vor dem Blick auf die p-Werte ~ Richtig. Wer nach
+      Ergebnis auswählt, hält das Testniveau nicht mehr ein. Beide Ergebnisse zu
+      zeigen ist als Sensitivitätsanalyse zulässig, aber das Hauptverfahren muss
+      vorab benannt sein.
+- [ ] Ja, man berichtet einfach beide ~ Beide zu berichten ist erlaubt, die
+      Auswahl nach dem Ergebnis nicht. Der Unterschied liegt in der Reihenfolge.
+- [ ] Ja, der kleinere p-Wert ist der genauere ~ Ein kleinerer p-Wert ist nicht
+      genauer, sondern nur kleiner.
+:::
+
+::: {.quiz}
+Eine Komponentenanalyse liefert sechs Eigenwerte zwischen 0.9 und 1.1. Wohin
+führt der Baum?
+
+- [x] Zum Abbruch: es gibt nichts zu verdichten ~ Richtig. Gleichverteilte
+      Eigenwerte bedeuten unkorrelierte Variablen. Zwei Komponenten zu behalten
+      würde zwei Drittel der Information verwerfen, ohne etwas zu gewinnen.
+- [ ] Zur Faktorenanalyse ~ Sie setzt gemeinsame Struktur ebenso voraus und
+      scheitert an denselben Daten.
+- [ ] Zum Clustering ~ Das ist eine andere Frage: Gruppen von Beobachtungen statt
+      Verdichtung von Variablen. Es ist keine Ausweichvariante.
+:::
+
+## Verlinkte Ressourcen
+
+- [Hypothesentests: Grundlagen](inferenz/hypothesentests-grundlagen.qmd)
+- [Skalenniveaus](grundlagen/skalenniveaus.qmd)
+- [Übergreifende Fragen zur Statistik](fragen.qmd)

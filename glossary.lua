@@ -245,6 +245,43 @@ local function baueSpan(treffer)
   }))
 end
 
+-- ---------------------------------------------------------------------------
+-- Navigation aussparen
+-- ---------------------------------------------------------------------------
+-- Quarto baut Seitenleiste, Brotkrumenpfad, Navigationsleiste und das
+-- Inhaltsverzeichnis als Elemente ins Dokument, und zwar bevor dieser Filter
+-- laeuft. Ohne die folgende Sperre bekaemen Menueeintraege wie "Linux und
+-- Shell" mitten im Wort einen Glossar-Tooltip: der Titel der Seite wird
+-- markiert und danach in jedes Menue uebernommen.
+
+local NAV_IDS = {
+  ["quarto-sidebar"] = true, ["quarto-margin-sidebar"] = true,
+  ["quarto-header"] = true, ["quarto-footer"] = true,
+  ["quarto-content"] = false, ["TOC"] = true, ["toc-title"] = true,
+}
+
+local NAV_KLASSEN = {
+  ["sidebar"] = true, ["sidebar-menu-container"] = true,
+  ["sidebar-item"] = true, ["sidebar-item-container"] = true,
+  ["sidebar-item-text"] = true, ["sidebar-section"] = true,
+  ["menu-text"] = true, ["nav-link"] = true, ["navbar"] = true,
+  ["quarto-title-breadcrumbs"] = true, ["breadcrumb"] = true,
+  ["breadcrumb-item"] = true, ["quarto-secondary-nav"] = true,
+  ["quarto-navigation-tool"] = true, ["nav-page"] = true,
+  ["nav-footer"] = true, ["toc-actions"] = true,
+  ["quarto-alternate-formats"] = true, ["quarto-alternate-notebooks"] = true,
+}
+
+local function istNavigation(el)
+  if el.identifier and NAV_IDS[el.identifier] then return true end
+  if el.classes then
+    for _, klasse in ipairs(el.classes) do
+      if NAV_KLASSEN[klasse] then return true end
+    end
+  end
+  return false
+end
+
 -- Inline-Elemente, in deren Inhalt weitergesucht wird. Ohne das bliebe ein
 -- fett gesetzter Begriff unmarkiert - und in dieser Sammlung stehen etliche
 -- Fachbegriffe genau so im Text.
@@ -283,7 +320,7 @@ local function markiere(inlines)
       i = i + (laenge - 1) * 2 + 1
     else
       local el = inlines[i]
-      if REKURSION[el.t] and el.content then
+      if REKURSION[el.t] and el.content and not istNavigation(el) then
         el.content = markiere(el.content)
       end
       raus:insert(el)
@@ -386,6 +423,7 @@ local inhaltsfilter = {
     if el.identifier == "glossar-liste" then
       return pandoc.Div(glossarListe(), el.attr), false
     end
+    if istNavigation(el) then return el, false end
     for _, klasse in ipairs(el.classes) do
       if klasse == "quarto-float"
         or klasse == "cell-output-display"
@@ -402,6 +440,11 @@ local inhaltsfilter = {
   -- Plain deckt die Listenpunkte ab, Para den Fliesstext; markiere()
   -- steigt selbst in Emph, Strong und Span ab und laesst Links und Code
   -- in Ruhe. Deshalb hier false: der Abstieg ist bereits erledigt.
+  Span = function(el)
+    if istNavigation(el) then return el, false end
+    return el
+  end,
+
   Para = function(el)
     if not active then return nil end
     el.content = markiere(el.content)
