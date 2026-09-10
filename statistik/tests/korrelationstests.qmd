@@ -1,32 +1,639 @@
 ---
 title: "Korrelationstests"
-description: "Pearson, Spearman und Kendall als Test mit Intervall und p-Wert."
-categories: ["Korrelation", "Hypothesentests", "Interpretation", "R", "Python"]
-quelle: ["ESDS"]
+description: "Pearson, Spearman und Kendall: Zusammenhang prüfen und richtig deuten."
+categories: ["Hypothesentests", "Interpretation", "R", "Python"]
+quelle: ["ESDS", "STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 60
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(2026)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pingouin as pg
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+```
+
+Alle Beispiele rechnen mit fest eingetragenen Zahlen, damit R und Python
+dieselben Daten sehen und jeder Wert im Text nachprüfbar ist.
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Hängen zwei Grössen zusammen, wie eng, und lässt sich der Zusammenhang vom Zufall unterscheiden? |
+| Zielvariable | keine; beide Grössen sind gleichberechtigt |
+| Eingang | zwei metrische Grössen für Pearson, mindestens ordinale für Spearman und Kendall |
+| Was die Methode liefert | Korrelationskoeffizient mit Konfidenzintervall, Teststatistik, Freiheitsgrade, p-Wert |
+| R-Funktion | `cor.test(x, y)`, mit `method = "spearman"` oder `"kendall"` |
+| Python-Funktion | `pg.corr(x, y, method="pearson")`, alternativ `stats.pearsonr()` und `stats.spearmanr()` |
+| Verwandte Methoden | [Korrelation](../grundlagen/korrelation.qmd), [einfache lineare Regression](../regression/einfache-lineare-regression.qmd) |
+
+Die [Konzeptseite zur Korrelation](../grundlagen/korrelation.qmd) erklärt, was
+ein Korrelationskoeffizient misst. Diese Seite behandelt den Test dazu und die
+Wahl zwischen den drei Verfahren.
 
 ## Wann diese Methode, wann nicht
 
+Typische Fragestellungen: Hängt der Absatz mit der Temperatur zusammen, die
+Bearbeitungszeit mit der Auftragsgrösse, die Zufriedenheit mit der Wartezeit?
+Gemeinsam ist ihnen, dass **keine** der beiden Grössen als Zielgrösse
+ausgezeichnet ist. Sobald eine vorhergesagt werden soll, ist die
+[Regression](../regression/einfache-lineare-regression.qmd) das passende
+Verfahren.
+
+| Situation | Stattdessen |
+|---|---|
+| Eine Grösse soll aus der anderen vorhergesagt werden | [einfache lineare Regression](../regression/einfache-lineare-regression.qmd) |
+| Weitere Grössen sollen konstant gehalten werden | [multiple lineare Regression](../regression/multiple-lineare-regression.qmd) oder Partialkorrelation |
+| Beide Merkmale sind kategorial | [Chi-Quadrat-Tests](chi-quadrat-tests.qmd), Cramérs V |
+| Ein Merkmal ist zweistufig, das andere metrisch | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) |
+| Der Zusammenhang ist nicht monoton, etwa U-förmig | keiner der drei Koeffizienten; das Streudiagramm ansehen und ein Modell wählen |
+| Es geht um Übereinstimmung, nicht um Zusammenhang | Bland-Altman-Verfahren oder Intraklassenkorrelation |
+
+Die letzte Zeile trennt zwei Dinge, die oft verwechselt werden. Zwei Messgeräte,
+von denen eines konstant 5 Einheiten zu viel anzeigt, korrelieren perfekt und
+stimmen trotzdem nie überein.
+
 ## Grundidee und Modell
+
+Alle drei Koeffizienten messen Zusammenhang auf einer Skala von -1 bis +1, aber
+sie messen Verschiedenes.
+
+| Koeffizient | Was er misst | Grundlage |
+|---|---|---|
+| Pearson $r$ | Stärke des **linearen** Zusammenhangs | Produkte der standardisierten Abweichungen vom Mittelwert |
+| Spearman $\rho$ | Stärke des **monotonen** Zusammenhangs | Pearson-Korrelation der Ränge |
+| Kendall $\tau$ | Anteil gleichgerichteter Paare | Vergleich aller Paare: Steigen beide Werte gemeinsam? |
+
+$$r = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum (x_i - \bar{x})^2 \sum (y_i - \bar{y})^2}}$$
+
+Getestet wird bei allen dreien dieselbe Nullhypothese: In der Grundgesamtheit
+besteht kein Zusammenhang, der Koeffizient ist null. Für Pearson läuft der Test
+über
+
+$$t = r \sqrt{\frac{n-2}{1-r^2}}$$
+
+mit $n-2$ Freiheitsgraden. Daraus folgt eine nützliche Einsicht: Ob ein
+gegebenes $r$ signifikant wird, hängt allein am Stichprobenumfang. Bei $n = 10$
+braucht es $r > 0.63$, bei $n = 500$ genügt $r > 0.09$.
+
+Das Konfidenzintervall entsteht nicht direkt aus dieser Formel, sondern über die
+Fisher-z-Transformation, weil die Verteilung von $r$ nahe -1 und +1 stark schief
+ist. Deshalb liegt das Intervall auch nicht symmetrisch um $r$.
 
 ## Voraussetzungen und ihre Prüfung
 
-## Durchführung in R und Python
+| Voraussetzung | Gilt für | Prüfung | Folge bei Verletzung |
+|---|---|---|---|
+| Unabhängige Beobachtungspaare | alle drei | Erhebungsdesign | p-Wert wertlos; bei Zeitreihen ist die Voraussetzung fast nie erfüllt |
+| Linearer Zusammenhang | Pearson | Streudiagramm | $r$ unterschätzt einen vorhandenen Zusammenhang, siehe Beispiel 2 |
+| Monotoner Zusammenhang | Spearman, Kendall | Streudiagramm | bei U-förmigem Verlauf liefern auch sie nahe null |
+| Metrische Skala | Pearson | [Skalenniveau](../grundlagen/skalenniveaus.qmd) | Mittelwerte sind nicht definiert |
+| Annähernd normalverteilte Werte | Test und Intervall bei Pearson | [QQ-Plot](../wahrscheinlichkeit/qq-plots.qmd) | p-Wert und Intervall werden unzuverlässig, besonders bei kleinem n |
+| Keine einflussreichen Ausreisser | Pearson stark, Spearman kaum | Streudiagramm | ein einzelner Punkt kann $r$ von 0.3 auf 0.96 heben, siehe Beispiel 3 |
+
+**Das Streudiagramm steht vor jeder Korrelationsrechnung.** Kein
+Korrelationskoeffizient kann die Form des Zusammenhangs beschreiben, und
+mehrere völlig verschiedene Punktwolken können denselben Wert liefern.
 
 ## Output lesen
 
-## Ergebnisse interpretieren
+R, `cor.test()`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `t` | Teststatistik bei Pearson | folgt aus $r$ und $n$; sie enthält keine zusätzliche Information |
+| `df` | Freiheitsgrade | $n-2$ |
+| `p-value` | Wahrscheinlichkeit eines mindestens so grossen Betrags bei fehlendem Zusammenhang | sagt nichts über die Stärke |
+| `95 percent confidence interval` | Intervall für den wahren Koeffizienten | die aussagekräftigste Zeile; sie ist bei kleinem n erschreckend breit |
+| `sample estimates: cor` | der Koeffizient selbst | die Zahl, um die es eigentlich geht |
+| `S` bei Spearman | Summe der quadrierten Rangdifferenzen | nicht direkt deutbar; $\rho$ steht darunter |
+| `T` oder `z` bei Kendall | Teststatistik | je nach Variante und Stichprobengrösse |
+| Warnung `Cannot compute exact p-value with ties` | Bindungen in den Rängen | R weicht auf eine Näherung aus; bei Spearman und Kendall häufig |
+| kein Konfidenzintervall bei Spearman und Kendall | fehlt in R | über Bootstrap zu bekommen; pingouin gibt eines aus |
+
+Python, `pg.corr()` liefert eine Zeile:
+
+| Spalte | Was sie sagt | Unterschied zu R |
+|---|---|---|
+| `n` | Anzahl vollständiger Paare | in R nicht ausgegeben |
+| `r` | Koeffizient | wie `cor` |
+| `CI95` | Konfidenzintervall | auch für Spearman und Kendall, anders als in R |
+| `p-val` bzw. `p_val` | p-Wert | wie `p-value` |
+| `BF10` | Bayes-Faktor bei Pearson | in R nicht enthalten |
+| `power` | erreichte Power | in R nicht enthalten |
 
 ## Interpretationsfallen
 
+- **Korrelation ist keine Kausalität.** Der Satz ist abgegriffen und trotzdem
+  der häufigste Fehler. Eine dritte, nicht erhobene Grösse kann beide treiben.
+- **$r = 0$ heisst nicht "kein Zusammenhang".** Es heisst "kein linearer
+  Zusammenhang". Eine perfekte Parabel liefert $r$ nahe null.
+- **Signifikant heisst nicht stark.** Bei $n = 500$ wird $r = 0.1$ signifikant
+  und erklärt ein Prozent der Streuung.
+- **$r$ ist kein Prozentwert.** Erst $r^2$ ist ein Anteil. Von $r = 0.5$ auf
+  $r = 0.7$ verdoppelt sich der erklärte Anteil beinahe.
+- **Ausreisser bestimmen $r$.** Ein einzelner Punkt weit ausserhalb kann eine
+  Korrelation erzeugen oder verschwinden lassen.
+- **Eingeschränkte Wertebereiche senken $r$.** Wer nur Werte aus einem schmalen
+  Ausschnitt erhebt, misst eine kleinere Korrelation als in der ganzen
+  Grundgesamtheit vorhanden ist.
+- **Gemischte Gruppen erzeugen Scheinkorrelationen.** Zwei Teilgruppen ohne
+  internen Zusammenhang ergeben zusammen eine deutliche Korrelation, wenn sie
+  in beiden Grössen verschoben liegen. Deshalb das Streudiagramm.
+- **Bei Zeitreihen ist die Unabhängigkeit verletzt.** Zwei beliebige steigende
+  Reihen korrelieren hoch, ohne dass ein Zusammenhang besteht.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> [Grösse 1] und [Grösse 2] hängen zusammen: $r$ = [Wert],
+> 95-Prozent-Konfidenzintervall [unten] bis [oben], t([df]) = [t], p = [p],
+> n = [n]. Der Zusammenhang erklärt [r²] der Streuung.
+
+Genannt werden: das verwendete Verfahren und **warum** es gewählt wurde, der
+Koeffizient mit Konfidenzintervall, Teststatistik mit Freiheitsgraden, p-Wert
+und n. Dazu gehört die Feststellung, dass das Streudiagramm angesehen wurde,
+und bei Ausschlüssen die Begründung.
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt eines Korrelationstests |
+|---|---|
+| [Korrelation](../grundlagen/korrelation.qmd) | die Kennzahl allein genügt, ohne Test |
+| [Einfache lineare Regression](../regression/einfache-lineare-regression.qmd) | eine Gerade mit Steigung in der Einheit der Sache wird gebraucht |
+| [Multiple lineare Regression](../regression/multiple-lineare-regression.qmd) | weitere Einflussgrössen sollen konstant gehalten werden |
+| [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) | beide Merkmale kategorial |
+| [Nichtparametrische Tests](nichtparametrische-tests.qmd) | Frage nach Unterschied statt nach Zusammenhang |
+
+::: {.note-box}
+Bei genau einem Prädiktor sind der Pearson-Korrelationstest und der t-Test der
+Steigung in der [einfachen linearen Regression](../regression/einfache-lineare-regression.qmd)
+**derselbe Test**: gleiche Teststatistik, gleiche Freiheitsgrade, gleicher
+p-Wert. Sie unterscheiden sich nur darin, was sie zusätzlich ausgeben.
+:::
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Temperatur und Absatz
+
+#### Frage und Datenlage
+
+An zwanzig Tagen wurden die Höchsttemperatur in Grad Celsius und der Absatz von
+Kaltgetränken in Flaschen erfasst. Die Frage lautet: Hängen die beiden Grössen
+zusammen, und wie eng?
+
+Es soll nichts vorhergesagt werden, und keine der beiden Grössen ist
+ausgezeichnet. Damit ist der Korrelationstest passend und nicht die Regression.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-kor-voraussetzungen-r
+#| fig-cap: "Beispiel 1: Streudiagramm mit Glättungslinie."
+#| fig-height: 3.4
+temperatur <- c(12.4, 14.1, 15.3, 16.0, 17.2, 18.5, 19.1, 20.4, 21.3, 22.0,
+                22.8, 23.5, 24.2, 25.1, 26.3, 27.0, 28.4, 29.2, 30.5, 31.1)
+absatz <- c(118, 137, 122, 151, 145, 168, 152, 183, 175, 190,
+            181, 199, 205, 196, 228, 212, 235, 247, 239, 262)
+
+par(mar = c(4, 4, 2, 1))
+plot(temperatur, absatz, pch = 16, col = "grey30",
+     xlab = "Höchsttemperatur (°C)", ylab = "Absatz (Flaschen)")
+lines(lowess(temperatur, absatz), col = "firebrick", lwd = 2)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-kor-voraussetzungen-py
+#| fig-cap: "Beispiel 1: dieselbe Darstellung in Python."
+#| fig-height: 3.4
+import statsmodels.api as sm
+
+temperatur = np.array([12.4, 14.1, 15.3, 16.0, 17.2, 18.5, 19.1, 20.4, 21.3,
+                       22.0, 22.8, 23.5, 24.2, 25.1, 26.3, 27.0, 28.4, 29.2,
+                       30.5, 31.1])
+absatz = np.array([118, 137, 122, 151, 145, 168, 152, 183, 175, 190,
+                   181, 199, 205, 196, 228, 212, 235, 247, 239, 262])
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+achse.scatter(temperatur, absatz, s=18, color="0.3")
+glatt = sm.nonparametric.lowess(absatz, temperatur)
+achse.plot(glatt[:, 0], glatt[:, 1], color="firebrick", linewidth=2)
+achse.set_xlabel("Höchsttemperatur (°C)")
+achse.set_ylabel("Absatz (Flaschen)")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+Die Punkte steigen gleichmässig an, die Glättungslinie verläuft praktisch
+gerade, und es gibt keinen Punkt weit ausserhalb der Wolke. Der Zusammenhang ist
+linear, damit ist Pearson das passende Verfahren.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-kor-rechnung-r
+cor.test(temperatur, absatz)
+```
+
+##### Python
+
+```{python}
+#| label: b1-kor-rechnung-py
+print(pg.corr(temperatur, absatz).round(4).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `cor` bzw. `r` | 0.977 | Pearson-Korrelation | Ein sehr enger linearer Zusammenhang. Werte über 0.9 sind in erhobenen Daten selten und meist ein Hinweis darauf, dass beide Grössen von derselben Ursache getrieben werden. |
+| `t` | 19.396 | Teststatistik | Sie folgt allein aus $r$ und $n$ und enthält keine zusätzliche Information. |
+| `df` | 18 | Freiheitsgrade | $n-2$, also 20 minus 2. |
+| `p-value` | 1.6e-13 | Wahrscheinlichkeit eines mindestens so grossen Betrags ohne Zusammenhang | Praktisch ausgeschlossen. |
+| `95 percent confidence interval` | 0.941 bis 0.991 | Intervall für den wahren Koeffizienten | Die aussagekräftigste Zeile. Beachten Sie die Unsymmetrie: von 0.977 sind es 0.036 nach unten und nur 0.014 nach oben. Das liegt an der Fisher-z-Transformation und daran, dass $r$ bei 1 endet. |
+| $r^2$ | 0.954 | Anteil gemeinsamer Streuung | Rund 95 Prozent der Absatzschwankung gehen mit der Temperatur einher. Diese Zahl steht in keiner der beiden Ausgaben und muss selbst gebildet werden. |
+| `power` (nur Python) | nahe 1 | | Bei diesem Effekt und n = 20 hätte der Test kaum etwas übersehen können. |
+
+#### Interpretation und Ergebnissatz
+
+Der Zusammenhang ist eng, und trotzdem sagt er nichts über Ursachen. Denkbar
+ist, dass Wärme den Durst treibt; ebenso denkbar ist, dass an warmen Tagen mehr
+Menschen unterwegs sind und deshalb mehr gekauft wird. Die Korrelation ist
+symmetrisch und kennt keine Richtung.
+
+Wer eine Aussage in Flaschen je Grad braucht, ist beim Korrelationstest falsch.
+Der Koeffizient hat keine Einheit; die Steigung liefert die
+[Regression](../regression/einfache-lineare-regression.qmd).
+
+> Höchsttemperatur und Absatz hängen eng zusammen: $r$ = 0.98,
+> 95-Prozent-Konfidenzintervall 0.94 bis 0.99, t(18) = 19.40, p < 0.001,
+> n = 20. Der Zusammenhang erklärt rund 95 Prozent der gemeinsamen Streuung.
+> Das Streudiagramm zeigt einen linearen Verlauf ohne auffällige Punkte. Über
+> die Richtung der Wirkung lässt sich daraus nichts ableiten.
+
+### Beispiel 2: Monoton, aber gekrümmt
+
+#### Frage und Datenlage
+
+Fünfzehn Messungen eines Wachstumsvorgangs: Der Wert verdoppelt sich in
+gleichmässigen Abständen. Der Zusammenhang ist perfekt monoton und deutlich
+gekrümmt. Das Beispiel zeigt, warum die Wahl zwischen Pearson und Spearman
+keine Geschmacksfrage ist.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-kor-r
+#| fig-cap: "Beispiel 2: perfekt monoton, aber nicht linear."
+#| fig-height: 3.2
+schritt <- 1:15
+messwert <- c(1.4, 1.9, 2.7, 3.8, 5.3, 7.4, 10.3, 14.4,
+              20.1, 28.0, 39.1, 54.6, 76.2, 106.3, 148.4)
+
+par(mar = c(4, 4, 2, 1))
+plot(schritt, messwert, pch = 16, col = "grey30",
+     xlab = "Schritt", ylab = "Messwert")
+
+cor.test(schritt, messwert)
+cor.test(schritt, messwert, method = "spearman")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-kor-py
+#| fig-cap: "Beispiel 2: dieselbe Darstellung in Python."
+#| fig-height: 3.2
+schritt = np.arange(1, 16)
+messwert = np.array([1.4, 1.9, 2.7, 3.8, 5.3, 7.4, 10.3, 14.4,
+                     20.1, 28.0, 39.1, 54.6, 76.2, 106.3, 148.4])
+
+fig, achse = plt.subplots(figsize=(7, 3.2))
+achse.scatter(schritt, messwert, s=18, color="0.3")
+achse.set_xlabel("Schritt")
+achse.set_ylabel("Messwert")
+plt.tight_layout()
+plt.show()
+
+for art in ("pearson", "spearman", "kendall"):
+    zeile = pg.corr(schritt, messwert, method=art).round(4)
+    print(f"{art:9s} r = {float(zeile['r'].iloc[0]):+.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Koeffizient | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Pearson $r$ | 0.861 | Sieht nach einem starken, aber unvollkommenen Zusammenhang aus. Der Eindruck ist falsch. |
+| Pearson $r^2$ | 0.742 | Es fehlen scheinbar 26 Prozent der Streuung. Tatsächlich fehlt nichts: Was $r$ nicht erfasst, ist die Krümmung, nicht Zufall. |
+| Spearman $\rho$ | 1.000 | Perfekt. Jeder Schritt liefert einen höheren Wert als der vorige, mehr verlangt ein monotoner Zusammenhang nicht. |
+| Spearman `S` | 0 | Die Summe der quadrierten Rangdifferenzen. Null bedeutet: Die Rangfolgen sind identisch. |
+| Kendall $\tau$ | 1.000 | Ebenfalls perfekt. Von allen 105 Paaren steigt keines gegenläufig. |
+
+Der Vergleich macht den Unterschied greifbar. Pearson misst, wie gut die Punkte
+auf einer **Geraden** liegen; sie tun es nicht, also bleibt $r$ unter 1. Spearman
+und Kendall messen, ob die Reihenfolge übereinstimmt; sie tut es vollständig,
+also erreichen beide den Höchstwert.
+
+::: {.note-box}
+Hier wäre es falsch, einfach Spearman zu berichten und zufrieden zu sein. Die
+interessante Erkenntnis ist die **Form**: Der Vorgang wächst nicht linear,
+sondern exponentiell. Eine Korrelation von 1.000 verdeckt das eher, als sie es
+zeigt. Wer die Form braucht, logarithmiert die Zielgrösse und rechnet dann
+weiter; nach dem Logarithmieren wäre auch Pearsons $r$ praktisch 1.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Zwischen Schritt und Messwert besteht ein perfekt monotoner Zusammenhang
+> (Spearman $\rho$ = 1.00, n = 15). Pearsons $r$ beträgt 0.86 und unterschätzt
+> den Zusammenhang, weil der Verlauf gekrümmt ist; das Streudiagramm zeigt
+> exponentielles Wachstum. Für die weitere Auswertung wurde der Messwert
+> logarithmiert.
+
+### Beispiel 3: Ein Punkt erzeugt die Korrelation
+
+#### Frage und Datenlage
+
+Neunzehn Betriebe, erfasst sind die durchschnittliche Auftragsgrösse und die
+Bearbeitungsdauer. Ein zwanzigster Betrieb kommt hinzu, der in beiden Grössen
+weit ausserhalb liegt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-kor-r
+#| fig-cap: "Beispiel 3: dieselben 19 Punkte, einmal ohne und einmal mit dem zwanzigsten."
+#| fig-height: 3.2
+groesse <- c(4.1, 5.2, 4.8, 5.5, 4.3, 5.1, 4.6, 5.3, 4.9, 5.0,
+             4.4, 5.4, 4.7, 5.2, 4.5, 5.1, 4.8, 5.0, 4.6)
+dauer <- c(22, 19, 24, 21, 20, 23, 18, 25, 21, 22,
+           19, 24, 20, 23, 21, 19, 25, 20, 22)
+
+groesse_mit <- c(groesse, 12.0)
+dauer_mit <- c(dauer, 60)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(groesse, dauer, pch = 16, col = "grey30", main = "ohne den Fall",
+     xlab = "Auftragsgrösse", ylab = "Dauer (min)")
+plot(groesse_mit, dauer_mit, pch = 16, col = "grey30", main = "mit dem Fall",
+     xlab = "Auftragsgrösse", ylab = "Dauer (min)")
+points(12.0, 60, pch = 16, col = "firebrick", cex = 1.4)
+par(mfrow = c(1, 1))
+
+cor.test(groesse, dauer)
+cor.test(groesse_mit, dauer_mit)
+cor.test(groesse_mit, dauer_mit, method = "spearman")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-kor-py
+#| fig-cap: "Beispiel 3: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+groesse = np.array([4.1, 5.2, 4.8, 5.5, 4.3, 5.1, 4.6, 5.3, 4.9, 5.0,
+                    4.4, 5.4, 4.7, 5.2, 4.5, 5.1, 4.8, 5.0, 4.6])
+dauer = np.array([22, 19, 24, 21, 20, 23, 18, 25, 21, 22,
+                  19, 24, 20, 23, 21, 19, 25, 20, 22])
+groesse_mit = np.append(groesse, 12.0)
+dauer_mit = np.append(dauer, 60)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].scatter(groesse, dauer, s=18, color="0.3")
+achsen[0].set_title("ohne den Fall")
+achsen[1].scatter(groesse_mit, dauer_mit, s=18, color="0.3")
+achsen[1].scatter([12.0], [60], s=50, color="firebrick")
+achsen[1].set_title("mit dem Fall")
+for achse in achsen:
+    achse.set_xlabel("Auftragsgrösse")
+    achse.set_ylabel("Dauer (min)")
+plt.tight_layout()
+plt.show()
+
+print("ohne  Pearson :", pg.corr(groesse, dauer).round(4).to_dict("records"))
+print("mit   Pearson :", pg.corr(groesse_mit, dauer_mit).round(4).to_dict("records"))
+print("mit   Spearman:", pg.corr(groesse_mit, dauer_mit,
+                                 method="spearman").round(4).to_dict("records"))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kennzahl | Ohne den Fall (n = 19) | Mit dem Fall (n = 20) | Wie das zu lesen ist |
+|---|---|---|---|
+| Pearson $r$ | 0.291 | 0.962 | Eine einzige zusätzliche Beobachtung hebt die Korrelation von schwach auf nahezu perfekt. |
+| Konfidenzintervall | -0.19 bis 0.66 | 0.90 bis 0.99 | Die beiden Intervalle überschneiden sich nicht einmal. |
+| `t` | 1.255 | 14.984 | |
+| `p-value` | 0.226 | 1.3e-11 | Aus einem Nullbefund wird ein hochsignifikantes Ergebnis. |
+| $r^2$ | 0.085 | 0.926 | Von 8 auf 93 Prozent erklärte Streuung. |
+| Spearman $\rho$ (mit dem Fall) | | 0.398 | Der Rangkoeffizient bleibt bei 0.40 und ist mit p = 0.08 nicht signifikant. Für ihn ist der Ausreisser einfach der grösste von zwanzig Werten, nicht ein zwanzigfach entfernter. |
+
+Der Grund steckt in der Formel: Pearsons $r$ arbeitet mit Abweichungen vom
+Mittelwert, und ein Punkt, der in **beiden** Grössen weit aussen liegt, liefert
+ein riesiges Produkt. Er bestimmt damit den Zähler fast allein. Der
+Rangkoeffizient sieht nur, dass dieser Betrieb in beiden Reihen den letzten
+Platz belegt, und das zählt genauso viel wie jeder andere Platz.
+
+#### Interpretation und Ergebnissatz
+
+Der Punkt wird nicht gelöscht, weil er stört, und er wird nicht behalten, weil
+er ein schönes Ergebnis liefert. Er wird geprüft:
+
+| Befund | Vorgehen |
+|---|---|
+| Erfassungsfehler, etwa Minuten und Stunden vermischt | ausschliessen, Begründung berichten |
+| Anderer Betriebstyp, der nicht zur Fragestellung gehört | ausschliessen, Grundgesamtheit im Bericht enger fassen |
+| Gültiger, seltener Fall | beide Ergebnisse berichten und offenlegen, dass die Aussage an einer Beobachtung hängt |
+
+In jedem Fall gehört ein rangbasierter Koeffizient daneben. Wenn Pearson und
+Spearman weit auseinanderliegen, ist das ein Warnsignal, und zwar unabhängig
+davon, welcher der beiden gerade das gewünschte Ergebnis liefert.
+
+> In den 19 vergleichbaren Betrieben besteht kein nachweisbarer Zusammenhang
+> zwischen Auftragsgrösse und Bearbeitungsdauer ($r$ = 0.29,
+> 95-Prozent-Konfidenzintervall -0.19 bis 0.66, t(17) = 1.26, p = 0.23). Ein
+> zwanzigster Betrieb liegt in beiden Grössen weit ausserhalb und hebt $r$ auf
+> 0.96; Spearmans $\rho$ bleibt mit 0.40 unauffällig. Der Fall wurde als
+> andersartiger Betriebstyp ausgeschlossen.
+
+### Beispiel 4: Signifikant und schwach
+
+#### Frage und Datenlage
+
+500 Beobachtungen, ein schwacher, aber echter Zusammenhang. Damit beide Sprachen
+exakt dieselben Daten sehen, werden sie nicht gezogen, sondern aus Quantilen der
+Normalverteilung konstruiert.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-kor-rechnung-r
+lauf <- 0:499
+grundlage <- qnorm(ppoints(500))
+versatz <- qnorm(((lauf * 97) %% 500 + 0.5) / 500)
+
+merkmal_x <- 50 + 10 * grundlage
+merkmal_y <- 100 + 0.12 * (10 * grundlage) + 5 * versatz
+
+cor.test(merkmal_x, merkmal_y)
+```
+
+##### Python
+
+```{python}
+#| label: b4-kor-rechnung-py
+lauf = np.arange(500)
+grundlage = stats.norm.ppf((np.arange(1, 501) - 0.5) / 500)
+versatz = stats.norm.ppf(((lauf * 97) % 500 + 0.5) / 500)
+
+merkmal_x = 50 + 10 * grundlage
+merkmal_y = 100 + 0.12 * (10 * grundlage) + 5 * versatz
+
+print(pg.corr(merkmal_x, merkmal_y).round(4).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `cor` bzw. `r` | 0.233 | Ein schwacher Zusammenhang. |
+| `t` | 5.337 | |
+| `df` | 498 | $n-2$. |
+| `p-value` | 1.4e-07 | Hochsignifikant. |
+| `95 percent confidence interval` | 0.15 bis 0.31 | Anders als bei kleinem n ist das Intervall schmal: Der schwache Zusammenhang ist präzise geschätzt. |
+| $r^2$ | 0.054 | Und hier steht die eigentliche Antwort: Gemeinsam erklären die beiden Grössen 5 Prozent der Streuung. 95 Prozent gehen auf anderes zurück. |
+
+Derselbe Koeffizient von 0.233 wäre bei n = 20 mit p = 0.32 ein glatter
+Nullbefund gewesen. Der p-Wert misst also nicht die Stärke des Zusammenhangs,
+sondern wie gut man ihn bei diesem Umfang vom Zufall unterscheiden kann.
+
+#### Interpretation und Ergebnissatz
+
+Ob 5 Prozent erklärte Streuung viel oder wenig sind, entscheidet die Sache. Für
+eine Vorhersage im Einzelfall ist es zu wenig; für die Beschreibung eines
+Zusammenhangs in einer grossen Grundgesamtheit kann es genügen.
+
+Die brauchbarste Angabe für einen Bericht ist deshalb nicht der p-Wert, sondern
+$r$ mit Intervall und $r^2$. Sie beantworten die Frage, um die es geht: wie
+stark, und wie sicher ist diese Angabe?
+
+> Zwischen den beiden Merkmalen besteht ein schwacher, aber statistisch
+> nachweisbarer Zusammenhang ($r$ = 0.23, 95-Prozent-Konfidenzintervall 0.15
+> bis 0.31, t(498) = 5.34, p < 0.001, n = 500). Er erklärt rund 5 Prozent der
+> gemeinsamen Streuung; für Aussagen im Einzelfall ist er zu schwach.
+
+::::
+
 ## Verständnisfragen
 
+::: {.quiz}
+Pearsons $r$ beträgt 0.86, Spearmans $\rho$ beträgt 1.00. Was folgt daraus?
+
+- [x] Der Zusammenhang ist perfekt monoton, aber nicht linear ~ Richtig.
+      Spearman misst die Übereinstimmung der Rangfolgen und erreicht 1, wenn
+      jeder Schritt einen höheren Wert liefert. Pearson misst die Nähe zu einer
+      Geraden und bleibt darunter, sobald der Verlauf gekrümmt ist.
+- [ ] Einer der beiden Werte muss falsch sein ~ Beide sind korrekt; sie messen
+      Verschiedenes.
+- [ ] Die Daten enthalten Ausreisser ~ Ausreisser senken eher Spearman relativ
+      zu Pearson, nicht umgekehrt.
+:::
+
+::: {.quiz}
+Ein Datensatz liefert $r$ = 0.29 und p = 0.23. Nach Hinzufügen einer einzigen
+Beobachtung liefert er $r$ = 0.96 und p < 0.001. Was ist zu tun?
+
+- [x] Den Fall prüfen und das Ergebnis mit und ohne ihn berichten ~ Richtig.
+      Welche der beiden Zahlen berichtet wird, entscheidet die Klärung der
+      Ursache, nicht das Ergebnis. Wenn die Ursache offenbleibt, gehören beide
+      Werte in den Bericht.
+- [ ] Die Beobachtung entfernen, sie ist offensichtlich fehlerhaft ~ Weit
+      aussen liegend heisst nicht fehlerhaft. Ohne Klärung ist das Entfernen
+      eine Manipulation des Ergebnisses.
+- [ ] Das Ergebnis mit allen zwanzig Beobachtungen berichten, mehr Daten sind
+      besser ~ Eine Aussage, die vollständig an einer von zwanzig Beobachtungen
+      hängt, ist keine belastbare Aussage.
+:::
+
+::: {.quiz}
+Bei n = 500 ist $r$ = 0.23 hochsignifikant. Wie stark ist der Zusammenhang?
+
+- [x] Schwach: er erklärt rund 5 Prozent der Streuung ~ Richtig. Die Stärke
+      liest man an $r$ und $r^2$, nicht am p-Wert. Der p-Wert sagt nur, dass
+      der Zusammenhang bei diesem Umfang vom Zufall unterscheidbar ist.
+- [ ] Stark, sonst wäre er nicht hochsignifikant ~ Signifikanz hängt an $r$
+      **und** an n. Bei 500 Beobachtungen genügt bereits $r$ = 0.09.
+- [ ] Mittel, 0.23 liegt zwischen 0 und 0.5 ~ Die Einordnung über $r$ allein
+      unterschlägt, dass $r$ kein Anteil ist; erst $r^2$ ist einer.
+:::
+
+::: {.quiz}
+Warum liegt das Konfidenzintervall für $r$ = 0.977 nicht symmetrisch um diesen
+Wert?
+
+- [x] Weil $r$ bei 1 endet und die Verteilung dort schief ist ~ Richtig. Das
+      Intervall entsteht über die Fisher-z-Transformation, die den Bereich von
+      -1 bis 1 auf die ganze Zahlengerade streckt. Zurückgerechnet ergibt das
+      ein unsymmetrisches Intervall, und zwar umso deutlicher, je näher $r$ an
+      1 liegt.
+- [ ] Weil die Stichprobe zu klein ist ~ Die Unsymmetrie bleibt auch bei
+      grossem n, sie wird nur weniger sichtbar, weil das Intervall schrumpft.
+- [ ] Weil ein Rechenfehler vorliegt ~ Ein symmetrisches Intervall wäre hier
+      der Fehler, denn es könnte über 1 hinausreichen.
+:::
+
 ## Verlinkte Ressourcen
+
+- [R-Dokumentation zu `cor.test`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/cor.test.html)
+- [pingouin: corr](https://pingouin-stats.org/build/html/generated/pingouin.corr.html)
+- [OpenIntro Statistics, Kapitel zu Zusammenhängen](https://www.openintro.org/book/os/)
