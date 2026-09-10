@@ -299,9 +299,25 @@ for methode in ["single", "complete", "average", "ward"]:
 | **Average**: ähnlich wie Complete, mit tieferen Höhen | Der Kompromiss aus beiden. |
 | **Ward**: drei deutliche Blöcke, sehr grosser Sprung ganz oben | Verschmolzen wird das Paar, das die Streuung innerhalb der Gruppen am wenigsten erhöht. Die Höhen sind deshalb keine Distanzen mehr, sondern Streuungszuwächse — sie liegen zahlenmässig höher als bei den anderen Methoden. |
 
-Die kophenetische Korrelation macht denselben Vergleich als Zahl: Sie sagt, wie
-gut die Höhen im Baum die tatsächlichen paarweisen Abstände wiedergeben. Bei
-Single ist sie deutlich am tiefsten.
+Die Gruppengrössen bei einem Schnitt auf k = 3 sagen dasselbe in Zahlen:
+
+| Methode | Grössen bei k = 3 | kophenetische Korrelation |
+|---|---|---|
+| Single | **267, 2, 1** | 0.827 |
+| Complete | 156, 55, 59 | **0.768** |
+| Average | 119, 92, 59 | **0.862** |
+| Ward | 119, 92, 59 | 0.845 |
+
+Bemerkenswert ist, dass die beiden Spalten **verschiedene Dinge** sagen. Die
+Gruppengrössen entlarven Single sofort: 267 zu 2 zu 1 ist keine Aufteilung,
+sondern ein Ausreisserfilter. Die kophenetische Korrelation dagegen liegt bei
+Single mit 0.827 höher als bei Complete mit 0.768 — sie misst nämlich nicht die
+Brauchbarkeit einer Aufteilung, sondern nur, wie treu der Baum die paarweisen
+Abstände wiedergibt. Ein Baum kann Abstände gut abbilden und trotzdem keine
+verwertbaren Gruppen liefern.
+
+Average und Ward finden dieselben Gruppengrössen — kein Zufall bei kompakten,
+gut getrennten Gruppen.
 
 ::: {.note-box}
 Die Methode wird **vorher** gewählt, nach der erwarteten Form der Gruppen, nicht
@@ -392,7 +408,13 @@ Die acht letzten Verschmelzungshöhen, von oben nach unten gelesen:
 
 | Schritt von oben | 1 | 2 | **3** | 4 | 5 | 6 | 7 | 8 |
 |---|---|---|---|---|---|---|---|---|
-| Höhe | 23.737 | 18.384 | **5.406** | 4.605 | 4.471 | 3.698 | 3.203 | 3.070 |
+| Höhe (Python) | 23.737 | 18.384 | **5.406** | 4.605 | 4.471 | 3.698 | 3.203 | 3.070 |
+| Höhe (R) | 23.693 | 18.350 | **5.396** | 4.596 | 4.462 | 3.691 | 3.197 | 3.065 |
+
+Die beiden Zeilen unterscheiden sich um zwei Promille, weil `scale()` in R durch
+die Standardabweichung mit Nenner $n-1$ teilt und `StandardScaler` in Python
+durch die mit Nenner $n$. Die Verhältnisse — worauf es hier ankommt — sind
+identisch.
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -400,7 +422,7 @@ Die acht letzten Verschmelzungshöhen, von oben nach unten gelesen:
 | Die Höhen darunter | 5.406, 4.605, 4.471, … | Gleichmässig abfallend. Zwischen ihnen gibt es keinen ausgezeichneten Punkt, jeder tiefere Schnitt wäre willkürlich. |
 | Gruppengrössen | 59, 92, 119 | Die eingebauten Gruppen waren 60, 90 und 120 gross. |
 | kophenetische Korrelation | **0.845** | Über der Faustregel von 0.75: Das Dendrogramm gibt die Abstände gut wieder. |
-| Kreuztabelle | 268 von 270 richtig | Zwei Kunden aus den Randbereichen wechseln die Gruppe. |
+| Kreuztabelle | **268 von 270** richtig | Zwei Kunden aus den Randbereichen wechseln die Gruppe: einer aus jeder der beiden äusseren Gruppen landet in der mittleren. |
 
 ::: {.note-box}
 Warum die Höhen bei Ward so gross sind: Sie sind **keine Distanzen zwischen
@@ -489,14 +511,16 @@ print(pd.DataFrame({
 
 | Schritt von oben | mit Struktur | Faktor | ohne Struktur | Faktor |
 |---|---|---|---|---|
-| 1 | 23.74 | — | 14.89 | — |
-| 2 | 18.38 | 1.29 | 14.60 | 1.02 |
-| 3 | 5.41 | **3.40** | 8.38 | **1.74** |
-| 4 | 4.61 | 1.17 | 6.61 | 1.27 |
-| 5 | 4.47 | 1.03 | 6.19 | 1.07 |
-| 6 | 3.70 | 1.21 | 6.18 | 1.00 |
-| 7 | 3.20 | 1.16 | 5.01 | 1.23 |
-| 8 | 3.07 | 1.04 | 4.02 | 1.25 |
+| 1 | 23.69 | — | 14.77 | — |
+| 2 | 18.35 | 1.29 | 13.90 | 1.06 |
+| 3 | 5.40 | **3.40** | 8.02 | **1.73** |
+| 4 | 4.60 | 1.17 | 7.83 | 1.02 |
+| 5 | 4.46 | 1.03 | 7.56 | 1.04 |
+| 6 | 3.69 | 1.21 | 5.66 | 1.34 |
+| 7 | 3.20 | 1.15 | 4.12 | 1.37 |
+| 8 | 3.06 | 1.04 | 3.76 | 1.09 |
+
+(R-Ausgabe; die Python-Werte liegen um wenige Promille daneben, siehe Beispiel 2.)
 
 Entscheidend ist die Spalte **Faktor**: um welches Vielfache eine Verschmelzung
 höher liegt als die nächsttiefere.
@@ -504,7 +528,7 @@ höher liegt als die nächsttiefere.
 | Beobachtung | Deutung |
 |---|---|
 | Mit Struktur: **3.40** an einer Stelle, sonst 1.0 bis 1.3 | Ein klar herausragender Sprung. Er markiert die Gruppenzahl. |
-| Ohne Struktur: höchster Faktor **1.74**, dann 1.27, 1.25, 1.23 | Kein herausragender Wert. Der grösste Sprung ist nur wenig grösser als die übrigen — das ist reine Zufallsschwankung. |
+| Ohne Struktur: höchster Faktor **1.73**, dann 1.37, 1.34, 1.09 | Kein herausragender Wert. Der grösste Sprung ist nur wenig grösser als die übrigen — das ist reine Zufallsschwankung. |
 | Die Höhen selbst sind ohne Struktur nicht kleiner | Ein Baum sieht nicht "leer" aus, wenn es nichts gibt. Die absolute Höhe sagt nichts; nur das Verhältnis zu den Nachbarn tut es. |
 
 ::: {.note-box}
@@ -519,7 +543,7 @@ Verschmelzungshöhen, Silhouette und Gap-Statistik, siehe
 #### Interpretation und Ergebnissatz
 
 > Die Verschmelzungshöhen fallen gleichmässig ab; der grösste Sprung übertrifft
-> die übrigen nur um den Faktor 1.7. Die Daten geben keine Gruppenstruktur her,
+> die übrigen nur um den Faktor 1.7, gegenüber 3.4 bei den strukturierten Daten. Die Daten geben keine Gruppenstruktur her,
 > es wird keine Aufteilung berichtet.
 
 ### Beispiel 4: Single-Linkage und die Brücke

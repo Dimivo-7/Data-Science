@@ -447,11 +447,11 @@ zeitpunkte = [3, 6, 12, 18, 24]
 band = km.confidence_interval_survival_function_
 # je Zeitpunkt die letzte Stuetzstelle der Treppenfunktion vor oder auf t
 stuetzen = [band.index[band.index <= t][-1] for t in zeitpunkte]
-risiko = km.event_table["at_risk"]
 
 print(pd.DataFrame({
     "zeit": zeitpunkte,
-    "n_risk": [int(risiko[risiko.index <= t].iloc[-1]) for t in zeitpunkte],
+    # unter Risiko zum Zeitpunkt t, wie R es zaehlt
+    "n_risk": [int((abo["zeit"] >= t).sum()) for t in zeitpunkte],
     "S(t)": km.survival_function_at_times(zeitpunkte).round(3).values,
     "unten": band.iloc[:, 0].loc[stuetzen].round(3).values,
     "oben": band.iloc[:, 1].loc[stuetzen].round(3).values,
@@ -471,19 +471,22 @@ plt.show()
 
 #### Output Zeile für Zeile
 
-| Monat | unter Risiko | $\hat{S}(t)$ | 95-Prozent-Band (Python) | Bandbreite |
+| Monat | unter Risiko | $\hat{S}(t)$ | Band, R (log) | Band, Python (log-log) |
 |---|---|---|---|---|
-| 3 | 360 | **0.898** | 0.863 – 0.923 | 0.060 |
-| 6 | 321 | **0.800** | 0.757 – 0.836 | 0.079 |
-| 12 | 243 | **0.605** | 0.555 – 0.651 | 0.096 |
-| 18 | 188 | **0.468** | 0.418 – 0.515 | 0.097 |
-| 24 | 153 | **0.383** | 0.335 – 0.430 | 0.095 |
+| 3 | 359 | **0.898** | 0.868 – 0.928 | 0.863 – 0.923 |
+| 6 | 320 | **0.800** | 0.762 – 0.840 | 0.757 – 0.836 |
+| 12 | 242 | **0.605** | 0.559 – 0.655 | 0.555 – 0.651 |
+| 18 | 187 | **0.468** | 0.421 – 0.519 | 0.418 – 0.515 |
+| 24 | 153 | **0.383** | 0.338 – 0.433 | 0.335 – 0.430 |
+
+Die beiden Bänder liegen um wenige Tausendstel auseinander — der oben erwähnte
+Unterschied zwischen Log- und Log-Log-Skala. Die Punktschätzung ist identisch.
 
 | Ausgabe | Wert hier | Bedeutung |
 |---|---|---|
 | $\hat{S}(12) = 0.605$ | 60.5 Prozent | Der geschätzte Anteil der Abos, die nach zwölf Monaten noch bestehen. **Nicht** "60.5 Prozent der Kündigungen sind noch offen" und nicht "60.5 Prozent Wahrscheinlichkeit für dieses eine Abo" — es ist eine Aussage über die Population. |
 | Verlauf 0.898 → 0.800 → 0.605 | in den ersten drei Monaten 10 Prozentpunkte, in den folgenden drei weitere 10, dann in sechs Monaten 20 | Das Risiko ist am Anfang am höchsten und nimmt ab. Genau diesen Verlauf zeigt der steile Beginn der Kurve. |
-| unter Risiko fällt 400 → 153 | | Die 153 am Schluss sind die zensierten Fälle: alle, die den Stichtag erreicht haben. |
+| unter Risiko fällt 400 → 153 | | Die 153 am Schluss sind genau die zensierten Fälle: alle, die den Stichtag erreicht haben. |
 | Median | **16.62 Monate** | Der Zeitpunkt, an dem die Kurve unter 0.5 fällt. Zwischen Monat 18 (0.468) und Monat 12 (0.605), was zur Tabelle passt. |
 | Bandbreite | wächst von 0.060 auf rund 0.096 | Nicht weil die Daten schlechter werden, sondern weil immer weniger Fälle die Schätzung tragen. Zusätzlich ist das Band um 0.5 herum von Natur aus am breitesten — dort ist die Varianz eines Anteils maximal. |
 
@@ -498,7 +501,7 @@ heraus — hier etwa Quartals- und Jahresmarken, weil Verträge daran gebunden s
 
 > Von 400 Abos wurden im Beobachtungszeitraum 247 gekündigt, 153 waren am
 > Stichtag nach 24 Monaten noch aktiv. Der geschätzte Anteil ohne Kündigung
-> beträgt nach zwölf Monaten 0.61 (95-Prozent-Intervall 0.56 bis 0.65, 243 unter
+> beträgt nach zwölf Monaten 0.61 (95-Prozent-Intervall 0.56 bis 0.66, 242 unter
 > Risiko) und nach 24 Monaten 0.38 (0.34 bis 0.43, 153 unter Risiko). Der Median
 > der Laufzeit liegt bei 16.6 Monaten.
 
@@ -628,14 +631,13 @@ km_treue = KaplanMeierFitter().fit(treue["zeit"], treue["status"])
 print("n =", len(treue), "| Ereignisse:", int(treue["status"].sum()))
 print("Median:", km_treue.median_survival_time_)
 
-risiko = km_treue.event_table["at_risk"]
 band = km_treue.confidence_interval_survival_function_
 zeitpunkte = [6, 12, 18, 24]
 stuetzen = [band.index[band.index <= t][-1] for t in zeitpunkte]
 
 print(pd.DataFrame({
     "zeit": zeitpunkte,
-    "n_risk": [int(risiko[risiko.index <= t].iloc[-1]) for t in zeitpunkte],
+    "n_risk": [int((treue["zeit"] >= t).sum()) for t in zeitpunkte],
     "S(t)": km_treue.survival_function_at_times(zeitpunkte).round(3).values,
     "unten": band.iloc[:, 0].loc[stuetzen].round(3).values,
     "oben": band.iloc[:, 1].loc[stuetzen].round(3).values,
@@ -651,7 +653,7 @@ print(pd.DataFrame({
 | n | **60** | Von 400 bleiben 60 übrig. Die Teilgruppe ist klein — das ist der Preis jeder Aufteilung. |
 | Ereignisse | **23** | Nur 23 Kündigungen tragen die ganze Kurve. |
 | Median | **`NA` in R, `inf` in Python** | Kein Fehler, sondern die korrekte Aussage: **Mehr als die Hälfte war am Stichtag noch dabei.** Die Kurve endet bei 0.617 und wird nie tiefer beobachtet. |
-| unter Risiko bei Monat 6 | 56 | |
+| unter Risiko bei Monat 6 | 55 | |
 | unter Risiko bei Monat 24 | **37** | Das Kurvenende beruht auf gut einem Drittel der Ausgangsgruppe. |
 | $\hat{S}(24)$ | **0.617** | Rund 62 Prozent bestehen nach zwei Jahren noch. |
 

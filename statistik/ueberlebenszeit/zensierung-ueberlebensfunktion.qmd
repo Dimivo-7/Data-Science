@@ -13,7 +13,20 @@ order: 10
 #| include: false
 library(survival)
 
-set.seed(2026)
+# Zufallszahlen aus einem einfachen Kongruenzgenerator, damit R und Python
+# exakt dieselben Daten sehen.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# Exponentialverteilte Zeiten: -log(u) / rate
+exp_zeiten <- function(saat, anzahl, rate) -log(lehmer(saat, anzahl)) / rate
 ```
 
 ```{python}
@@ -22,19 +35,40 @@ set.seed(2026)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from lifelines import KaplanMeierFitter
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def exp_zeiten(saat, anzahl, rate):
+    return -np.log(lehmer(saat, anzahl)) / rate
 ```
 
 ## Kernideen
 
-- Zielgrösse ist eine Zeit bis zu einem Ereignis, nicht ein Wert
-- Zensiert heisst: das Ereignis war am Ende der Beobachtung noch nicht eingetreten
-- Eine zensierte Beobachtung ist Information, nicht ein fehlender Wert
-- Weglassen verzerrt nach unten, Mitzählen als Ereignis verzerrt nach oben
-- Die Überlebensfunktion gibt den Anteil an, der zum Zeitpunkt t noch kein Ereignis hatte
-- Die Hazard-Rate ist das momentane Risiko, nicht eine kumulierte Wahrscheinlichkeit
+- Zielgrösse ist eine **Zeit bis zu einem Ereignis**, nicht ein Wert. Jede
+  Beobachtung besteht aus zwei Angaben: Zeit und Status.
+- Zensiert heisst: das Ereignis war am Ende der Beobachtung noch nicht
+  eingetreten.
+- Eine zensierte Beobachtung ist **Information, kein fehlender Wert**.
+- Weglassen verzerrt stark nach unten; Mitzählen als Ereignis ebenfalls nach
+  unten, aber aus einem anderen Grund.
+- Die Überlebensfunktion $S(t)$ gibt den Anteil an, der zum Zeitpunkt $t$ noch
+  kein Ereignis hatte.
+- Die Hazard-Rate $h(t)$ ist das **momentane** Risiko unter den bis dahin
+  Ereignisfreien — keine Wahrscheinlichkeit und nicht auf 1 begrenzt.
+- Die zentrale Annahme — Zensierte haben dasselbe Risiko wie die weiter
+  Beobachteten — ist **in den Daten nicht prüfbar**.
 
 ## Erklärung
 
@@ -71,83 +105,6 @@ etwas Halbes. Wer nach zwölf Monaten noch dabei ist, hat die ersten zwölf
 Monate überlebt, und genau diese Information nutzen die Verfahren der
 Überlebenszeitanalyse.
 
-Was passiert, wenn man sie nicht nutzt, lässt sich vorrechnen: Die beiden
-naheliegenden Behelfslösungen liegen systematisch daneben, und zwar in
-entgegengesetzte Richtungen.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: zensierung-r
-# Studioabos: ein Teil kuendigt, der Rest ist am Stichtag nach 24 Monaten dabei.
-# Zwei Faelle: maessige Zensierung (hohe Rate) und starke Zensierung.
-vergleich <- function(rate, stichtag = 24, n = 4000) {
-  t <- rexp(n, rate)
-  zeit <- pmin(t, stichtag)
-  status <- as.integer(t <= stichtag)
-  km <- summary(survfit(Surv(zeit, status) ~ 1))$table["median"]
-  c(anteil_zensiert = round(mean(status == 0), 2),
-    wahrer_median = round(log(2) / rate, 1),
-    nur_ereignisse = round(median(zeit[status == 1]), 1),
-    alle_als_ereignis = round(median(zeit), 1),
-    kaplan_meier = round(unname(km), 1))
-}
-
-rbind(maessig = vergleich(0.035),
-      stark = vergleich(0.020))
-```
-
-## Python
-
-```{python}
-#| label: zensierung-py
-from lifelines import KaplanMeierFitter
-
-rng = np.random.default_rng(2026)
-
-def vergleich(rate, stichtag=24, n=4000):
-    t = rng.exponential(1 / rate, n)
-    zeit = np.minimum(t, stichtag)
-    status = (t <= stichtag).astype(int)
-    km = KaplanMeierFitter().fit(zeit, status)
-    return {
-        "anteil_zensiert": round(float((status == 0).mean()), 2),
-        "wahrer_median": round(np.log(2) / rate, 1),
-        "nur_ereignisse": round(float(np.median(zeit[status == 1])), 1),
-        "alle_als_ereignis": round(float(np.median(zeit)), 1),
-        "kaplan_meier": round(float(km.median_survival_time_), 1),
-    }
-
-print(pd.DataFrame({"maessig": vergleich(0.035), "stark": vergleich(0.020)}).T)
-```
-
-:::
-
-Beide Behelfslösungen unterschätzen die Zeit, und zwar aus verschiedenen
-Gründen.
-
-**Nur die Gekündigten betrachten** verzerrt am stärksten: Die Langläufer fehlen
-per Konstruktion, weil sie gerade die Zensierten sind. Im Beispiel liegt der so
-berechnete Median bei knapp der Hälfte des wahren Werts, im Fall starker
-Zensierung sogar unter einem Drittel. Je mehr zensiert ist, desto schlimmer wird
-diese Behelfslösung.
-
-**Alle Zeiten als Ereigniszeiten behandeln** verzerrt ebenfalls nach unten, denn
-jede zensierte Zeit ist nur eine Untergrenze. Bei mässiger Zensierung fällt das
-kaum auf, weil der Median deutlich vor dem Stichtag liegt. Im Fall starker
-Zensierung dagegen sind mehr als die Hälfte der Beobachtungen auf den Stichtag
-gesetzt, und der Median wird genau dieser Stichtag: eine Zahl, die nur aussagt,
-wann die Beobachtung endete.
-
-**Kaplan-Meier** nutzt beide Sorten Information. Bei mässiger Zensierung landet
-der Schätzer in der Nähe des wahren Medians; die verbleibende Abweichung ist
-Stichprobenzufall und keine systematische Verzerrung. Im Fall starker Zensierung liefert er `NA`
-beziehungsweise unendlich, und das ist die ehrliche Antwort: Die Kurve erreicht
-im Beobachtungszeitraum nie die Hälfte, der Median ist aus diesen Daten nicht
-schätzbar. Ein Verfahren, das hier eine Zahl nennt, erfindet sie.
-
 ::: {.callout-note collapse="true"}
 ## Weitere Formen der Zensierung
 
@@ -156,16 +113,17 @@ bekannt ist, dass das Ereignis vor einem Zeitpunkt lag, und
 Intervallzensierung, wenn es zwischen zwei Untersuchungen eintrat. Beide
 brauchen andere Verfahren; die hier behandelten setzen Rechtszensierung voraus.
 
-Zu unterscheiden ist Zensierung ausserdem von Trunkierung: Dort fehlen
-Beobachtungen vollständig, etwa weil sie erst ab einem Alter in die Studie
-kommen.
+Zu unterscheiden ist Zensierung ausserdem von **Trunkierung**: Dort fehlen
+Beobachtungen vollständig, etwa weil sie erst ab einem bestimmten Alter in die
+Studie kommen. Zensierung heisst "teilweise beobachtet", Trunkierung "gar nicht
+in den Daten".
 :::
 
 ### Die Voraussetzung, die niemand prüfen kann
 
 Alle Verfahren setzen voraus, dass die Zensierung nichts über die Zeit bis zum
-Ereignis aussagt, dass also die Zensierten dasselbe Risiko haben wie die
-Beobachteten. Das nennt man nicht informative Zensierung.
+Ereignis aussagt, dass also die Zensierten dasselbe Risiko haben wie die weiter
+Beobachteten. Das nennt man **nicht informative Zensierung**.
 
 Diese Annahme lässt sich in den Daten nicht prüfen, denn dazu bräuchte man
 gerade die unbeobachteten Zeiten. Sie muss inhaltlich begründet werden:
@@ -174,7 +132,7 @@ gerade die unbeobachteten Zeiten. Sie muss inhaltlich begründet werden:
   ist aus einem Grund zensiert, der nichts mit dem Kündigungsrisiko zu tun hat.
 - **Bedenklich:** Personen verlassen die Beobachtung, weil sie unzufrieden sind
   oder wegziehen. Dann sind die Zensierten gerade die mit höherem Risiko, und
-  jede Schätzung ist zu optimistisch.
+  jede Schätzung ist zu optimistisch. Beispiel 3 rechnet das durch.
 
 Wo die Annahme fraglich ist, gehört das in den Bericht, nicht in eine Fussnote.
 
@@ -185,34 +143,21 @@ Zwei Funktionen beschreiben denselben Sachverhalt aus zwei Richtungen.
 Die **Überlebensfunktion** $S(t)$ ist der Anteil, der zum Zeitpunkt $t$ noch
 kein Ereignis erlebt hat. Sie beginnt bei eins, fällt monoton und ist die Kurve,
 die man ansieht und berichtet. Aus ihr liest man Anteile zu bestimmten
-Zeitpunkten ab, etwa "nach zwölf Monaten sind noch 66 Prozent dabei", und den
-Median, also den Zeitpunkt, an dem die Kurve die Hälfte erreicht.
+Zeitpunkten ab und den Median, also den Zeitpunkt, an dem die Kurve die Hälfte
+erreicht.
 
 Die **Hazard-Rate** $h(t)$ ist das momentane Risiko: die Rate, mit der das
 Ereignis eintritt, unter denen, die bis $t$ noch dabei sind. Sie ist keine
 Wahrscheinlichkeit und liegt nicht zwischen null und eins. Sie ist die Grösse,
 die das [Cox-Modell](cox-modell.qmd) modelliert.
 
-```{r}
-#| label: fig-survival-hazard-r
-#| fig-cap: "Überlebensfunktion und Hazard-Rate für dieselbe Verteilung. Die konstante Hazard-Rate ergibt eine exponentiell fallende Überlebenskurve."
-#| fig-height: 3.2
-rate <- 0.035          # dieselbe Rate wie im Fall maessiger Zensierung
-t <- seq(0, 36, by = 0.5)
+Der Zusammenhang ist eindeutig und in beide Richtungen umkehrbar:
 
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-plot(t, exp(-rate * t), type = "l", lwd = 2, ylim = c(0, 1),
-     xlab = "Monate", ylab = "S(t)", main = "Überlebensfunktion")
-abline(h = 0.5, lty = 2); abline(v = log(2) / rate, lty = 2)
-plot(t, rep(rate, length(t)), type = "l", lwd = 2, ylim = c(0, 0.08),
-     xlab = "Monate", ylab = "h(t)", main = "Hazard-Rate")
-par(mfrow = c(1, 1))
-```
+$$S(t) = e^{-\int_0^t h(u)\, du}, \qquad h(t) = -\frac{d}{dt}\ln S(t)$$
 
-Der Zusammenhang ist eindeutig: Aus der Hazard-Rate folgt die
-Überlebensfunktion und umgekehrt. Eine konstante Hazard-Rate bedeutet, dass das
-Risiko nicht vom Alter abhängt; in der Praxis steigt oder fällt es meist, und
-genau das macht die Kurvenform interessant.
+Beide enthalten also dieselbe Information. Sie zeigen sie nur verschieden: Die
+Überlebensfunktion ist kumulativ und daher immer glatt und fallend, die
+Hazard-Rate ist lokal und macht sichtbar, **wann** das Risiko hoch ist.
 
 ### Was man aus einer Überlebenskurve abliest
 
@@ -228,6 +173,483 @@ Der letzte Punkt ist der häufigste Interpretationsfehler: Das rechte Ende einer
 Deshalb gehört die Zahl der noch unter Risiko stehenden Fälle zu jeder
 Darstellung.
 
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Was eine zensierte Beobachtung beiträgt
+
+#### Frage und Datenlage
+
+Fünf Fälle, beobachtet über 10 Zeiteinheiten. Der dritte wird nach 5 Einheiten
+zensiert:
+
+$$3,\; 4,\; 5^+,\; 8,\; 10$$
+
+Die Frage: Wie viel weiss man über diesen dritten Fall, und wo landet dieses
+Wissen in der Rechnung?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-zen-r
+zeit <- c(3, 4, 5, 8, 10)
+
+# Drei Sichtweisen auf denselben Fall Nummer 3
+weggelassen <- data.frame(zeit = zeit[-3], status = 1)
+als_ereignis <- data.frame(zeit = zeit, status = c(1, 1, 1, 1, 1))
+richtig <- data.frame(zeit = zeit, status = c(1, 1, 0, 1, 1))
+
+for (name in c("weggelassen", "als_ereignis", "richtig")) {
+  daten <- get(name)
+  kurve <- survfit(Surv(zeit, status) ~ 1, data = daten)
+  cat("\n---", name, "---\n")
+  print(round(summary(kurve)$surv, 4))
+  cat("Median:", summary(kurve)$table["median"], "\n")
+}
+```
+
+##### Python
+
+```{python}
+#| label: b1-zen-py
+zeit = np.array([3, 4, 5, 8, 10])
+
+sichtweisen = {
+    "weggelassen": (np.delete(zeit, 2), np.ones(4, dtype=int)),
+    "als_ereignis": (zeit, np.ones(5, dtype=int)),
+    "richtig": (zeit, np.array([1, 1, 0, 1, 1])),
+}
+
+for name, (t, s) in sichtweisen.items():
+    km = KaplanMeierFitter().fit(t, s)
+    print(f"--- {name} ---")
+    print(km.survival_function_.round(4).T.to_string())
+    print("Median:", km.median_survival_time_, "\n")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die drei Sichtweisen liefern drei verschiedene Kurven:
+
+| $t$ | **weggelassen** (n = 4) | **als Ereignis** (n = 5) | **richtig zensiert** (n = 5) |
+|---|---|---|---|
+| 3 | 0.75 | 0.80 | 0.80 |
+| 4 | 0.50 | 0.60 | 0.60 |
+| 5 | — | 0.40 | **0.60** (fällt nicht) |
+| 8 | 0.25 | 0.20 | 0.30 |
+| 10 | 0.00 | 0.00 | 0.00 |
+| Median | 4 | 5 | **8** |
+
+| Zeile | Was sie zeigt |
+|---|---|
+| Bei $t = 3$: 0.75 gegen 0.80 | Wer den zensierten Fall streicht, rechnet mit vier statt fünf unter Risiko. Der **erste** Schritt fällt dadurch schon zu tief aus — der Fehler beginnt lange vor dem Zensierungszeitpunkt. |
+| Bei $t = 5$: die richtige Kurve fällt **nicht** | Kein Ereignis, kein Schritt. Aber die Anzahl unter Risiko sinkt von 3 auf 2. |
+| Bei $t = 8$: 0.30 gegen 0.20 | Der Schritt beträgt $1 - 1/2 = 0.5$ statt $1 - 1/3$: Weil nur noch zwei unter Risiko stehen, wiegt jedes Ereignis schwerer. So schlägt die Zensierung auf **alle späteren** Schritte durch. |
+| Der Median: 4, 5 und **8** | Drei Zahlen aus fünf Beobachtungen, je nach Behandlung eines einzigen Falls. |
+
+::: {.note-box}
+**Was der zensierte Fall beiträgt, in einem Satz:** Er zählt bis $t = 5$ voll im
+Nenner mit und verschwindet danach. Damit ist genau die Information genutzt, die
+vorliegt — "hat mindestens 5 überlebt" — und keine, die nicht vorliegt.
+
+Die beiden Behelfslösungen tun jeweils zu viel: Weglassen behauptet, es habe
+diesen Fall nie gegeben; als Ereignis zählen behauptet, das Ereignis sei bei $t
+= 5$ eingetreten.
+:::
+
+#### Interpretation
+
+Bei fünf Fällen wirkt der Unterschied wie ein Rechendetail. Beispiel 2 zeigt, wie
+gross er bei realistischen Zensierungsanteilen wird.
+
+### Beispiel 2: Zwei Behelfslösungen im Vergleich
+
+#### Frage und Datenlage
+
+4000 Abos mit exponentialverteilter Laufzeit, Stichtag nach 24 Monaten. Weil die
+Daten konstruiert sind, ist der **wahre** Median bekannt: $\ln(2)/\text{Rate}$.
+Verglichen werden zwei Fälle:
+
+- **mässige Zensierung**: Rate 0.035, wahrer Median 19.8 Monate — der Median
+  liegt also vor dem Stichtag.
+- **starke Zensierung**: Rate 0.020, wahrer Median 34.7 Monate — der Median
+  liegt **hinter** dem Stichtag.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-zen-r
+vergleich <- function(saat, rate, stichtag = 24, n = 4000) {
+  t <- exp_zeiten(saat, n, rate)
+  zeit <- pmin(t, stichtag)
+  status <- as.integer(t <= stichtag)
+  km <- summary(survfit(Surv(zeit, status) ~ 1))$table["median"]
+  c(anteil_zensiert = round(mean(status == 0), 2),
+    wahrer_median = round(log(2) / rate, 1),
+    nur_ereignisse = round(median(zeit[status == 1]), 1),
+    alle_als_ereignis = round(median(zeit), 1),
+    kaplan_meier = round(unname(km), 1))
+}
+
+rbind(maessig = vergleich(2027, 0.035),
+      stark = vergleich(2028, 0.020))
+```
+
+##### Python
+
+```{python}
+#| label: b2-zen-py
+def vergleich(saat, rate, stichtag=24, n=4000):
+    t = exp_zeiten(saat, n, rate)
+    zeit = np.minimum(t, stichtag)
+    status = (t <= stichtag).astype(int)
+    km = KaplanMeierFitter().fit(zeit, status)
+    return {
+        "anteil_zensiert": round(float((status == 0).mean()), 2),
+        "wahrer_median": round(np.log(2) / rate, 1),
+        "nur_ereignisse": round(float(np.median(zeit[status == 1])), 1),
+        "alle_als_ereignis": round(float(np.median(zeit)), 1),
+        "kaplan_meier": round(float(km.median_survival_time_), 1),
+    }
+
+
+print(pd.DataFrame({"maessig": vergleich(2027, 0.035),
+                    "stark": vergleich(2028, 0.020)}).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| | mässige Zensierung | starke Zensierung |
+|---|---|---|
+| Anteil zensiert | 43 % | 63 % |
+| **wahrer Median** | **19.8** | **34.7** |
+| nur die Gekündigten | **10.0** | **10.3** |
+| alle Zeiten als Ereignis | 19.7 | **24.0** |
+| **Kaplan-Meier** | **19.7** | **nicht schätzbar** |
+
+| Zeile | Was sie zeigt |
+|---|---|
+| **Nur die Gekündigten**: 10.0 und 10.3 | Die schlimmste der drei Rechnungen — knapp die Hälfte beziehungsweise weniger als ein Drittel des wahren Werts. Und der Grund, warum sie so schlimm ist: Zensiert sind **per Konstruktion** gerade die Langläufer. Wer sie streicht, behält nur die kurzen Zeiten. Bemerkenswert ist auch, dass die Zahl in beiden Fällen fast gleich ist, obwohl die wahren Mediane um den Faktor 1.75 auseinanderliegen: Diese Rechnung misst vor allem den Stichtag, nicht die Laufzeit. |
+| **Alle als Ereignis**, mässig: 19.7 | Sieht gut aus — und ist ein Zufall der Datenlage. Weil der Median deutlich vor dem Stichtag liegt, betrifft die falsche Behandlung nur Werte oberhalb des Medians, und den Median verschiebt das nicht. Bei einem Mittelwert wäre die Verzerrung sofort sichtbar. |
+| **Alle als Ereignis**, stark: **exakt 24.0** | Hier bricht die Rechnung sichtbar zusammen. Über die Hälfte aller Zeiten wurde auf den Stichtag gesetzt, also **ist** der Median der Stichtag. Die Zahl sagt nur, wann die Beobachtung endete. |
+| **Kaplan-Meier**, mässig: 19.7 gegen wahre 19.8 | Ein Zehntel daneben, und das ist Stichprobenzufall, keine systematische Verzerrung. |
+| **Kaplan-Meier**, stark: `NA` beziehungsweise `inf` | **Die ehrlichste Ausgabe der ganzen Tabelle.** Die Kurve erreicht im Beobachtungszeitraum nie die Hälfte; der Median ist aus diesen Daten nicht schätzbar. Ein Verfahren, das hier eine Zahl nennt, erfindet sie. |
+
+::: {.note-box}
+Die Lehre ist nicht nur "Kaplan-Meier ist besser", sondern auch: **Ein Verfahren,
+das immer eine Zahl liefert, ist verdächtig.** Bei starker Zensierung ist die
+richtige Antwort "nicht schätzbar", und nur das korrekte Verfahren gibt sie.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Bei 63 Prozent Zensierung ist der Median der Laufzeit aus diesen Daten nicht
+> schätzbar; die Überlebenskurve erreicht im Beobachtungszeitraum von 24 Monaten
+> nie 50 Prozent. Berichtet wird stattdessen der Anteil zum Stichtag.
+
+### Beispiel 3: Wenn die Zensierung informativ ist
+
+#### Frage und Datenlage
+
+Die zentrale Annahme in Aktion. 2000 Personen, von denen die Hälfte ein
+erhöhtes Risiko trägt (Rate 0.054 statt 0.020). Drei Auswertungen derselben
+Grundgesamtheit:
+
+1. **Wahrheit**: alle Zeiten vollständig beobachtet, keine Zensierung.
+2. **Administrative Zensierung**: Beobachtung endet für alle bei Monat 24.
+3. **Informative Zensierung**: zusätzlich steigen die Hochrisikopersonen
+   irgendwann in den ersten sechs Monaten aus der Beobachtung aus — sie kündigen
+   das Studio zwar nicht, melden sich aber ab und sind nicht mehr erreichbar.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-zen-r
+#| fig-cap: "Beispiel 3: dieselbe Grundgesamtheit, drei Zensierungsmuster. Nur die informative Zensierung verschiebt die Kurve."
+#| fig-height: 3.6
+n <- 2000
+hoch <- lehmer(4141, n) < 0.5                    # halbe Gruppe mit hohem Risiko
+rate_i <- 0.02 * exp(1.0 * hoch)
+t <- -log(lehmer(4242, n)) / rate_i
+
+# Hochrisikopersonen steigen irgendwann in den ersten sechs Monaten aus
+ausstieg <- ifelse(hoch, 6 * lehmer(4343, n), Inf)
+
+faelle <- list(
+  wahr = list(zeit = t, status = rep(1L, n)),
+  administrativ = list(zeit = pmin(t, 24), status = as.integer(t <= 24)),
+  informativ = list(zeit = pmin(t, ausstieg, 24),
+                    status = as.integer(t <= ausstieg & t <= 24))
+)
+
+par(mar = c(4, 4, 2, 1))
+farben <- c("black", "#2166ac", "#b2182b")
+for (i in seq_along(faelle)) {
+  f <- faelle[[i]]
+  kurve <- survfit(Surv(f$zeit, f$status) ~ 1)
+  if (i == 1) {
+    plot(kurve, conf.int = FALSE, col = farben[i], lwd = 2, xlim = c(0, 24),
+         ylim = c(0, 1), xlab = "Monate", ylab = "S(t)")
+  } else {
+    lines(kurve, conf.int = FALSE, col = farben[i], lwd = 2)
+  }
+  s <- summary(kurve, times = c(12, 24))$surv
+  cat(sprintf("%-14s zensiert %.2f  S(12) %.3f  S(24) %.3f  Median %s\n",
+              names(faelle)[i], mean(f$status == 0), s[1], s[2],
+              format(summary(kurve)$table["median"])))
+}
+legend("bottomleft", legend = names(faelle), col = farben, lwd = 2, bty = "n")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-zen-py
+#| fig-cap: "Beispiel 3: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.6
+n = 2000
+hoch = lehmer(4141, n) < 0.5
+rate_i = 0.02 * np.exp(1.0 * hoch)
+t = -np.log(lehmer(4242, n)) / rate_i
+
+ausstieg = np.where(hoch, 6 * lehmer(4343, n), np.inf)
+
+faelle = {
+    "wahr": (t, np.ones(n, dtype=int)),
+    "administrativ": (np.minimum(t, 24), (t <= 24).astype(int)),
+    "informativ": (np.minimum(np.minimum(t, ausstieg), 24),
+                   ((t <= ausstieg) & (t <= 24)).astype(int)),
+}
+
+fig, achse = plt.subplots(figsize=(7, 3.6))
+for (name, (z, s)), farbe in zip(faelle.items(),
+                                 ["black", "#2166ac", "#b2182b"]):
+    km = KaplanMeierFitter().fit(z, s, label=name)
+    km.plot_survival_function(ax=achse, ci_show=False, color=farbe)
+    werte = km.survival_function_at_times([12, 24]).values
+    print(f"{name:14s} zensiert {float((s == 0).mean()):.2f}"
+          f"  S(12) {werte[0]:.3f}  S(24) {werte[1]:.3f}"
+          f"  Median {km.median_survival_time_:.2f}")
+
+achse.set_xlim(0, 24)
+achse.set_ylim(0, 1)
+achse.set_xlabel("Monate")
+achse.set_ylabel("S(t)")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Auswertung | Anteil zensiert | $\hat{S}(12)$ | $\hat{S}(24)$ | Median |
+|---|---|---|---|---|
+| **wahr** (keine Zensierung) | 0.00 | **0.668** | **0.450** | **20.70** |
+| **administrativ** | 0.45 | **0.668** | **0.450** | **20.70** |
+| **informativ** | 0.74 | **0.764** | **0.588** | nicht erreicht |
+
+| Beobachtung | Deutung |
+|---|---|
+| Administrativ = wahr, auf drei Stellen | Trotz 45 Prozent Zensierung liefert der Schätzer **exakt** die richtige Kurve. Das ist keine Näherung: Wenn die Zensierung nichts über das Risiko sagt, geht keine Information verloren. Genau dafür ist das Verfahren gebaut. |
+| Informativ: $\hat{S}(12) = 0.764$ statt 0.668 | Zehn Prozentpunkte zu optimistisch. Und die Richtung ist kein Zufall: Ausgestiegen sind gerade die Hochrisikopersonen. Der Schätzer nimmt an, sie hätten ab dem Ausstieg das Risiko der Verbliebenen — was falsch ist, denn ihr Risiko war fast dreimal so hoch. |
+| Informativ: Median nicht erreicht | Aus 20.7 Monaten wird "über 24". Wer nur diese Auswertung sieht, hat keinen Anhaltspunkt, dass etwas nicht stimmt. |
+| Anteil zensiert 0.74 | Der **einzige** Hinweis in den Zahlen — und ein schwacher, denn eine hohe Zensierungsrate ist für sich genommen kein Fehler (Beispiel 2, Fall "stark", hatte 63 Prozent bei völlig unbedenklicher Zensierung). |
+
+::: {.note-box}
+**Was diesen Fall so unangenehm macht:** Es gibt keinen Test, der ihn findet. Der
+Vergleich mit der Wahrheit ist hier nur möglich, weil die Daten konstruiert sind.
+In echten Daten sieht die verzerrte Kurve genauso plausibel aus wie die richtige.
+
+Was hilft, ist ausschliesslich die **Buchführung über die Zensierungsgründe**:
+
+| Prüffrage | Warum sie zählt |
+|---|---|
+| Wann wird zensiert? | Alles am Stichtag → administrativ, unbedenklich. Über die Zeit verstreut → nachfragen. |
+| **Warum** scheidet jemand aus? | Der Grund muss erhoben werden. "Verzogen" ist meist harmlos, "abgemeldet ohne Angabe" nicht. |
+| Unterscheiden sich Zensierte in beobachtbaren Merkmalen? | Das beweist nichts, aber ein deutlicher Unterschied ist ein Warnzeichen. |
+| Wie sähe das Ergebnis im Extremfall aus? | Eine Sensitivitätsrechnung: einmal alle Zensierten als sofortiges Ereignis, einmal als nie eintretend. Das Ergebnis liegt zwischen diesen Schranken. |
+:::
+
+#### Interpretation und Ergebnissatz
+
+> 26 Prozent der Beobachtungen endeten vor dem Stichtag, überwiegend durch
+> Abmeldung ohne Angabe von Gründen. Da nicht auszuschliessen ist, dass diese
+> Abmeldungen mit dem Kündigungsrisiko zusammenhängen, ist die geschätzte Kurve
+> möglicherweise zu optimistisch; eine Sensitivitätsrechnung mit allen Zensierten
+> als Ereignis ergibt einen Anteil von [Wert] nach zwölf Monaten als untere
+> Schranke.
+
+### Beispiel 4: Drei Hazard-Verläufe
+
+#### Frage und Datenlage
+
+Die Hazard-Rate macht sichtbar, **wann** das Risiko hoch ist — die
+Überlebensfunktion nur, wie viel sich insgesamt angesammelt hat. Drei Verläufe,
+alle mit demselben Median von 20 Monaten:
+
+| Verlauf | Hazard | Sachbeispiel |
+|---|---|---|
+| konstant | $h(t) = 0.0347$ | Ausfall ohne Alterung, rein zufällig |
+| fallend | $h(t) \propto t^{-0.5}$ | Frühausfälle: was die erste Zeit übersteht, hält |
+| steigend | $h(t) \propto t^{1.0}$ | Verschleiss: das Risiko wächst mit dem Alter |
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-zen-r
+#| fig-cap: "Beispiel 4: drei Weibull-Verläufe mit identischem Median. Links die Hazard-Rate, rechts die Überlebensfunktion."
+#| fig-height: 3.4
+t <- seq(0.05, 36, by = 0.05)
+median_soll <- 20
+
+# Weibull: h(t) = (k/lambda) * (t/lambda)^(k-1), S(t) = exp(-(t/lambda)^k)
+# lambda so waehlen, dass S(20) = 0.5 gilt
+weibull_hazard <- function(t, k) {
+  lambda <- median_soll / log(2)^(1 / k)
+  (k / lambda) * (t / lambda)^(k - 1)
+}
+weibull_surv <- function(t, k) {
+  lambda <- median_soll / log(2)^(1 / k)
+  exp(-(t / lambda)^k)
+}
+
+formen <- c(fallend = 0.5, konstant = 1.0, steigend = 2.0)
+farben <- c("#b2182b", "black", "#2166ac")
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(NA, xlim = c(0, 36), ylim = c(0, 0.12), xlab = "Monate", ylab = "h(t)",
+     main = "Hazard-Rate")
+for (i in seq_along(formen)) lines(t, weibull_hazard(t, formen[i]),
+                                   col = farben[i], lwd = 2)
+legend("topleft", legend = names(formen), col = farben, lwd = 2, bty = "n")
+
+plot(NA, xlim = c(0, 36), ylim = c(0, 1), xlab = "Monate", ylab = "S(t)",
+     main = "Überlebensfunktion")
+for (i in seq_along(formen)) lines(t, weibull_surv(t, formen[i]),
+                                   col = farben[i], lwd = 2)
+abline(h = 0.5, lty = 2); abline(v = median_soll, lty = 2)
+par(mfrow = c(1, 1))
+
+# Anteile zu drei Zeitpunkten
+round(sapply(formen, function(k) weibull_surv(c(3, 12, 20, 36), k)), 3) |>
+  `rownames<-`(c("t=3", "t=12", "t=20", "t=36"))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-zen-py
+#| fig-cap: "Beispiel 4: dieselben drei Verläufe in Python."
+#| fig-height: 3.4
+t = np.arange(0.05, 36.05, 0.05)
+median_soll = 20
+
+
+def weibull_lambda(k):
+    return median_soll / np.log(2) ** (1 / k)
+
+
+def weibull_hazard(t, k):
+    lam = weibull_lambda(k)
+    return (k / lam) * (t / lam) ** (k - 1)
+
+
+def weibull_surv(t, k):
+    return np.exp(-(t / weibull_lambda(k)) ** k)
+
+
+formen = {"fallend": 0.5, "konstant": 1.0, "steigend": 2.0}
+farben = ["#b2182b", "black", "#2166ac"]
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+for (name, k), farbe in zip(formen.items(), farben):
+    achsen[0].plot(t, weibull_hazard(t, k), color=farbe, lw=2, label=name)
+    achsen[1].plot(t, weibull_surv(t, k), color=farbe, lw=2, label=name)
+achsen[0].set_ylim(0, 0.12)
+achsen[0].set_title("Hazard-Rate")
+achsen[0].set_ylabel("h(t)")
+achsen[0].legend(frameon=False)
+achsen[1].set_ylim(0, 1)
+achsen[1].set_title("Überlebensfunktion")
+achsen[1].set_ylabel("S(t)")
+achsen[1].axhline(0.5, ls="--", color="black", lw=0.8)
+achsen[1].axvline(median_soll, ls="--", color="black", lw=0.8)
+for achse in achsen:
+    achse.set_xlabel("Monate")
+plt.tight_layout()
+plt.show()
+
+print(pd.DataFrame({name: weibull_surv(np.array([3, 12, 20, 36]), k).round(3)
+                    for name, k in formen.items()},
+                   index=["t=3", "t=12", "t=20", "t=36"]))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die Anteile ohne Ereignis, alle drei Verläufe mit Median 20:
+
+| Zeitpunkt | fallend | konstant | steigend |
+|---|---|---|---|
+| $t = 3$ | **0.763** | 0.902 | **0.984** |
+| $t = 12$ | 0.583 | 0.659 | 0.775 |
+| $t = 20$ | **0.500** | **0.500** | **0.500** |
+| $t = 36$ | 0.390 | 0.288 | **0.144** |
+
+| Beobachtung | Deutung |
+|---|---|
+| Alle drei bei $t = 20$ auf **0.500** | Der Median ist identisch. Wer nur ihn berichtet, berichtet drei völlig verschiedene Sachverhalte als dieselbe Zahl. |
+| Bei $t = 3$: 0.763 gegen 0.984 | Nach drei Monaten sind im fallenden Fall bereits 24 Prozent ausgeschieden, im steigenden 1.6 Prozent. Ein Unterschied, der über jede Garantiezusage entscheidet. |
+| Bei $t = 36$: 0.390 gegen 0.144 | Und danach kehrt sich das Verhältnis um. Wer die frühe Phase übersteht, hält im fallenden Fall lange. |
+| Die Hazard-Kurve links | zeigt das unmittelbar: rot fällt steil ab, blau steigt linear. Die Überlebenskurven rechts sehen dagegen alle ähnlich aus — glatt und fallend. |
+
+::: {.note-box}
+**Warum das für die Modellwahl entscheidend ist:** Das
+[Cox-Modell](cox-modell.qmd) muss über die Form von $h_0(t)$ nichts annehmen —
+es lässt sie frei und schätzt nur Verhältnisse. Genau deshalb ist es der
+Standardfall.
+
+Ein **parametrisches** Modell (Weibull, Exponential, log-normal) legt die Form
+fest. Das bringt zwei Dinge: eine Extrapolation über den Beobachtungszeitraum
+hinaus und engere Intervalle — beides aber nur, wenn die unterstellte Form
+stimmt. Der Exponentialfall entspricht dem konstanten Verlauf oben, also
+$k = 1$; ihn zu unterstellen heisst zu behaupten, das Risiko hänge nicht vom
+Alter ab. Für Verschleissteile ist das offensichtlich falsch.
+:::
+
+#### Interpretation
+
+Zu einer Überlebensanalyse gehören deshalb immer die **Anteile zu mehreren
+Zeitpunkten**, nicht nur der Median — und, wo möglich, ein Blick auf den Verlauf
+der Hazard-Rate.
+
+::::
+
+## Verständnisfragen
+
 ::: {.quiz}
 Eine Auswertung entfernt alle zensierten Fälle und berechnet den Mittelwert der
 verbleibenden Zeiten. Was ist die Folge?
@@ -236,9 +658,24 @@ verbleibenden Zeiten. Was ist die Folge?
       nicht nur kleiner, sondern systematisch ausgewählt.
 - [x] Die Zeit wird unterschätzt, weil die Langläufer fehlen ~ Richtig. Zensiert
       sind gerade die Fälle, die lange kein Ereignis hatten. Wer sie entfernt,
-      behält die kurzen Zeiten und verzerrt nach unten.
-- [ ] Die Zeit wird überschätzt ~ Das passiert bei der anderen Behelfslösung,
-      wenn man zensierte Zeiten als Ereigniszeiten mitzählt.
+      behält die kurzen Zeiten und verzerrt nach unten — im Beispiel auf die
+      Hälfte des wahren Medians.
+- [ ] Die Zeit wird überschätzt ~ Beide Behelfslösungen verzerren nach unten, nur
+      aus verschiedenen Gründen.
+:::
+
+::: {.quiz}
+Bei 63 Prozent Zensierung gibt Kaplan-Meier für den Median `NA` aus. Ist das ein
+Mangel des Verfahrens?
+
+- [x] Nein, es ist die einzig ehrliche Antwort ~ Richtig. Die Kurve erreicht im
+      Beobachtungszeitraum nie 50 Prozent; der Median liegt ausserhalb dessen,
+      was die Daten zeigen. Die Behelfsrechnung, die stattdessen "24 Monate"
+      liefert, nennt nur den Stichtag.
+- [ ] Ja, ein Median lässt sich immer schätzen ~ Nur, wenn die Kurve die 50
+      Prozent auch erreicht.
+- [ ] Ja, bei mehr Beobachtungen käme eine Zahl heraus ~ Mehr Beobachtungen
+      helfen nicht; nötig wäre eine längere Beobachtungszeit.
 :::
 
 ::: {.quiz}
@@ -246,12 +683,39 @@ Warum ist die Annahme nicht informativer Zensierung in den Daten nicht prüfbar?
 
 - [x] Weil dafür die unbeobachteten Zeiten der Zensierten nötig wären ~ Richtig.
       Die Frage lautet, ob die Zensierten dasselbe Risiko hatten; das liesse
-      sich nur beantworten, wenn man ihre Ereigniszeiten kennte. Übrig bleibt
-      die inhaltliche Begründung.
+      sich nur beantworten, wenn man ihre Ereigniszeiten kennte. Übrig bleiben
+      die inhaltliche Begründung und eine Sensitivitätsrechnung.
 - [ ] Weil die Stichprobe dafür zu klein ist ~ Auch bei beliebig grosser
       Stichprobe fehlt genau diese Information.
 - [ ] Sie ist prüfbar, über einen Test auf gleiche Verteilung ~ Ein solcher Test
       vergleicht beobachtbare Merkmale, nicht die unbeobachteten Zeiten.
+:::
+
+::: {.quiz}
+Hochrisikopersonen scheiden früh aus der Beobachtung aus. In welche Richtung
+verzerrt das die Kurve?
+
+- [x] Sie wird zu optimistisch ~ Richtig. Der Schätzer unterstellt den
+      Ausgeschiedenen ab dem Zensierungszeitpunkt das Risiko der Verbliebenen —
+      und das ist niedriger. Im Beispiel steigt der Anteil nach zwölf Monaten von
+      0.67 auf 0.76.
+- [ ] Sie wird zu pessimistisch ~ Das wäre der Fall, wenn gerade die
+      Niedrigrisikopersonen ausschieden.
+- [ ] Gar nicht, Kaplan-Meier korrigiert das ~ Es korrigiert nur für Zensierung,
+      die nichts über das Risiko aussagt.
+:::
+
+::: {.quiz}
+Drei Verläufe haben denselben Median von 20 Monaten, aber nach drei Monaten
+Anteile von 0.76, 0.90 und 0.98. Was folgt daraus?
+
+- [x] Der Median allein beschreibt eine Überlebenszeit unzureichend ~ Richtig.
+      Dieselbe Kennzahl kann für sehr verschiedene Verläufe stehen. Berichtet
+      werden deshalb Anteile zu mehreren, fachlich begründeten Zeitpunkten.
+- [ ] Einer der drei Verläufe ist falsch gerechnet ~ Alle drei sind korrekt; sie
+      unterscheiden sich in der Form der Hazard-Rate.
+- [ ] Die Verläufe unterscheiden sich nur zufällig ~ Sie stammen aus drei
+      verschiedenen Verteilungen und unterscheiden sich systematisch.
 :::
 
 ::: {.quiz}
