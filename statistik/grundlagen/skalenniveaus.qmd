@@ -15,7 +15,6 @@ library(ggplot2)
 library(dplyr)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(42)
 ```
 
 ```{python}
@@ -24,20 +23,25 @@ set.seed(42)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
 ```
 
 ## Kernideen
 
-- Nominal, ordinal, intervall, verhältnis
-- Das Skalenniveau steckt in der Bedeutung, nicht in der gespeicherten Zahl
-- Es entscheidet, welche Rechenoperationen zulässig sind
-- Intervall und Verhältnis werden oft zu metrisch zusammengefasst
-- Der Unterschied der beiden liegt allein im Nullpunkt
-- Nominale und ordinale Variablen bilden zusammen die kategorischen Variablen
+- Vier Stufen: **nominal, ordinal, intervall, verhältnis**.
+- Das Skalenniveau steckt in der **Bedeutung**, nicht in der gespeicherten Zahl —
+  deshalb muss es ein Mensch festlegen, kein Programm.
+- Es entscheidet, welche Rechenoperationen zulässig sind, und damit über den
+  ganzen weiteren Analysepfad.
+- Intervall und Verhältnis werden oft zu **metrisch** zusammengefasst; ihr
+  Unterschied liegt allein im Nullpunkt.
+- Nominale und ordinale Variablen bilden zusammen die **kategorischen**
+  Variablen — in R `factor`, in Python `pd.Categorical`.
+- Im Zweifel ein Niveau **tiefer** einordnen: Das kostet höchstens Testschärfe,
+  während zu hoch eingeordnet falsche Schlüsse erzeugt.
 
 ## Erklärung
 
@@ -73,42 +77,26 @@ erste Schritt jeder Auswertung — sie entscheidet, welche statistischen Methode
 | verhältnis | zusätzlich Verhältnisse | Länge, Masse, Anzahl | alle, zusätzlich Variationskoeffizient |
 
 Je höher das Skalenniveau, desto mehr Vergleichsaussagen und Rechenoperationen
-sind möglich.
+sind möglich. Die Stufen bauen aufeinander auf: Was auf einer Stufe erlaubt ist,
+ist es auf allen höheren auch.
 
-### Nominal
+**Nominal.** Ausprägungen lassen sich unterscheiden, aber nicht sinnvoll ordnen;
+die Reihenfolge der Kategorien ist austauschbar. Liegen nur zwei Ausprägungen
+vor, spricht man von **dichotomen** oder **binären** Variablen. Beispiele:
+Geschlecht, Religionsbekenntnis, Wohnort, Telefonnummer, Blutgruppe.
 
-Ausprägungen lassen sich unterscheiden, aber nicht sinnvoll ordnen. Die
-Reihenfolge der Kategorien ist austauschbar. Liegen nur zwei Ausprägungen vor
-(z. B. ja/nein, männlich/weiblich), spricht man von **dichotomen** oder
-**binären** Variablen.
+**Ordinal.** Ausprägungen haben eine natürliche Rangfolge, aber die Abstände
+zwischen den Stufen sind nicht interpretierbar. Schulnoten lassen sich ordnen,
+doch der Unterschied zwischen 1 und 2 ist nicht zwingend gleich gross wie
+zwischen 3 und 4. Beispiele: Schulnoten, Zufriedenheitsskala, Pflegestufe,
+militärischer Rang, Bildungsabschluss.
 
-Beispiele: Geschlecht, Religionsbekenntnis, Wohnort, Telefonnummer,
-Blutgruppe, Nationalität.
-
-### Ordinal
-
-Ausprägungen haben eine natürliche Rangfolge, aber die Abstände zwischen den
-Stufen sind nicht interpretierbar. Schulnoten lassen sich ordnen, doch der
-Unterschied zwischen 1 und 2 ist nicht zwingend gleich gross wie zwischen 3 und 4.
-
-Beispiele: Schulnoten, Zufriedenheitsskala (1–5), Pflegestufe, militärischer
-Rang, Bildungsabschluss (Lehre < Bachelor < Master).
-
-### Kategorische Variablen als Oberbegriff
-
-Nominale und ordinale Variablen werden zusammen als **kategorische Variablen**
-bezeichnet. Sie haben eine begrenzte, in der Regel feste Anzahl von
-Ausprägungen. In R werden sie als `factor` gespeichert, in Python als
-`pd.Categorical`.
-
-### Metrisch: Intervall und Verhältnis
-
-Die beiden oberen Stufen werden häufig zu **metrisch** zusammengefasst. Der
-Unterschied liegt allein im Nullpunkt:
+**Metrisch: Intervall und Verhältnis.** Die beiden oberen Stufen werden häufig
+zusammengefasst. Der Unterschied liegt allein im Nullpunkt:
 
 - **Verhältnisskala:** Null bedeutet, dass nichts vorhanden ist. Aussagen wie
   *doppelt so viel* sind zulässig. Beispiele: Gewicht, Alter, Einkommen,
-  Wohnfläche in m², CO₂-Ausstoss.
+  Wohnfläche, CO₂-Ausstoss.
 - **Intervallskala:** Der Nullpunkt ist gesetzt und nicht absolut. Verhältnisse
   sind nicht sinnvoll. Beispiele: Temperatur in °C, IQ-Score, Jahreszahl.
 
@@ -118,8 +106,27 @@ die Skala verhältnisskaliert — null bedeutet *kein Zeitverbrauch*, und man ka
 sagen: Läufer A war doppelt so schnell wie Läufer B. Wird die Stoppuhr
 vergessen und stattdessen nur die Differenz zum Schnellsten gemessen, hat man
 eine Intervallskala: Abstände sind sinnvoll (A ist 22 min schneller als B),
-aber Verhältnisse nicht (A ist *nicht* 20% schneller als B).
+aber Verhältnisse nicht (A ist *nicht* 20 Prozent schneller als B).
+
+Dasselbe Merkmal, dieselben Läufer — nur eine andere Messvorschrift, und die
+zulässigen Aussagen ändern sich.
 :::
+
+### Die drei Fragen zur Bestimmung
+
+```
+1. Gibt es eine natürliche Rangfolge?
+   NEIN → nominal
+   JA   → weiter
+
+2. Sind die Abstände zwischen den Stufen gleich und interpretierbar?
+   NEIN → ordinal
+   JA   → weiter
+
+3. Gibt es einen absoluten Nullpunkt (0 = nichts vorhanden)?
+   NEIN → intervall
+   JA   → verhältnis
+```
 
 ### Warum die Unterscheidung wichtig ist
 
@@ -128,31 +135,386 @@ steuert den gesamten weiteren Analysepfad:
 
 | Skalenniveau | typische Verfahren |
 |---|---|
-| nominal | Häufigkeitstabelle, Modus, Chi-Quadrat-Test, Cramers V |
-| ordinal | Median, Spearman-Korrelation, Mann-Whitney, Kruskal-Wallis |
-| metrisch | Mittelwert, Standardabweichung, t-Test, ANOVA, Pearson-Korrelation, Regression |
+| nominal | [Häufigkeitstabelle](haeufigkeiten.qmd), Modus, [Chi-Quadrat-Test](../tests/chi-quadrat-tests.qmd), Cramers V |
+| ordinal | Median, [Spearman-Korrelation](korrelation.qmd), [Mann-Whitney, Kruskal-Wallis](../tests/nichtparametrische-tests.qmd) |
+| metrisch | Mittelwert, Standardabweichung, [t-Test](../tests/t-test-zwei-stichproben.qmd), [ANOVA](../tests/anova.qmd), [Pearson-Korrelation](korrelation.qmd), [Regression](../regression/einfache-lineare-regression.qmd) |
+
+Die Auswahl systematisch aufbereitet steht unter
+[Verfahren wählen](../verfahren-waehlen.qmd).
 
 ::: {.note-box}
 In der Praxis wird die Regel bei ordinalen Daten regelmässig gebrochen. Der
 Mittelwert einer Zufriedenheitsskala von 1 bis 5 ist streng genommen nicht
-definiert, wird aber überall berichtet. Wer ihn verwendet, sollte wenigstens
-wissen, dass er unterstellt, die Abstände zwischen den Stufen seien gleich.
+definiert, wird aber überall berichtet. Wer ihn verwendet, unterstellt damit,
+die Abstände zwischen den Stufen seien gleich — **Beispiel 4 zeigt, wie viel an
+dieser Unterstellung hängt.**
 :::
 
-## Beispiele zum Üben
+## Beispiele
 
-| Variable | Skalenniveau | Begründung |
+:::: {.panel-tabset}
+
+### Beispiel 1: Zehn Variablen einordnen
+
+#### Frage und Datenlage
+
+Die drei Fragen aus der Erklärung, angewendet auf zehn Merkmale, die in echten
+Datensätzen vorkommen.
+
+#### Die Einordnung
+
+| Variable | Rangfolge? | gleiche Abstände? | absoluter Nullpunkt? | **Niveau** |
+|---|---|---|---|---|
+| Wohnort | nein | — | — | **nominal** |
+| Telefonnummer | nein | — | — | **nominal** |
+| Religionsbekenntnis | nein | — | — | **nominal** |
+| Produktbewertung (1–5 Sterne) | ja | **nein** | — | **ordinal** |
+| Prüfungsnoten (1–5) | ja | **nein** | — | **ordinal** |
+| Pflegestufe | ja | **nein** | — | **ordinal** |
+| Arbeitszufriedenheit (1–4) | ja | **nein** | — | **ordinal** |
+| IQ-Score | ja | ja | **nein** | **intervall** |
+| CO₂-Ausstoss pro Jahr | ja | ja | **ja** | **verhältnis** |
+| Wohnfläche in m² | ja | ja | **ja** | **verhältnis** |
+
+| Fall | Warum er häufig falsch eingeordnet wird |
+|---|---|
+| **Telefonnummer** | Sie ist eine Zahl und wird beim Einlesen automatisch numerisch. Ihr Mittelwert lässt sich rechnen und ist bedeutungslos. |
+| **Produktbewertung** | Vier Sterne sind besser als drei — aber ist der Sprung von 4 auf 5 derselbe wie der von 1 auf 2? Bei Sternebewertungen empirisch meist nicht: Die Verteilung ist stark linksschief, weil 5 der Standardfall ist. |
+| **IQ-Score** | Der Nullpunkt ist definitionsgemäss gesetzt (Mittelwert 100, Standardabweichung 15). Ein IQ von 140 ist nicht "doppelt so intelligent" wie 70. |
+| **Pflegestufe** | Der Betreuungsaufwand zwischen den Stufen wächst nicht gleichmässig — genau deshalb sind es Stufen und keine Messwerte. |
+
+::: {.note-box}
+**Zwei Sonderfälle, die regelmässig Streit auslösen:**
+
+| Fall | Einordnung | Begründung |
 |---|---|---|
-| Wohnort | nominal | Kategorien ohne Rangfolge |
-| Produktbewertung (1–5 Sterne) | ordinal | Rangfolge ja, gleiche Abstände nein |
-| Religionsbekenntnis | nominal | Keine sinnvolle Ordnung |
-| CO₂-Ausstoss pro Jahr | verhältnis | Absoluter Nullpunkt (0 = kein Ausstoss) |
-| IQ-Score | intervall | Nullpunkt willkürlich gesetzt |
-| Prüfungsnoten (1–5) | ordinal | Rangfolge ja, Abstände nicht gleich |
-| Telefonnummer | nominal | Zahl ist reines Etikett |
-| Pflegestufe | ordinal | Rangfolge, aber ungleiche Abstände |
-| Wohnfläche in m² | verhältnis | 0 m² = keine Fläche |
-| Arbeitszufriedenheit (1–4) | ordinal | Likert-Skala ohne garantiert gleiche Abstände |
+| **Zähldaten** (Anzahl Ausfälle) | verhältnis | Null Ausfälle heisst wirklich keine. Zwanzig sind doppelt so viele wie zehn. |
+| **Prozentangaben** (Anteil defekter Teile) | verhältnis, aber begrenzt | Null Prozent heisst keine, und 40 Prozent sind doppelt so viel wie 20. Die Obergrenze bei 100 macht allerdings viele Verfahren unpassend — dort hilft eine Transformation oder ein Modell für Anteile. |
+:::
+
+#### Interpretation
+
+Die Einordnung ist keine Formalie, sondern legt fest, welche Verfahren
+überhaupt zur Wahl stehen. Wer sie überspringt, wählt sie implizit — nach dem
+Datentyp, den das Einleseprogramm geraten hat.
+
+### Beispiel 2: Kategorische Variablen richtig speichern
+
+#### Frage und Datenlage
+
+Eine kleine Mitarbeiterbefragung mit allen vier Niveaus. Wie werden die
+Variablen so abgelegt, dass die Programme das Richtige tun?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-skalen-r
+umfrage <- data.frame(
+  id            = 1:8,
+  abteilung     = c("IT", "HR", "IT", "Verkauf", "HR", "IT", "Verkauf", "HR"),
+  zufriedenheit = c(4, 2, 5, 3, 1, 4, 5, 3),
+  gehalt        = c(85000, 62000, 91000, 58000, 64000, 78000, 55000, 67000),
+  temperatur_c  = c(22.1, 21.5, 23.0, 20.8, 21.9, 22.4, 19.5, 21.0)
+)
+
+# Nominal: Faktor ohne Ordnung
+umfrage$abteilung <- factor(umfrage$abteilung)
+str(umfrage$abteilung)
+table(umfrage$abteilung)
+
+# Ordinal: geordneter Faktor
+stufen <- c("sehr unzufrieden", "unzufrieden", "neutral",
+            "zufrieden", "sehr zufrieden")
+umfrage$zufriedenheit_ord <- ordered(umfrage$zufriedenheit,
+                                     levels = 1:5, labels = stufen)
+str(umfrage$zufriedenheit_ord)
+
+# Der geordnete Faktor kann vergleichen, der ungeordnete nicht
+umfrage$zufriedenheit_ord > "neutral"
+
+# Median einer ordinalen Variablen: die mittlere Stufe, nicht eine Zahl
+levels(umfrage$zufriedenheit_ord)[median(as.integer(umfrage$zufriedenheit_ord))]
+
+# Metrisch: einfach Zahlen
+round(c(mittel_gehalt = mean(umfrage$gehalt), sd_gehalt = sd(umfrage$gehalt),
+        mittel_temp = mean(umfrage$temperatur_c),
+        spannweite_temp = diff(range(umfrage$temperatur_c))), 1)
+```
+
+##### Python
+
+```{python}
+#| label: b2-skalen-py
+umfrage = pd.DataFrame({
+    "id": range(1, 9),
+    "abteilung": ["IT", "HR", "IT", "Verkauf", "HR", "IT", "Verkauf", "HR"],
+    "zufriedenheit": [4, 2, 5, 3, 1, 4, 5, 3],
+    "gehalt": [85000, 62000, 91000, 58000, 64000, 78000, 55000, 67000],
+    "temperatur_c": [22.1, 21.5, 23.0, 20.8, 21.9, 22.4, 19.5, 21.0],
+})
+
+umfrage["abteilung"] = pd.Categorical(umfrage["abteilung"])
+print(umfrage["abteilung"].dtype)
+print(umfrage["abteilung"].value_counts())
+
+stufen = ["sehr unzufrieden", "unzufrieden", "neutral",
+          "zufrieden", "sehr zufrieden"]
+umfrage["zufriedenheit_ord"] = pd.Categorical(
+    [stufen[v - 1] for v in umfrage["zufriedenheit"]],
+    categories=stufen, ordered=True)
+print(umfrage["zufriedenheit_ord"].dtype)
+
+print((umfrage["zufriedenheit_ord"] > "neutral").tolist())
+
+# Median einer ordinalen Variablen ueber die Codes
+mitte = int(np.median(umfrage["zufriedenheit_ord"].cat.codes))
+print("Median:", stufen[mitte])
+
+print({"mittel_gehalt": round(umfrage["gehalt"].mean(), 1),
+       "sd_gehalt": round(umfrage["gehalt"].std(), 1),
+       "mittel_temp": round(umfrage["temperatur_c"].mean(), 1),
+       "spannweite_temp": round(umfrage["temperatur_c"].max()
+                                - umfrage["temperatur_c"].min(), 1)})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Variable | Speicherform | Was das Programm damit erlaubt |
+|---|---|---|
+| `abteilung` | `factor` / `Categorical` **ohne** Ordnung | Häufigkeiten, Kreuztabellen, Chi-Quadrat. Ein Vergleich `> "HR"` wirft eine Warnung beziehungsweise scheitert — genau richtig. |
+| `zufriedenheit_ord` | `ordered factor` / `Categorical(ordered=True)` | zusätzlich Vergleiche und Median. Die Ausgabe `sehr unzufrieden < unzufrieden < ...` zeigt die hinterlegte Ordnung. |
+| `gehalt` | `numeric` | alles, inklusive Verhältnisaussagen |
+| `temperatur_c` | `numeric` | alles ausser Verhältnisaussagen — und **das kann kein Datentyp erzwingen** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Der Vergleich `> "neutral"` funktioniert nur beim geordneten Faktor | Das ist der praktische Nutzen: Die Ordnung ist im Datentyp hinterlegt und muss nicht bei jeder Auswertung neu erinnert werden. |
+| Der Median wird über die **Stufennummern** gebildet und als Stufe ausgegeben | Genau die richtige Form für ein ordinales Merkmal. Beide Sprachen bieten dafür keinen direkten Aufruf auf dem Faktor — man rechnet auf den Codes und übersetzt zurück. |
+| Für `temperatur_c` gibt es **keine** Speicherform, die vor Verhältnisaussagen schützt | Intervall und Verhältnis sehen für jedes Programm gleich aus. Diesen Unterschied trägt allein der Mensch. |
+| Die Reihenfolge der Stufen wird **angegeben**, nicht geraten | Ohne `levels =` beziehungsweise `categories=` sortiert R alphabetisch — "neutral" käme vor "sehr unzufrieden". |
+
+::: {.note-box}
+**Der häufigste stille Fehler:** Eine numerisch codierte Variable bleibt als
+Zahl liegen und geht so in ein Modell. R und Python rechnen dann mit den Codes,
+als wären sie metrisch — ohne Warnung, ohne Fehlermeldung, mit einem Ergebnis,
+das plausibel aussieht.
+
+Beispiel 3 zeigt es an einer Postleitzahl.
+:::
+
+#### Interpretation
+
+Der Datentyp ist die Stelle, an der die inhaltliche Entscheidung festgehalten
+wird. Wer sie beim Einlesen trifft, muss sie später nicht wiederholen — und
+bekommt vom Programm eine Fehlermeldung statt eines falschen Ergebnisses.
+
+### Beispiel 3: Wenn das Niveau falsch angenommen wird
+
+#### Frage und Datenlage
+
+Zwei Fälle, in denen das Programm bereitwillig rechnet und die Zahl trotzdem
+nichts bedeutet.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-skalen-r
+# Fall 1: Postleitzahl als Zahl
+plz <- c(3000, 8000, 6000, 3000, 8000)
+mean(plz)
+sd(plz)
+
+# Richtig: als Faktor
+table(factor(plz))
+
+# Fall 2: nominale Codierung, hier Geschlecht als 1 und 2
+geschlecht <- c(1, 2, 2, 1, 2, 1, 2, 2, 1, 2)
+mean(geschlecht)
+round(prop.table(table(geschlecht)), 2)
+
+# Dieselbe Information, aber ohne Scheinbedeutung
+round(mean(geschlecht == 2), 2)
+```
+
+##### Python
+
+```{python}
+#| label: b3-skalen-py
+plz = pd.Series([3000, 8000, 6000, 3000, 8000])
+print("mean(PLZ) =", round(plz.mean(), 1))
+print("sd(PLZ)   =", round(plz.std(), 1))
+print(pd.Categorical(plz).value_counts())
+
+geschlecht = pd.Series([1, 2, 2, 1, 2, 1, 2, 2, 1, 2])
+print("mean:", geschlecht.mean())
+print(geschlecht.value_counts(normalize=True).round(2).to_dict())
+print("Anteil mit Code 2:", round((geschlecht == 2).mean(), 2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Rechnung | Ergebnis | Wie es zu lesen ist |
+|---|---|---|
+| `mean(plz)` | **5600** | Eine Postleitzahl, die es nicht gibt, für einen Ort, der nicht existiert. Die Zahl ist rechnerisch korrekt und inhaltlich leer. |
+| `sd(plz)` | rund 2510 | Noch weniger deutbar: die Streuung eines Etiketts. |
+| Häufigkeitstabelle | 3000 zweimal, 6000 einmal, 8000 zweimal | **Das** ist die Information, die in der Variablen steckt. |
+| `mean(geschlecht)` | **1.6** | Kein "durchschnittliches Geschlecht". Die Zahl ist genau dann etwas wert, wenn man weiss, was die Codes bedeuten. |
+| Anteil mit Code 2 | **0.60** | Dieselbe Information, klar benannt. Zwischen den beiden Zahlen besteht der Zusammenhang $\bar{x} = 1 + p$ — bei einer 0/1-Codierung wäre der Mittelwert direkt der Anteil. |
+
+::: {.note-box}
+**Warum die 1.6 in der Praxis trotzdem vorkommt:** Bei einer **dichotomen**
+Variablen ist der Mittelwert der Codes tatsächlich informativ, weil er sich in
+einen Anteil übersetzen lässt. Das ist der Sonderfall, in dem die Regel
+folgenlos gebrochen werden darf — bei drei oder mehr nominalen Kategorien
+verschwindet diese Rettung sofort.
+
+Deshalb ist die 0/1-Codierung (statt 1/2) die bessere Wahl: Dort **ist** der
+Mittelwert der Anteil, und es gibt nichts umzurechnen. Genau so arbeiten
+Indikatorvariablen in der [Regression](../regression/multiple-lineare-regression.qmd).
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Von zehn Befragten sind 60 Prozent mit Code 2 erfasst. Ein Mittelwert der
+> Codes wird nicht berichtet, weil das Merkmal nominal ist.
+
+### Beispiel 4: Was am Abstand hängt
+
+#### Frage und Datenlage
+
+Der Mittelwert einer Likert-Skala wird überall berichtet, obwohl er strenggenommen
+nicht definiert ist. Was genau unterstellt man damit — und was ändert sich, wenn
+die Unterstellung nicht stimmt?
+
+Zwei Gruppen zu je 30 Befragten, Zufriedenheit auf einer Skala von 1 bis 5:
+
+| Stufe | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Gruppe A | 4 | 3 | 5 | 10 | 8 |
+| Gruppe B | 1 | 2 | 17 | 8 | 2 |
+
+Gruppe A verteilt sich breit mit Schwerpunkt oben, Gruppe B klumpt sich in der
+Mitte.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-skalen-r
+A <- rep(1:5, times = c(4, 3, 5, 10, 8))
+B <- rep(1:5, times = c(1, 2, 17, 8, 2))
+
+# Drei Annahmen ueber die Abstaende zwischen den Stufen
+skalen <- list(
+  gleich    = c(1, 2, 3, 4, 5),      # 1-2-3-4-5, die uebliche Annahme
+  gestaucht = c(1, 2, 3, 3.5, 4),    # oben liegen die Stufen enger
+  gedehnt   = c(1, 2, 3, 5, 9)       # oben liegen sie weiter auseinander
+)
+
+for (name in names(skalen)) {
+  s <- skalen[[name]]
+  a <- s[A]; b <- s[B]
+  t <- t.test(a, b, var.equal = TRUE)
+  cat(sprintf("%-10s Mittel A %.3f | B %.3f | Differenz %+.3f | p %.4f\n",
+              name, mean(a), mean(b), mean(a) - mean(b), t$p.value))
+}
+
+# Die rangbasierten Auswertungen kennen das Problem nicht
+c(median_A = median(A), median_B = median(B))
+wilcox.test(A, B)
+```
+
+##### Python
+
+```{python}
+#| label: b4-skalen-py
+A = np.repeat([1, 2, 3, 4, 5], [4, 3, 5, 10, 8])
+B = np.repeat([1, 2, 3, 4, 5], [1, 2, 17, 8, 2])
+
+skalen = {"gleich": [1, 2, 3, 4, 5],
+          "gestaucht": [1, 2, 3, 3.5, 4],
+          "gedehnt": [1, 2, 3, 5, 9]}
+
+for name, s in skalen.items():
+    s = np.array(s, dtype=float)
+    a, b = s[A - 1], s[B - 1]
+    t = stats.ttest_ind(a, b)
+    print(f"{name:10s} Mittel A {a.mean():.3f} | B {b.mean():.3f}"
+          f" | Differenz {a.mean() - b.mean():+.3f} | p {t.pvalue:.4f}")
+
+print("Median A:", np.median(A), "| Median B:", np.median(B))
+u = stats.mannwhitneyu(A, B)
+print(f"Mann-Whitney U = {u.statistic}, p = {u.pvalue:.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Annahme über die Abstände | Mittel A | Mittel B | Differenz | p |
+|---|---|---|---|---|
+| **gleich** (1, 2, 3, 4, 5) | 3.500 | 3.267 | **+0.233** | 0.425 |
+| **gestaucht** (1, 2, 3, 3.5, 4) | 3.067 | 3.067 | **±0.000** | **1.000** |
+| **gedehnt** (1, 2, 3, 5, 9) | 4.900 | 3.800 | **+1.100** | 0.079 |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die Differenz reicht von **0.000 bis +1.100** | Bei **identischen Daten**. Was sich ändert, ist allein die Annahme darüber, was die Zahlen bedeuten. |
+| Die "gestauchte" Skala ist nicht abwegig | Sie unterstellt, dass zwischen "zufrieden" und "sehr zufrieden" ein kleinerer Schritt liegt als zwischen "unzufrieden" und "neutral" — bei Zufriedenheitsskalen empirisch gut belegt, weil die oberen Stufen häufiger und weniger trennscharf sind. |
+| Die "gedehnte" Skala ebenso wenig | Bei Schmerz- oder Belastungsskalen ist der Sprung an den Extremen oft der grösste. |
+| **Der p-Wert wandert von 1.000 auf 0.079** | Und keine dieser Rechnungen ist falsch. Falsch ist nur, eine davon zu wählen, ohne die Wahl zu nennen. |
+
+Die rangbasierte Auswertung dagegen:
+
+| Grösse | Wert | Warum sie unberührt bleibt |
+|---|---|---|
+| Median A | **4** | Er zählt nur ab, wie viele Werte darüber und darunter liegen. |
+| Median B | **3** | |
+| Mann-Whitney U | 537.5, p = 0.180 | Der Test arbeitet auf Rängen. **Jede** der drei Skalen oben erzeugt dieselben Ränge, also dasselbe Ergebnis. |
+
+::: {.note-box}
+**Was daraus folgt, in drei Zeilen:**
+
+1. Wer den **Mittelwert** einer Likert-Skala berichtet, trifft eine
+   inhaltliche Annahme über die Abstände — und sollte sie nennen.
+2. Wer **Median und Rangtest** berichtet, kommt ohne diese Annahme aus. Der
+   Preis ist etwas Testschärfe.
+3. Bei **vielen Stufen** (etwa einer Skala von 0 bis 100) und ungefähr
+   symmetrischer Verteilung ist die Annahme meist harmlos. Bei **wenigen
+   Stufen** und schiefer Verteilung — wie hier — ist sie es nicht.
+
+Und die praktische Zwischenlösung, die in Berichten oft die beste ist: **beides
+angeben.** Median mit Quartilen für die Beschreibung, Rangtest für den Vergleich,
+Mittelwert nur, wenn ein Publikum ihn erwartet — mit dem Hinweis, worauf er
+beruht.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Gruppe A ist zufriedener als Gruppe B (Median 4 gegenüber 3), der Unterschied
+> ist jedoch nicht nachweisbar (Mann-Whitney U = 537.5, p = 0.18, je n = 30). Auf
+> Mittelwerte wird verzichtet, weil sie bei einer fünfstufigen Skala von der
+> Annahme gleicher Abstände abhängen: Je nach unterstellter Skalierung ergibt
+> sich eine Differenz zwischen 0.00 und 1.10.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Eine Umfrage codiert das Geschlecht als 1 und 2. Der Bericht nennt einen
@@ -180,145 +542,47 @@ nur intervallskaliert?
       verschiedene Fragen.
 :::
 
-## Skalenniveaus in der Praxis
+::: {.quiz}
+Dieselben Befragungsdaten ergeben je nach unterstellter Skalierung
+Mittelwertdifferenzen von 0.00 bis 1.10. Was folgt daraus?
 
-::: panel-tabset
-### R
+- [x] Der Mittelwert einer Likert-Skala hängt an einer Annahme, die die Daten
+      nicht belegen ~ Richtig. Gleiche Abstände zwischen den Stufen sind eine
+      Unterstellung. Median und Rangtest kommen ohne sie aus und liefern
+      dieselbe Antwort für alle drei Skalierungen.
+- [ ] Die Daten sind fehlerhaft ~ Die Daten sind dieselben; verschieden ist
+      nur ihre Übersetzung in Zahlen.
+- [ ] Man sollte die Skala mit mehr Stufen erheben ~ Das hilft tatsächlich,
+      löst aber das grundsätzliche Problem nicht.
+:::
 
-In R bestimmt der Datentyp, wie eine Variable behandelt wird. Kategorische
-Variablen werden als **Faktor** gespeichert. Bei ordinalen Variablen wird
-`ordered = TRUE` gesetzt.
+::: {.quiz}
+Eine Variable wird als geordneter Faktor gespeichert statt als Zahl. Was gewinnt
+man dadurch?
 
-```{r}
-#| label: skalen-r
-# Beispiel-Datensatz: Mitarbeiterbefragung
-umfrage <- data.frame(
-  id             = 1:8,
-  abteilung      = c("IT", "HR", "IT", "Verkauf", "HR", "IT", "Verkauf", "HR"),
-  zufriedenheit  = c(4, 2, 5, 3, 1, 4, 5, 3),
-  gehalt         = c(85000, 62000, 91000, 58000, 64000, 78000, 55000, 67000),
-  temperatur_c   = c(22.1, 21.5, 23.0, 20.8, 21.9, 22.4, 19.5, 21.0)
-)
+- [x] Die Ordnung ist im Datentyp hinterlegt, und unzulässige Rechnungen
+      scheitern ~ Richtig. Vergleiche und Median funktionieren, ein Mittelwert
+      wirft eine Warnung. Die inhaltliche Entscheidung ist damit einmal
+      festgehalten statt bei jeder Auswertung neu zu erinnern.
+- [ ] Die Rechnungen werden genauer ~ An der Genauigkeit ändert sich nichts.
+- [ ] Man spart Speicherplatz ~ Bei vielen Wiederholungen stimmt das sogar, ist
+      aber nicht der Punkt.
+:::
 
-# --- Nominal: Abteilung als Faktor ---
-umfrage$abteilung <- factor(umfrage$abteilung)
-str(umfrage$abteilung)  # Factor w/ 3 levels
-table(umfrage$abteilung)
+::: {.quiz}
+Für welche Variable gibt es keine Speicherform, die vor unzulässigen Aussagen
+schützt?
 
-# --- Ordinal: Zufriedenheit als geordneter Faktor ---
-umfrage$zufriedenheit_ord <- ordered(umfrage$zufriedenheit,
-                                      levels = 1:5,
-                                      labels = c("sehr unzufrieden",
-                                                  "unzufrieden",
-                                                  "neutral",
-                                                  "zufrieden",
-                                                  "sehr zufrieden"))
-str(umfrage$zufriedenheit_ord)
-median(umfrage$zufriedenheit)  # erlaubt: Median
-# mean() wäre rechnerisch möglich, aber inhaltlich fragwürdig
-
-# --- Verhältnis: Gehalt ---
-mean(umfrage$gehalt)
-sd(umfrage$gehalt)
-# Aussage "doppelt so viel" ist hier sinnvoll
-
-# --- Intervall: Temperatur in °C ---
-mean(umfrage$temperatur_c)
-diff(range(umfrage$temperatur_c))  # Spannweite: sinnvoll
-# Aber: "doppelt so warm" ist bei °C nicht zulässig
-```
-
-**Typischer Fehler:** Eine numerisch codierte Variable (z. B. PLZ) wird ohne
-Faktor-Konvertierung direkt in einer Regression verwendet — R rechnet dann
-mit den Zahlen, als wären sie metrisch.
-
-```{r}
-#| label: fehler-plz-r
-# Falsch: PLZ als Zahl belassen
-plz <- c(3000, 8000, 6000, 3000, 8000)
-mean(plz)  # 5600 — sinnlos
-
-# Richtig: PLZ als Faktor
-plz_f <- factor(plz)
-table(plz_f)
-```
-
-### Python
-
-In Python steuert `pd.Categorical` den Umgang mit kategorischen Daten. Das
-Argument `ordered=True` markiert ordinale Variablen.
-
-```{python}
-#| label: skalen-py
-umfrage = pd.DataFrame({
-    "id":            range(1, 9),
-    "abteilung":     ["IT", "HR", "IT", "Verkauf", "HR", "IT", "Verkauf", "HR"],
-    "zufriedenheit": [4, 2, 5, 3, 1, 4, 5, 3],
-    "gehalt":        [85000, 62000, 91000, 58000, 64000, 78000, 55000, 67000],
-    "temperatur_c":  [22.1, 21.5, 23.0, 20.8, 21.9, 22.4, 19.5, 21.0],
-})
-
-# --- Nominal: Abteilung ---
-umfrage["abteilung"] = pd.Categorical(umfrage["abteilung"])
-print(umfrage["abteilung"].dtype)
-print(umfrage["abteilung"].value_counts())
-
-# --- Ordinal: Zufriedenheit ---
-stufen = ["sehr unzufrieden", "unzufrieden", "neutral",
-          "zufrieden", "sehr zufrieden"]
-umfrage["zufriedenheit_ord"] = pd.Categorical(
-    [stufen[v - 1] for v in umfrage["zufriedenheit"]],
-    categories=stufen,
-    ordered=True,
-)
-print(umfrage["zufriedenheit_ord"].dtype)
-print(umfrage["zufriedenheit"].median())  # Median: erlaubt
-
-# --- Verhältnis: Gehalt ---
-print(f"Mittelwert Gehalt: {umfrage['gehalt'].mean():,.0f}")
-print(f"Std.abw. Gehalt:   {umfrage['gehalt'].std():,.0f}")
-
-# --- Intervall: Temperatur ---
-print(f"Mittelwert Temp: {umfrage['temperatur_c'].mean():.1f} °C")
-print(f"Spannweite:      {umfrage['temperatur_c'].max() - umfrage['temperatur_c'].min():.1f} °C")
-```
-
-**Typischer Fehler:** PLZ als `int64` belassen und in ein Modell geben.
-
-```{python}
-#| label: fehler-plz-py
-plz = pd.Series([3000, 8000, 6000, 3000, 8000])
-print(f"mean(PLZ) = {plz.mean():.0f}")  # 5600 — sinnlos
-
-plz_cat = pd.Categorical(plz)
-print(plz_cat.value_counts())  # Häufigkeiten — sinnvoll
-```
-
-### Entscheidungshilfe
-
-So bestimmst du das Skalenniveau einer Variable — drei Fragen reichen:
-
-```
-1. Gibt es eine natürliche Rangfolge?
-   NEIN → nominal
-   JA   → weiter
-
-2. Sind die Abstände zwischen den Stufen gleich und interpretierbar?
-   NEIN → ordinal
-   JA   → weiter
-
-3. Gibt es einen absoluten Nullpunkt (0 = nichts vorhanden)?
-   NEIN → intervall
-   JA   → verhältnis
-```
-
-**Praxistipp:** Im Zweifel lieber ein Niveau tiefer einordnen. Wer eine
-ordinale Variable fälschlich als metrisch behandelt, riskiert falsche
-Schlüsse. Wer sie konservativ als ordinal behandelt, verliert höchstens
-etwas Testschärfe.
+- [x] Temperatur in Grad Celsius ~ Richtig. Intervall- und Verhältnisskala sehen
+      für jedes Programm identisch aus — beide sind einfach Zahlen. Dass "doppelt
+      so warm" unzulässig ist, weiss nur der Mensch.
+- [ ] Abteilung ~ Als Faktor gespeichert, scheitern Vergleiche und Mittelwerte.
+- [ ] Zufriedenheitsstufe ~ Als geordneter Faktor gespeichert, sind Vergleiche
+      erlaubt und der Mittelwert wirft eine Warnung.
 :::
 
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics (frei verfügbar)](https://www.openintro.org/book/os/)
+- [Verfahren wählen: die Entscheidungsbäume](../verfahren-waehlen.qmd)
 - Jesussek, M. & Volk-Jesussek, H. (2025). *Statistik leichtgemacht*. 6. Auflage. numiqo.
