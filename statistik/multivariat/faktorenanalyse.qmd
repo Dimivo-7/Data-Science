@@ -13,27 +13,41 @@ order: 30
 #| include: false
 library(psych)
 
-set.seed(2026)
-
 # Neun Fragebogenitems, erzeugt aus zwei latenten Faktoren plus Eigenanteil.
-n <- 400
-service <- rnorm(n)     # Zufriedenheit mit der Betreuung
-anlage <- rnorm(n)      # Zufriedenheit mit Geraeten und Raeumen
+# Die Zufallszahlen stammen aus einem einfachen Kongruenzgenerator, damit R und
+# Python exakt dieselben Daten sehen.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
 
-item <- function(faktor, ladung, rauschen = 1) {
-  round(3 + ladung * faktor + rnorm(n, 0, rauschen), 2)
+normalwerte <- function(saat, anzahl) qnorm(lehmer(saat, anzahl))
+
+n <- 400
+roh <- matrix(normalwerte(2027, n * 11), nrow = 11, byrow = TRUE)
+service <- roh[1, ]   # Zufriedenheit mit der Betreuung
+anlage <- roh[2, ]    # Zufriedenheit mit Geraeten und Raeumen
+extra <- roh[3, ]     # etwas Eigenes, das keiner der Faktoren erklaert
+
+item <- function(faktor, ladung, zeile) {
+  round(3 + ladung * faktor + 0.6 * roh[zeile, ], 2)
 }
 
 fragebogen <- data.frame(
-  freundlich   = item(service, 0.85),
-  beratung     = item(service, 0.80),
-  erreichbar   = item(service, 0.70),
-  hilfsbereit  = item(service, 0.75),
-  geraete      = item(anlage, 0.85),
-  sauberkeit   = item(anlage, 0.75),
-  garderobe    = item(anlage, 0.70),
-  platzangebot = item(anlage, 0.65),
-  parkplatz    = item(rnorm(n), 0.30)          # laedt auf keinen Faktor
+  freundlich   = item(service, 0.85, 4),
+  beratung     = item(service, 0.80, 5),
+  erreichbar   = item(service, 0.70, 6),
+  hilfsbereit  = item(service, 0.75, 7),
+  geraete      = item(anlage, 0.85, 8),
+  sauberkeit   = item(anlage, 0.75, 9),
+  garderobe    = item(anlage, 0.70, 10),
+  platzangebot = item(anlage, 0.65, 11),
+  parkplatz    = round(3 + 0.60 * extra + 0.6 * normalwerte(9973, n), 2)
 )
 ```
 
@@ -42,27 +56,46 @@ fragebogen <- data.frame(
 #| include: false
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
 from factor_analyzer import FactorAnalyzer
 
-rng = np.random.default_rng(2026)
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl):
+    return stats.norm.ppf(lehmer(saat, anzahl))
+
 
 n = 400
-service = rng.normal(size=n)
-anlage = rng.normal(size=n)
+roh = normalwerte(2027, n * 11).reshape(11, n)
+service, anlage, extra = roh[0], roh[1], roh[2]
 
-def item(faktor, ladung, rauschen=1.0):
-    return (3 + ladung * faktor + rng.normal(0, rauschen, n)).round(2)
+
+def item(faktor, ladung, zeile):
+    return np.round(3 + ladung * faktor + 0.6 * roh[zeile], 2)
+
 
 fragebogen = pd.DataFrame({
-    "freundlich": item(service, 0.85),
-    "beratung": item(service, 0.80),
-    "erreichbar": item(service, 0.70),
-    "hilfsbereit": item(service, 0.75),
-    "geraete": item(anlage, 0.85),
-    "sauberkeit": item(anlage, 0.75),
-    "garderobe": item(anlage, 0.70),
-    "platzangebot": item(anlage, 0.65),
-    "parkplatz": item(rng.normal(size=n), 0.30),
+    "freundlich": item(service, 0.85, 3),
+    "beratung": item(service, 0.80, 4),
+    "erreichbar": item(service, 0.70, 5),
+    "hilfsbereit": item(service, 0.75, 6),
+    "geraete": item(anlage, 0.85, 7),
+    "sauberkeit": item(anlage, 0.75, 8),
+    "garderobe": item(anlage, 0.70, 9),
+    "platzangebot": item(anlage, 0.65, 10),
+    "parkplatz": np.round(3 + 0.60 * extra + 0.6 * normalwerte(9973, n), 2),
 })
 ```
 
@@ -130,6 +163,13 @@ einem Faktor hoch lädt. Orthogonale Rotation, etwa Varimax, hält die Faktoren
 unkorreliert; oblique Rotation, etwa Oblimin, erlaubt Korrelation zwischen ihnen.
 Bei inhaltlich verwandten Dimensionen ist oblique die realistischere Annahme.
 
+::: {.note-box}
+**Reihenfolge und Vorzeichen der Faktoren sind beliebig.** Welcher Faktor als
+erster ausgegeben wird und ob seine Ladungen positiv oder negativ sind, ist eine
+Eigenschaft des Rechenverfahrens, keine des Fragebogens. Ein Faktor wird deshalb
+nie über seine Nummer benannt, sondern über die Items, die auf ihm laden.
+:::
+
 ## Voraussetzungen und ihre Prüfung
 
 | Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
@@ -140,83 +180,6 @@ Bei inhaltlich verwandten Dimensionen ist oblique die realistischere Annahme.
 | Metrisch oder annähernd metrisch | Korrelationen sind sinnvoll interpretierbar | Skalenniveau, Verteilung der Items | Ladungen verzerrt | polychorische Korrelationen |
 | Lineare Zusammenhänge | Ladungen beschreiben lineare Wirkung | Streudiagramme | Struktur wird verfehlt | Transformation |
 | Keine extremen Ausreisser | Korrelationen nicht von Einzelfällen getrieben | Ausreisserdiagnostik | Faktoren richten sich auf Ausreisser aus | Ursachen prüfen |
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: voraussetzungen-fa-r
-round(cor(fragebogen), 2)
-
-# Eignung der Korrelationsmatrix
-KMO(fragebogen)$MSA                                    # gesamtes KMO-Mass
-cortest.bartlett(cor(fragebogen), n = nrow(fragebogen))$p.value
-```
-
-## Python
-
-```{python}
-#| label: voraussetzungen-fa-py
-from factor_analyzer.factor_analyzer import (calculate_kmo,
-                                            calculate_bartlett_sphericity)
-
-print(fragebogen.corr().round(2))
-print("KMO gesamt:", round(calculate_kmo(fragebogen)[1], 3))
-chi2, p = calculate_bartlett_sphericity(fragebogen)
-print("Bartlett p:", f"{p:.3g}")
-```
-
-:::
-
-Die Korrelationsmatrix zeigt zwei Blöcke: die vier Service-Items untereinander
-und die vier Anlage-Items untereinander. Das Item zum Parkplatz korreliert mit
-nichts.
-
-Das KMO-Mass beurteilt, ob die Matrix überhaupt für eine Faktorenanalyse taugt;
-Werte über 0.7 gelten als gut, unter 0.5 als unbrauchbar. Der Bartlett-Test prüft,
-ob die Matrix von der Einheitsmatrix abweicht, also ob es Korrelationen gibt.
-Beide sind Eingangsprüfungen: Sie sagen, ob man anfangen darf, nicht ob das
-Ergebnis gut ist.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-fa-r
-efa <- fa(fragebogen, nfactors = 2, rotate = "oblimin", fm = "ml")
-
-print(efa$loadings, cutoff = 0.3)
-round(data.frame(kommunalitaet = efa$communality,
-                 eigenanteil = efa$uniquenesses), 3)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-fa-py
-efa = FactorAnalyzer(n_factors=2, rotation="oblimin", method="ml").fit(fragebogen)
-
-ladungen = pd.DataFrame(efa.loadings_, index=fragebogen.columns,
-                        columns=["F1", "F2"]).round(3)
-print(ladungen.where(ladungen.abs() >= 0.3, ""))
-
-print(pd.DataFrame({
-    "kommunalitaet": efa.get_communalities().round(3),
-    "eigenanteil": (1 - efa.get_communalities()).round(3),
-}, index=fragebogen.columns))
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 400
-Beobachtungen, neun Items, davon vier aus einem Faktor Betreuung, vier aus einem
-Faktor Anlage und eines ohne Bezug. Die Ladungen unterhalb von 0.3 werden
-ausgeblendet, weil die Ladungsmatrix dadurch lesbar wird; das ist eine
-Darstellungsentscheidung, keine inhaltliche.
 
 ## Output lesen
 
@@ -247,199 +210,8 @@ Python, `FactorAnalyzer`:
 | kein Abschneiden der Anzeige | Filterung selbst vornehmen | in R über `cutoff =` |
 
 Ein Unterschied in der Vorgabe: R verwendet in `fa()` standardmässig Oblimin,
-Python ohne Angabe keine Rotation. Ohne Rotation ist die Ladungsmatrix fast immer
-unlesbar, deshalb gehört sie ausdrücklich gesetzt.
-
-## Ergebnisse interpretieren
-
-### Szenario A: klare Zweifaktorenstruktur
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-a-fa-r
-#| fig-cap: "Eigenwerte der Korrelationsmatrix. Zwei Werte über eins, danach der Knick."
-#| fig-height: 3.2
-eigen_werte <- eigen(cor(fragebogen))$values
-
-plot(eigen_werte, type = "b", pch = 16, xlab = "Faktor", ylab = "Eigenwert",
-     main = "Screeplot")
-abline(h = 1, lty = 2)
-
-round(efa$Vaccounted[c("SS loadings", "Proportion Var", "Cumulative Var"), ], 3)
-round(efa$score.cor, 3)
-```
-
-## Python
-
-```{python}
-#| label: fig-szenario-a-fa-py
-#| fig-cap: "Dieselben Eigenwerte in Python."
-#| fig-height: 3.2
-import matplotlib.pyplot as plt
-
-eigenwerte = FactorAnalyzer(n_factors=9, rotation=None).fit(fragebogen) \
-    .get_eigenvalues()[0]
-
-fig, ax = plt.subplots(figsize=(7, 3.2))
-ax.plot(range(1, 10), eigenwerte, "o-", color="#2166ac")
-ax.axhline(1, linestyle="--", color="black", linewidth=0.8)
-ax.set_xlabel("Faktor")
-ax.set_ylabel("Eigenwert")
-plt.show()
-
-varianz = pd.DataFrame(efa.get_factor_variance(),
-                       index=["SS loadings", "Anteil", "kumuliert"],
-                       columns=["F1", "F2"])
-print(varianz.round(3))
-print("Faktorkorrelation:", np.round(efa.phi_, 3).tolist())
-```
-
-:::
-
-Der Screeplot zeigt zwei Eigenwerte über eins und danach einen Knick; das
-bestätigt die Wahl von zwei Faktoren. Die Ladungsmatrix aus der Durchführung
-zeigt Einfachstruktur: Die vier Service-Items laden hoch auf den einen Faktor,
-die vier Anlage-Items auf den anderen, und kein Item lädt auf beiden bedeutsam.
-
-Die Deutung kommt nicht aus der Rechnung, sondern von den Items: Der erste Faktor
-lässt sich als Zufriedenheit mit der Betreuung lesen, der zweite als
-Zufriedenheit mit der Anlage. Ein Faktor ohne inhaltliche Beschreibung ist kein
-Ergebnis, sondern eine Zahlenspalte.
-
-Die Faktorkorrelation ist bei obliquer Rotation Teil des Ergebnisses. Ist sie
-nahe null, hätte auch eine orthogonale Rotation genügt; ist sie hoch, sind die
-beiden Dimensionen inhaltlich verwandt.
-
-Ergebnissatz: Eine explorative Faktorenanalyse (Maximum-Likelihood, Oblimin,
-n = 400, KMO wie ausgegeben) ergibt zwei Faktoren, die zusammen den ausgegebenen
-Anteil der Varianz erklären. Faktor 1 lädt auf die vier Items zur Betreuung,
-Faktor 2 auf die vier Items zur Anlage; die Faktoren korrelieren mit dem
-ausgegebenen Wert.
-
-### Szenario B: ein Item, das nicht passt
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-fa-r
-round(sort(efa$communality), 3)
-round(efa$loadings["parkplatz", ], 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-fa-py
-kommunalitaeten = pd.Series(efa.get_communalities(), index=fragebogen.columns)
-print(kommunalitaeten.sort_values().round(3))
-print(ladungen.loc["parkplatz"])
-```
-
-:::
-
-Das Item zum Parkplatz hat die niedrigste Kommunalität und lädt auf keinen
-Faktor bedeutsam. Aussage: Es misst etwas Eigenes, das mit den beiden gefundenen
-Dimensionen nichts zu tun hat. Das ist ein Befund, kein Fehler.
-
-Das Vorgehen: Ein solches Item wird entfernt, wenn es zur Fragestellung nicht
-beiträgt, oder es bleibt als eigenständige Frage stehen, die nicht in eine Skala
-eingeht. Was nicht geht, ist es einer Skala zuzuschlagen, weil dort noch Platz
-ist; die Skala misst dann etwas Vermischtes.
-
-Ergebnissatz: Das Item zum Parkplatz lädt auf keinen Faktor (Kommunalität wie
-ausgegeben) und wird nicht in eine Skala aufgenommen.
-
-### Szenario C: Fallstrick zu viele Faktoren
-
-Wer die Faktorenzahl zu hoch wählt, bekommt Faktoren, die von einzelnen Items
-getragen werden, und im Extremfall eine unmögliche Lösung.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-c-fa-r
-#| warning: true
-efa_zu_viele <- fa(fragebogen, nfactors = 4, rotate = "oblimin", fm = "ml")
-
-print(efa_zu_viele$loadings, cutoff = 0.3)
-round(efa_zu_viele$Vaccounted["Proportion Var", ], 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-fa-py
-efa_viele = FactorAnalyzer(n_factors=4, rotation="oblimin", method="ml").fit(fragebogen)
-
-viele = pd.DataFrame(efa_viele.loadings_, index=fragebogen.columns,
-                     columns=[f"F{i+1}" for i in range(4)]).round(3)
-print(viele.where(viele.abs() >= 0.3, ""))
-print("Anteil je Faktor:", np.round(efa_viele.get_factor_variance()[1], 3).tolist())
-```
-
-:::
-
-Erkennbar ist das Problem an drei Zeichen: Die zusätzlichen Faktoren erklären nur
-wenige Prozent der Varianz, sie tragen jeweils nur ein oder zwei Items, und die
-Ladungen der ursprünglich klaren Struktur werden unschärfer. Häufig kommt eine
-Warnung zu einem Heywood-Fall dazu, also einer Kommunalität über eins, was
-inhaltlich unmöglich ist und ein überparametrisiertes Modell anzeigt.
-
-Das Vorgehen: Die Faktorenzahl wird nicht nach der erklärten Varianz gewählt, denn
-die steigt mit jedem Faktor. Herangezogen werden der Screeplot, die
-Parallelanalyse, die inhaltliche Deutbarkeit und die Forderung, dass jeder Faktor
-mindestens drei Items mit bedeutsamer Ladung trägt.
-
-Ergebnissatz: Eine Lösung mit vier Faktoren erklärt kaum mehr Varianz, erzeugt
-aber zwei Faktoren mit weniger als drei tragenden Items; berichtet wird die
-Zweifaktorenlösung.
-
-### Weiteres Szenario: die Faktorenzahl bestimmen
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-parallel-fa-r
-#| fig-cap: "Parallelanalyse: verglichen wird mit Eigenwerten aus Zufallsdaten gleicher Grösse."
-#| fig-height: 3.4
-parallel <- fa.parallel(fragebogen, fa = "fa", plot = TRUE, n.iter = 20)
-parallel$nfact
-```
-
-## Python
-
-```{python}
-#| label: szenario-d-fa-py
-# Parallelanalyse von Hand: Eigenwerte der Daten gegen Zufallsdaten
-echt = FactorAnalyzer(n_factors=9, rotation=None).fit(fragebogen).get_eigenvalues()[0]
-
-zufall = np.zeros((20, 9))
-for i in range(20):
-    daten = pd.DataFrame(rng.normal(size=fragebogen.shape))
-    zufall[i] = FactorAnalyzer(n_factors=9, rotation=None).fit(daten).get_eigenvalues()[0]
-
-vergleich = pd.DataFrame({"daten": echt.round(2),
-                          "zufall_mittel": zufall.mean(axis=0).round(2)},
-                         index=[f"F{i+1}" for i in range(9)])
-print(vergleich)
-print("Faktoren über dem Zufallsniveau:", int((echt > zufall.mean(axis=0)).sum()))
-```
-
-:::
-
-Die Parallelanalyse vergleicht die Eigenwerte der Daten mit denen aus
-Zufallsdaten derselben Grösse. Behalten werden die Faktoren, deren Eigenwert über
-dem Zufallsniveau liegt. Sie ist dem blossen Eigenwertkriterium überlegen, weil
-sie die Anzahl Items und Beobachtungen berücksichtigt.
+Python ohne Angabe keine Rotation. Ohne Rotation ist die Ladungsmatrix fast
+immer unlesbar, deshalb gehört sie ausdrücklich gesetzt.
 
 ## Interpretationsfallen
 
@@ -477,16 +249,6 @@ Genannt werden: Schätzmethode und Rotation, n, Eignungsmasse, Kriterium für di
 Faktorenzahl, die Ladungsmatrix mit Schwelle, Kommunalitäten, erklärte Varianz,
 Faktorkorrelationen und die inhaltliche Deutung jedes Faktors.
 
-Beispiel für eine Ergebnistabelle:
-
-| Item | Faktor 1 | Faktor 2 | Kommunalität |
-|---|---|---|---|
-| freundlich | | | |
-| beratung | | | |
-| geraete | | | |
-| sauberkeit | | | |
-| erklärte Varianz | | | |
-
 ## Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt der explorativen Faktorenanalyse |
@@ -496,6 +258,430 @@ Beispiel für eine Ergebnistabelle:
 | Strukturgleichungsmodelle | Faktoren sollen zusätzlich untereinander in Beziehung stehen |
 | [k-Means](k-means.qmd) | Gruppen von Personen statt Dimensionen von Items |
 | Item-Response-Modelle | binäre oder stark abgestufte Items, Fähigkeitsmessung |
+
+## Beispiele
+
+Alle vier Beispiele arbeiten mit demselben konstruierten Datensatz: 400
+Befragte, neun Items eines Zufriedenheitsfragebogens. Vier Items entstehen aus
+einem gemeinsamen Faktor Betreuung, vier aus einem Faktor Anlage, und ein Item
+zum Parkplatz misst etwas Eigenes. Weil die Wahrheit hier bekannt ist, lässt sich
+prüfen, ob das Verfahren sie findet.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Darf man überhaupt anfangen?
+
+#### Frage und Datenlage
+
+Bevor Faktoren geschätzt werden, ist zu klären, ob die Korrelationsmatrix
+überhaupt gemeinsame Struktur enthält. Ohne Korrelationen gibt es nichts
+zusammenzufassen, und das Verfahren liefert trotzdem eine Lösung.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-fa-r
+round(cor(fragebogen), 2)
+
+KMO(fragebogen)$MSA                                    # gesamtes KMO-Mass
+round(KMO(fragebogen)$MSAi, 3)                         # je Item
+cortest.bartlett(cor(fragebogen), n = nrow(fragebogen))
+```
+
+##### Python
+
+```{python}
+#| label: b1-fa-py
+from factor_analyzer.factor_analyzer import (calculate_kmo,
+                                             calculate_bartlett_sphericity)
+
+print(fragebogen.corr().round(2))
+
+kmo_item, kmo_gesamt = calculate_kmo(fragebogen)
+print("KMO gesamt:", round(kmo_gesamt, 3))
+print(pd.Series(kmo_item, index=fragebogen.columns).round(3))
+
+chi2, p = calculate_bartlett_sphericity(fragebogen)
+print(f"Bartlett: chi2 = {chi2:.1f}, p = {p:.3g}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Korrelationsmatrix | zwei Blöcke um 0.6 bis 0.7, sonst nahe null | Die vier Betreuungsitems korrelieren untereinander, die vier Anlageitems untereinander, quer darüber praktisch nicht. Genau diese Blockstruktur ist das, was die Faktorenanalyse in Faktoren übersetzt. |
+| Parkplatz-Zeile | alle Werte unter 0.1 | Das Item hängt mit keinem anderen zusammen. |
+| KMO gesamt | **0.824** | Über 0.8 gilt als gut. Das Mass fragt, wie stark die Korrelation zweier Items durch die übrigen erklärt wird; hohe Werte heissen, dass gemeinsame Struktur vorliegt. |
+| KMO je Item | für `parkplatz` deutlich am tiefsten | Unter 0.5 wäre ein Grund, das Item vor der Analyse zu entfernen. |
+| Bartlett $\chi^2$ | rund 1601 bei 36 Freiheitsgraden | Prüft die Nullhypothese, die Korrelationsmatrix sei die Einheitsmatrix. |
+| Bartlett p | praktisch null | Die Matrix weicht von der Einheitsmatrix ab. |
+
+::: {.note-box}
+Beide Kennzahlen sind **Eingangsprüfungen**. Sie sagen, ob man anfangen darf,
+nicht ob das Ergebnis gut wird. Der Bartlett-Test ist dabei der schwächere von
+beiden: Bei n = 400 wird er praktisch immer signifikant, auch bei schwachen
+Korrelationen. Aussagekräftig ist vor allem, wenn er **nicht** signifikant wird,
+denn dann ist die Analyse sinnlos.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Korrelationsmatrix eignet sich für eine Faktorenanalyse (KMO = 0.82,
+> Bartlett-Test auf Sphärizität $\chi^2$(36) = 1601, p < .001, n = 400).
+
+### Beispiel 2: Die Zweifaktorenlösung
+
+#### Frage und Datenlage
+
+Zwei Faktoren werden geschätzt und oblique rotiert. Die Frage: Findet das
+Verfahren die Struktur, die den Daten zugrunde liegt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-fa-r
+efa <- fa(fragebogen, nfactors = 2, rotate = "oblimin", fm = "ml")
+
+print(efa$loadings, cutoff = 0.3)
+round(data.frame(kommunalitaet = efa$communality,
+                 eigenanteil = efa$uniquenesses), 3)
+round(efa$Phi, 3)
+```
+
+##### Python
+
+```{python}
+#| label: b2-fa-py
+efa = FactorAnalyzer(n_factors=2, rotation="oblimin",
+                     method="ml").fit(fragebogen)
+
+ladungen = pd.DataFrame(efa.loadings_, index=fragebogen.columns,
+                        columns=["F1", "F2"]).round(3)
+print(ladungen.where(ladungen.abs() >= 0.3, ""))
+
+print(pd.DataFrame({
+    "kommunalitaet": efa.get_communalities().round(3),
+    "eigenanteil": efa.get_uniquenesses().round(3),
+}, index=fragebogen.columns))
+
+print(pd.DataFrame(efa.get_factor_variance(),
+                   index=["SS loadings", "Anteil", "kumuliert"],
+                   columns=["F1", "F2"]).round(3))
+print("Faktorkorrelation:", np.round(efa.phi_[0, 1], 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die Ladungsmatrix (Python-Werte, gerundet; die Ladungen unter 0.3 sind in der
+Anzeige ausgeblendet, das ist eine Darstellungsentscheidung):
+
+| Item | Faktor mit den Betreuungsitems | Faktor mit den Anlageitems | Kommunalität |
+|---|---|---|---|
+| freundlich | **0.833** | 0.003 | 0.693 |
+| beratung | **0.834** | -0.040 | 0.697 |
+| erreichbar | **0.802** | 0.053 | 0.646 |
+| hilfsbereit | **0.790** | -0.013 | 0.625 |
+| geraete | 0.004 | **0.795** | 0.632 |
+| sauberkeit | 0.025 | **0.819** | 0.672 |
+| garderobe | 0.000 | **0.752** | 0.566 |
+| platzangebot | -0.038 | **0.749** | 0.563 |
+| parkplatz | 0.052 | 0.004 | **0.003** |
+
+| Grösse | Wert hier | Bedeutung |
+|---|---|---|
+| Ladung, etwa 0.833 | Zusammenhang von Item und Faktor | Bei standardisierten Items ist sie die Korrelation zwischen Item und Faktor. Quadriert ergibt sie den erklärten Varianzanteil: $0.833^2 \approx 0.69$. |
+| Nebenladungen | alle unter 0.06 | **Einfachstruktur**: Jedes Item lädt auf genau einem Faktor. Das ist der Idealfall, den die Rotation anstrebt. |
+| Kommunalität | 0.56 bis 0.70 | Der von beiden Faktoren erklärte Varianzanteil eines Items. Hier ist es die quadrierte Hauptladung, weil die Nebenladung fast null ist. |
+| Eigenanteil | eins minus Kommunalität | Bei `freundlich` bleiben 0.307 unerklärt: Messfehler plus alles, was nur dieses Item misst. |
+| `SS loadings` | 2.661 und 2.435 | Summe der quadrierten Ladungen je Faktor, also sein Beitrag in Varianzeinheiten. Bei neun Items entspricht die Gesamtvarianz dem Wert 9. |
+| Anteil | 0.296 und 0.271 | 2.661 / 9 = 0.296. Zusammen erklären die beiden Faktoren **56.6 Prozent** der Gesamtvarianz. |
+| Faktorkorrelation | **-0.099** | Bei obliquer Rotation Teil des Ergebnisses. Nahe null heisst: Die beiden Dimensionen sind unabhängig, eine orthogonale Rotation hätte hier genauso gut gepasst. |
+
+::: {.note-box}
+Das Vorzeichen der Faktorkorrelation ist so wenig aussagekräftig wie das
+Vorzeichen einer Ladungsspalte: Kehrt man einen Faktor um, kehrt sich auch die
+Korrelation um. Interessant ist allein ihr Betrag.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Rechnung hat die eingebaute Struktur gefunden. Die **Deutung** kommt aber
+nicht aus der Rechnung, sondern aus den Items: Der eine Faktor bündelt
+freundlich, beratung, erreichbar und hilfsbereit und lässt sich als
+Zufriedenheit mit der Betreuung lesen; der andere bündelt geraete, sauberkeit,
+garderobe und platzangebot und steht für die Zufriedenheit mit der Anlage.
+
+Ein Faktor ohne inhaltliche Beschreibung ist kein Ergebnis, sondern eine
+Zahlenspalte.
+
+> Eine explorative Faktorenanalyse (Maximum-Likelihood-Schätzung,
+> Oblimin-Rotation, n = 400, KMO = 0.82) ergibt zwei Faktoren, die zusammen 56.6
+> Prozent der Varianz erklären. Der erste Faktor lädt hoch auf die vier Items zur
+> Betreuung (Ladungen 0.79 bis 0.83) und wird als Zufriedenheit mit der Betreuung
+> gelesen, der zweite auf die vier Items zur Anlage (0.75 bis 0.82) als
+> Zufriedenheit mit der Anlage. Die Faktoren korrelieren zu -0.10.
+
+### Beispiel 3: Ein Item, das nicht passt
+
+#### Frage und Datenlage
+
+Ein Fragebogen enthält fast immer Items, die nicht zur gefundenen Struktur
+gehören. Woran erkennt man sie, und was macht man mit ihnen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-fa-r
+round(sort(efa$communality), 3)
+round(efa$loadings["parkplatz", ], 3)
+
+# Was passiert, wenn das Item entfernt wird?
+ohne <- fa(fragebogen[, names(fragebogen) != "parkplatz"],
+           nfactors = 2, rotate = "oblimin", fm = "ml")
+round(ohne$Vaccounted["Proportion Var", ], 3)
+```
+
+##### Python
+
+```{python}
+#| label: b3-fa-py
+kommunalitaeten = pd.Series(efa.get_communalities(), index=fragebogen.columns)
+print(kommunalitaeten.sort_values().round(3))
+print(ladungen.loc["parkplatz"])
+
+ohne = FactorAnalyzer(n_factors=2, rotation="oblimin", method="ml") \
+    .fit(fragebogen.drop(columns="parkplatz"))
+print("Anteil je Faktor ohne parkplatz:",
+      np.round(ohne.get_factor_variance()[1], 3).tolist())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Kommunalität `parkplatz` | **0.003** | Die beiden Faktoren erklären 0.3 Prozent seiner Varianz. Praktisch nichts. |
+| nächsthöhere Kommunalität | 0.563 (`platzangebot`) | Der Abstand ist der eigentliche Befund: Das Item fällt nicht knapp durch, es gehört gar nicht dazu. |
+| Ladungen `parkplatz` | 0.052 und 0.004 | Weit unter jeder üblichen Schwelle von 0.3 oder 0.4. |
+| Anteile ohne das Item | steigen gegenüber 0.296 / 0.271 | **Kein inhaltlicher Gewinn.** Die Anteile beziehen sich auf acht statt neun Items, also auf eine kleinere Gesamtvarianz. Wer nach dem Entfernen eines Items eine höhere erklärte Varianz meldet, meldet einen Rechenartefakt. |
+
+#### Interpretation und Ergebnissatz
+
+Das Item misst etwas Eigenes, das mit den beiden gefundenen Dimensionen nichts
+zu tun hat. **Das ist ein Befund, kein Fehler** — die Zufriedenheit mit dem
+Parkplatz kann für die Befragten durchaus wichtig sein, sie ist nur keine
+Ausprägung von Betreuung oder Anlage.
+
+Drei Wege sind vertretbar, einer nicht:
+
+| Vorgehen | Wann angemessen |
+|---|---|
+| Item entfernen | Es trägt zur Fragestellung nichts bei. |
+| Als Einzelfrage stehen lassen | Es ist inhaltlich wichtig, geht aber in keine Skala ein. |
+| Weitere Items zum Thema ergänzen | Es gibt eine dritte Dimension, für die bisher nur ein Item vorliegt. |
+| **Einer bestehenden Skala zuschlagen** | **Nie.** Die Skala misst danach etwas Vermischtes, und ihre Zuverlässigkeit sinkt. |
+
+> Das Item zum Parkplatz lädt auf keinen der beiden Faktoren (Ladungen 0.05 und
+> 0.00, Kommunalität 0.003) und geht in keine Skala ein.
+
+### Beispiel 4: Wie viele Faktoren?
+
+#### Frage und Datenlage
+
+Die Faktorenzahl ist die wichtigste Entscheidung der ganzen Analyse, und sie
+wird nicht von der Rechnung getroffen. Drei Kriterien werden verglichen —
+inklusive eines Falls, in dem das bekannteste davon in die Irre führt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-fa-r
+#| fig-cap: "Beispiel 4: Eigenwerte der Korrelationsmatrix mit der Schwelle bei eins."
+#| fig-height: 3.4
+eigen_werte <- eigen(cor(fragebogen))$values
+round(eigen_werte, 3)
+
+par(mar = c(4, 4, 3, 1))
+plot(eigen_werte, type = "b", pch = 16, xlab = "Faktor", ylab = "Eigenwert",
+     main = "Screeplot")
+abline(h = 1, lty = 2)
+
+# Parallelanalyse: Vergleich mit Eigenwerten aus Zufallsdaten gleicher Groesse
+parallel <- fa.parallel(fragebogen, fa = "fa", plot = FALSE, n.iter = 20)
+parallel$nfact
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-fa-py
+#| fig-cap: "Beispiel 4: dieselben Eigenwerte in Python."
+#| fig-height: 3.4
+eigenwerte = FactorAnalyzer(n_factors=9, rotation=None) \
+    .fit(fragebogen).get_eigenvalues()[0]
+print(eigenwerte.round(3))
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+achse.plot(range(1, 10), eigenwerte, "o-", color="#2166ac")
+achse.axhline(1, linestyle="--", color="black", linewidth=0.8)
+achse.set_xlabel("Faktor")
+achse.set_ylabel("Eigenwert")
+achse.set_title("Screeplot")
+plt.tight_layout()
+plt.show()
+
+# Parallelanalyse von Hand
+zufall = np.zeros((20, 9))
+for i in range(20):
+    daten = pd.DataFrame(normalwerte(100 + i, 9 * n).reshape(n, 9))
+    zufall[i] = FactorAnalyzer(n_factors=9,
+                               rotation=None).fit(daten).get_eigenvalues()[0]
+
+vergleich = pd.DataFrame({"daten": eigenwerte.round(3),
+                          "zufall_mittel": zufall.mean(axis=0).round(3)},
+                         index=[f"F{i + 1}" for i in range(9)])
+print(vergleich)
+print("über dem Zufallsniveau:", int((eigenwerte > zufall.mean(axis=0)).sum()))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die neun Eigenwerte der Korrelationsmatrix:
+
+| Rang | 1 | 2 | **3** | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|
+| Eigenwert | 3.179 | 2.641 | **1.007** | 0.479 | 0.399 | 0.360 | 0.339 | 0.319 | 0.277 |
+
+| Kriterium | Was es hier sagt | Bewertung |
+|---|---|---|
+| **Kaiser** (Eigenwert > 1) | 3.179, 2.641 und 1.007 liegen über eins → **drei** Faktoren | Die Antwort ist falsch. Der dritte Eigenwert stammt vom Parkplatz-Item, das mit nichts korreliert: Ein völlig isoliertes Item hat immer einen Eigenwert nahe eins. Kaiser zählt es als Faktor, obwohl es nur eine Variable trägt. |
+| **Screeplot** | Der Knick liegt nach dem zweiten Wert; von 2.641 auf 1.007 und dann auf 0.479 | Zwei Faktoren. Der Knick ist deutlich, aber die Ablesung bleibt Augenmass. |
+| **Parallelanalyse** | Zufallsdaten derselben Grösse liefern Eigenwerte um eins herum; nur die ersten beiden echten Werte liegen klar darüber | **Zwei Faktoren**, und dies ist die verlässlichste der drei Auskünfte. |
+
+::: {.note-box}
+Das Kaiser-Kriterium ist verbreitet und die schwächste der drei Regeln. Die
+Schwelle von eins bedeutet nur "der Faktor erklärt mehr als eine einzelne
+Variable" — und genau diese Schwelle erreicht ein isoliertes Item von selbst,
+ohne irgendetwas zu bündeln. Die **Parallelanalyse** vergleicht dagegen mit dem,
+was reiner Zufall bei dieser Anzahl Items und Beobachtungen hervorbringt, und
+berücksichtigt damit die Grösse des Datensatzes.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Faktorenzahl wurde über eine Parallelanalyse bestimmt (20 Ziehungen); zwei
+> Faktoren liegen über dem Zufallsniveau. Das Kaiser-Kriterium legt drei Faktoren
+> nahe, der dritte Eigenwert (1.007) stammt jedoch von einem Item ohne
+> Korrelation zu den übrigen und trägt keinen deutbaren Faktor.
+
+### Beispiel 5: Zu viele Faktoren
+
+#### Frage und Datenlage
+
+Wer der erklärten Varianz folgt, wählt zu viele Faktoren, denn sie steigt mit
+jedem zusätzlichen. Was dabei herauskommt, zeigt eine Lösung mit vier Faktoren
+auf denselben Daten.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-fa-r
+#| warning: true
+efa_zu_viele <- fa(fragebogen, nfactors = 4, rotate = "oblimin", fm = "ml")
+
+print(efa_zu_viele$loadings, cutoff = 0.3)
+round(efa_zu_viele$Vaccounted["Proportion Var", ], 3)
+round(sort(efa_zu_viele$communality, decreasing = TRUE), 3)
+```
+
+##### Python
+
+```{python}
+#| label: b5-fa-py
+efa_viele = FactorAnalyzer(n_factors=4, rotation="oblimin",
+                           method="ml").fit(fragebogen)
+
+viele = pd.DataFrame(efa_viele.loadings_, index=fragebogen.columns,
+                     columns=[f"F{i + 1}" for i in range(4)]).round(3)
+print(viele.where(viele.abs() >= 0.3, ""))
+print("Anteil je Faktor:",
+      np.round(efa_viele.get_factor_variance()[1], 3).tolist())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die vier Ladungsspalten (Python-Werte):
+
+| Item | F1 | F2 | F3 | F4 |
+|---|---|---|---|---|
+| freundlich | **0.845** | 0.078 | -0.040 | -0.097 |
+| beratung | **0.830** | -0.052 | 0.006 | 0.006 |
+| erreichbar | **0.799** | 0.044 | -0.041 | 0.100 |
+| hilfsbereit | **0.787** | -0.089 | 0.077 | 0.009 |
+| geraete | -0.008 | **0.611** | 0.098 | **0.338** |
+| sauberkeit | 0.026 | **0.643** | 0.188 | 0.023 |
+| garderobe | -0.004 | 0.014 | **0.990** | -0.009 |
+| platzangebot | -0.021 | **0.862** | -0.026 | -0.089 |
+| parkplatz | 0.036 | -0.102 | -0.011 | 0.256 |
+
+Anteil je Faktor: 0.296, 0.173, 0.115, 0.023.
+
+Drei Warnzeichen, alle in diesen Zahlen sichtbar:
+
+| Zeichen | Beleg hier |
+|---|---|
+| **Faktoren mit zu wenig Items** | F3 wird von einem einzigen Item getragen (`garderobe`, 0.990), F4 von keinem einzigen mit einer Ladung über 0.4. Ein Faktor braucht mindestens drei tragende Items. |
+| **Winzige Varianzanteile** | F4 erklärt 2.3 Prozent. Der Zuwachs an erklärter Varianz ist nicht null, aber bedeutungslos. |
+| **Die klare Struktur zerfällt** | Der Anlage-Faktor ist auf F2, F3 und F4 verteilt: `garderobe` ist herausgebrochen, `geraete` lädt zusätzlich mit 0.338 auf F4. In der Zweifaktorenlösung lagen alle vier sauber beieinander. |
+
+Eine Ladung von 0.990 bei einer Kommunalität nahe eins ist zudem die Vorstufe
+eines **Heywood-Falls**: Steigt die geschätzte Kommunalität über eins, ist sie
+inhaltlich unmöglich, und die Software warnt. R meldet das als `Heywood case`;
+`psych::fa()` gibt in solchen Lagen zusätzlich Hinweise auf eine
+"ultra-Heywood"-Lösung aus.
+
+#### Interpretation und Ergebnissatz
+
+Die Faktorenzahl wird nicht nach der erklärten Varianz gewählt. Herangezogen
+werden Parallelanalyse, Screeplot, die inhaltliche Deutbarkeit und die Forderung,
+dass jeder Faktor mindestens drei Items mit bedeutsamer Ladung trägt. Alle vier
+sprechen hier für zwei Faktoren.
+
+> Eine Lösung mit vier Faktoren erklärt zusammen 60.7 statt 56.6 Prozent der Varianz,
+> erzeugt dabei aber zwei Faktoren mit weniger als drei tragenden Items und eine
+> Ladung von 0.99 als Vorstufe eines Heywood-Falls. Berichtet wird die
+> Zweifaktorenlösung.
+
+::::
 
 ## Verständnisfragen
 
@@ -512,15 +698,29 @@ Wann ist die Faktorenanalyse der Hauptkomponentenanalyse vorzuziehen?
 :::
 
 ::: {.quiz}
-Ein Item hat eine Kommunalität von 0.12. Was heisst das?
+Ein Item hat eine Kommunalität von 0.003. Was heisst das?
 
-- [x] Die Faktoren erklären nur 12 Prozent seiner Varianz; es passt nicht zur
-      Struktur ~ Richtig. Das Item misst etwas Eigenes. Es wird entfernt oder als
-      Einzelfrage geführt, aber keiner Skala zugeschlagen.
+- [x] Die Faktoren erklären praktisch nichts von seiner Varianz; es passt nicht
+      zur Struktur ~ Richtig. Das Item misst etwas Eigenes. Es wird entfernt oder
+      als Einzelfrage geführt, aber keiner Skala zugeschlagen.
 - [ ] Das Item ist unzuverlässig gemessen ~ Möglich, aber die Kommunalität
       unterscheidet Messfehler nicht von inhaltlicher Eigenständigkeit.
 - [ ] Es lädt auf allen Faktoren gleich stark ~ Das wäre eine hohe
       Kommunalität bei schlechter Einfachstruktur.
+:::
+
+::: {.quiz}
+Der dritte Eigenwert beträgt 1.007. Das Kaiser-Kriterium spricht damit für drei
+Faktoren. Was ist davon zu halten?
+
+- [x] Wenig; der Wert stammt von einem Item, das mit keinem anderen korreliert ~
+      Richtig. Ein isoliertes Item erreicht einen Eigenwert nahe eins von selbst,
+      ohne etwas zu bündeln. Die Parallelanalyse erkennt das und bleibt bei zwei
+      Faktoren.
+- [ ] Drei Faktoren sind zu schätzen, das Kriterium ist eindeutig ~ Die
+      Eindeutigkeit der Schwelle sagt nichts über ihre Eignung.
+- [ ] Der Wert ist ein Rechenfehler ~ Er ist korrekt, nur seine Deutung als
+      Faktor ist falsch.
 :::
 
 ::: {.quiz}
@@ -530,8 +730,8 @@ sie deshalb besser?
 - [ ] Ja, mehr erklärte Varianz ist besser ~ Sie steigt mit jedem zusätzlichen
       Faktor, ganz unabhängig davon, ob er etwas bedeutet.
 - [x] Nein, entscheidend sind Deutbarkeit und tragende Items je Faktor ~ Richtig.
-      Ein Faktor mit einem oder zwei Items ist kein Faktor. Herangezogen werden
-      Screeplot, Parallelanalyse und die inhaltliche Beschreibbarkeit.
+      Ein Faktor mit einem einzigen Item ist kein Faktor. Herangezogen werden
+      Parallelanalyse, Screeplot und die inhaltliche Beschreibbarkeit.
 - [ ] Das entscheidet der Bartlett-Test ~ Der prüft nur, ob überhaupt
       Korrelationen vorliegen.
 :::
