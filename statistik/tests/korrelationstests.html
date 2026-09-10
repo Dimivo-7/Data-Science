@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Pearson, Spearman und Kendall als Test mit Intervall und p-Wert.">
+<meta name="description" content="Pearson, Spearman und Kendall: Zusammenhang prüfen und richtig deuten.">
 
 <title>Korrelationstests – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-465920036d67acc459edb9c5a85eb638.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -80,6 +118,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -339,7 +406,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" tabindex="0" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-topic="Programmierung" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." tabindex="0">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +454,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -410,7 +477,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." tabindex="0">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -510,7 +577,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" tabindex="0" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-topic="Werkzeuge" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." tabindex="0">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -560,7 +627,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." tabindex="0">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -601,19 +668,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" tabindex="0" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-topic="Statistik" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." tabindex="0">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." tabindex="0">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -631,13 +698,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik">Normalverteilung</span> und <span class="glossary-term" tabindex="0" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." tabindex="0">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." tabindex="0">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -654,7 +721,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -672,7 +739,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik">Power</span> und Stichprobenumfang</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -701,19 +768,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -725,7 +792,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" tabindex="0" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." tabindex="0">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1099,12 +1166,11 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#wann-diese-methode-wann-nicht" id="toc-wann-diese-methode-wann-nicht" class="nav-link" data-scroll-target="#wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</a></li>
   <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a></li>
   <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
-  <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
   <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
@@ -1118,7 +1184,6 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-title">
 <h1 class="title">Korrelationstests</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Korrelation</div>
     <div class="quarto-category">Hypothesentests</div>
     <div class="quarto-category">Interpretation</div>
     <div class="quarto-category">R</div>
@@ -1128,7 +1193,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Pearson, Spearman und Kendall als Test mit Intervall und p-Wert.
+    Pearson, Spearman und Kendall: Zusammenhang prüfen und richtig deuten.
   </div>
 </div>
 
@@ -1146,43 +1211,1166 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
+<p>Alle Beispiele rechnen mit fest eingetragenen Zahlen, damit R und Python dieselben Daten sehen und jeder Wert im Text nachprüfbar ist.</p>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Hängen zwei Grössen zusammen, wie eng, und lässt sich der Zusammenhang vom Zufall unterscheiden?</td>
+</tr>
+<tr class="even">
+<td>Zielvariable</td>
+<td>keine; beide Grössen sind gleichberechtigt</td>
+</tr>
+<tr class="odd">
+<td>Eingang</td>
+<td>zwei metrische Grössen für Pearson, mindestens ordinale für Spearman und Kendall</td>
+</tr>
+<tr class="even">
+<td>Was die Methode liefert</td>
+<td>Korrelationskoeffizient mit Konfidenzintervall, Teststatistik, Freiheitsgrade, p-Wert</td>
+</tr>
+<tr class="odd">
+<td>R-Funktion</td>
+<td><code>cor.test(x, y)</code>, mit <code>method = "spearman"</code> oder <code>"kendall"</code></td>
+</tr>
+<tr class="even">
+<td>Python-Funktion</td>
+<td><code>pg.corr(x, y, method="pearson")</code>, alternativ <code>stats.pearsonr()</code> und <code>stats.spearmanr()</code></td>
+</tr>
+<tr class="odd">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/grundlagen/korrelation.html">Korrelation</a>, <a href="../../statistik/regression/einfache-lineare-regression.html">einfache lineare Regression</a></td>
+</tr>
+</tbody>
+</table>
+<p>Die <a href="../../statistik/grundlagen/korrelation.html">Konzeptseite zur Korrelation</a> erklärt, was ein Korrelationskoeffizient misst. Diese Seite behandelt den Test dazu und die Wahl zwischen den drei Verfahren.</p>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Typische Fragestellungen: Hängt der Absatz mit der Temperatur zusammen, die Bearbeitungszeit mit der Auftragsgrösse, die Zufriedenheit mit der Wartezeit? Gemeinsam ist ihnen, dass <strong>keine</strong> der beiden Grössen als Zielgrösse ausgezeichnet ist. Sobald eine vorhergesagt werden soll, ist die <a href="../../statistik/regression/einfache-lineare-regression.html">Regression</a> das passende Verfahren.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Eine Grösse soll aus der anderen vorhergesagt werden</td>
+<td><a href="../../statistik/regression/einfache-lineare-regression.html">einfache lineare Regression</a></td>
+</tr>
+<tr class="even">
+<td>Weitere Grössen sollen konstant gehalten werden</td>
+<td><a href="../../statistik/regression/multiple-lineare-regression.html">multiple lineare Regression</a> oder Partialkorrelation</td>
+</tr>
+<tr class="odd">
+<td>Beide Merkmale sind kategorial</td>
+<td><a href="../../statistik/tests/chi-quadrat-tests.html">Chi-Quadrat-Tests</a>, Cramérs V</td>
+</tr>
+<tr class="even">
+<td>Ein Merkmal ist zweistufig, das andere metrisch</td>
+<td><a href="../../statistik/tests/t-test-zwei-stichproben.html">t-Test für zwei Stichproben</a></td>
+</tr>
+<tr class="odd">
+<td>Der Zusammenhang ist nicht monoton, etwa U-förmig</td>
+<td>keiner der drei Koeffizienten; das Streudiagramm ansehen und ein Modell wählen</td>
+</tr>
+<tr class="even">
+<td>Es geht um Übereinstimmung, nicht um Zusammenhang</td>
+<td>Bland-Altman-Verfahren oder Intraklassenkorrelation</td>
+</tr>
+</tbody>
+</table>
+<p>Die letzte Zeile trennt zwei Dinge, die oft verwechselt werden. Zwei Messgeräte, von denen eines konstant 5 Einheiten zu viel anzeigt, korrelieren perfekt und stimmen trotzdem nie überein.</p>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
+<p>Alle drei Koeffizienten messen Zusammenhang auf einer Skala von -1 bis +1, aber sie messen Verschiedenes.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Koeffizient</th>
+<th>Was er misst</th>
+<th>Grundlage</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Pearson <span class="math inline">\(r\)</span></td>
+<td>Stärke des <strong>linearen</strong> Zusammenhangs</td>
+<td>Produkte der standardisierten Abweichungen vom Mittelwert</td>
+</tr>
+<tr class="even">
+<td>Spearman <span class="math inline">\(\rho\)</span></td>
+<td>Stärke des <strong>monotonen</strong> Zusammenhangs</td>
+<td>Pearson-Korrelation der Ränge</td>
+</tr>
+<tr class="odd">
+<td>Kendall <span class="math inline">\(\tau\)</span></td>
+<td>Anteil gleichgerichteter Paare</td>
+<td>Vergleich aller Paare: Steigen beide Werte gemeinsam?</td>
+</tr>
+</tbody>
+</table>
+<p><span class="math display">\[r = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum (x_i - \bar{x})^2 \sum (y_i - \bar{y})^2}}\]</span></p>
+<p>Getestet wird bei allen dreien dieselbe <span class="glossary-term" data-topic="Statistik" data-def="Annahme, die ein Test zu widerlegen versucht, meist kein Unterschied oder kein Effekt. Sie kann verworfen oder nicht verworfen, aber nie bestätigt werden." tabindex="0">Nullhypothese</span>: In der Grundgesamtheit besteht kein Zusammenhang, der Koeffizient ist null. Für Pearson läuft der Test über</p>
+<p><span class="math display">\[t = r \sqrt{\frac{n-2}{1-r^2}}\]</span></p>
+<p>mit <span class="math inline">\(n-2\)</span> Freiheitsgraden. Daraus folgt eine nützliche Einsicht: Ob ein gegebenes <span class="math inline">\(r\)</span> <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">signifikant</span> wird, hängt allein am Stichprobenumfang. Bei <span class="math inline">\(n = 10\)</span> braucht es <span class="math inline">\(r &gt; 0.63\)</span>, bei <span class="math inline">\(n = 500\)</span> genügt <span class="math inline">\(r &gt; 0.09\)</span>.</p>
+<p>Das <span class="glossary-term" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0">Konfidenzintervall</span> entsteht nicht direkt aus dieser Formel, sondern über die Fisher-z-Transformation, weil die Verteilung von <span class="math inline">\(r\)</span> nahe -1 und +1 stark <span class="glossary-term" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief." tabindex="0">schief</span> ist. Deshalb liegt das Intervall auch nicht symmetrisch um <span class="math inline">\(r\)</span>.</p>
 </section>
 <section id="voraussetzungen-und-ihre-prüfung" class="level2">
 <h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
-</section>
-<section id="durchführung-in-r-und-python" class="level2">
-<h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Voraussetzung</th>
+<th>Gilt für</th>
+<th>Prüfung</th>
+<th>Folge bei Verletzung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Unabhängige Beobachtungspaare</td>
+<td>alle drei</td>
+<td>Erhebungsdesign</td>
+<td>p-Wert wertlos; bei Zeitreihen ist die Voraussetzung fast nie erfüllt</td>
+</tr>
+<tr class="even">
+<td>Linearer Zusammenhang</td>
+<td>Pearson</td>
+<td>Streudiagramm</td>
+<td><span class="math inline">\(r\)</span> unterschätzt einen vorhandenen Zusammenhang, siehe Beispiel 2</td>
+</tr>
+<tr class="odd">
+<td>Monotoner Zusammenhang</td>
+<td>Spearman, Kendall</td>
+<td>Streudiagramm</td>
+<td>bei U-förmigem Verlauf liefern auch sie nahe null</td>
+</tr>
+<tr class="even">
+<td>Metrische Skala</td>
+<td>Pearson</td>
+<td><a href="../../statistik/grundlagen/skalenniveaus.html">Skalenniveau</a></td>
+<td>Mittelwerte sind nicht definiert</td>
+</tr>
+<tr class="odd">
+<td>Annähernd normalverteilte Werte</td>
+<td>Test und Intervall bei Pearson</td>
+<td><a href="../../statistik/wahrscheinlichkeit/qq-plots.html">QQ-Plot</a></td>
+<td>p-Wert und Intervall werden unzuverlässig, besonders bei kleinem n</td>
+</tr>
+<tr class="even">
+<td>Keine einflussreichen Ausreisser</td>
+<td>Pearson stark, Spearman kaum</td>
+<td>Streudiagramm</td>
+<td>ein einzelner Punkt kann <span class="math inline">\(r\)</span> von 0.3 auf 0.96 heben, siehe Beispiel 3</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Das Streudiagramm steht vor jeder Korrelationsrechnung.</strong> Kein Korrelationskoeffizient kann die Form des Zusammenhangs beschreiben, und mehrere völlig verschiedene Punktwolken können denselben Wert liefern.</p>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
-</section>
-<section id="ergebnisse-interpretieren" class="level2">
-<h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<p>R, <code>cor.test()</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Faustregel oder Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>t</code></td>
+<td>Teststatistik bei Pearson</td>
+<td>folgt aus <span class="math inline">\(r\)</span> und <span class="math inline">\(n\)</span>; sie enthält keine zusätzliche Information</td>
+</tr>
+<tr class="even">
+<td><code>df</code></td>
+<td>Freiheitsgrade</td>
+<td><span class="math inline">\(n-2\)</span></td>
+</tr>
+<tr class="odd">
+<td><code>p-value</code></td>
+<td>Wahrscheinlichkeit eines mindestens so grossen Betrags bei fehlendem Zusammenhang</td>
+<td>sagt nichts über die Stärke</td>
+</tr>
+<tr class="even">
+<td><code>95 percent confidence interval</code></td>
+<td>Intervall für den wahren Koeffizienten</td>
+<td>die aussagekräftigste Zeile; sie ist bei kleinem n erschreckend breit</td>
+</tr>
+<tr class="odd">
+<td><code>sample estimates: cor</code></td>
+<td>der Koeffizient selbst</td>
+<td>die Zahl, um die es eigentlich geht</td>
+</tr>
+<tr class="even">
+<td><code>S</code> bei Spearman</td>
+<td>Summe der quadrierten Rangdifferenzen</td>
+<td>nicht direkt deutbar; <span class="math inline">\(\rho\)</span> steht darunter</td>
+</tr>
+<tr class="odd">
+<td><code>T</code> oder <code>z</code> bei Kendall</td>
+<td>Teststatistik</td>
+<td>je nach Variante und Stichprobengrösse</td>
+</tr>
+<tr class="even">
+<td>Warnung <code>Cannot compute exact p-value with ties</code></td>
+<td>Bindungen in den Rängen</td>
+<td>R weicht auf eine Näherung aus; bei Spearman und Kendall häufig</td>
+</tr>
+<tr class="odd">
+<td>kein Konfidenzintervall bei Spearman und Kendall</td>
+<td>fehlt in R</td>
+<td>über Bootstrap zu bekommen; pingouin gibt eines aus</td>
+</tr>
+</tbody>
+</table>
+<p>Python, <code>pg.corr()</code> liefert eine Zeile:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Spalte</th>
+<th>Was sie sagt</th>
+<th>Unterschied zu R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>n</code></td>
+<td>Anzahl vollständiger Paare</td>
+<td>in R nicht ausgegeben</td>
+</tr>
+<tr class="even">
+<td><code>r</code></td>
+<td>Koeffizient</td>
+<td>wie <code>cor</code></td>
+</tr>
+<tr class="odd">
+<td><code>CI95</code></td>
+<td>Konfidenzintervall</td>
+<td>auch für Spearman und Kendall, anders als in R</td>
+</tr>
+<tr class="even">
+<td><code>p-val</code> bzw. <code>p_val</code></td>
+<td>p-Wert</td>
+<td>wie <code>p-value</code></td>
+</tr>
+<tr class="odd">
+<td><code>BF10</code></td>
+<td>Bayes-Faktor bei Pearson</td>
+<td>in R nicht enthalten</td>
+</tr>
+<tr class="even">
+<td><code>power</code></td>
+<td>erreichte Power</td>
+<td>in R nicht enthalten</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong>Korrelation ist keine Kausalität.</strong> Der Satz ist abgegriffen und trotzdem der häufigste Fehler. Eine dritte, nicht erhobene Grösse kann beide treiben.</li>
+<li><strong><span class="math inline">\(r = 0\)</span> heisst nicht “kein Zusammenhang”.</strong> Es heisst “kein linearer Zusammenhang”. Eine perfekte Parabel liefert <span class="math inline">\(r\)</span> nahe null.</li>
+<li><strong><span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">Signifikant</span> heisst nicht stark.</strong> Bei <span class="math inline">\(n = 500\)</span> wird <span class="math inline">\(r = 0.1\)</span> <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">signifikant</span> und erklärt ein Prozent der Streuung.</li>
+<li><strong><span class="math inline">\(r\)</span> ist kein Prozentwert.</strong> Erst <span class="math inline">\(r^2\)</span> ist ein Anteil. Von <span class="math inline">\(r = 0.5\)</span> auf <span class="math inline">\(r = 0.7\)</span> verdoppelt sich der erklärte Anteil beinahe.</li>
+<li><strong>Ausreisser bestimmen <span class="math inline">\(r\)</span>.</strong> Ein einzelner Punkt weit ausserhalb kann eine Korrelation erzeugen oder verschwinden lassen.</li>
+<li><strong>Eingeschränkte Wertebereiche senken <span class="math inline">\(r\)</span>.</strong> Wer nur Werte aus einem schmalen Ausschnitt erhebt, misst eine kleinere Korrelation als in der ganzen Grundgesamtheit vorhanden ist.</li>
+<li><strong>Gemischte Gruppen erzeugen Scheinkorrelationen.</strong> Zwei Teilgruppen ohne internen Zusammenhang ergeben zusammen eine deutliche Korrelation, wenn sie in beiden Grössen verschoben liegen. Deshalb das Streudiagramm.</li>
+<li><strong>Bei Zeitreihen ist die <span class="glossary-term" data-topic="Statistik" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre." tabindex="0">Unabhängigkeit</span> verletzt.</strong> Zwei beliebige steigende Reihen korrelieren hoch, ohne dass ein Zusammenhang besteht.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<p>Vorlage für den Ergebnissatz:</p>
+<blockquote class="blockquote">
+<p>[Grösse 1] und [Grösse 2] hängen zusammen: <span class="math inline">\(r\)</span> = [Wert], 95-Prozent-Konfidenzintervall [unten] bis [oben], t([df]) = [t], p = [p], n = [n]. Der Zusammenhang erklärt [r²] der Streuung.</p>
+</blockquote>
+<p>Genannt werden: das verwendete Verfahren und <strong>warum</strong> es gewählt wurde, der Koeffizient mit <span class="glossary-term" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0">Konfidenzintervall</span>, Teststatistik mit Freiheitsgraden, <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> und n.&nbsp;Dazu gehört die Feststellung, dass das Streudiagramm angesehen wurde, und bei Ausschlüssen die Begründung.</p>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt eines Korrelationstests</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/grundlagen/korrelation.html">Korrelation</a></td>
+<td>die Kennzahl allein genügt, ohne Test</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/regression/einfache-lineare-regression.html">Einfache lineare Regression</a></td>
+<td>eine Gerade mit Steigung in der Einheit der Sache wird gebraucht</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/regression/multiple-lineare-regression.html">Multiple lineare Regression</a></td>
+<td>weitere Einflussgrössen sollen konstant gehalten werden</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/tests/chi-quadrat-tests.html">Chi-Quadrat-Tests</a></td>
+<td>beide Merkmale kategorial</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/tests/nichtparametrische-tests.html">Nichtparametrische Tests</a></td>
+<td>Frage nach Unterschied statt nach Zusammenhang</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p>Bei genau einem Prädiktor sind der Pearson-Korrelationstest und der <span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> der Steigung in der <a href="../../statistik/regression/einfache-lineare-regression.html">einfachen linearen Regression</a> <strong>derselbe Test</strong>: gleiche Teststatistik, gleiche <span class="glossary-term" data-topic="Statistik" data-def="Anzahl der Grössen, die bei gegebenen Randbedingungen noch frei variieren können. Sie bestimmen die Form der Prüfverteilung und damit den p-Wert." tabindex="0">Freiheitsgrade</span>, gleicher <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span>. Sie unterscheiden sich nur darin, was sie zusätzlich ausgeben.</p>
+</div>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">Beispiel 1: Temperatur und Absatz</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Beispiel 2: Monoton, aber gekrümmt</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-3" role="tab" aria-controls="tabset-6-3" aria-selected="false" href="">Beispiel 3: Ein Punkt erzeugt die Korrelation</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-4" role="tab" aria-controls="tabset-6-4" aria-selected="false" href="">Beispiel 4: <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">Signifikant</span> und schwach</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>An zwanzig Tagen wurden die Höchsttemperatur in Grad Celsius und der Absatz von Kaltgetränken in Flaschen erfasst. Die Frage lautet: Hängen die beiden Grössen zusammen, und wie eng?</p>
+<p>Es soll nichts vorhergesagt werden, und keine der beiden Grössen ist ausgezeichnet. Damit ist der Korrelationstest passend und nicht die Regression.</p>
+</section>
+<section id="voraussetzungen-prüfen" class="level4">
+<h4 class="anchored" data-anchor-id="voraussetzungen-prüfen">Voraussetzungen prüfen</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>temperatur <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">12.4</span>, <span class="fl">14.1</span>, <span class="fl">15.3</span>, <span class="fl">16.0</span>, <span class="fl">17.2</span>, <span class="fl">18.5</span>, <span class="fl">19.1</span>, <span class="fl">20.4</span>, <span class="fl">21.3</span>, <span class="fl">22.0</span>,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>                <span class="fl">22.8</span>, <span class="fl">23.5</span>, <span class="fl">24.2</span>, <span class="fl">25.1</span>, <span class="fl">26.3</span>, <span class="fl">27.0</span>, <span class="fl">28.4</span>, <span class="fl">29.2</span>, <span class="fl">30.5</span>, <span class="fl">31.1</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>absatz <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">118</span>, <span class="dv">137</span>, <span class="dv">122</span>, <span class="dv">151</span>, <span class="dv">145</span>, <span class="dv">168</span>, <span class="dv">152</span>, <span class="dv">183</span>, <span class="dv">175</span>, <span class="dv">190</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>            <span class="dv">181</span>, <span class="dv">199</span>, <span class="dv">205</span>, <span class="dv">196</span>, <span class="dv">228</span>, <span class="dv">212</span>, <span class="dv">235</span>, <span class="dv">247</span>, <span class="dv">239</span>, <span class="dv">262</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">1</span>))</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(temperatur, absatz, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"grey30"</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Höchsttemperatur (°C)"</span>, <span class="at">ylab =</span> <span class="st">"Absatz (Flaschen)"</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">lowess</span>(temperatur, absatz), <span class="at">col =</span> <span class="st">"firebrick"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b1-kor-voraussetzungen-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-kor-voraussetzungen-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="korrelationstests_files/figure-html/fig-b1-kor-voraussetzungen-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Beispiel 1: Streudiagramm mit Glättungslinie."><img src="korrelationstests_files/figure-html/fig-b1-kor-voraussetzungen-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-kor-voraussetzungen-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Beispiel 1: Streudiagramm mit Glättungslinie.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> statsmodels.api <span class="im">as</span> sm</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>temperatur <span class="op">=</span> np.array([<span class="fl">12.4</span>, <span class="fl">14.1</span>, <span class="fl">15.3</span>, <span class="fl">16.0</span>, <span class="fl">17.2</span>, <span class="fl">18.5</span>, <span class="fl">19.1</span>, <span class="fl">20.4</span>, <span class="fl">21.3</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>                       <span class="fl">22.0</span>, <span class="fl">22.8</span>, <span class="fl">23.5</span>, <span class="fl">24.2</span>, <span class="fl">25.1</span>, <span class="fl">26.3</span>, <span class="fl">27.0</span>, <span class="fl">28.4</span>, <span class="fl">29.2</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>                       <span class="fl">30.5</span>, <span class="fl">31.1</span>])</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>absatz <span class="op">=</span> np.array([<span class="dv">118</span>, <span class="dv">137</span>, <span class="dv">122</span>, <span class="dv">151</span>, <span class="dv">145</span>, <span class="dv">168</span>, <span class="dv">152</span>, <span class="dv">183</span>, <span class="dv">175</span>, <span class="dv">190</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>                   <span class="dv">181</span>, <span class="dv">199</span>, <span class="dv">205</span>, <span class="dv">196</span>, <span class="dv">228</span>, <span class="dv">212</span>, <span class="dv">235</span>, <span class="dv">247</span>, <span class="dv">239</span>, <span class="dv">262</span>])</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>fig, achse <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.4</span>))</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>achse.scatter(temperatur, absatz, s<span class="op">=</span><span class="dv">18</span>, color<span class="op">=</span><span class="st">"0.3"</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>glatt <span class="op">=</span> sm.nonparametric.lowess(absatz, temperatur)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>achse.plot(glatt[:, <span class="dv">0</span>], glatt[:, <span class="dv">1</span>], color<span class="op">=</span><span class="st">"firebrick"</span>, linewidth<span class="op">=</span><span class="dv">2</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>achse.set_xlabel(<span class="st">"Höchsttemperatur (°C)"</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>achse.set_ylabel(<span class="st">"Absatz (Flaschen)"</span>)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b1-kor-voraussetzungen-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-kor-voraussetzungen-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="korrelationstests_files/figure-html/fig-b1-kor-voraussetzungen-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Beispiel 1: dieselbe Darstellung in Python."><img src="korrelationstests_files/figure-html/fig-b1-kor-voraussetzungen-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-kor-voraussetzungen-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Beispiel 1: dieselbe Darstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>Die Punkte steigen gleichmässig an, die Glättungslinie verläuft praktisch gerade, und es gibt keinen Punkt weit ausserhalb der Wolke. Der Zusammenhang ist linear, damit ist Pearson das passende Verfahren.</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cor.test</span>(temperatur, absatz)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Pearson's product-moment correlation
+
+data:  temperatur and absatz
+t = 19.396, df = 18, p-value = 1.635e-13
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ 0.9413081 0.9910098
+sample estimates:
+      cor 
+0.9769019 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pg.corr(temperatur, absatz).<span class="bu">round</span>(<span class="dv">4</span>).T)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            pearson
+n                20
+r            0.9769
+CI95   [0.94, 0.99]
+p_val           0.0
+BF10      1.855e+10
+power           1.0</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Wert hier</th>
+<th>Bedeutung</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>cor</code> bzw. <code>r</code></td>
+<td>0.977</td>
+<td>Pearson-Korrelation</td>
+<td>Ein sehr enger linearer Zusammenhang. Werte über 0.9 sind in erhobenen Daten selten und meist ein Hinweis darauf, dass beide Grössen von derselben Ursache getrieben werden.</td>
+</tr>
+<tr class="even">
+<td><code>t</code></td>
+<td>19.396</td>
+<td>Teststatistik</td>
+<td>Sie folgt allein aus <span class="math inline">\(r\)</span> und <span class="math inline">\(n\)</span> und enthält keine zusätzliche Information.</td>
+</tr>
+<tr class="odd">
+<td><code>df</code></td>
+<td>18</td>
+<td>Freiheitsgrade</td>
+<td><span class="math inline">\(n-2\)</span>, also 20 minus 2.</td>
+</tr>
+<tr class="even">
+<td><code>p-value</code></td>
+<td>1.6e-13</td>
+<td>Wahrscheinlichkeit eines mindestens so grossen Betrags ohne Zusammenhang</td>
+<td>Praktisch ausgeschlossen.</td>
+</tr>
+<tr class="odd">
+<td><code>95 percent confidence interval</code></td>
+<td>0.941 bis 0.991</td>
+<td>Intervall für den wahren Koeffizienten</td>
+<td>Die aussagekräftigste Zeile. Beachten Sie die Unsymmetrie: von 0.977 sind es 0.036 nach unten und nur 0.014 nach oben. Das liegt an der Fisher-z-Transformation und daran, dass <span class="math inline">\(r\)</span> bei 1 endet.</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(r^2\)</span></td>
+<td>0.954</td>
+<td>Anteil gemeinsamer Streuung</td>
+<td>Rund 95 Prozent der Absatzschwankung gehen mit der Temperatur einher. Diese Zahl steht in keiner der beiden Ausgaben und muss selbst gebildet werden.</td>
+</tr>
+<tr class="odd">
+<td><code>power</code> (nur Python)</td>
+<td>nahe 1</td>
+<td></td>
+<td>Bei diesem Effekt und n = 20 hätte der Test kaum etwas übersehen können.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<p>Der Zusammenhang ist eng, und trotzdem sagt er nichts über Ursachen. Denkbar ist, dass Wärme den Durst treibt; ebenso denkbar ist, dass an warmen Tagen mehr Menschen unterwegs sind und deshalb mehr gekauft wird. Die Korrelation ist symmetrisch und kennt keine Richtung.</p>
+<p>Wer eine Aussage in Flaschen je Grad braucht, ist beim Korrelationstest falsch. Der Koeffizient hat keine Einheit; die Steigung liefert die <a href="../../statistik/regression/einfache-lineare-regression.html">Regression</a>.</p>
+<blockquote class="blockquote">
+<p>Höchsttemperatur und Absatz hängen eng zusammen: <span class="math inline">\(r\)</span> = 0.98, 95-Prozent-Konfidenzintervall 0.94 bis 0.99, t(18) = 19.40, p &lt; 0.001, n = 20. Der Zusammenhang erklärt rund 95 Prozent der gemeinsamen Streuung. Das Streudiagramm zeigt einen linearen Verlauf ohne auffällige Punkte. Über die Richtung der Wirkung lässt sich daraus nichts ableiten.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Fünfzehn Messungen eines Wachstumsvorgangs: Der Wert verdoppelt sich in gleichmässigen Abständen. Der Zusammenhang ist perfekt monoton und deutlich gekrümmt. Das Beispiel zeigt, warum die Wahl zwischen Pearson und <span class="glossary-term" data-topic="Statistik" data-def="Zusammenhangsmass, das auf den Rängen statt den Werten rechnet. Passt für ordinale Merkmale und für monotone, aber nicht lineare Zusammenhänge." tabindex="0">Spearman</span> keine Geschmacksfrage ist.</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>schritt <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">15</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>messwert <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">1.4</span>, <span class="fl">1.9</span>, <span class="fl">2.7</span>, <span class="fl">3.8</span>, <span class="fl">5.3</span>, <span class="fl">7.4</span>, <span class="fl">10.3</span>, <span class="fl">14.4</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>              <span class="fl">20.1</span>, <span class="fl">28.0</span>, <span class="fl">39.1</span>, <span class="fl">54.6</span>, <span class="fl">76.2</span>, <span class="fl">106.3</span>, <span class="fl">148.4</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">1</span>))</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(schritt, messwert, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"grey30"</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Schritt"</span>, <span class="at">ylab =</span> <span class="st">"Messwert"</span>)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="fu">cor.test</span>(schritt, messwert)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Pearson's product-moment correlation
+
+data:  schritt and messwert
+t = 6.1142, df = 13, p-value = 3.695e-05
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ 0.6248274 0.9530902
+sample estimates:
+      cor 
+0.8613825 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cor.test</span>(schritt, messwert, <span class="at">method =</span> <span class="st">"spearman"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Spearman's rank correlation rho
+
+data:  schritt and messwert
+S = 1.2434e-13, p-value &lt; 2.2e-16
+alternative hypothesis: true rho is not equal to 0
+sample estimates:
+rho 
+  1 </code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-b2-kor-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-kor-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="korrelationstests_files/figure-html/fig-b2-kor-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Abbildung&nbsp;3: Beispiel 2: perfekt monoton, aber nicht linear."><img src="korrelationstests_files/figure-html/fig-b2-kor-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-kor-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;3: Beispiel 2: perfekt monoton, aber nicht linear.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>schritt <span class="op">=</span> np.arange(<span class="dv">1</span>, <span class="dv">16</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>messwert <span class="op">=</span> np.array([<span class="fl">1.4</span>, <span class="fl">1.9</span>, <span class="fl">2.7</span>, <span class="fl">3.8</span>, <span class="fl">5.3</span>, <span class="fl">7.4</span>, <span class="fl">10.3</span>, <span class="fl">14.4</span>,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                     <span class="fl">20.1</span>, <span class="fl">28.0</span>, <span class="fl">39.1</span>, <span class="fl">54.6</span>, <span class="fl">76.2</span>, <span class="fl">106.3</span>, <span class="fl">148.4</span>])</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>fig, achse <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.2</span>))</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>achse.scatter(schritt, messwert, s<span class="op">=</span><span class="dv">18</span>, color<span class="op">=</span><span class="st">"0.3"</span>)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>achse.set_xlabel(<span class="st">"Schritt"</span>)</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>achse.set_ylabel(<span class="st">"Messwert"</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b2-kor-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-kor-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="korrelationstests_files/figure-html/fig-b2-kor-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="Abbildung&nbsp;4: Beispiel 2: dieselbe Darstellung in Python."><img src="korrelationstests_files/figure-html/fig-b2-kor-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-kor-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;4: Beispiel 2: dieselbe Darstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> art <span class="kw">in</span> (<span class="st">"pearson"</span>, <span class="st">"spearman"</span>, <span class="st">"kendall"</span>):</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    zeile <span class="op">=</span> pg.corr(schritt, messwert, method<span class="op">=</span>art).<span class="bu">round</span>(<span class="dv">4</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>art<span class="sc">:9s}</span><span class="ss"> r = </span><span class="sc">{</span><span class="bu">float</span>(zeile[<span class="st">'r'</span>].iloc[<span class="dv">0</span>])<span class="sc">:+.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>pearson   r = +0.8614
+spearman  r = +1.0000
+kendall   r = +1.0000</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Koeffizient</th>
+<th>Wert hier</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Pearson <span class="math inline">\(r\)</span></td>
+<td>0.861</td>
+<td>Sieht nach einem starken, aber unvollkommenen Zusammenhang aus. Der Eindruck ist falsch.</td>
+</tr>
+<tr class="even">
+<td>Pearson <span class="math inline">\(r^2\)</span></td>
+<td>0.742</td>
+<td>Es fehlen scheinbar 26 Prozent der Streuung. Tatsächlich fehlt nichts: Was <span class="math inline">\(r\)</span> nicht erfasst, ist die Krümmung, nicht Zufall.</td>
+</tr>
+<tr class="odd">
+<td>Spearman <span class="math inline">\(\rho\)</span></td>
+<td>1.000</td>
+<td>Perfekt. Jeder Schritt liefert einen höheren Wert als der vorige, mehr verlangt ein monotoner Zusammenhang nicht.</td>
+</tr>
+<tr class="even">
+<td>Spearman <code>S</code></td>
+<td>0</td>
+<td>Die Summe der quadrierten Rangdifferenzen. Null bedeutet: Die Rangfolgen sind identisch.</td>
+</tr>
+<tr class="odd">
+<td>Kendall <span class="math inline">\(\tau\)</span></td>
+<td>1.000</td>
+<td>Ebenfalls perfekt. Von allen 105 Paaren steigt keines gegenläufig.</td>
+</tr>
+</tbody>
+</table>
+<p>Der Vergleich macht den Unterschied greifbar. Pearson misst, wie gut die Punkte auf einer <strong>Geraden</strong> liegen; sie tun es nicht, also bleibt <span class="math inline">\(r\)</span> unter 1. <span class="glossary-term" data-topic="Statistik" data-def="Zusammenhangsmass, das auf den Rängen statt den Werten rechnet. Passt für ordinale Merkmale und für monotone, aber nicht lineare Zusammenhänge." tabindex="0">Spearman</span> und Kendall messen, ob die Reihenfolge übereinstimmt; sie tut es vollständig, also erreichen beide den Höchstwert.</p>
+<div class="note-box">
+<p>Hier wäre es falsch, einfach <span class="glossary-term" data-topic="Statistik" data-def="Zusammenhangsmass, das auf den Rängen statt den Werten rechnet. Passt für ordinale Merkmale und für monotone, aber nicht lineare Zusammenhänge." tabindex="0">Spearman</span> zu berichten und zufrieden zu sein. Die interessante Erkenntnis ist die <strong>Form</strong>: Der Vorgang wächst nicht linear, sondern exponentiell. Eine Korrelation von 1.000 verdeckt das eher, als sie es zeigt. Wer die Form braucht, logarithmiert die Zielgrösse und rechnet dann weiter; nach dem Logarithmieren wäre auch Pearsons <span class="math inline">\(r\)</span> praktisch 1.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Zwischen Schritt und Messwert besteht ein perfekt monotoner Zusammenhang (<span class="glossary-term" data-topic="Statistik" data-def="Zusammenhangsmass, das auf den Rängen statt den Werten rechnet. Passt für ordinale Merkmale und für monotone, aber nicht lineare Zusammenhänge." tabindex="0">Spearman</span> <span class="math inline">\(\rho\)</span> = 1.00, n = 15). Pearsons <span class="math inline">\(r\)</span> beträgt 0.86 und unterschätzt den Zusammenhang, weil der Verlauf gekrümmt ist; das Streudiagramm zeigt exponentielles Wachstum. Für die weitere Auswertung wurde der Messwert logarithmiert.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>Neunzehn Betriebe, erfasst sind die durchschnittliche Auftragsgrösse und die Bearbeitungsdauer. Ein zwanzigster Betrieb kommt hinzu, der in beiden Grössen weit ausserhalb liegt.</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>groesse <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">4.1</span>, <span class="fl">5.2</span>, <span class="fl">4.8</span>, <span class="fl">5.5</span>, <span class="fl">4.3</span>, <span class="fl">5.1</span>, <span class="fl">4.6</span>, <span class="fl">5.3</span>, <span class="fl">4.9</span>, <span class="fl">5.0</span>,</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>             <span class="fl">4.4</span>, <span class="fl">5.4</span>, <span class="fl">4.7</span>, <span class="fl">5.2</span>, <span class="fl">4.5</span>, <span class="fl">5.1</span>, <span class="fl">4.8</span>, <span class="fl">5.0</span>, <span class="fl">4.6</span>)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>dauer <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">22</span>, <span class="dv">19</span>, <span class="dv">24</span>, <span class="dv">21</span>, <span class="dv">20</span>, <span class="dv">23</span>, <span class="dv">18</span>, <span class="dv">25</span>, <span class="dv">21</span>, <span class="dv">22</span>,</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>           <span class="dv">19</span>, <span class="dv">24</span>, <span class="dv">20</span>, <span class="dv">23</span>, <span class="dv">21</span>, <span class="dv">19</span>, <span class="dv">25</span>, <span class="dv">20</span>, <span class="dv">22</span>)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>groesse_mit <span class="ot">&lt;-</span> <span class="fu">c</span>(groesse, <span class="fl">12.0</span>)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>dauer_mit <span class="ot">&lt;-</span> <span class="fu">c</span>(dauer, <span class="dv">60</span>)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(groesse, dauer, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"grey30"</span>, <span class="at">main =</span> <span class="st">"ohne den Fall"</span>,</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Auftragsgrösse"</span>, <span class="at">ylab =</span> <span class="st">"Dauer (min)"</span>)</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(groesse_mit, dauer_mit, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"grey30"</span>, <span class="at">main =</span> <span class="st">"mit dem Fall"</span>,</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Auftragsgrösse"</span>, <span class="at">ylab =</span> <span class="st">"Dauer (min)"</span>)</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(<span class="fl">12.0</span>, <span class="dv">60</span>, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>, <span class="at">cex =</span> <span class="fl">1.4</span>)</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="fu">cor.test</span>(groesse, dauer)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Pearson's product-moment correlation
+
+data:  groesse and dauer
+t = 1.255, df = 17, p-value = 0.2265
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ -0.1878627  0.6583304
+sample estimates:
+      cor 
+0.2911939 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cor.test</span>(groesse_mit, dauer_mit)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Pearson's product-moment correlation
+
+data:  groesse_mit and dauer_mit
+t = 14.984, df = 18, p-value = 1.313e-11
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ 0.9049728 0.9852096
+sample estimates:
+      cor 
+0.9621729 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cor.test</span>(groesse_mit, dauer_mit, <span class="at">method =</span> <span class="st">"spearman"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Spearman's rank correlation rho
+
+data:  groesse_mit and dauer_mit
+S = 801.22, p-value = 0.08258
+alternative hypothesis: true rho is not equal to 0
+sample estimates:
+      rho 
+0.3975777 </code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-b3-kor-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b3-kor-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="korrelationstests_files/figure-html/fig-b3-kor-r-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5" title="Abbildung&nbsp;5: Beispiel 3: dieselben 19 Punkte, einmal ohne und einmal mit dem zwanzigsten."><img src="korrelationstests_files/figure-html/fig-b3-kor-r-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b3-kor-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;5: Beispiel 3: dieselben 19 Punkte, einmal ohne und einmal mit dem zwanzigsten.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>groesse <span class="op">=</span> np.array([<span class="fl">4.1</span>, <span class="fl">5.2</span>, <span class="fl">4.8</span>, <span class="fl">5.5</span>, <span class="fl">4.3</span>, <span class="fl">5.1</span>, <span class="fl">4.6</span>, <span class="fl">5.3</span>, <span class="fl">4.9</span>, <span class="fl">5.0</span>,</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>                    <span class="fl">4.4</span>, <span class="fl">5.4</span>, <span class="fl">4.7</span>, <span class="fl">5.2</span>, <span class="fl">4.5</span>, <span class="fl">5.1</span>, <span class="fl">4.8</span>, <span class="fl">5.0</span>, <span class="fl">4.6</span>])</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>dauer <span class="op">=</span> np.array([<span class="dv">22</span>, <span class="dv">19</span>, <span class="dv">24</span>, <span class="dv">21</span>, <span class="dv">20</span>, <span class="dv">23</span>, <span class="dv">18</span>, <span class="dv">25</span>, <span class="dv">21</span>, <span class="dv">22</span>,</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>                  <span class="dv">19</span>, <span class="dv">24</span>, <span class="dv">20</span>, <span class="dv">23</span>, <span class="dv">21</span>, <span class="dv">19</span>, <span class="dv">25</span>, <span class="dv">20</span>, <span class="dv">22</span>])</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>groesse_mit <span class="op">=</span> np.append(groesse, <span class="fl">12.0</span>)</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>dauer_mit <span class="op">=</span> np.append(dauer, <span class="dv">60</span>)</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>fig, achsen <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.2</span>))</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">0</span>].scatter(groesse, dauer, s<span class="op">=</span><span class="dv">18</span>, color<span class="op">=</span><span class="st">"0.3"</span>)</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">0</span>].set_title(<span class="st">"ohne den Fall"</span>)</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">1</span>].scatter(groesse_mit, dauer_mit, s<span class="op">=</span><span class="dv">18</span>, color<span class="op">=</span><span class="st">"0.3"</span>)</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">1</span>].scatter([<span class="fl">12.0</span>], [<span class="dv">60</span>], s<span class="op">=</span><span class="dv">50</span>, color<span class="op">=</span><span class="st">"firebrick"</span>)</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>achsen[<span class="dv">1</span>].set_title(<span class="st">"mit dem Fall"</span>)</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> achse <span class="kw">in</span> achsen:</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>    achse.set_xlabel(<span class="st">"Auftragsgrösse"</span>)</span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>    achse.set_ylabel(<span class="st">"Dauer (min)"</span>)</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b3-kor-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b3-kor-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="korrelationstests_files/figure-html/fig-b3-kor-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6" title="Abbildung&nbsp;6: Beispiel 3: dieselbe Gegenüberstellung in Python."><img src="korrelationstests_files/figure-html/fig-b3-kor-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b3-kor-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;6: Beispiel 3: dieselbe Gegenüberstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"ohne  Pearson :"</span>, pg.corr(groesse, dauer).<span class="bu">round</span>(<span class="dv">4</span>).to_dict(<span class="st">"records"</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>ohne  Pearson : [{'n': 19, 'r': 0.2912, 'CI95': array([-0.19,  0.66]), 'p_val': 0.2265, 'BF10': '0.562', 'power': 0.2319}]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"mit   Pearson :"</span>, pg.corr(groesse_mit, dauer_mit).<span class="bu">round</span>(<span class="dv">4</span>).to_dict(<span class="st">"records"</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>mit   Pearson : [{'n': 20, 'r': 0.9622, 'CI95': array([0.9 , 0.99]), 'p_val': 0.0, 'BF10': '3.773e+08', 'power': 1.0}]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"mit   Spearman:"</span>, pg.corr(groesse_mit, dauer_mit,</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>                                 method<span class="op">=</span><span class="st">"spearman"</span>).<span class="bu">round</span>(<span class="dv">4</span>).to_dict(<span class="st">"records"</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>mit   Spearman: [{'n': 20, 'r': 0.3976, 'CI95': array([-0.05,  0.71]), 'p_val': 0.0826, 'power': 0.4254}]</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kennzahl</th>
+<th>Ohne den Fall (n = 19)</th>
+<th>Mit dem Fall (n = 20)</th>
+<th>Wie das zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Pearson <span class="math inline">\(r\)</span></td>
+<td>0.291</td>
+<td>0.962</td>
+<td>Eine einzige zusätzliche Beobachtung hebt die Korrelation von schwach auf nahezu perfekt.</td>
+</tr>
+<tr class="even">
+<td>Konfidenzintervall</td>
+<td>-0.19 bis 0.66</td>
+<td>0.90 bis 0.99</td>
+<td>Die beiden Intervalle überschneiden sich nicht einmal.</td>
+</tr>
+<tr class="odd">
+<td><code>t</code></td>
+<td>1.255</td>
+<td>14.984</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>p-value</code></td>
+<td>0.226</td>
+<td>1.3e-11</td>
+<td>Aus einem Nullbefund wird ein hochsignifikantes Ergebnis.</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(r^2\)</span></td>
+<td>0.085</td>
+<td>0.926</td>
+<td>Von 8 auf 93 Prozent erklärte Streuung.</td>
+</tr>
+<tr class="even">
+<td>Spearman <span class="math inline">\(\rho\)</span> (mit dem Fall)</td>
+<td></td>
+<td>0.398</td>
+<td>Der Rangkoeffizient bleibt bei 0.40 und ist mit p = 0.08 nicht signifikant. Für ihn ist der Ausreisser einfach der grösste von zwanzig Werten, nicht ein zwanzigfach entfernter.</td>
+</tr>
+</tbody>
+</table>
+<p>Der Grund steckt in der Formel: Pearsons <span class="math inline">\(r\)</span> arbeitet mit Abweichungen vom Mittelwert, und ein Punkt, der in <strong>beiden</strong> Grössen weit aussen liegt, liefert ein riesiges Produkt. Er bestimmt damit den Zähler fast allein. Der Rangkoeffizient sieht nur, dass dieser Betrieb in beiden Reihen den letzten Platz belegt, und das zählt genauso viel wie jeder andere Platz.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<p>Der Punkt wird nicht gelöscht, weil er stört, und er wird nicht behalten, weil er ein schönes Ergebnis liefert. Er wird geprüft:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Befund</th>
+<th>Vorgehen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Erfassungsfehler, etwa Minuten und Stunden vermischt</td>
+<td>ausschliessen, Begründung berichten</td>
+</tr>
+<tr class="even">
+<td>Anderer Betriebstyp, der nicht zur Fragestellung gehört</td>
+<td>ausschliessen, Grundgesamtheit im Bericht enger fassen</td>
+</tr>
+<tr class="odd">
+<td>Gültiger, seltener Fall</td>
+<td>beide Ergebnisse berichten und offenlegen, dass die Aussage an einer Beobachtung hängt</td>
+</tr>
+</tbody>
+</table>
+<p>In jedem Fall gehört ein rangbasierter Koeffizient daneben. Wenn Pearson und <span class="glossary-term" data-topic="Statistik" data-def="Zusammenhangsmass, das auf den Rängen statt den Werten rechnet. Passt für ordinale Merkmale und für monotone, aber nicht lineare Zusammenhänge." tabindex="0">Spearman</span> weit auseinanderliegen, ist das ein Warnsignal, und zwar <span class="glossary-term" data-topic="Statistik" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre." tabindex="0">unabhängig</span> davon, welcher der beiden gerade das gewünschte Ergebnis liefert.</p>
+<blockquote class="blockquote">
+<p>In den 19 vergleichbaren Betrieben besteht kein nachweisbarer Zusammenhang zwischen Auftragsgrösse und Bearbeitungsdauer (<span class="math inline">\(r\)</span> = 0.29, 95-Prozent-Konfidenzintervall -0.19 bis 0.66, t(17) = 1.26, p = 0.23). Ein zwanzigster Betrieb liegt in beiden Grössen weit ausserhalb und hebt <span class="math inline">\(r\)</span> auf 0.96; Spearmans <span class="math inline">\(\rho\)</span> bleibt mit 0.40 unauffällig. Der Fall wurde als andersartiger Betriebstyp ausgeschlossen.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>500 Beobachtungen, ein schwacher, aber echter Zusammenhang. Damit beide Sprachen exakt dieselben Daten sehen, werden sie nicht gezogen, sondern aus Quantilen der <span class="glossary-term" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0">Normalverteilung</span> konstruiert.</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>lauf <span class="ot">&lt;-</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">499</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>grundlage <span class="ot">&lt;-</span> <span class="fu">qnorm</span>(<span class="fu">ppoints</span>(<span class="dv">500</span>))</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>versatz <span class="ot">&lt;-</span> <span class="fu">qnorm</span>(((lauf <span class="sc">*</span> <span class="dv">97</span>) <span class="sc">%%</span> <span class="dv">500</span> <span class="sc">+</span> <span class="fl">0.5</span>) <span class="sc">/</span> <span class="dv">500</span>)</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>merkmal_x <span class="ot">&lt;-</span> <span class="dv">50</span> <span class="sc">+</span> <span class="dv">10</span> <span class="sc">*</span> grundlage</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>merkmal_y <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">+</span> <span class="fl">0.12</span> <span class="sc">*</span> (<span class="dv">10</span> <span class="sc">*</span> grundlage) <span class="sc">+</span> <span class="dv">5</span> <span class="sc">*</span> versatz</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="fu">cor.test</span>(merkmal_x, merkmal_y)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Pearson's product-moment correlation
+
+data:  merkmal_x and merkmal_y
+t = 5.3374, df = 498, p-value = 1.435e-07
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ 0.1479404 0.3139009
+sample estimates:
+      cor 
+0.2326133 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>lauf <span class="op">=</span> np.arange(<span class="dv">500</span>)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>grundlage <span class="op">=</span> stats.norm.ppf((np.arange(<span class="dv">1</span>, <span class="dv">501</span>) <span class="op">-</span> <span class="fl">0.5</span>) <span class="op">/</span> <span class="dv">500</span>)</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>versatz <span class="op">=</span> stats.norm.ppf(((lauf <span class="op">*</span> <span class="dv">97</span>) <span class="op">%</span> <span class="dv">500</span> <span class="op">+</span> <span class="fl">0.5</span>) <span class="op">/</span> <span class="dv">500</span>)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>merkmal_x <span class="op">=</span> <span class="dv">50</span> <span class="op">+</span> <span class="dv">10</span> <span class="op">*</span> grundlage</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>merkmal_y <span class="op">=</span> <span class="dv">100</span> <span class="op">+</span> <span class="fl">0.12</span> <span class="op">*</span> (<span class="dv">10</span> <span class="op">*</span> grundlage) <span class="op">+</span> <span class="dv">5</span> <span class="op">*</span> versatz</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pg.corr(merkmal_x, merkmal_y).<span class="bu">round</span>(<span class="dv">4</span>).T)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            pearson
+n               500
+r            0.2326
+CI95   [0.15, 0.31]
+p_val           0.0
+BF10      5.495e+04
+power        0.9996</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Wert hier</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>cor</code> bzw. <code>r</code></td>
+<td>0.233</td>
+<td>Ein schwacher Zusammenhang.</td>
+</tr>
+<tr class="even">
+<td><code>t</code></td>
+<td>5.337</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>df</code></td>
+<td>498</td>
+<td><span class="math inline">\(n-2\)</span>.</td>
+</tr>
+<tr class="even">
+<td><code>p-value</code></td>
+<td>1.4e-07</td>
+<td>Hochsignifikant.</td>
+</tr>
+<tr class="odd">
+<td><code>95 percent confidence interval</code></td>
+<td>0.15 bis 0.31</td>
+<td>Anders als bei kleinem n ist das Intervall schmal: Der schwache Zusammenhang ist präzise geschätzt.</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(r^2\)</span></td>
+<td>0.054</td>
+<td>Und hier steht die eigentliche Antwort: Gemeinsam erklären die beiden Grössen 5 Prozent der Streuung. 95 Prozent gehen auf anderes zurück.</td>
+</tr>
+</tbody>
+</table>
+<p>Derselbe Koeffizient von 0.233 wäre bei n = 20 mit p = 0.32 ein glatter Nullbefund gewesen. Der <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> misst also nicht die Stärke des Zusammenhangs, sondern wie gut man ihn bei diesem Umfang vom Zufall unterscheiden kann.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<p>Ob 5 Prozent erklärte Streuung viel oder wenig sind, entscheidet die Sache. Für eine Vorhersage im Einzelfall ist es zu wenig; für die Beschreibung eines Zusammenhangs in einer grossen Grundgesamtheit kann es genügen.</p>
+<p>Die brauchbarste Angabe für einen Bericht ist deshalb nicht der <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span>, sondern <span class="math inline">\(r\)</span> mit Intervall und <span class="math inline">\(r^2\)</span>. Sie beantworten die Frage, um die es geht: wie stark, und wie sicher ist diese Angabe?</p>
+<blockquote class="blockquote">
+<p>Zwischen den beiden Merkmalen besteht ein schwacher, aber statistisch nachweisbarer Zusammenhang (<span class="math inline">\(r\)</span> = 0.23, 95-Prozent-Konfidenzintervall 0.15 bis 0.31, t(498) = 5.34, p &lt; 0.001, n = 500). Er erklärt rund 5 Prozent der gemeinsamen Streuung; für Aussagen im Einzelfall ist er zu schwach.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Pearsons <span class="math inline">\(r\)</span> beträgt 0.86, Spearmans <span class="math inline">\(\rho\)</span> beträgt 1.00. Was folgt daraus?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Der Zusammenhang ist perfekt monoton, aber nicht linear
+</div>
+<div class="quiz__erklaerung">
+Richtig. <span class="glossary-term" data-topic="Statistik" data-def="Zusammenhangsmass, das auf den Rängen statt den Werten rechnet. Passt für ordinale Merkmale und für monotone, aber nicht lineare Zusammenhänge." tabindex="0">Spearman</span> misst die Übereinstimmung der Rangfolgen und erreicht 1, wenn jeder Schritt einen höheren Wert liefert. Pearson misst die Nähe zu einer Geraden und bleibt darunter, sobald der Verlauf gekrümmt ist.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Einer der beiden Werte muss falsch sein
+</div>
+<div class="quiz__erklaerung">
+Beide sind korrekt; sie messen Verschiedenes.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Die Daten enthalten Ausreisser
+</div>
+<div class="quiz__erklaerung">
+Ausreisser senken eher <span class="glossary-term" data-topic="Statistik" data-def="Zusammenhangsmass, das auf den Rängen statt den Werten rechnet. Passt für ordinale Merkmale und für monotone, aber nicht lineare Zusammenhänge." tabindex="0">Spearman</span> relativ zu Pearson, nicht umgekehrt.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Datensatz liefert <span class="math inline">\(r\)</span> = 0.29 und p = 0.23. Nach Hinzufügen einer einzigen Beobachtung liefert er <span class="math inline">\(r\)</span> = 0.96 und p &lt; 0.001. Was ist zu tun?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Den Fall prüfen und das Ergebnis mit und ohne ihn berichten
+</div>
+<div class="quiz__erklaerung">
+Richtig. Welche der beiden Zahlen berichtet wird, entscheidet die Klärung der Ursache, nicht das Ergebnis. Wenn die Ursache offenbleibt, gehören beide Werte in den Bericht.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Die Beobachtung entfernen, sie ist offensichtlich fehlerhaft
+</div>
+<div class="quiz__erklaerung">
+Weit aussen liegend heisst nicht fehlerhaft. Ohne Klärung ist das Entfernen eine Manipulation des Ergebnisses.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Das Ergebnis mit allen zwanzig Beobachtungen berichten, mehr Daten sind besser
+</div>
+<div class="quiz__erklaerung">
+Eine Aussage, die vollständig an einer von zwanzig Beobachtungen hängt, ist keine belastbare Aussage.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Bei n = 500 ist <span class="math inline">\(r\)</span> = 0.23 hochsignifikant. Wie stark ist der Zusammenhang?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Schwach: er erklärt rund 5 Prozent der Streuung
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die Stärke liest man an <span class="math inline">\(r\)</span> und <span class="math inline">\(r^2\)</span>, nicht am <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span>. Der <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> sagt nur, dass der Zusammenhang bei diesem Umfang vom Zufall unterscheidbar ist.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Stark, sonst wäre er nicht hochsignifikant
+</div>
+<div class="quiz__erklaerung">
+<span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">Signifikanz</span> hängt an <span class="math inline">\(r\)</span> <strong>und</strong> an n.&nbsp;Bei 500 Beobachtungen genügt bereits <span class="math inline">\(r\)</span> = 0.09.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Mittel, 0.23 liegt zwischen 0 und 0.5
+</div>
+<div class="quiz__erklaerung">
+Die Einordnung über <span class="math inline">\(r\)</span> allein unterschlägt, dass <span class="math inline">\(r\)</span> kein Anteil ist; erst <span class="math inline">\(r^2\)</span> ist einer.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum liegt das <span class="glossary-term" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0">Konfidenzintervall</span> für <span class="math inline">\(r\)</span> = 0.977 nicht symmetrisch um diesen Wert?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Weil <span class="math inline">\(r\)</span> bei 1 endet und die Verteilung dort <span class="glossary-term" data-topic="Statistik" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief." tabindex="0">schief</span> ist
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das Intervall entsteht über die Fisher-z-Transformation, die den Bereich von -1 bis 1 auf die ganze Zahlengerade streckt. Zurückgerechnet ergibt das ein unsymmetrisches Intervall, und zwar umso deutlicher, je näher <span class="math inline">\(r\)</span> an 1 liegt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Weil die Stichprobe zu klein ist
+</div>
+<div class="quiz__erklaerung">
+Die Unsymmetrie bleibt auch bei grossem n, sie wird nur weniger sichtbar, weil das Intervall schrumpft.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Weil ein Rechenfehler vorliegt
+</div>
+<div class="quiz__erklaerung">
+Ein symmetrisches Intervall wäre hier der Fehler, denn es könnte über 1 hinausreichen.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://stat.ethz.ch/R-manual/R-devel/library/stats/html/cor.test.html">R-Dokumentation zu <code>cor.test</code></a></li>
+<li><a href="https://pingouin-stats.org/build/html/generated/pingouin.corr.html">pingouin: corr</a></li>
+<li><a href="https://www.openintro.org/book/os/">OpenIntro Statistics, Kapitel zu Zusammenhängen</a></li>
+</ul>
 
 
 </section>
@@ -1627,11 +2815,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 14:36</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 14:50</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
