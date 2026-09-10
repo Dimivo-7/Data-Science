@@ -1,32 +1,724 @@
 ---
 title: "Klassifikationsgüte"
-description: "Konfusionsmatrix, Sensitivität, ROC, AUC und die Wahl des Schwellenwerts."
-categories: ["Klassifikation", "Modellvalidierung", "Interpretation", "R", "Python"]
+description: "Konfusionsmatrix, Sensitivität, ROC und AUC richtig lesen."
+categories: ["Regression", "Interpretation", "R", "Python"]
 quelle: ["STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 50
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+# Deterministisch konstruierte Daten, damit R und Python exakt dieselben Zahlen
+# sehen. 400 Faelle mit einem Merkmal und einem binaeren Ereignis.
+n <- 400
+lauf <- 0:(n - 1)
+
+richtung <- function(faktor) qnorm(((lauf * faktor) %% n + 0.5) / n)
+gleich   <- function(faktor) ((lauf * faktor) %% n + 0.5) / n
+
+merkmal <- round(50 + 12 * richtung(1), 1)
+p_wahr  <- 1 / (1 + exp(-(-6.0 + 0.12 * merkmal)))
+
+daten <- data.frame(
+  ereignis = as.integer(p_wahr > gleich(137)),
+  merkmal = merkmal
+)
+
+# AUC ohne Zusatzpaket: sie ist die normierte Rangsumme der positiven Faelle.
+auc <- function(wahr, score) {
+  raenge <- rank(score)
+  n1 <- sum(wahr == 1)
+  n0 <- sum(wahr == 0)
+  (sum(raenge[wahr == 1]) - n1 * (n1 + 1) / 2) / (n1 * n0)
+}
+
+guete <- function(wahr, vorhersage) {
+  tp <- sum(vorhersage == 1 & wahr == 1)
+  fp <- sum(vorhersage == 1 & wahr == 0)
+  fn <- sum(vorhersage == 0 & wahr == 1)
+  tn <- sum(vorhersage == 0 & wahr == 0)
+  ppv <- tp / (tp + fp)
+  sens <- tp / (tp + fn)
+  round(c(TP = tp, FP = fp, FN = fn, TN = tn,
+          Genauigkeit = (tp + tn) / length(wahr),
+          Sensitivitaet = sens,
+          Spezifitaet = tn / (tn + fp),
+          PPV = ppv,
+          NPV = tn / (tn + fn),
+          F1 = 2 * ppv * sens / (ppv + sens)), 4)
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.formula.api as smf
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+n = 400
+lauf = np.arange(n)
+
+
+def richtung(faktor):
+    return stats.norm.ppf(((lauf * faktor) % n + 0.5) / n)
+
+
+def gleich(faktor):
+    return ((lauf * faktor) % n + 0.5) / n
+
+
+merkmal = np.round(50 + 12 * richtung(1), 1)
+p_wahr = 1 / (1 + np.exp(-(-6.0 + 0.12 * merkmal)))
+
+daten = pd.DataFrame({
+    "ereignis": (p_wahr > gleich(137)).astype(int),
+    "merkmal": merkmal,
+})
+
+
+def auc(wahr, score):
+    """AUC als normierte Rangsumme der positiven Faelle."""
+    raenge = stats.rankdata(score)
+    wahr = np.asarray(wahr)
+    n1 = int((wahr == 1).sum())
+    n0 = int((wahr == 0).sum())
+    return (raenge[wahr == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0)
+
+
+def guete(wahr, vorhersage):
+    wahr = np.asarray(wahr)
+    vorhersage = np.asarray(vorhersage)
+    tp = int(((vorhersage == 1) & (wahr == 1)).sum())
+    fp = int(((vorhersage == 1) & (wahr == 0)).sum())
+    fn = int(((vorhersage == 0) & (wahr == 1)).sum())
+    tn = int(((vorhersage == 0) & (wahr == 0)).sum())
+    ppv = tp / (tp + fp) if tp + fp else float("nan")
+    sens = tp / (tp + fn) if tp + fn else float("nan")
+    return pd.Series({
+        "TP": tp, "FP": fp, "FN": fn, "TN": tn,
+        "Genauigkeit": (tp + tn) / len(wahr),
+        "Sensitivitaet": sens,
+        "Spezifitaet": tn / (tn + fp) if tn + fp else float("nan"),
+        "PPV": ppv,
+        "NPV": tn / (tn + fn) if tn + fn else float("nan"),
+        "F1": 2 * ppv * sens / (ppv + sens) if ppv + sens else float("nan"),
+    }).round(4)
+```
+
+Alle Beispiele rechnen mit deterministisch konstruierten Daten, damit R und
+Python dieselben Zahlen sehen. Die Hilfsfunktionen `auc()` und `guete()` stehen
+im Setup-Chunk und sind in beiden Sprachen gleich aufgebaut.
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie gut trennt ein Modell zwei Klassen, und wie gut ist es für eine konkrete Entscheidung? |
+| Eingang | vorhergesagte Wahrscheinlichkeiten oder Scores und die tatsächliche Klasse |
+| Was die Bewertung liefert | Konfusionsmatrix, daraus Sensitivität, Spezifität, PPV, NPV, F1; schwellenunabhängig ROC-Kurve und AUC |
+| R-Funktionen | `table()` für die Matrix; AUC über die Rangsumme oder das Paket `pROC` |
+| Python-Funktionen | `sklearn.metrics` mit `confusion_matrix`, `roc_curve`, `roc_auc_score` |
+| Verwandte Methoden | [logistische Regression](logistische-regression.qmd), [Modellauswahl](modellauswahl.qmd) |
 
 ## Wann diese Methode, wann nicht
 
+Immer dann, wenn ein Modell eine binäre Zielgrösse vorhersagt und die
+Vorhersagen zu einer Entscheidung führen sollen. Die Bewertung zerfällt in zwei
+getrennte Fragen, die oft vermischt werden:
+
+| Frage | Womit beantwortet | Hängt von der Schwelle ab? |
+|---|---|---|
+| Wie gut trennt das Modell überhaupt? | ROC-Kurve, AUC | nein |
+| Wie gut ist die Entscheidung bei dieser Schwelle? | Konfusionsmatrix und alles daraus | ja |
+
+Ein Modell mit hoher AUC kann bei einer schlecht gewählten Schwelle
+unbrauchbare Entscheidungen liefern, und umgekehrt sagt eine gute
+Konfusionsmatrix nichts darüber, ob eine andere Schwelle besser wäre.
+
+| Situation | Stattdessen |
+|---|---|
+| Zielgrösse metrisch | Residualstreuung und R², siehe [multiple lineare Regression](multiple-lineare-regression.qmd) |
+| Mehr als zwei Klassen | Konfusionsmatrix je Klasse, makro- oder mikrogemittelte Kennzahlen |
+| Es geht um die Auswahl zwischen Modellen | [Modellauswahl](modellauswahl.qmd), zusätzlich zu diesen Kennzahlen |
+| Die Wahrscheinlichkeiten selbst sollen stimmen | Kalibrierung prüfen, nicht nur die Trennschärfe |
+
 ## Grundidee und Modell
 
-## Voraussetzungen und ihre Prüfung
+Aus einer Schwelle und den vorhergesagten Wahrscheinlichkeiten entstehen vier
+Zahlen:
 
-## Durchführung in R und Python
+| | tatsächlich 1 | tatsächlich 0 |
+|---|---|---|
+| **vorhergesagt 1** | richtig positiv (TP) | falsch positiv (FP) |
+| **vorhergesagt 0** | falsch negativ (FN) | richtig negativ (TN) |
+
+Alle Kennzahlen sind Verhältnisse aus diesen vier Zahlen. Entscheidend ist,
+**in welche Richtung** geteilt wird:
+
+| Kennzahl | Formel | Frage, die sie beantwortet |
+|---|---|---|
+| Genauigkeit | $(TP+TN)/n$ | Wie viele Fälle wurden richtig eingeordnet? |
+| Sensitivität, Recall | $TP/(TP+FN)$ | Von den tatsächlichen Ereignissen: wie viele wurden gefunden? |
+| Spezifität | $TN/(TN+FP)$ | Von den tatsächlichen Nicht-Ereignissen: wie viele wurden richtig durchgelassen? |
+| PPV, Precision | $TP/(TP+FP)$ | Von den Alarmen: wie viele waren echt? |
+| NPV | $TN/(TN+FN)$ | Von den Entwarnungen: wie viele waren richtig? |
+| F1 | harmonisches Mittel aus PPV und Sensitivität | ein Kompromiss zwischen Finden und Treffen |
+
+::: {.note-box}
+**Sensitivität und PPV sehen ähnlich aus und verhalten sich völlig verschieden.**
+Sensitivität teilt durch die tatsächlichen Ereignisse, PPV durch die Alarme. Die
+Sensitivität ist deshalb von der Häufigkeit des Ereignisses unabhängig, der PPV
+nicht. Bei seltenen Ereignissen bricht der PPV ein, obwohl Sensitivität und
+Spezifität unverändert gut bleiben. Das ist der Inhalt von Beispiel 2 und der
+häufigste Fehlschluss in diesem Gebiet.
+:::
+
+Die ROC-Kurve entsteht, indem die Schwelle von 1 bis 0 durchlaufen wird und für
+jede Sensitivität gegen 1 minus Spezifität aufgetragen wird. Die Fläche
+darunter, die AUC, hat eine anschauliche Bedeutung: **Sie ist die
+Wahrscheinlichkeit, dass ein zufällig gewählter positiver Fall einen höheren
+Score bekommt als ein zufällig gewählter negativer.** Bei 0.5 ist das Modell so
+gut wie Münzwurf, bei 1.0 trennt es perfekt.
+
+Daraus folgt auch, wie sich die AUC ohne Zusatzpaket berechnen lässt: Sie ist
+die Mann-Whitney-U-Statistik geteilt durch die Anzahl aller Paarvergleiche,
+siehe [nichtparametrische Tests](../tests/nichtparametrische-tests.qmd).
 
 ## Output lesen
 
-## Ergebnisse interpretieren
+| Kennzahl | Anhaltspunkt | Falle |
+|---|---|---|
+| Genauigkeit | keiner, sie hängt an der Klassenverteilung | Bei 2 Prozent Ereignisanteil erreicht "immer nein" 98 Prozent |
+| Sensitivität | je nach Anwendung | steigt immer, wenn die Schwelle sinkt |
+| Spezifität | je nach Anwendung | steigt immer, wenn die Schwelle steigt |
+| PPV | hängt an der Häufigkeit des Ereignisses | nicht zwischen Studien mit verschiedener Häufigkeit vergleichbar |
+| F1 | für unausgewogene Klassen brauchbarer als Genauigkeit | ignoriert die richtig negativen Fälle vollständig |
+| AUC | 0.5 ist Zufall, 0.7 bis 0.8 brauchbar, über 0.9 sehr gut | sagt nichts über die Kalibrierung und nichts über eine konkrete Schwelle |
 
 ## Interpretationsfallen
 
+- **Genauigkeit ist bei seltenen Ereignissen wertlos.** Sie wird von der
+  häufigen Klasse dominiert.
+- **PPV lässt sich nicht zwischen Anwendungen vergleichen.** Er hängt an der
+  Häufigkeit des Ereignisses, nicht nur an der Güte des Modells.
+- **Eine hohe AUC bedeutet nicht, dass die Wahrscheinlichkeiten stimmen.** Ein
+  Modell kann perfekt trennen und trotzdem durchweg zu hohe Werte ausgeben.
+  Trennschärfe und Kalibrierung sind zwei Eigenschaften.
+- **Sensitivität und Spezifität lassen sich nicht gleichzeitig maximieren.**
+  Jede Schwellenverschiebung tauscht das eine gegen das andere.
+- **An denselben Daten gemessen sind alle Kennzahlen zu gut**, siehe
+  Beispiel 4.
+- **Die Schwelle 0.5 ist eine Konvention.** Sie unterstellt gleich teure
+  Fehler.
+- **F1 ignoriert die richtig negativen Fälle.** Bei Anwendungen, in denen
+  korrekte Entwarnungen zählen, ist er das falsche Mass.
+
 ## Ergebnis berichten
+
+Vorlage:
+
+> Bei einer Schwelle von [Wert] erkennt das Modell [TP] der [TP+FN] Ereignisse
+> (Sensitivität [Wert]) und stuft [FP] der [FP+TN] Nicht-Ereignisse falsch ein
+> (Spezifität [Wert]). Von [TP+FP] Alarmen sind [TP] echt (PPV [Wert]). Die
+> AUC beträgt [Wert], gemessen auf [Trainings- oder Testdaten].
+
+Immer genannt werden: die Schwelle, die absolute Konfusionsmatrix, mindestens
+Sensitivität und PPV, die AUC, und **auf welchen Daten** gemessen wurde. Der
+letzte Punkt fehlt am häufigsten und entwertet die Angabe, wenn er fehlt.
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese zusätzlich |
+|---|---|
+| [Logistische Regression](logistische-regression.qmd) | dort entstehen die Wahrscheinlichkeiten, die hier bewertet werden |
+| [Modellauswahl](modellauswahl.qmd) | die Wahl zwischen Modellen, nicht die Bewertung eines einzelnen |
+| [Chi-Quadrat-Tests](../tests/chi-quadrat-tests.qmd) | die Konfusionsmatrix ist eine Kreuztabelle, aber die Fragestellung ist eine andere |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Die Konfusionsmatrix und was daraus folgt
+
+#### Frage und Datenlage
+
+400 Fälle, davon 200 mit Ereignis. Ein Modell sagt aus einem Merkmal die
+Wahrscheinlichkeit vorher. Bei der üblichen Schwelle von 0.5 entsteht die
+Konfusionsmatrix.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-kl-rechnung-r
+modell <- glm(ereignis ~ merkmal, family = binomial, data = daten)
+score <- predict(modell, type = "response")
+
+vorhersage <- as.integer(score > 0.5)
+table(tatsaechlich = daten$ereignis, vorhergesagt = vorhersage)
+
+guete(daten$ereignis, vorhersage)
+round(auc(daten$ereignis, score), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b1-kl-rechnung-py
+modell = smf.logit("ereignis ~ merkmal", data=daten).fit(disp=0)
+score = modell.predict(daten)
+
+vorhersage = (score > 0.5).astype(int)
+print(pd.crosstab(daten["ereignis"], vorhersage,
+                  rownames=["tatsächlich"], colnames=["vorhergesagt"]))
+print(guete(daten["ereignis"], vorhersage))
+print("AUC =", round(auc(daten["ereignis"], score), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| | vorhergesagt 0 | vorhergesagt 1 |
+|---|---|---|
+| **tatsächlich 0** | 144 (TN) | 56 (FP) |
+| **tatsächlich 1** | 57 (FN) | 143 (TP) |
+
+| Kennzahl | Wert hier | Rechnung | Wie er zu lesen ist |
+|---|---|---|---|
+| Genauigkeit | 0.7175 | (143+144)/400 | Rund 72 Prozent aller Fälle richtig eingeordnet. Hier aussagekräftig, weil beide Klassen gleich häufig sind; in Beispiel 2 ist sie es nicht. |
+| Sensitivität | 0.7150 | 143/200 | Von den 200 tatsächlichen Ereignissen wurden 143 gefunden, 57 übersehen. |
+| Spezifität | 0.7200 | 144/200 | Von den 200 Nicht-Ereignissen wurden 144 richtig durchgelassen, 56 fälschlich alarmiert. |
+| PPV | 0.7186 | 143/199 | Von den 199 Alarmen waren 143 echt. |
+| NPV | 0.7164 | 144/201 | Von den 201 Entwarnungen waren 144 richtig. |
+| F1 | 0.7168 | harmonisches Mittel aus PPV und Sensitivität | Fasst Finden und Treffen zusammen, ignoriert aber die 144 richtigen Entwarnungen. |
+| AUC | 0.8004 | Rangsumme der positiven Fälle | Greift man je einen zufälligen positiven und negativen Fall heraus, hat der positive in 80 Prozent der Fälle den höheren Score. |
+
+Dass hier alle fünf Verhältniszahlen um 0.72 liegen, ist kein Zufall, sondern
+eine Folge der ausgewogenen Klassen: Bei gleich vielen Ereignissen und
+Nicht-Ereignissen fallen Sensitivität und PPV zusammen. Beispiel 2 zeigt, was
+passiert, wenn das nicht so ist.
+
+#### Interpretation und Ergebnissatz
+
+> Bei einer Schwelle von 0.5 erkennt das Modell 143 der 200 Ereignisse
+> (Sensitivität 0.72) und stuft 56 der 200 Nicht-Ereignisse falsch ein
+> (Spezifität 0.72). Von 199 Alarmen sind 143 echt (PPV 0.72). Die AUC beträgt
+> 0.80, gemessen auf den Schätzdaten.
+
+### Beispiel 2: Wenn das Ereignis selten ist
+
+#### Frage und Datenlage
+
+2000 Fälle, davon 40 mit Ereignis, also 2 Prozent. Ein Prüfverfahren erkennt 90
+Prozent der Ereignisse (Sensitivität 0.90) und lässt 90 Prozent der
+Nicht-Ereignisse richtig durch (Spezifität 0.90). Beide Werte gelten
+gemeinhin als gut.
+
+Die Frage lautet: Wenn das Verfahren Alarm schlägt, wie wahrscheinlich ist das
+Ereignis dann tatsächlich?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-kl-rechnung-r
+n2 <- 2000
+lauf2 <- 0:(n2 - 1)
+selten <- as.integer(((lauf2 * 501) %% n2) < 40)     # genau 40 Ereignisse
+
+positiv <- which(selten == 1)
+negativ <- which(selten == 0)
+
+pruefung <- integer(n2)
+pruefung[positiv[1:36]] <- 1                          # 36 von 40 erkannt
+pruefung[negativ[seq(1, length(negativ), by = 10)][1:196]] <- 1
+
+table(tatsaechlich = selten, alarm = pruefung)
+guete(selten, pruefung)
+
+guete(selten, integer(n2))                            # "immer nein"
+```
+
+##### Python
+
+```{python}
+#| label: b2-kl-rechnung-py
+n2 = 2000
+lauf2 = np.arange(n2)
+selten = (((lauf2 * 501) % n2) < 40).astype(int)
+
+positiv = np.where(selten == 1)[0]
+negativ = np.where(selten == 0)[0]
+
+pruefung = np.zeros(n2, dtype=int)
+pruefung[positiv[:36]] = 1
+pruefung[negativ[::10][:196]] = 1
+
+print(pd.crosstab(selten, pruefung,
+                  rownames=["tatsächlich"], colnames=["alarm"]))
+print(guete(selten, pruefung))
+print()
+print(guete(selten, np.zeros(n2, dtype=int)))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| | kein Alarm | Alarm |
+|---|---|---|
+| **kein Ereignis** | 1764 | 196 |
+| **Ereignis** | 4 | 36 |
+
+| Kennzahl | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Sensitivität | 0.900 | Wie versprochen: 36 der 40 Ereignisse gefunden. |
+| Spezifität | 0.900 | Ebenfalls wie versprochen: 1764 der 1960 richtig durchgelassen. |
+| Genauigkeit | 0.900 | Sieht gut aus und ist wertlos, siehe unten. |
+| **PPV** | **0.155** | **Der eigentliche Befund.** Von 232 Alarmen sind nur 36 echt. In 85 Prozent der Fälle ist der Alarm falsch. |
+| NPV | 0.998 | Eine Entwarnung ist dagegen fast immer richtig. |
+| F1 | 0.265 | Bricht mit dem PPV ein, weil er ihn zur Hälfte enthält. |
+| Genauigkeit bei "immer nein" | **0.980** | Wer schlicht nie Alarm schlägt, erreicht 98 Prozent Genauigkeit und damit **mehr** als das Prüfverfahren. |
+
+::: {.note-box}
+**Warum der PPV einbricht, obwohl das Verfahren gut ist.** Die 10 Prozent
+Fehlalarme beziehen sich auf 1960 Nicht-Ereignisse und ergeben 196 falsche
+Alarme. Die 90 Prozent Treffer beziehen sich auf 40 Ereignisse und ergeben 36
+echte. Die falschen Alarme kommen aus einer 49-mal grösseren Grundmenge und
+überwiegen deshalb, obwohl ihre Rate niedriger ist.
+
+Daraus folgt eine Faustregel: **Bei seltenen Ereignissen braucht ein brauchbarer
+PPV eine sehr hohe Spezifität.** Um hier auf einen PPV von 0.5 zu kommen,
+müsste die Spezifität auf 0.982 steigen, also die Fehlalarmrate von 10 auf 1.8
+Prozent fallen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Zwei Konsequenzen für die Praxis. Erstens gehört die Genauigkeit bei
+unausgewogenen Klassen gar nicht erst in den Bericht; sie beschreibt hier nur,
+wie selten das Ereignis ist. Zweitens ist der PPV die Zahl, die für die
+betroffene Person zählt: Nicht "das Verfahren erkennt 90 Prozent", sondern "wenn
+es anschlägt, liegt es in 85 Prozent der Fälle falsch".
+
+Deshalb ist ein PPV auch nicht zwischen Anwendungen übertragbar. Dasselbe
+Verfahren, angewendet auf eine Gruppe mit 20 statt 2 Prozent Ereignisanteil,
+käme auf einen PPV von 0.69.
+
+> Bei einer Häufigkeit von 2 Prozent erkennt das Verfahren 36 der 40 Ereignisse
+> (Sensitivität 0.90) bei 196 Fehlalarmen unter 1960 Nicht-Ereignissen
+> (Spezifität 0.90). Von 232 Alarmen sind 36 echt (PPV 0.155). Die Genauigkeit
+> von 0.90 ist hier nicht aussagekräftig: Ein Verfahren, das nie Alarm schlägt,
+> erreicht 0.98.
+
+### Beispiel 3: ROC-Kurve und die Wahl der Schwelle
+
+#### Frage und Datenlage
+
+Die Daten aus Beispiel 1. Die Frage lautet: Was ändert sich, wenn die Schwelle
+verschoben wird, und wie beurteilt man das Modell unabhängig davon?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-kl-r
+#| fig-cap: "Beispiel 3: ROC-Kurve mit den drei markierten Schwellen."
+#| fig-height: 3.6
+schwellen <- sort(unique(c(0, score, 1)), decreasing = TRUE)
+punkte <- t(sapply(schwellen, function(s) {
+  v <- as.integer(score > s)
+  c(fpr = sum(v == 1 & daten$ereignis == 0) / sum(daten$ereignis == 0),
+    tpr = sum(v == 1 & daten$ereignis == 1) / sum(daten$ereignis == 1))
+}))
+
+par(mar = c(4, 4, 3, 1))
+plot(punkte[, "fpr"], punkte[, "tpr"], type = "l", lwd = 2, col = "steelblue",
+     xlab = "1 - Spezifität", ylab = "Sensitivität",
+     main = paste("ROC, AUC =", round(auc(daten$ereignis, score), 3)))
+abline(0, 1, lty = 2, col = "grey60")
+for (s in c(0.2, 0.5, 0.8)) {
+  v <- as.integer(score > s)
+  points(sum(v == 1 & daten$ereignis == 0) / sum(daten$ereignis == 0),
+         sum(v == 1 & daten$ereignis == 1) / sum(daten$ereignis == 1),
+         pch = 16, col = "firebrick", cex = 1.3)
+}
+
+for (s in c(0.2, 0.35, 0.5, 0.65, 0.8)) {
+  cat("Schwelle", s, ":", "\n")
+  print(guete(daten$ereignis, as.integer(score > s))[c("Sensitivitaet",
+                                                       "Spezifitaet",
+                                                       "PPV", "F1")])
+}
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-kl-py
+#| fig-cap: "Beispiel 3: dieselbe Kurve in Python."
+#| fig-height: 3.6
+schwellen = np.sort(np.unique(np.concatenate([[0.0], score.to_numpy(), [1.0]])))[::-1]
+fpr, tpr = [], []
+tatsaechlich = daten["ereignis"].to_numpy()
+for s in schwellen:
+    v = (score.to_numpy() > s).astype(int)
+    fpr.append(((v == 1) & (tatsaechlich == 0)).sum() / (tatsaechlich == 0).sum())
+    tpr.append(((v == 1) & (tatsaechlich == 1)).sum() / (tatsaechlich == 1).sum())
+
+fig, achse = plt.subplots(figsize=(7, 3.6))
+achse.plot(fpr, tpr, color="steelblue", linewidth=2)
+achse.plot([0, 1], [0, 1], linestyle="--", color="0.6")
+for s in (0.2, 0.5, 0.8):
+    v = (score.to_numpy() > s).astype(int)
+    achse.plot(((v == 1) & (tatsaechlich == 0)).sum() / (tatsaechlich == 0).sum(),
+               ((v == 1) & (tatsaechlich == 1)).sum() / (tatsaechlich == 1).sum(),
+               "o", color="firebrick", markersize=7)
+achse.set_xlabel("1 - Spezifität")
+achse.set_ylabel("Sensitivität")
+achse.set_title(f"ROC, AUC = {auc(daten['ereignis'], score):.3f}")
+plt.tight_layout()
+plt.show()
+
+for s in (0.2, 0.35, 0.5, 0.65, 0.8):
+    k = guete(daten["ereignis"], (score > s).astype(int))
+    print(f"Schwelle {s}: Sens={k['Sensitivitaet']:.4f} "
+          f"Spez={k['Spezifitaet']:.4f} PPV={k['PPV']:.4f} F1={k['F1']:.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schwelle | Sensitivität | Spezifität | PPV | F1 |
+|---|---|---|---|---|
+| 0.20 | 0.960 | 0.265 | 0.566 | 0.712 |
+| 0.35 | 0.870 | 0.520 | 0.644 | **0.740** |
+| 0.50 | 0.715 | 0.720 | 0.719 | 0.717 |
+| 0.65 | 0.525 | 0.875 | 0.808 | 0.636 |
+| 0.80 | 0.270 | 0.965 | 0.885 | 0.414 |
+
+Drei Beobachtungen:
+
+**Sensitivität und Spezifität bewegen sich gegenläufig.** Von 0.20 auf 0.80
+fällt die Sensitivität von 0.96 auf 0.27, während die Spezifität von 0.27 auf
+0.97 steigt. Es gibt keine Schwelle, die beide gleichzeitig verbessert; jede
+Verschiebung ist ein Tausch.
+
+**Der PPV steigt mit der Schwelle.** Wer selten Alarm schlägt, hat unter seinen
+Alarmen einen höheren Anteil echter Fälle. Von 0.57 auf 0.89, und das ist der
+Grund, warum ein hoher PPV allein kein Gütezeichen ist: Er lässt sich immer
+erkaufen, indem man weniger oft Alarm schlägt.
+
+**F1 ist bei 0.35 am höchsten, nicht bei 0.5.** Wer nach F1 optimiert, landet
+also nicht bei der Voreinstellung. Ob F1 das richtige Kriterium ist, entscheidet
+die Anwendung.
+
+Die AUC von 0.80 bleibt bei all dem unverändert, denn sie fasst die ganze Kurve
+zusammen. Sie beantwortet die Frage "wie gut trennt das Modell", die Tabelle
+beantwortet die Frage "wie gut entscheidet es bei dieser Schwelle".
+
+#### Interpretation und Ergebnissatz
+
+> Das Modell trennt die beiden Klassen brauchbar (AUC 0.80). Bei einer Schwelle
+> von 0.5 liegen Sensitivität und Spezifität bei je 0.72. Eine Senkung auf 0.35
+> erhöht die Sensitivität auf 0.87 zulasten der Spezifität (0.52) und maximiert
+> F1 (0.74). Die Wahl richtet sich nach dem Kostenverhältnis der beiden
+> Fehlerarten.
+
+### Beispiel 4: Warum an denselben Daten gemessen zu gut ist
+
+#### Frage und Datenlage
+
+Die 400 Fälle werden geteilt: 200 zum Schätzen, 200 zum Prüfen. Verglichen
+werden zwei Modelle. Das eine nutzt nur das echte Merkmal, das andere zusätzlich
+zwanzig Merkmale, die nichts mit dem Ereignis zu tun haben.
+
+Die Frage lautet: Welches Modell ist besser, und woran erkennt man das?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-kl-rechnung-r
+zusatz <- as.data.frame(sapply(1:20, function(k) richtung(3 + 2 * k)))
+names(zusatz) <- paste0("z", 1:20)
+voll <- cbind(daten, zusatz)
+
+trainieren <- voll[seq(1, nrow(voll), by = 2), ]
+testen     <- voll[seq(2, nrow(voll), by = 2), ]
+
+sparsam <- glm(ereignis ~ merkmal, family = binomial, data = trainieren)
+ueppig  <- glm(as.formula(paste("ereignis ~ merkmal +",
+                                paste(names(zusatz), collapse = " + "))),
+               family = binomial, data = trainieren)
+
+vergleich <- function(modell, name) {
+  s_tr <- predict(modell, newdata = trainieren, type = "response")
+  s_te <- predict(modell, newdata = testen, type = "response")
+  cat(sprintf("%-9s AUC Training = %.4f   AUC Test = %.4f\n", name,
+              auc(trainieren$ereignis, s_tr), auc(testen$ereignis, s_te)))
+  cat(sprintf("          Genauigkeit Training = %.4f   Test = %.4f\n",
+              guete(trainieren$ereignis, as.integer(s_tr > 0.5))["Genauigkeit"],
+              guete(testen$ereignis, as.integer(s_te > 0.5))["Genauigkeit"]))
+}
+
+vergleich(sparsam, "sparsam")
+vergleich(ueppig, "üppig")
+```
+
+##### Python
+
+```{python}
+#| label: b4-kl-rechnung-py
+zusatz = {f"z{k}": richtung(3 + 2 * k) for k in range(1, 21)}
+voll = daten.assign(**zusatz)
+
+trainieren = voll.iloc[::2].reset_index(drop=True)
+testen = voll.iloc[1::2].reset_index(drop=True)
+
+sparsam = smf.logit("ereignis ~ merkmal", data=trainieren).fit(disp=0)
+ueppig = smf.logit("ereignis ~ merkmal + " + " + ".join(zusatz),
+                   data=trainieren).fit(disp=0, maxiter=200)
+
+
+def vergleich(modell, name):
+    s_tr = modell.predict(trainieren)
+    s_te = modell.predict(testen)
+    print(f"{name:9s} AUC Training = {auc(trainieren['ereignis'], s_tr):.4f}"
+          f"   AUC Test = {auc(testen['ereignis'], s_te):.4f}")
+    g_tr = guete(trainieren["ereignis"], (s_tr > 0.5).astype(int))
+    g_te = guete(testen["ereignis"], (s_te > 0.5).astype(int))
+    print(f"          Genauigkeit Training = {g_tr['Genauigkeit']:.4f}"
+          f"   Test = {g_te['Genauigkeit']:.4f}")
+
+
+vergleich(sparsam, "sparsam")
+vergleich(ueppig, "üppig")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Modell | AUC Training | AUC Test | Genauigkeit Training | Genauigkeit Test |
+|---|---|---|---|---|
+| nur das echte Merkmal | 0.810 | **0.791** | 0.720 | 0.715 |
+| plus 20 wertlose Merkmale | **0.889** | 0.739 | 0.805 | 0.685 |
+
+Das üppige Modell ist auf den Trainingsdaten deutlich besser (AUC 0.889 gegen
+0.810) und auf neuen Daten deutlich schlechter (0.739 gegen 0.791). Die zwanzig
+Zusatzmerkmale enthalten **keinerlei** Information über das Ereignis; sie sind
+deterministisch konstruiertes Rauschen. Das Modell hat gelernt, die zufälligen
+Muster der 200 Trainingsfälle nachzubilden.
+
+Bemerkenswert ist auch die Grösse des Unterschieds beim sparsamen Modell: 0.810
+gegen 0.791. Auch ein Modell mit zwei Parametern misst sich an den eigenen Daten
+etwas zu gut, nur eben wenig. Der Abstand zwischen Trainings- und Testwert wächst
+mit der Anzahl der Parameter.
+
+#### Interpretation und Ergebnissatz
+
+Daraus folgen zwei Regeln.
+
+**Jede berichtete Kennzahl braucht die Angabe, worauf sie gemessen wurde.** Eine
+AUC von 0.89 ohne diesen Zusatz ist wertlos, weil sie an denselben Daten
+gemessen sein kann, mit denen das Modell gebaut wurde.
+
+**Modelle werden nicht an den Trainingsdaten verglichen.** Wer das tut, wählt
+systematisch das komplexere Modell, denn mehr Parameter passen sich den
+vorliegenden Daten immer besser an. Der saubere Weg ist eine Trennung in
+Trainings- und Testdaten oder eine Kreuzvalidierung; für kleine Datensätze
+leisten AIC und BIC dasselbe auf rechnerischem Weg, siehe
+[Modellauswahl](modellauswahl.qmd).
+
+> Verglichen wurden zwei Modelle an einer Aufteilung in je 200 Trainings- und
+> Testfälle. Das sparsame Modell erreicht auf den Testdaten eine AUC von 0.791,
+> das um zwanzig wertlose Merkmale erweiterte nur 0.739, obwohl es auf den
+> Trainingsdaten besser abschneidet (0.889 gegen 0.810). Berichtet werden die
+> Testwerte des sparsamen Modells.
+
+::::
+
 ## Verständnisfragen
 
+::: {.quiz}
+Ein Prüfverfahren hat Sensitivität 0.90 und Spezifität 0.90. Das Ereignis tritt
+bei 2 Prozent auf. Wie oft liegt ein Alarm richtig?
+
+- [x] In rund 15 Prozent der Fälle ~ Richtig. Die 10 Prozent Fehlalarme
+      beziehen sich auf 98 Prozent der Fälle und ergeben viel mehr falsche als
+      echte Alarme. Der PPV beträgt 0.155.
+- [ ] In 90 Prozent der Fälle ~ Das ist die Sensitivität, und die beantwortet
+      die umgekehrte Frage: Von den Ereignissen, wie viele werden gefunden?
+- [ ] In 98 Prozent der Fälle ~ Das ist die Genauigkeit eines Verfahrens, das
+      nie Alarm schlägt.
+:::
+
+::: {.quiz}
+Ein Modell erreicht eine Genauigkeit von 0.98. Was folgt daraus?
+
+- [x] Nichts, ohne die Klassenverteilung zu kennen ~ Richtig. Bei einem
+      Ereignisanteil von 2 Prozent erreicht "immer nein" genau diesen Wert. Die
+      Genauigkeit muss immer gegen diesen trivialen Vergleichswert gehalten
+      werden.
+- [ ] Das Modell ist sehr gut ~ Nur wenn die Klassen einigermassen ausgewogen
+      sind.
+- [ ] Das Modell ist überangepasst ~ Dafür bräuchte es einen Vergleich zwischen
+      Trainings- und Testdaten.
+:::
+
+::: {.quiz}
+Ein Modell hat auf den Trainingsdaten eine AUC von 0.89 und auf Testdaten 0.74,
+ein zweites 0.81 und 0.79. Welches ist besser?
+
+- [x] Das zweite ~ Richtig. Entschieden wird an den Testdaten, und dort liegt
+      das zweite vorn. Der grosse Abstand zwischen Trainings- und Testwert beim
+      ersten ist das Kennzeichen der Überanpassung.
+- [ ] Das erste, es hat die höhere AUC ~ Die höhere AUC hat es nur auf den
+      Daten, mit denen es gebaut wurde. Das ist kein Gütezeichen, sondern das
+      erwartete Verhalten.
+- [ ] Beide gleich gut, die Unterschiede sind klein ~ 0.74 gegen 0.79 ist ein
+      spürbarer Unterschied, und die Richtung ist eindeutig.
+:::
+
+::: {.quiz}
+Warum lässt sich ein hoher PPV immer erreichen?
+
+- [x] Indem man die Schwelle anhebt und seltener Alarm schlägt ~ Richtig. Wer
+      nur bei sehr hohen Scores Alarm schlägt, hat unter seinen wenigen Alarmen
+      einen hohen Anteil echter Fälle. In Beispiel 3 steigt der PPV von 0.57 auf
+      0.89, während die Sensitivität von 0.96 auf 0.27 fällt.
+- [ ] Durch ein besseres Modell ~ Ein besseres Modell hilft, ist aber nicht
+      nötig, um den PPV zu heben.
+- [ ] Gar nicht, der PPV hängt nur an den Daten ~ Er hängt an der Schwelle und
+      an der Häufigkeit des Ereignisses.
+:::
+
 ## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 4.4](https://www.statlearning.com/)
+- [scikit-learn: Metriken für Klassifikation](https://scikit-learn.org/stable/modules/model_evaluation.html#classification-metrics)
+- [Logistische Regression](logistische-regression.qmd)
