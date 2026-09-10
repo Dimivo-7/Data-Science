@@ -2,13 +2,556 @@
 title: "Normalitätstests"
 description: "Shapiro und Kolmogorow-Smirnow, und warum Plots oft mehr zeigen."
 categories: ["Hypothesentests", "Verteilungen", "Interpretation", "R", "Python"]
-quelle: ["STATDA"]
+quelle: ["ESDS", "STATDA"]
 seitentyp: konzept
-stand: geruest
+stand: entwurf
 order: 80
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(2026)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+```
+
+Alle Beispiele rechnen mit deterministisch konstruierten Zahlen, damit R und
+Python dieselben Daten sehen und jeder Wert im Text nachprüfbar ist.
+
 ## Kernideen
+
+- Ein Normalitätstest prüft die Nullhypothese "die Daten stammen aus einer
+  Normalverteilung". Ein grosser p-Wert ist **kein Nachweis** dieser Annahme,
+  sondern nur das Ausbleiben eines Gegenbeweises.
+- Die Aussagekraft hängt fast vollständig am Stichprobenumfang, und zwar in
+  beide Richtungen. Bei kleinem n findet der Test auch grobe Abweichungen
+  nicht; bei grossem n verwirft er wegen Abweichungen, die keine Rolle spielen.
+- Genau das macht ihn als Entscheidungshilfe untauglich: Er schlägt dort an, wo
+  es unwichtig ist, und schweigt dort, wo es darauf ankäme.
+- Die meisten Verfahren setzen ohnehin nicht normalverteilte **Daten** voraus,
+  sondern normalverteilte **Residuen** oder Mittelwerte. Der zentrale
+  Grenzwertsatz erledigt Letzteres mit wachsendem n von selbst.
+- Was stattdessen hilft: [QQ-Plot](../wahrscheinlichkeit/qq-plots.qmd),
+  Histogramm, der Vergleich von Mittelwert und Median, und die Frage, wie
+  empfindlich das geplante Verfahren überhaupt reagiert.
 
 ## Erklärung
 
+### Was die Tests tun
+
+| Test | Grundidee | R | Python |
+|---|---|---|---|
+| Shapiro-Wilk | Vergleicht die geordneten Werte mit den unter Normalverteilung erwarteten; im Kern ein QQ-Plot als Zahl | `shapiro.test(x)` | `stats.shapiro(x)` |
+| Kolmogorow-Smirnow | Grösster senkrechter Abstand zwischen empirischer und theoretischer Verteilungsfunktion | `ks.test(x, "pnorm", mean, sd)` | `stats.kstest(x, "norm")` |
+| Anderson-Darling | Wie KS, gewichtet aber die Ränder stärker | `nortest::ad.test(x)` | `stats.anderson(x)` |
+
+Shapiro-Wilk ist der schärfste der drei und der übliche Standard. Der
+Kolmogorow-Smirnow-Test ist verbreiteter, als er es verdient: In der Form, in
+der er meist verwendet wird, werden Mittelwert und Streuung aus denselben Daten
+geschätzt, für die er dann prüft. Das macht ihn deutlich zu konservativ, wie
+Beispiel 2 zeigt.
+
+### Die Nullhypothese steht auf der falschen Seite
+
+Bei einem Normalitätstest lautet die Nullhypothese, dass alles in Ordnung ist.
+Man möchte sie aber **bestätigen**, nicht verwerfen, und genau das kann ein
+Test grundsätzlich nicht. Ein p-Wert von 0.95 heisst nicht "normalverteilt", er
+heisst "diese Daten sprechen nicht dagegen".
+
+Die Folge ist eine Fehlerlogik, die genau verkehrt herum läuft:
+
+| Umfang | Was passiert | Warum das falsch herum ist |
+|---|---|---|
+| klein, etwa n < 30 | Der Test hat kaum Power und verwirft fast nie | Gerade hier wäre die Verteilungsform wichtig, weil der zentrale Grenzwertsatz noch nicht greift |
+| gross, etwa n > 300 | Der Test verwirft schon bei winzigen Abweichungen | Gerade hier ist die Verteilungsform fast egal, weil der zentrale Grenzwertsatz greift |
+
+### Was die Verfahren wirklich voraussetzen
+
+Ein verbreitetes Missverständnis ist, dass t-Test und Regression normalverteilte
+Rohdaten bräuchten. Das trifft nicht zu:
+
+| Verfahren | Voraussetzung betrifft | Praktische Konsequenz |
+|---|---|---|
+| [t-Test](t-test-zwei-stichproben.qmd) | die Verteilung des **Mittelwerts** | Bei n über etwa 30 je Gruppe und ohne extreme Schiefe unkritisch |
+| [Lineare Regression](../regression/einfache-lineare-regression.qmd) | die **Residuen**, nicht x und y | Eine rechtsschiefe Zielgrösse ist kein Problem, solange die Residuen unauffällig sind |
+| [Varianzanalyse](anova.qmd) | die Residuen | Wie oben; Varianzhomogenität ist meist das grössere Thema |
+| Konfidenzintervall für den Mittelwert | die Verteilung des Mittelwerts | Wie beim t-Test |
+
+Wer also die Rohdaten auf Normalität testet, prüft in mehreren dieser Fälle die
+falsche Grösse.
+
+### Wie stattdessen vorgehen
+
+1. **Streudiagramm, Histogramm und Boxplot ansehen.** Sie zeigen Schiefe,
+   Mehrgipfligkeit und Ausreisser, und zwar mit ihrer Grössenordnung.
+2. **QQ-Plot lesen.** Er zeigt nicht nur, **dass** etwas abweicht, sondern
+   **wie**: an den Rändern, in der Mitte, einseitig oder symmetrisch.
+3. **Mittelwert und Median vergleichen.** Klaffen sie auseinander, ist die
+   Verteilung schief, und der Mittelwert beschreibt keinen typischen Fall mehr.
+4. **Fragen, wie empfindlich das Verfahren ist.** Bei n = 200 je Gruppe ist ein
+   t-Test gegen mässige Schiefe unempfindlich; bei n = 8 ist er es nicht.
+5. **Im Zweifel das robuste Verfahren wählen**, also
+   [Rangtests](nichtparametrische-tests.qmd) oder
+   [Bootstrap](../inferenz/bootstrap-resampling.qmd), und die Wahl vorab
+   festlegen.
+
+::: {.note-box}
+Ein Normalitätstest darf durchaus berichtet werden, ergänzend und mit seinem
+Umfang. Was nicht tragfähig ist, ist die Entscheidungsregel "p über 0.05, also
+t-Test, sonst Rangtest". Sie macht die Verfahrenswahl von einer Zahl abhängig,
+die vor allem den Stichprobenumfang widerspiegelt, und sie hält das Testniveau
+des nachfolgenden Verfahrens nicht ein, weil zweimal an denselben Daten
+entschieden wird.
+:::
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Unauffällige Daten
+
+#### Frage und Datenlage
+
+Zwanzig Messwerte eines Fertigungsmasses. Die Frage lautet: Sprechen sie gegen
+eine Normalverteilung?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-nt-r
+#| fig-cap: "Beispiel 1: Histogramm und QQ-Plot von zwanzig Messwerten."
+#| fig-height: 3.2
+messwerte <- c(98.4, 101.2, 99.7, 100.3, 102.1, 97.9, 100.8, 99.1, 101.6,
+               100.0, 98.8, 101.9, 99.4, 100.6, 97.2, 102.6, 99.9, 100.4,
+               98.1, 101.3)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+hist(messwerte, breaks = 8, col = "grey85", main = "Histogramm",
+     xlab = "Messwert")
+qqnorm(messwerte, main = "QQ-Plot"); qqline(messwerte)
+par(mfrow = c(1, 1))
+
+shapiro.test(messwerte)
+
+round(c(mittel = mean(messwerte), median = median(messwerte)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-nt-py
+#| fig-cap: "Beispiel 1: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+messwerte = np.array([98.4, 101.2, 99.7, 100.3, 102.1, 97.9, 100.8, 99.1,
+                      101.6, 100.0, 98.8, 101.9, 99.4, 100.6, 97.2, 102.6,
+                      99.9, 100.4, 98.1, 101.3])
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].hist(messwerte, bins=8, color="0.8", edgecolor="0.3")
+achsen[0].set_title("Histogramm")
+achsen[0].set_xlabel("Messwert")
+sm.qqplot(messwerte, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot")
+plt.tight_layout()
+plt.show()
+
+ergebnis = stats.shapiro(messwerte)
+print("Shapiro-Wilk  W =", round(ergebnis.statistic, 4),
+      " p =", round(ergebnis.pvalue, 4))
+print("Mittelwert =", round(messwerte.mean(), 3),
+      " Median =", round(np.median(messwerte), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `W` | 0.9817 | Shapiro-Wilk-Statistik | Sie liegt zwischen 0 und 1; Werte nahe 1 bedeuten gute Übereinstimmung mit der Normalverteilung. W ist im Kern das Quadrat der Korrelation zwischen den Daten und den im QQ-Plot erwarteten Werten. |
+| `p-value` | 0.954 | Wahrscheinlichkeit einer mindestens so grossen Abweichung, wenn die Daten normalverteilt wären | Kein Anlass zur Sorge. Aber eben auch **kein Nachweis** der Normalverteilung. |
+| Mittelwert und Median | 100.06 und 100.15 | Lagemasse | Sie liegen praktisch übereinander, also ist die Verteilung nicht schief. |
+| QQ-Plot | Punkte nah an der Geraden | | Die eigentliche Prüfung. Sie zeigt zusätzlich, dass die Abweichungen klein und über den ganzen Bereich verteilt sind. |
+
+#### Interpretation
+
+Der korrekte Satz lautet: "Die Daten sprechen nicht gegen eine
+Normalverteilung." Nicht: "Die Daten sind normalverteilt."
+
+Der Unterschied ist bei n = 20 erheblich, denn der Test hätte selbst eine
+deutliche Schiefe wahrscheinlich nicht gefunden. Genau das zeigt Beispiel 3.
+
+### Beispiel 2: Zu viel Power bei grossem n
+
+#### Frage und Datenlage
+
+Tausend Werte mit einer leichten Rechtsschiefe. Die Schiefe beträgt 0.47 und
+ist damit so klein, dass sie für jedes übliche Verfahren belanglos wäre.
+Zusätzlich werden dieselben hundert Werte, also derselbe Verteilungstyp bei
+kleinerem Umfang, mitgerechnet.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-nt-r
+#| fig-cap: "Beispiel 2: leichte Rechtsschiefe, einmal mit n = 1000 und einmal mit n = 100."
+#| fig-height: 3.2
+schief <- function(n) {
+  q <- qnorm(ppoints(n))
+  q + 0.08 * q^2
+}
+
+gross <- schief(1000)
+klein <- schief(100)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+qqnorm(gross, main = "n = 1000"); qqline(gross)
+qqnorm(klein, main = "n = 100"); qqline(klein)
+par(mfrow = c(1, 1))
+
+shapiro.test(gross)
+shapiro.test(klein)
+
+ks.test(gross, "pnorm", mean(gross), sd(gross))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-nt-py
+#| fig-cap: "Beispiel 2: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+def schief(n):
+    q = stats.norm.ppf((np.arange(1, n + 1) - 0.5) / n)
+    return q + 0.08 * q ** 2
+
+
+gross = schief(1000)
+klein = schief(100)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+sm.qqplot(gross, line="s", ax=achsen[0])
+achsen[0].set_title("n = 1000")
+sm.qqplot(klein, line="s", ax=achsen[1])
+achsen[1].set_title("n = 100")
+plt.tight_layout()
+plt.show()
+
+for name, werte in [("n = 1000", gross), ("n = 100", klein)]:
+    e = stats.shapiro(werte)
+    print(f"{name}: Shapiro W = {e.statistic:.4f}  p = {e.pvalue:.3g}"
+          f"  Schiefe = {stats.skew(werte, bias=False):+.3f}")
+
+standardisiert = (gross - gross.mean()) / gross.std(ddof=1)
+ks = stats.kstest(standardisiert, "norm")
+print(f"n = 1000: Kolmogorow-Smirnow p = {ks.pvalue:.3g}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | n = 1000 | n = 100 | Wie das zu lesen ist |
+|---|---|---|---|
+| Schiefe | +0.47 | +0.47 | **Identisch.** Beide Datensätze folgen exakt derselben Verteilungsform. |
+| Shapiro `W` | 0.9875 | 0.9881 | Ebenfalls praktisch identisch. W misst die Abweichung und hängt kaum am Umfang. |
+| Shapiro `p-value` | 0.00000016 | 0.516 | Und hier gehen sie auseinander: hochsignifikant gegen völlig unauffällig. Der Unterschied liegt allein am Stichprobenumfang. |
+| Kolmogorow-Smirnow `p-value` (n = 1000) | 0.245 | | Derselbe Datensatz, ein anderer Test, ein gegenteiliges Ergebnis. |
+
+Zwei Lehren stecken darin.
+
+**Erstens** entscheidet der Umfang, nicht die Verteilung. Dieselbe leichte
+Schiefe führt bei 1000 Werten zur Ablehnung und bei 100 Werten nicht. Wer die
+Verfahrenswahl an den p-Wert bindet, bindet sie in Wahrheit an den Umfang —
+und ausgerechnet bei n = 1000 ist die Verteilungsform für einen t-Test völlig
+belanglos, weil der zentrale Grenzwertsatz längst greift.
+
+**Zweitens** ist der Kolmogorow-Smirnow-Test in dieser Form zu schwach. Er
+schätzt Mittelwert und Streuung aus denselben Daten, für die er dann prüft, und
+passt sich der Verteilung damit teilweise an. Sein p-Wert von 0.245 ist kein
+Gegenbeweis zu Shapiro, sondern ein Zeichen mangelnder Schärfe. Wer KS
+verwendet, braucht die Lilliefors-Korrektur; einfacher ist es, Shapiro-Wilk zu
+nehmen.
+
+#### Interpretation
+
+Der QQ-Plot zeigt in beiden Fällen dasselbe Bild: eine leichte Krümmung an den
+Enden, die auf die Rechtsschiefe hinweist. Diese Darstellung ist umfangsunabhängig
+und beantwortet die Frage, um die es geht: **wie stark** weicht die Verteilung ab.
+
+> Die Werte weichen leicht von der Normalverteilung ab (Schiefe 0.47). Bei
+> n = 1000 wird diese Abweichung vom Shapiro-Wilk-Test erkannt (W = 0.99,
+> p < 0.001), bei n = 100 nicht (p = 0.52). Für die geplante Auswertung ist die
+> Abweichung ohne Belang, weil der Mittelwert bei diesem Umfang praktisch
+> normalverteilt ist.
+
+### Beispiel 3: Zu wenig Power bei kleinem n
+
+#### Frage und Datenlage
+
+Fünfzehn Werte aus einer deutlich rechtsschiefen Verteilung. Die Schiefe beträgt
+1.31 und ist damit fast dreimal so gross wie in Beispiel 2. Ausgerechnet hier,
+bei kleinem Umfang, wäre sie inhaltlich wichtig.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-nt-r
+#| fig-cap: "Beispiel 3: deutlich rechtsschief, und der Test schlägt trotzdem nicht an."
+#| fig-height: 3.2
+q15 <- qnorm(ppoints(15))
+rechtsschief <- round(exp(0.6 * q15), 2)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+hist(rechtsschief, breaks = 8, col = "grey85", main = "Histogramm",
+     xlab = "Wert")
+qqnorm(rechtsschief, main = "QQ-Plot"); qqline(rechtsschief)
+par(mfrow = c(1, 1))
+
+shapiro.test(rechtsschief)
+
+round(c(mittel = mean(rechtsschief), median = median(rechtsschief)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-nt-py
+#| fig-cap: "Beispiel 3: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+q15 = stats.norm.ppf((np.arange(1, 16) - 0.5) / 15)
+rechtsschief = np.round(np.exp(0.6 * q15), 2)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].hist(rechtsschief, bins=8, color="0.8", edgecolor="0.3")
+achsen[0].set_title("Histogramm")
+achsen[0].set_xlabel("Wert")
+sm.qqplot(rechtsschief, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot")
+plt.tight_layout()
+plt.show()
+
+e = stats.shapiro(rechtsschief)
+print("Shapiro W =", round(e.statistic, 4), " p =", round(e.pvalue, 4))
+print("Schiefe =", round(stats.skew(rechtsschief, bias=False), 3))
+print("Mittelwert =", round(rechtsschief.mean(), 3),
+      " Median =", round(np.median(rechtsschief), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Schiefe | +1.31 | Deutlich rechtsschief, fast dreimal so stark wie in Beispiel 2. |
+| Shapiro `W` | 0.9018 | Merklich unter 1, also durchaus eine Abweichung. |
+| Shapiro `p-value` | 0.101 | **Nicht signifikant.** Bei fünfzehn Werten reicht die Power nicht, um selbst diese deutliche Schiefe nachzuweisen. |
+| Mittelwert und Median | 1.18 und 1.00 | Sie klaffen um rund 18 Prozent auseinander. Das ist der schnellste Hinweis auf Schiefe und braucht keinen Test. |
+| QQ-Plot | deutlicher Bogen | Die Punkte biegen am oberen Ende klar von der Geraden weg. Das Auge sieht, was der Test nicht findet. |
+
+Wer der Entscheidungsregel "p über 0.05, also t-Test" folgt, würde hier einen
+Mittelwertvergleich rechnen — bei fünfzehn deutlich schiefen Werten, also genau
+in der Lage, in der er unzuverlässig ist. Das ist der Kern des Problems: Der
+Test versagt dort, wo man ihn am dringendsten bräuchte.
+
+#### Interpretation
+
+> Die Verteilung ist deutlich rechtsschief (Schiefe 1.31; Mittelwert 1.18
+> gegenüber Median 1.00), was im QQ-Plot und im Histogramm klar erkennbar ist.
+> Der Shapiro-Wilk-Test wird bei n = 15 nicht signifikant (W = 0.90, p = 0.10),
+> was allein an der geringen Power liegt. Die Auswertung erfolgt deshalb
+> rangbasiert.
+
+### Beispiel 4: Was der QQ-Plot zeigt und ein p-Wert nicht
+
+#### Frage und Datenlage
+
+Vier Datensätze mit je sechzig Werten. Alle vier würde ein Normalitätstest mit
+einer einzigen Zahl beantworten. Der QQ-Plot beantwortet stattdessen die Frage,
+die weiterhilft: **wie** weicht die Verteilung ab?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-nt-r
+#| fig-cap: "Beispiel 4: vier Abweichungsmuster im QQ-Plot."
+#| fig-height: 3.0
+q60 <- qnorm(ppoints(60))
+
+muster <- list(
+  "normal"          = q60,
+  "rechtsschief"    = exp(0.7 * q60),
+  "schwere Ränder"  = qt(ppoints(60), df = 3),
+  "ein Ausreisser"  = c(q60[1:59], 8)
+)
+
+par(mfrow = c(1, 4), mar = c(4, 4, 3, 1))
+for (name in names(muster)) {
+  qqnorm(muster[[name]], main = name, xlab = "", ylab = "")
+  qqline(muster[[name]])
+}
+par(mfrow = c(1, 1))
+
+round(sapply(muster, function(x) shapiro.test(x)$p.value), 5)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-nt-py
+#| fig-cap: "Beispiel 4: dieselben vier Muster in Python."
+#| fig-height: 3.0
+q60 = stats.norm.ppf((np.arange(1, 61) - 0.5) / 60)
+
+muster = {
+    "normal": q60,
+    "rechtsschief": np.exp(0.7 * q60),
+    "schwere Ränder": stats.t.ppf((np.arange(1, 61) - 0.5) / 60, df=3),
+    "ein Ausreisser": np.append(q60[:59], 8.0),
+}
+
+fig, achsen = plt.subplots(1, 4, figsize=(7, 3.0))
+for achse, (name, werte) in zip(achsen, muster.items()):
+    sm.qqplot(werte, line="s", ax=achse)
+    achse.set_title(name, fontsize=9)
+    achse.set_xlabel("")
+    achse.set_ylabel("")
+plt.tight_layout()
+plt.show()
+
+for name, werte in muster.items():
+    print(f"{name:16s} Shapiro p = {stats.shapiro(werte).pvalue:.5f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Muster | Shapiro p | Bild im QQ-Plot | Was daraus folgt |
+|---|---|---|---|
+| normal | 1.000 | Punkte liegen auf der Geraden | Nichts zu tun. |
+| rechtsschief | < 0.001 | Punkte biegen am oberen Ende nach oben weg, unten liegen sie über der Geraden | Der Mittelwert beschreibt keinen typischen Fall. Logarithmieren oder rangbasiert vergleichen. |
+| schwere Ränder | 0.088 | S-förmiger Verlauf: unten unter, oben über der Geraden | Extremwerte sind häufiger als bei einer Normalverteilung. Der t-Test verliert Schärfe; robuste Verfahren helfen. |
+| ein Ausreisser | < 0.001 | Punkte liegen auf der Geraden, ein einzelner weit rechts oben | Kein Verteilungsproblem, sondern ein Einzelfall. Ihn zu prüfen ist sinnvoller, als das Verfahren zu wechseln. |
+
+Die p-Werte fallen ausgerechnet dort verkehrt herum aus, wo es darauf ankommt.
+
+**Bei den schweren Rändern schlägt der Test nicht an** (p = 0.088), obwohl genau
+diese Lage dem t-Test tatsächlich Schärfe kostet. **Beim einzelnen Ausreisser
+schlägt er deutlich an** (p < 0.001), obwohl hier ein Verfahrenswechsel die
+falsche Reaktion wäre: Das Problem ist eine Beobachtung, keine Verteilungsform.
+Wer der Regel "p klein, also Rangtest" folgt, wechselt also im falschen Fall das
+Verfahren und behält es im richtigen bei.
+
+Der QQ-Plot unterscheidet die vier Lagen dagegen auf einen Blick, und jede
+verlangt eine andere Reaktion.
+
+::: {.note-box}
+Der p-Wert von 1.000 im ersten Muster ist ein Nebeneffekt der Konstruktion: Die
+Daten sind exakt die Quantile der Normalverteilung, also normalverteilter als
+jede echte Stichprobe je sein könnte. In erhobenen Daten kommt ein solcher Wert
+nicht vor.
+:::
+
+#### Interpretation
+
+Genau deshalb steht auf den Methodenseiten dieser Sammlung durchgehend der
+QQ-Plot in der Voraussetzungsprüfung und nicht ein Normalitätstest. Der Plot
+kostet dieselbe Zeile Code und beantwortet die nützlichere Frage.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Bei n = 1000 liefert Shapiro-Wilk p < 0.001, der QQ-Plot zeigt eine leichte
+Krümmung an den Enden. Was folgt für einen geplanten t-Test?
+
+- [x] Nichts; bei diesem Umfang ist der Mittelwert praktisch normalverteilt ~
+      Richtig. Der zentrale Grenzwertsatz greift, und der t-Test setzt die
+      Normalverteilung des Mittelwerts voraus, nicht die der Rohdaten. Der
+      signifikante Test spiegelt vor allem den Umfang wider.
+- [ ] Der t-Test ist unzulässig, es muss rangbasiert getestet werden ~ Das wäre
+      der Wechsel des Verfahrens aufgrund einer Zahl, die hier gerade keine
+      inhaltliche Aussage trägt.
+- [ ] Die Daten müssen transformiert werden ~ Eine Transformation ändert die
+      Fragestellung; sie ist bei starker Schiefe sinnvoll, nicht bei einer
+      Abweichung dieser Grössenordnung.
+:::
+
+::: {.quiz}
+Ein Shapiro-Test bei n = 15 liefert p = 0.10. Was ist die zulässige Aussage?
+
+- [x] Die Daten sprechen nicht gegen eine Normalverteilung, mehr nicht ~
+      Richtig. Bei fünfzehn Werten hätte der Test selbst eine deutliche Schiefe
+      wahrscheinlich nicht gefunden, wie Beispiel 3 zeigt. Ein grosser p-Wert
+      ist kein Nachweis.
+- [ ] Die Daten sind normalverteilt ~ Eine Nullhypothese wird nie bewiesen,
+      schon gar nicht mit geringer Power.
+- [ ] Die Daten sind nicht normalverteilt, p liegt nahe 0.05 ~ Die Nähe zur
+      Schwelle ist keine Zwischenkategorie.
+:::
+
+::: {.quiz}
+Derselbe Datensatz liefert bei Shapiro-Wilk p < 0.001 und bei
+Kolmogorow-Smirnow p = 0.25. Wie ist das zu deuten?
+
+- [x] Der KS-Test ist in dieser Form deutlich schwächer ~ Richtig. Er schätzt
+      Mittelwert und Streuung aus denselben Daten, für die er prüft, und passt
+      sich der Verteilung damit teilweise an. Ohne Lilliefors-Korrektur ist er
+      zu konservativ.
+- [ ] Die beiden Tests prüfen verschiedene Verteilungen ~ Beide prüfen gegen
+      die Normalverteilung.
+- [ ] Der grössere p-Wert ist der verlässlichere ~ Die Wahl nach dem
+      angenehmeren Ergebnis ist keine Begründung.
+:::
+
+::: {.quiz}
+Warum steht auf den Methodenseiten dieser Sammlung der QQ-Plot und nicht ein
+Normalitätstest in der Voraussetzungsprüfung?
+
+- [x] Weil er zeigt, **wie** die Verteilung abweicht, und nicht nur, dass sie
+      es tut ~ Richtig. Rechtsschiefe, schwere Ränder und ein einzelner
+      Ausreisser erfordern drei verschiedene Reaktionen, und der p-Wert
+      unterscheidet sie nicht.
+- [ ] Weil Normalitätstests unzuverlässig rechnen ~ Sie rechnen korrekt; das
+      Problem liegt in der Fragestellung und in der Abhängigkeit vom Umfang.
+- [ ] Weil der QQ-Plot objektiver ist ~ Er verlangt im Gegenteil eine
+      Beurteilung durch den Betrachter. Sein Vorteil ist der Informationsgehalt,
+      nicht die Objektivität.
+:::
+
 ## Verlinkte Ressourcen
+
+- [QQ-Plots](../wahrscheinlichkeit/qq-plots.qmd)
+- [R-Dokumentation zu `shapiro.test`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/shapiro.test.html)
+- [scipy: shapiro](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.shapiro.html)
