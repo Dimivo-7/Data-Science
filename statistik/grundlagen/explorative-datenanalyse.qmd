@@ -15,24 +15,42 @@ library(ggplot2)
 library(dplyr)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(42)
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1) {
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+}
 
 # Ein Datensatz mit absichtlich eingebauten Auffaelligkeiten, wie sie in
 # echten Exporten vorkommen.
 n <- 400
-roh <- data.frame(
-  gewicht  = round(rnorm(n, 82, 11), 1),
-  alter    = sample(18:74, n, replace = TRUE),
-  standort = sample(c("Bern", "Chur", "Sion"), n, replace = TRUE,
-                    prob = c(0.5, 0.3, 0.2))
-)
-roh$blutdruck <- round(90 + 0.45 * roh$alter + 0.25 * roh$gewicht + rnorm(n, 0, 8))
+gewicht <- round(normalwerte(8811, n, 82, 11), 1)
+alter <- 18 + floor(57 * lehmer(8812, n))
+u <- lehmer(8813, n)
+standort <- ifelse(u < 0.5, "Bern", ifelse(u < 0.8, "Chur", "Sion"))
+versatz <- ifelse(standort == "Bern", 0, ifelse(standort == "Chur", 6, -5))
+
+blutdruck <- round(90 + 0.45 * alter + 0.25 * gewicht + versatz +
+                     normalwerte(8814, n, 0, 8))
+
 # Rundungspraeferenz: ein Teil der Werte wurde auf 5 gerundet abgelesen
-idx <- sample(seq_len(n), 150)
-roh$blutdruck[idx] <- round(roh$blutdruck[idx] / 5) * 5
+gerundet <- order(lehmer(8815, n))[1:150]
+blutdruck[gerundet] <- round(blutdruck[gerundet] / 5) * 5
+
 # Sensorfehler und Luecken
-roh$gewicht[c(12, 88, 301)] <- -1
-roh$blutdruck[sample(seq_len(n), 18)] <- NA
+gewicht[c(12, 88, 301)] <- -1
+blutdruck[order(lehmer(8816, n))[1:18]] <- NA
+
+roh <- data.frame(gewicht, alter, standort, blutdruck)
 ```
 
 ```{python}
@@ -41,22 +59,42 @@ roh$blutdruck[sample(seq_len(n), 18)] <- NA
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0.0, streuung=1.0):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+
 
 n = 400
-gewicht = np.round(rng.normal(82, 11, n), 1)
-alter = rng.integers(18, 75, n)
-standort = rng.choice(["Bern", "Chur", "Sion"], n, p=[0.5, 0.3, 0.2])
-blutdruck = np.round(90 + 0.45 * alter + 0.25 * gewicht + rng.normal(0, 8, n))
+gewicht = np.round(normalwerte(8811, n, 82, 11), 1)
+alter = (18 + np.floor(57 * lehmer(8812, n))).astype(int)
+u = lehmer(8813, n)
+standort = np.where(u < 0.5, "Bern", np.where(u < 0.8, "Chur", "Sion"))
+versatz = np.where(standort == "Bern", 0.0,
+                   np.where(standort == "Chur", 6.0, -5.0))
 
-idx = rng.choice(n, 150, replace=False)
-blutdruck[idx] = np.round(blutdruck[idx] / 5) * 5
+blutdruck = np.round(90 + 0.45 * alter + 0.25 * gewicht + versatz
+                     + normalwerte(8814, n, 0, 8))
+
+gerundet = np.argsort(lehmer(8815, n))[:150]
+blutdruck[gerundet] = np.round(blutdruck[gerundet] / 5) * 5
+
 gewicht[[11, 87, 300]] = -1.0
 blutdruck = blutdruck.astype(float)
-blutdruck[rng.choice(n, 18, replace=False)] = np.nan
+blutdruck[np.argsort(lehmer(8816, n))[:18]] = np.nan
 
 roh = pd.DataFrame({"gewicht": gewicht, "alter": alter,
                     "standort": standort, "blutdruck": blutdruck})
@@ -64,11 +102,17 @@ roh = pd.DataFrame({"gewicht": gewicht, "alter": alter,
 
 ## Kernideen
 
-- Explorative Analyse erzeugt Fragen, sie beantwortet keine
-- Die Erwartung wird vor dem Blick in die Daten formuliert
-- Variation: ein Merkmal für sich ansehen
-- Kovariation: zwei Merkmale gemeinsam ansehen
-- Jeder Befund ist vorläufig, bis er an neuen Daten geprüft ist
+- Explorative Analyse **erzeugt Fragen**, sie beantwortet keine.
+- Die **Erwartung wird vor** dem Blick in die Daten formuliert — sonst bestätigt
+  man, was man ohnehin vermutet hat.
+- **Variation**: ein Merkmal für sich ansehen. **Kovariation**: zwei Merkmale
+  gemeinsam.
+- Auffällige Muster verraten meist etwas über die **Erhebung**, nicht über den
+  untersuchten Gegenstand.
+- Platzhalter für fehlende Werte sind gefährlicher als offene Lücken, weil sie
+  mitgerechnet werden.
+- Die Grafiken dieser Phase sind Arbeitsmittel und **dürfen hässlich sein**.
+- Jeder Befund ist **vorläufig**, bis er an neuen Daten geprüft ist.
 
 ## Erklärung
 
@@ -101,154 +145,626 @@ Der menschliche Verstand findet für fast jedes Bild eine Erklärung, auch für
 Zufall. Wer eine Grafik ansieht und danach überlegt, was sie bedeutet, bestätigt
 oft nur, was er ohnehin vermutet hat.
 
-Der Gegenzug ist billig und wirksam: vorher aufschreiben, was man erwartet.
+Der Gegenzug ist billig und wirksam: **vorher aufschreiben, was man erwartet.**
 Etwa so, für das Merkmal Blutdruck: Werte zwischen 90 und 180, eingipflig,
 leicht rechtsschief, Mittelwert um 130. Weicht die Grafik davon ab, fällt es
 sofort auf, und die Abweichung ist der interessante Teil.
 
-### Variation: ein Merkmal ansehen
+### Die Reihenfolge
 
-Die erste Frage gilt jedem Merkmal einzeln. Vier Dinge sind abzulesen: der
-Wertebereich, die Form der Verteilung, die Zahl der Gipfel und alles, was
-absonderlich aussieht.
+| Schritt | Frage | Werkzeug |
+|---|---|---|
+| 1. Struktur | Wie viele Zeilen, welche Spalten, welche Typen? | `str()`, `info()` |
+| 2. Vollständigkeit | Wo fehlen Werte, wo stehen **Platzhalter**? | Zählen, Minimum und Maximum |
+| 3. Variation | Wertebereich, Form, Gipfel, Absonderlichkeiten je Merkmal | Histogramm, Boxplot, Kennzahlen |
+| 4. Kovariation | Welche Merkmale hängen zusammen? | Streudiagramm, Boxplots je Gruppe, Kreuztabelle |
+| 5. Aufteilung | Ändert sich das Bild je Gruppe? | dieselben Grafiken, nach Gruppen getrennt |
 
-::: panel-tabset
-## R
+Schritt 2 vor Schritt 3 ist wichtig: Ein Platzhalter von -1 oder 999 verzerrt
+jede Kennzahl, und zwar unauffällig.
 
-```{r}
-#| label: fig-variation-r
-#| fig-cap: "Verteilung des Blutdrucks. Der Bereich stimmt, die Form ist auffällig gezackt."
-#| fig-height: 3.2
-ggplot(roh, aes(blutdruck)) +
-  geom_histogram(binwidth = 1, fill = "grey70", colour = "white") +
-  labs(x = "Blutdruck", y = "Anzahl")
-```
-
-## Python
-
-```{python}
-#| label: fig-variation-py
-#| fig-cap: "Dieselbe Verteilung mit matplotlib."
-fig, ax = plt.subplots(figsize=(7, 3.2))
-werte = roh["blutdruck"].dropna()
-ax.hist(werte, bins=int(werte.max() - werte.min()),
-        color="0.7", edgecolor="white")
-ax.set_xlabel("Blutdruck")
-ax.set_ylabel("Anzahl")
-plt.show()
-```
-:::
-
-Das Zackenmuster in @fig-variation-r ist kein Zufall und kein
-Darstellungsfehler. Es verrät etwas über die Entstehung der Daten. Der Verdacht lässt sich prüfen, indem man zählt,
-wie oft die Werte auf 0 oder 5 enden:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: rundung-r
-endziffern <- table(roh$blutdruck %% 10)
-round(prop.table(endziffern), 3)
-```
-
-## Python
-
-```{python}
-#| label: rundung-py
-endziffern = (roh["blutdruck"].dropna() % 10).value_counts(normalize=True)
-print(endziffern.sort_index().round(3))
-```
-:::
-
-Bei sauber gemessenen Werten läge jede Endziffer bei etwa 10 Prozent. Hier
-entfällt ein Vielfaches davon auf 0 und 5. Das ist eine Rundungspräferenz: Ein
-Teil der Werte wurde nicht gemessen, sondern abgelesen und gerundet. Für die
-Auswertung heisst das, dass die Genauigkeit geringer ist, als die Nachkommastellen
-suggerieren.
-
-::: {.note-box}
-Solche Muster sind fast immer Hinweise auf die Erhebung, nicht auf den
-untersuchten Gegenstand. Gehäufte Rundwerte, verdächtig glatte Mittelwerte oder
-identische Wiederholungen entstehen beim Erfassen, nicht in der Natur.
-:::
-
-### Kovariation: zwei Merkmale zusammen
-
-Bevor zwei Merkmale gemeinsam betrachtet werden, kommt die Bereinigung: die
-Platzhalter im Gewicht werden zu echten fehlenden Werten, sonst zieht ein
-Gewicht von minus eins jede Kennzahl nach unten. Das Vorgehen dahinter steht
-unter [Datenqualität](../../daten/datenqualitaet.qmd).
-
-```{r}
-#| label: bereinigt-eda-r
-#| include: false
-daten <- roh
-daten$gewicht[daten$gewicht < 0] <- NA
-```
-
-
-Welche Darstellung passt, hängt von der Kombination der Skalenniveaus ab.
+### Welche Darstellung wozu
 
 | Kombination | Darstellung |
 |---|---|
+| ein metrisches Merkmal | Histogramm, Boxplot, Verteilungsfunktion |
+| ein kategoriales Merkmal | Häufigkeitstabelle, Stabdiagramm |
 | metrisch und metrisch | Streudiagramm |
 | metrisch und kategorial | Boxplots nebeneinander |
 | kategorial und kategorial | Kreuztabelle, gestapelte Balken |
 
-::: panel-tabset
-## R
+## Beispiele
+
+Alle Beispiele arbeiten mit demselben konstruierten Datensatz: 400
+Untersuchungen mit Gewicht, Alter, Standort und Blutdruck. Eingebaut sind drei
+Auffälligkeiten, wie sie in echten Exporten vorkommen — welche, verrät die
+Auswertung selbst.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Erst die Struktur, dann die Zahlen
+
+#### Frage und Datenlage
+
+Der erste Blick gilt nicht der Verteilung, sondern der Vollständigkeit: Wie
+viele Zeilen, welche Typen, wo fehlen Werte — und wo stehen **Platzhalter**, die
+wie Werte aussehen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: fig-kovariation-r
-#| fig-cap: "Blutdruck gegen Alter, getrennt nach Standort."
+#| label: b1-eda-r
+str(roh)
+summary(roh)
+
+# Wo fehlt etwas, und wo sieht etwas nach Platzhalter aus?
+colSums(is.na(roh))
+sapply(roh[, c("gewicht", "alter", "blutdruck")], range, na.rm = TRUE)
+```
+
+##### Python
+
+```{python}
+#| label: b1-eda-py
+print(roh.dtypes)
+print(roh.describe().round(2))
+
+print(roh.isna().sum())
+print(roh[["gewicht", "alter", "blutdruck"]].agg(["min", "max"]))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Merkmal | Typ | fehlend | Minimum | Maximum | Auffällig? |
+|---|---|---|---|---|---|
+| `gewicht` | numerisch | 0 | **-1.0** | 124.5 | **ja** — ein Gewicht von -1 kg gibt es nicht |
+| `alter` | ganzzahlig | 0 | 18 | 74 | nein |
+| `standort` | Text | 0 | — | — | nein (Bern 200, Chur 129, Sion 71) |
+| `blutdruck` | numerisch | **18** | 92 | 160 | die Lücken sind offen deklariert |
+
+| Beobachtung | Erklärung |
+|---|---|
+| `gewicht` hat **null** fehlende Werte und trotzdem ein Problem | Die -1 ist ein **Platzhalter**: Irgendeine Erfassungsstelle hat "unbekannt" als -1 codiert. Für R und Python ist das eine gültige Zahl. |
+| `blutdruck` hat 18 offene Lücken | Das ist der **harmlosere** Fall: `NA` beziehungsweise `NaN` wird von jeder Kennzahl ausgeschlossen oder erzeugt eine Fehlermeldung. |
+| Der Blick auf **Minimum und Maximum** findet beides | Deshalb steht er vor jeder Verteilungsgrafik. Eine Kennzahl allein verrät den Platzhalter nicht — bei drei Fällen von 400 verschiebt er den Mittelwert um weniger als ein Prozent. |
+| Die Standorte sind ungleich besetzt | 200, 129 und 71. Für alle Gruppenvergleiche heisst das: **relative** Häufigkeiten verwenden. |
+
+::: {.note-box}
+**Die üblichen Platzhalter, nach denen sich zu suchen lohnt:**
+
+| Wert | Herkunft |
+|---|---|
+| -1, -99, -999 | Codierung für "unbekannt" in älteren Erfassungssystemen |
+| 0 bei Merkmalen, die nicht null sein können | Gewicht, Blutdruck, Alter |
+| 999, 9999 | dasselbe wie oben, nur nach oben |
+| 1900-01-01, 1970-01-01 | Standarddatum bei fehlender Eingabe |
+| leere Zeichenkette gegen `NA` | zwei verschiedene Zustände, die gleich aussehen |
+
+Sie alle haben eine Eigenschaft gemeinsam: **Sie werden mitgerechnet.** Eine
+offene Lücke fällt auf, ein Platzhalter nicht.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Der Datensatz umfasst 400 Beobachtungen. Beim Blutdruck fehlen 18 Werte
+> (4.5 Prozent), beim Gewicht sind drei Werte mit dem Platzhalter -1 codiert.
+> Beide werden vor der Auswertung als fehlend gekennzeichnet.
+
+### Beispiel 2: Was der Platzhalter anrichtet
+
+#### Frage und Datenlage
+
+Drei Werte von 400 — kann das viel ausmachen? Die Antwort hängt davon ab,
+welche Kennzahl man ansieht.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-eda-r
+#| fig-cap: "Beispiel 2: links das Gewicht mit den Platzhaltern, rechts bereinigt."
+#| fig-height: 3.2
+daten <- roh
+daten$gewicht[daten$gewicht < 0] <- NA
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+hist(roh$gewicht, breaks = 30, col = "grey75", border = "white",
+     main = "mit Platzhaltern", xlab = "Gewicht (kg)")
+hist(daten$gewicht, breaks = 30, col = "grey75", border = "white",
+     main = "bereinigt", xlab = "Gewicht (kg)")
+par(mfrow = c(1, 1))
+
+round(rbind(
+  mit_platzhalter = c(n = sum(!is.na(roh$gewicht)), mittel = mean(roh$gewicht),
+                      sd = sd(roh$gewicht), min = min(roh$gewicht),
+                      median = median(roh$gewicht)),
+  bereinigt = c(n = sum(!is.na(daten$gewicht)),
+                mittel = mean(daten$gewicht, na.rm = TRUE),
+                sd = sd(daten$gewicht, na.rm = TRUE),
+                min = min(daten$gewicht, na.rm = TRUE),
+                median = median(daten$gewicht, na.rm = TRUE))
+), 2)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-eda-py
+#| fig-cap: "Beispiel 2: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+daten = roh.copy()
+daten.loc[daten["gewicht"] < 0, "gewicht"] = np.nan
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].hist(roh["gewicht"], bins=30, color="0.75", edgecolor="white")
+achsen[0].set_title("mit Platzhaltern")
+achsen[1].hist(daten["gewicht"].dropna(), bins=30, color="0.75",
+               edgecolor="white")
+achsen[1].set_title("bereinigt")
+for achse in achsen:
+    achse.set_xlabel("Gewicht (kg)")
+plt.tight_layout()
+plt.show()
+
+
+def kennzahlen(reihe):
+    return {"n": int(reihe.notna().sum()), "mittel": reihe.mean(),
+            "sd": reihe.std(), "min": reihe.min(), "median": reihe.median()}
+
+
+print(pd.DataFrame([kennzahlen(roh["gewicht"]), kennzahlen(daten["gewicht"])],
+                   index=["mit_platzhalter", "bereinigt"]).round(2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kennzahl | mit Platzhaltern | bereinigt | Abweichung |
+|---|---|---|---|
+| n | 400 | 397 | |
+| Mittelwert | 80.53 | 81.15 | **-0.8 %** |
+| **Standardabweichung** | **13.20** | **11.17** | **+18 %** |
+| Minimum | **-1.0** | 49.7 | |
+| Median | 80.50 | 80.50 | unverändert |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Der **Mittelwert** verschiebt sich kaum | Drei von 400 Werten, jeder rund 82 kg zu tief — das macht 0.6 kg auf den Mittelwert. Wer nur ihn ansieht, merkt nichts. |
+| Die **Standardabweichung** ist 18 Prozent zu gross | Weil sie quadriert: $(80.5 - (-1))^2 = 6642$ je Platzhalter. Drei davon beherrschen die Summe. |
+| Der **Median** bleibt exakt gleich | Er zählt nur ab. Drei Extremwerte am unteren Ende verschieben ihn um weniger als eine Position. |
+| Das **Minimum** verrät alles | -1.0 gegen 49.7. Es ist die billigste und wirksamste Prüfung, die es gibt. |
+| Im linken **Histogramm** sitzt ein winziger Balken bei -1 | Bei 30 Klassen über einen Bereich von 125 kg ist er kaum zu sehen — und die Hauptverteilung wird zusammengedrückt, weil die Achse bis -1 reicht. |
+
+::: {.note-box}
+**Warum das die gefährlichste Sorte Datenfehler ist:** Er erzeugt keine
+Fehlermeldung, verändert die auffälligste Kennzahl kaum und die unauffälligste
+stark. Ein Bericht mit "Mittelwert 80.5 kg, Standardabweichung 13.2" sieht
+vollkommen plausibel aus.
+
+Und die Folge zieht sich durch: Jedes Konfidenzintervall, jeder t-Test und jede
+Regression, die auf dieser Streuung beruhen, sind zu breit beziehungsweise zu
+schwach.
+
+**Was nicht geht:** die drei Zeilen stillschweigend löschen. Berichtet gehört,
+wie viele Werte aus welchem Grund entfernt wurden.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Drei Gewichtsangaben waren mit dem Platzhalter -1 codiert und wurden als
+> fehlend gekennzeichnet (n = 397 statt 400). Dadurch sinkt die
+> Standardabweichung von 13.20 auf 11.17 kg, während sich der Mittelwert nur um
+> 0.6 kg ändert.
+
+### Beispiel 3: Ein Muster, das von der Erhebung erzählt
+
+#### Frage und Datenlage
+
+Die Erwartung für den Blutdruck war notiert: Werte zwischen 90 und 180,
+eingipflig, leicht rechtsschief, Mittelwert um 130. Stimmt das Bild damit
+überein?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-eda-r
+#| fig-cap: "Beispiel 3: Verteilung des Blutdrucks mit Klassenbreite 1. Der Bereich stimmt, die Form ist auffällig gezackt."
+#| fig-height: 3.2
+ggplot(roh, aes(blutdruck)) +
+  geom_histogram(binwidth = 1, fill = "grey70", colour = "white") +
+  labs(x = "Blutdruck", y = "Anzahl")
+
+round(c(n = sum(!is.na(roh$blutdruck)),
+        mittel = mean(roh$blutdruck, na.rm = TRUE),
+        median = median(roh$blutdruck, na.rm = TRUE),
+        minimum = min(roh$blutdruck, na.rm = TRUE),
+        maximum = max(roh$blutdruck, na.rm = TRUE)), 2)
+
+# Der Verdacht: wie oft enden die Werte auf 0 oder 5?
+endziffern <- table(roh$blutdruck %% 10)
+round(prop.table(endziffern), 3)
+round(sum(prop.table(endziffern)[c("0", "5")]), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-eda-py
+#| fig-cap: "Beispiel 3: dieselbe Verteilung mit matplotlib."
+#| fig-height: 3.2
+werte = roh["blutdruck"].dropna()
+
+fig, achse = plt.subplots(figsize=(7, 3.2))
+achse.hist(werte, bins=int(werte.max() - werte.min()),
+           color="0.7", edgecolor="white")
+achse.set_xlabel("Blutdruck")
+achse.set_ylabel("Anzahl")
+plt.tight_layout()
+plt.show()
+
+print({"n": len(werte), "mittel": round(werte.mean(), 2),
+       "median": werte.median(), "minimum": werte.min(),
+       "maximum": werte.max()})
+
+endziffern = (werte % 10).value_counts(normalize=True).sort_index().round(3)
+print(endziffern)
+print("Anteil auf 0 oder 5:",
+      round(float(endziffern[0.0] + endziffern[5.0]), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die Erwartung gegen den Befund:
+
+| Erwartet | Beobachtet | Stimmt? |
+|---|---|---|
+| Werte zwischen 90 und 180 | 92 bis 160 | ja |
+| eingipflig | ja | ja |
+| Mittelwert um 130 | **131.85** | ja |
+| glatte Form | **stark gezackt** | **nein** |
+
+Und die Endziffern, die den Zacken erklären:
+
+| Endziffer | 0 | 1 | 2 | 3 | 4 | **5** | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Anteil | **0.204** | 0.081 | 0.076 | 0.055 | 0.058 | **0.259** | 0.065 | 0.058 | 0.073 | 0.071 |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Erwartet wären **10 Prozent** je Endziffer | Bei sauber gemessenen Werten. |
+| Beobachtet: 20.4 und 25.9 Prozent auf 0 und 5 | Zusammen **46.3 Prozent** statt der erwarteten 20. |
+| Die übrigen acht Ziffern liegen bei 5.5 bis 8.1 Prozent | Also **unter** 10 — genau um den Betrag, der auf 0 und 5 zusätzlich landet. |
+| Das ist eine **Rundungspräferenz** | Ein Teil der Werte wurde nicht abgelesen, sondern geschätzt und auf fünf gerundet. Hier betrifft es rund 150 der 400 Beobachtungen. |
+
+::: {.note-box}
+**Was das für die Auswertung heisst:** Die Genauigkeit ist geringer, als die
+Zahlen suggerieren. Konkret:
+
+- Kennzahlen wie Mittelwert und Median bleiben **brauchbar** — die Rundung
+  streut in beide Richtungen und hebt sich weitgehend auf.
+- Der **Anteil unter einem Grenzwert** wird unzuverlässig, wenn der Grenzwert
+  selbst auf 0 oder 5 endet. Ein Schwellenwert von 140 trifft mitten in eine
+  Häufung.
+- **Feine Unterschiede** zwischen Gruppen verschwinden im Rundungsrauschen.
+
+Solche Muster sind fast immer Hinweise auf die **Erhebung**, nicht auf den
+untersuchten Gegenstand. Gehäufte Rundwerte, verdächtig glatte Mittelwerte oder
+identische Wiederholungen entstehen beim Erfassen, nicht in der Natur.
+
+Und sie fallen nur bei **Klassenbreite 1** auf. Ein Histogramm mit der üblichen
+Klassenzahl hätte die Zacken weggeglättet — ein Beispiel dafür, dass man in der
+Erkundungsphase absichtlich zu fein auflöst.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Blutdruckwerte enden zu 46.3 Prozent auf 0 oder 5, erwartet wären 20
+> Prozent. Ein erheblicher Teil der Werte wurde offenbar gerundet erfasst; die
+> tatsächliche Messgenauigkeit liegt bei etwa 5 mmHg.
+
+### Beispiel 4: Zwei Merkmale und eine dritte Aufteilung
+
+#### Frage und Datenlage
+
+Blutdruck gegen Alter — und ändert sich das Bild, wenn man nach Standort
+trennt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-eda-r
+#| fig-cap: "Beispiel 4: Blutdruck gegen Alter, getrennt nach Standort."
 #| fig-height: 3.2
 ggplot(daten, aes(alter, blutdruck)) +
   geom_point(alpha = 0.5, size = 1.3) +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE, colour = "black") +
   facet_wrap(~ standort) +
   labs(x = "Alter", y = "Blutdruck")
+
+# Steigung und Niveau je Standort
+for (ort in c("Bern", "Chur", "Sion")) {
+  teil <- subset(daten, standort == ort & !is.na(blutdruck))
+  modell <- lm(blutdruck ~ alter, data = teil)
+  cat(sprintf("%-5s n = %3d | Steigung %.3f | Achsenabschnitt %.1f | Mittel %.1f\n",
+              ort, nrow(teil), coef(modell)[2], coef(modell)[1],
+              mean(teil$blutdruck)))
+}
+
+# Und die Korrelationen insgesamt
+vollstaendig <- na.omit(daten[, c("alter", "gewicht", "blutdruck")])
+round(cor(vollstaendig), 3)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: fig-kovariation-py
-#| fig-cap: "Dieselbe Aufteilung mit matplotlib."
-orte = sorted(roh["standort"].unique())
+#| label: fig-b4-eda-py
+#| fig-cap: "Beispiel 4: dieselbe Aufteilung mit matplotlib."
+#| fig-height: 3.2
+orte = ["Bern", "Chur", "Sion"]
 fig, achsen = plt.subplots(1, len(orte), figsize=(7, 3.2), sharey=True)
-for ax, ort in zip(achsen, orte):
-    teil = roh[(roh["standort"] == ort)].dropna(subset=["blutdruck"])
-    ax.scatter(teil["alter"], teil["blutdruck"], alpha=0.5, s=12, color="0.3")
+for achse, ort in zip(achsen, orte):
+    teil = daten[daten["standort"] == ort].dropna(subset=["blutdruck"])
+    achse.scatter(teil["alter"], teil["blutdruck"], alpha=0.5, s=12,
+                  color="0.3")
     k = np.polyfit(teil["alter"], teil["blutdruck"], 1)
-    xs = np.linspace(teil["alter"].min(), teil["alter"].max(), 2)
-    ax.plot(xs, np.polyval(k, xs), color="black")
-    ax.set_title(ort)
-    ax.set_xlabel("Alter")
+    gitter = np.linspace(teil["alter"].min(), teil["alter"].max(), 2)
+    achse.plot(gitter, np.polyval(k, gitter), color="black")
+    achse.set_title(ort)
+    achse.set_xlabel("Alter")
+    print(f"{ort:5s} n = {len(teil):3d} | Steigung {k[0]:.3f}"
+          f" | Achsenabschnitt {k[1]:.1f} | Mittel {teil['blutdruck'].mean():.1f}")
 achsen[0].set_ylabel("Blutdruck")
-fig.tight_layout()
+plt.tight_layout()
 plt.show()
+
+vollstaendig = daten[["alter", "gewicht", "blutdruck"]].dropna()
+print(vollstaendig.corr().round(3))
 ```
+
 :::
 
-In @fig-kovariation-r fällt auf, dass die Steigung an allen drei Standorten
-ähnlich verläuft; die Standorte unterscheiden sich also im Niveau, nicht im
-Zusammenhang.
+#### Output Zeile für Zeile
 
-Für zwei kategoriale Merkmale ist die Kreuztabelle das Mittel der Wahl. Die
-Zeilenanteile machen Gruppen unterschiedlicher Grösse vergleichbar:
+| Standort | n | Steigung je Jahr | Achsenabschnitt | mittlerer Blutdruck |
+|---|---|---|---|---|
+| Bern | 190 | **0.406** | 111.8 | 130.3 |
+| Chur | 123 | **0.426** | 118.1 | **137.6** |
+| Sion | 69 | **0.447** | 105.5 | **125.9** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die **Steigungen** sind praktisch gleich | 0.41 bis 0.45 mmHg je Lebensjahr. Der Zusammenhang zwischen Alter und Blutdruck ist an allen drei Standorten derselbe. |
+| Die **Niveaus** unterscheiden sich | Chur liegt rund 12 mmHg über Sion. Die drei Geraden verlaufen parallel, nur versetzt. |
+| Das ist der Unterschied zwischen **Versatz und Wechselwirkung** | Verschiedene Achsenabschnitte bei gleicher Steigung heissen: Der Standort verschiebt das Niveau, ändert aber nicht den Alterseffekt. Verschiedene Steigungen wären eine Wechselwirkung — dann müsste man je Standort getrennt berichten. |
+| Die Korrelationen | Alter mit Blutdruck rund 0.58, Gewicht mit Blutdruck rund 0.23 | Beide Merkmale tragen bei, das Alter deutlich stärker. |
+
+::: {.note-box}
+**Warum die Aufteilung nach einer dritten Variablen zum Pflichtprogramm gehört:**
+Ohne sie hätte man einen Gesamtzusammenhang zwischen Alter und Blutdruck
+gesehen und die Standortunterschiede in der Streuung versteckt. Im Extremfall
+kann eine Aufteilung den Zusammenhang sogar **umkehren** — das ist Simpsons
+Paradoxon, siehe [multiple Regression](../regression/multiple-lineare-regression.qmd).
+
+Die Faustregel: Nach jeder Variablen aufteilen, die inhaltlich als Erklärung in
+Frage kommt, und zwar **bevor** man einen Gesamtbefund formuliert. Bei drei bis
+fünf Kandidaten ist das schnell erledigt; bei zwanzig braucht es eine Auswahl aus
+dem Fachwissen.
+
+**Und die Gegenwarnung:** Wer lange genug aufteilt, findet immer eine Gruppe, in
+der etwas auffällig aussieht. Deshalb ist jeder so gefundene Befund vorläufig,
+bis er an neuen Daten geprüft ist.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Der Blutdruck steigt an allen drei Standorten mit etwa 0.4 mmHg je Lebensjahr
+> (0.41 bis 0.45). Die Standorte unterscheiden sich im Niveau: Chur liegt im
+> Mittel bei 137.6 mmHg, Bern bei 130.3 und Sion bei 125.9. Der Befund ist
+> explorativ und für eine Prüfung an neuen Daten vorzumerken.
+
+### Beispiel 5: Zwei kategoriale Merkmale
+
+#### Frage und Datenlage
+
+Sind die Altersgruppen über die Standorte gleich verteilt? Wenn nicht, wäre der
+Standortunterschied aus Beispiel 4 teilweise ein Alterseffekt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: kreuztabelle-r
-daten$altersgruppe <- cut(daten$alter,
-                          breaks = c(17, 35, 55, 75),
+#| label: fig-b5-eda-r
+#| fig-cap: "Beispiel 5: Altersgruppen je Standort als gestapelte Anteile."
+#| fig-height: 3
+daten$altersgruppe <- cut(daten$alter, breaks = c(17, 35, 55, 75),
                           labels = c("18-35", "36-55", "56-74"))
 
 tab <- table(daten$standort, daten$altersgruppe)
-tab
-round(prop.table(tab, margin = 1), 2)    # Anteile je Zeile
+addmargins(tab)
+round(prop.table(tab, margin = 1), 2)      # Anteile je Standort
+
+par(mar = c(4, 4, 2, 6))
+barplot(t(prop.table(tab, margin = 1)), col = grey.colors(3),
+        legend.text = TRUE, xlab = "Standort", ylab = "Anteil",
+        args.legend = list(x = "right", inset = -0.22, bty = "n"))
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+# Und die Boxplots des Blutdrucks je Standort
+round(tapply(daten$blutdruck, daten$standort, median, na.rm = TRUE), 1)
 ```
+
+##### Python
+
+```{python}
+#| label: fig-b5-eda-py
+#| fig-cap: "Beispiel 5: dieselbe Darstellung in Python."
+#| fig-height: 3
+daten["altersgruppe"] = pd.cut(daten["alter"], bins=[17, 35, 55, 75],
+                               labels=["18-35", "36-55", "56-74"])
+
+tab = pd.crosstab(daten["standort"], daten["altersgruppe"], margins=True)
+print(tab)
+
+roh_tab = pd.crosstab(daten["standort"], daten["altersgruppe"])
+anteile = roh_tab.div(roh_tab.sum(axis=1), axis=0)
+print(anteile.round(2))
+
+fig, achse = plt.subplots(figsize=(7, 3))
+unten = np.zeros(len(anteile))
+for spalte, farbe in zip(anteile.columns, ["0.3", "0.55", "0.8"]):
+    achse.bar(anteile.index, anteile[spalte], bottom=unten, color=farbe,
+              label=spalte)
+    unten += anteile[spalte].values
+achse.set_xlabel("Standort")
+achse.set_ylabel("Anteil")
+achse.legend(frameon=False, bbox_to_anchor=(1.02, 1), loc="upper left")
+plt.tight_layout()
+plt.show()
+
+print(daten.groupby("standort")["blutdruck"].median().round(1))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Absolut:
+
+| Standort | 18–35 | 36–55 | 56–74 | Summe |
+|---|---|---|---|---|
+| Bern | 67 | 69 | 64 | 200 |
+| Chur | 43 | 43 | 43 | 129 |
+| Sion | 25 | 21 | 25 | 71 |
+
+Als Zeilenanteile:
+
+| Standort | 18–35 | 36–55 | 56–74 |
+|---|---|---|---|
+| Bern | 0.34 | 0.34 | 0.32 |
+| Chur | 0.33 | 0.33 | 0.33 |
+| Sion | 0.35 | 0.30 | 0.35 |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die **absoluten** Zahlen sind nicht vergleichbar | Bern hat in jeder Altersgruppe die meisten Fälle — weil Bern insgesamt die meisten hat. |
+| Die **Anteile** sind es | Und sie liegen alle bei rund einem Drittel. Die Altersverteilung ist über die Standorte praktisch identisch. |
+| Was daraus für Beispiel 4 folgt | Der Standortunterschied im Blutdruck ist **kein** verkappter Alterseffekt. Wären in Chur überwiegend ältere Personen erfasst, hätte man den Unterschied damit erklären können. |
+| Die Mediane des Blutdrucks je Standort | bestätigen das Bild aus Beispiel 4 auch robust, also ohne Einfluss einzelner Extremwerte. |
+
+::: {.note-box}
+**Die Reihenfolge, in der diese beiden Beispiele stehen, ist kein Zufall.** Erst
+fällt ein Unterschied auf (Beispiel 4), dann wird nach der naheliegendsten
+Alternativerklärung gesucht (Beispiel 5). So sieht die Schleife aus, aus der EDA
+besteht:
+
+> Frage → Grafik oder Kennzahl → Befund → **nächste Frage aus dem Befund**
+
+Und sie hört nicht auf, weil die Daten erschöpft wären, sondern weil einem keine
+Alternativerklärung mehr einfällt, die man prüfen könnte. Genau deshalb ist das
+Ergebnis eine **Hypothese** und kein Nachweis.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Altersgruppen sind über die drei Standorte gleichmässig verteilt (je rund
+> ein Drittel je Gruppe, n = 200, 129 und 71). Der beobachtete
+> Blutdruckunterschied zwischen den Standorten lässt sich damit nicht durch eine
+> unterschiedliche Altersstruktur erklären.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein Merkmal hat null fehlende Werte, aber ein Minimum von -1 bei einer Grösse,
+die nicht negativ sein kann. Was liegt vor?
+
+- [x] Ein Platzhalter für "unbekannt", der als Zahl gespeichert wurde ~ Richtig.
+      Er wird von jeder Kennzahl mitgerechnet, ohne eine Warnung auszulösen. Der
+      Blick auf Minimum und Maximum jedes Merkmals findet solche Fälle.
+- [ ] Ein Messfehler ~ Möglich, aber -1 bei genau drei Fällen sieht nach
+      Codierung aus, nicht nach Messung.
+- [ ] Nichts Besonderes, drei von 400 fallen nicht ins Gewicht ~ Für den
+      Mittelwert stimmt das ungefähr; die Standardabweichung wächst um 18 Prozent.
+:::
+
+::: {.quiz}
+Warum fällt ein Platzhalter beim Mittelwert kaum auf, bei der
+Standardabweichung aber deutlich?
+
+- [x] Weil die Standardabweichung die Abweichungen quadriert ~ Richtig. Ein Wert
+      80 Einheiten daneben trägt zum Mittelwert 80/n bei, zur Varianz aber
+      $80^2/n$. Deshalb ist die Streuung die empfindlichere Anzeige.
+- [ ] Weil der Mittelwert robuster ist als die Standardabweichung ~ Robust ist
+      keines von beiden; sie sind nur verschieden empfindlich.
+- [ ] Weil der Platzhalter negativ ist ~ Das Vorzeichen spielt keine Rolle, nur
+      der Abstand zum Rest.
+:::
+
+::: {.quiz}
+Die Endziffern eines Messwerts verteilen sich zu 46 Prozent auf 0 und 5. Was
+folgt daraus?
+
+- [x] Ein Teil der Werte wurde gerundet erfasst ~ Richtig. Erwartet wären 20
+      Prozent. Solche Muster verraten etwas über die Erhebung, nicht über den
+      untersuchten Gegenstand — und die tatsächliche Genauigkeit ist geringer,
+      als die Zahlen suggerieren.
+- [ ] Die Daten sind gefälscht ~ Das ist eine viel stärkere Behauptung. Rundung
+      beim Ablesen ist die harmlose und häufigste Erklärung.
+- [ ] Die Stichprobe ist zu klein ~ Bei 382 Werten wäre die Abweichung von 20 auf
+      46 Prozent durch Zufall ausgeschlossen.
+:::
+
+::: {.quiz}
+Drei Streudiagramme zeigen für drei Standorte praktisch dieselbe Steigung, aber
+verschiedene Achsenabschnitte. Wie ist das zu deuten?
+
+- [x] Der Standort verschiebt das Niveau, ändert aber den Alterseffekt nicht ~
+      Richtig. Parallele Geraden heissen Versatz ohne Wechselwirkung. Verschiedene
+      Steigungen wären eine Wechselwirkung, und dann müsste man je Standort
+      getrennt berichten.
+- [ ] Der Standort hat keinen Einfluss ~ Er hat einen, nämlich auf das Niveau.
+- [ ] Die Standorte sind nicht vergleichbar ~ Gerade weil die Steigungen
+      übereinstimmen, sind sie es.
+:::
+
+::: {.quiz}
+Eine explorative Analyse findet in einer von zwölf Untergruppen einen deutlichen
+Unterschied. Was ist damit gezeigt?
+
+- [x] Eine Hypothese, die an neuen Daten zu prüfen ist ~ Richtig. Wer lange genug
+      aufteilt, findet immer eine auffällige Gruppe. Ein Test auf denselben Daten
+      prüft nichts, weil die Fragestellung aus ihnen stammt.
+- [ ] Ein Effekt in dieser Untergruppe ~ Möglich, aber nicht belegt.
+- [ ] Nichts, Untergruppenanalysen sind wertlos ~ Sie sind das Werkzeug, um
+      Hypothesen zu finden. Nur nachweisen können sie nichts.
+:::
 
 ## Verlinkte Ressourcen
 
 - [R for Data Science, Kapitel zur explorativen Datenanalyse](https://r4ds.hadley.nz/eda)
+- [Datenqualität: Platzhalter, Lücken und Ausreisser](../../daten/datenqualitaet.qmd)
