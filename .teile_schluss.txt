@@ -1,0 +1,104 @@
+## Interpretationsfallen
+
+- **Fehlermasse auf den Trainingsdaten sagen nichts.** Das Modell hat diese Werte
+  gesehen; bewertet wird auf dem Testteil.
+- **Zufällige Aufteilung ist bei Zeitreihen falsch.** Getestet wird auf der
+  Zukunft, sonst nutzt das Modell Information, die es nicht haben dürfte.
+- **Eine Prognose ohne Intervall ist unvollständig.** Und das Intervall wächst mit
+  dem Horizont, meist schneller als man erwartet.
+- **Ein gleitender Durchschnitt prognostiziert nicht.** Er ist beschreibend und
+  braucht Werte aus der Zukunft.
+- **MAPE ist tückisch.** Bei Werten nahe null explodiert er, und er bestraft
+  Überschätzung anders als Unterschätzung.
+- **Alpha nahe eins ist keine gute Anpassung**, sondern Folgen des Rauschens.
+- **Glättung erklärt nichts.** Sie beschreibt die Reihe aus sich selbst; für
+  Ursachen braucht es Einflussgrössen.
+
+## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> Die Reihe wurde mit [Verfahren] modelliert (geschätzt auf [Zeitraum], Test auf
+> den folgenden [h] Perioden). Die Prognose erreicht einen RMSE von [Wert] und
+> einen MAPE von [Wert] Prozent, gegenüber [Wert] beziehungsweise [Wert] bei der
+> naiven saisonalen Prognose. Die Residuen zeigen im Ljung-Box-Test p = [p].
+
+Genannt werden: Verfahren und Modellstruktur, Trainings- und Testzeitraum,
+Fehlermasse auf dem Testteil, der Vergleich mit einer naiven Prognose, das
+Ergebnis der Residuenprüfung und der Prognosehorizont mit Intervall.
+
+Beispiel für eine Ergebnistabelle:
+
+| Modell | RMSE | MAE | MAPE |
+|---|---|---|---|
+| naiv saisonal | | | |
+| einfache Glättung | | | |
+| Holt-Winters | | | |
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt der Glättung |
+|---|---|
+| [ARIMA und SARIMA](arima-sarima.qmd) | die Abhängigkeitsstruktur selbst interessiert, Modellordnung soll begründet werden |
+| Regression mit Zeitreihenfehlern | externe Einflussgrössen sollen einfliessen |
+| [Zerlegung](zeitreihen-grundlagen.qmd) | nur Beschreibung, keine Prognose |
+| Verfahren für spärliche Nachfrage | viele Nullen in der Reihe |
+| Modelle mit Strukturbruch | dauerhafter Niveausprung in der Reihe |
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein Modell erreicht auf den Trainingsdaten einen RMSE von 8 und auf dem Testteil
+von 45. Was folgt?
+
+- [x] Das Modell ist an die Trainingsdaten angepasst und prognostiziert schlecht ~
+      Richtig. Der Testteil ist der einzige aussagekräftige Wert. Ein grosser
+      Unterschied deutet auf ein zu reaktives Modell, etwa ein Alpha nahe eins.
+- [ ] Der Testteil ist zu kurz ~ Möglich, aber der Unterschied ist zu gross, um
+      allein daran zu liegen.
+- [ ] Beide Werte gemeinsam beurteilen ~ Der Trainingswert trägt zur Beurteilung
+      der Prognose nichts bei.
+:::
+
+::: {.quiz}
+Warum darf man Zeitreihen nicht zufällig in Trainings- und Testdaten aufteilen?
+
+- [x] Weil das Modell dann Werte aus der Zukunft kennt ~ Richtig. Liegen
+      Testzeitpunkte zwischen Trainingszeitpunkten, nutzt das Modell Information,
+      die zum Prognosezeitpunkt nicht vorlag. Der Fehler wird dadurch zu klein.
+- [ ] Weil die Reihenfolge für die Rechnung nötig ist ~ Auch das, aber der
+      entscheidende Punkt ist die Information.
+- [ ] Weil die Stichprobe sonst zu klein wird ~ Die Grösse ändert sich nicht.
+:::
+
+::: {.quiz}
+Ein gleitender Durchschnitt über zwölf Monate wird für eine Prognose verwendet.
+Was ist das Problem?
+
+- [x] Er ist beschreibend und braucht Werte aus der Zukunft ~ Richtig. Ein
+      zentrierter gleitender Durchschnitt mittelt um jeden Zeitpunkt herum, also
+      auch über spätere Werte, und endet deshalb sechs Monate vor dem
+      Reihenende.
+- [ ] Zwölf Monate sind ein zu langes Fenster ~ Die Fensterbreite ist hier nicht
+      das Problem.
+- [ ] Er glättet die Saison weg ~ Das tut er, und für die Trendbetrachtung ist es
+      gewollt.
+:::
+
+::: {.quiz}
+Der Ljung-Box-Test auf den Residuen ergibt p = 0.003. Was heisst das?
+
+- [x] In den Residuen steckt noch Abhängigkeit, das Modell hat etwas übersehen ~
+      Richtig. Die Folge sind zu schmale Prognoseintervalle. Zu prüfen ist, ob
+      Saison, Trend oder eine Abhängigkeitsstruktur fehlt, die ein ARIMA-Modell
+      erfassen würde.
+- [ ] Das Modell passt gut, der p-Wert ist klein ~ Die Richtung ist vertauscht:
+      Die Nullhypothese lautet keine Autokorrelation.
+- [ ] Die Residuen sind nicht normalverteilt ~ Das prüft ein anderer Test.
+:::
+
+## Verlinkte Ressourcen
+
+- [Forecasting: Principles and Practice, Kapitel 8](https://otexts.com/fpp3/expsmooth.html)
+- [forecast: ets und hw](https://pkg.robjhyndman.com/forecast/)
+- [statsmodels: Exponentielle Glättung](https://www.statsmodels.org/stable/examples/notebooks/generated/exponential_smoothing.html)

@@ -64,6 +64,10 @@ wählen, die paarweise unter etwa 0.1 liegen. Für n = 120 hat sich die Menge
 
 ## Ablauf vor und nach jedem Push
 
+**Nicht pushen, solange ein Build laeuft.** Sonst geht der Freeze-Commit der
+Action verloren, und `zeige-ausgaben.py` zeigt danach die Zahlen der vorherigen
+Fassung, ohne es zu sagen. Siehe `build-fehler.md`.
+
 ```bash
 # vorher
 python pruefe-chunks.py            # lädt jede Seite, was sie benutzt?

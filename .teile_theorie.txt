@@ -1,0 +1,150 @@
+---
+title: "Glättung"
+description: "Gleitender Durchschnitt und exponentielle Glättung als erste Modelle."
+categories: ["Zeitreihen", "Prognose", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 25
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(forecast)
+
+monate <- 72
+t <- 1:monate
+
+# Feste Restwerte, damit R und Python mit derselben Reihe rechnen
+rest <- c(
+  17.3, 16.1, -39.6, -2.9, 11.4, 8.5, -20.5, -15.1,
+  5.2, -24.6, -4.2, -33.9, 0.2, -26.6, 1.7, 27.5,
+  28.3, 23.6, -34.9, 11.4, -11.9, -27.7, 3.8, 14.8,
+  45.7, -5.8, 27.1, -75.1, -7.9, -0.7, -13.7, 21.5,
+  -5.8, 21.3, 22.3, -21.9, -4, -2.1, -4.6, -18.4,
+  -17.8, 9.5, -20.2, -12.1, 17.7, 15.9, 0, -27.1,
+  -44.5, 2.5, -1.1, 20.8, 20.4, -10.2, -4.5, -0.5,
+  1.7, 10.4, 29.8, 9.4, 7, -6.1, -16.2, -15.7,
+  -14.3, 1.6, 21.2, -18.4, -21.7, 6, 53.4, -25.3)
+
+absatz <- ts(round(500 + 4 * t + 60 * sin(2 * pi * t / 12) +
+                     25 * cos(2 * pi * t / 12) + rest),
+             start = c(2020, 1), frequency = 12)
+
+# Trainings- und Testteil: die letzten zwoelf Monate bleiben ungesehen
+training <- window(absatz, end = c(2024, 12))
+test <- window(absatz, start = c(2025, 1))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.holtwinters import SimpleExpSmoothing, ExponentialSmoothing
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+monate = 72
+t = np.arange(1, monate + 1)
+
+# Dieselben festen Restwerte wie im R-Teil
+rest = np.array([
+    17.3, 16.1, -39.6, -2.9, 11.4, 8.5, -20.5, -15.1,
+    5.2, -24.6, -4.2, -33.9, 0.2, -26.6, 1.7, 27.5,
+    28.3, 23.6, -34.9, 11.4, -11.9, -27.7, 3.8, 14.8,
+    45.7, -5.8, 27.1, -75.1, -7.9, -0.7, -13.7, 21.5,
+    -5.8, 21.3, 22.3, -21.9, -4, -2.1, -4.6, -18.4,
+    -17.8, 9.5, -20.2, -12.1, 17.7, 15.9, 0, -27.1,
+    -44.5, 2.5, -1.1, 20.8, 20.4, -10.2, -4.5, -0.5,
+    1.7, 10.4, 29.8, 9.4, 7, -6.1, -16.2, -15.7,
+    -14.3, 1.6, 21.2, -18.4, -21.7, 6, 53.4, -25.3])
+
+absatz = pd.Series(
+    np.round(500 + 4 * t + 60 * np.sin(2 * np.pi * t / 12) +
+             25 * np.cos(2 * np.pi * t / 12) + rest),
+    index=pd.date_range("2020-01-01", periods=monate, freq="MS"))
+
+training = absatz.iloc[:60]
+test = absatz.iloc[60:]
+```
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie glättet man Rauschen heraus, und wie prognostiziert man mit einfachen Mitteln? |
+| Zielvariable | eine Zeitreihe |
+| Prädiktoren | keine, nur die eigene Vergangenheit |
+| Was die Methode liefert | geglättete Reihe, Prognose mit Prognoseintervall, Fehlermasse |
+| R-Funktion | `ma()`, `ses()`, `holt()`, `hw()` beziehungsweise `ets()` |
+| Python-Funktion | `rolling().mean()`, `SimpleExpSmoothing()`, `ExponentialSmoothing()` |
+| Verwandte Methoden | [ARIMA und SARIMA](arima-sarima.qmd), [Zeitreihen: Grundlagen](zeitreihen-grundlagen.qmd) |
+
+## Wann diese Methode, wann nicht
+
+Typische Fragestellungen: Rauschen aus einer Reihe entfernen, um den Verlauf zu
+sehen; eine schnelle Prognose für die nächsten Monate; eine Vergleichsgrundlage,
+gegen die sich ein aufwendigeres Modell beweisen muss.
+
+Glättungsverfahren sind einfach, robust und oft überraschend gut. Ihr Kern ist
+ein gewichteter Mittelwert der Vergangenheit: Der gleitende Durchschnitt gewichtet
+alle Werte im Fenster gleich, die exponentielle Glättung gewichtet neuere Werte
+stärker.
+
+| Situation | Stattdessen |
+|---|---|
+| Die Abhängigkeitsstruktur soll modelliert werden | [ARIMA und SARIMA](arima-sarima.qmd) |
+| Externe Einflussgrössen sollen einfliessen | Regression mit Zeitreihenfehlern |
+| Nur die Struktur soll sichtbar werden, ohne Prognose | Zerlegung, siehe [Grundlagen](zeitreihen-grundlagen.qmd) |
+| Reihe mit vielen Nullen oder sehr sporadisch | eigene Verfahren für spärliche Nachfrage |
+| Umbrüche im Niveau, etwa nach einer Regeländerung | Modell mit Strukturbruch, oder Reihe teilen |
+
+## Grundidee und Modell
+
+**Gleitender Durchschnitt.** Der Wert an jeder Stelle wird durch das Mittel eines
+Fensters ersetzt. Bei ungerader Fensterbreite $m$:
+
+$$\hat{y}_t = \frac{1}{m} \sum_{j=-(m-1)/2}^{(m-1)/2} y_{t+j}$$
+
+Das ist beschreibend, nicht prognostisch: Es braucht Werte aus der Zukunft und
+verkürzt die Reihe an beiden Enden. Für Saisonbereinigung ist die Fensterbreite die
+Periode, also 12 bei Monatsdaten.
+
+**Exponentielle Glättung.** Hier wird nur die Vergangenheit verwendet, und ältere
+Werte zählen weniger:
+
+$$\hat{y}_{t+1} = \alpha y_t + (1-\alpha)\hat{y}_t$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $\alpha$ | Glättungsparameter zwischen 0 und 1 |
+| $\alpha$ nahe 1 | reagiert schnell, folgt dem Rauschen |
+| $\alpha$ nahe 0 | reagiert träge, glättet stark |
+| $\hat{y}_t$ | bisherige Schätzung des Niveaus |
+
+Die einfache Form kennt nur ein Niveau und prognostiziert deshalb eine waagrechte
+Linie. Zwei Erweiterungen füllen das auf:
+
+| Verfahren | Modelliert | Prognose |
+|---|---|---|
+| Einfach | Niveau | konstant |
+| Holt | Niveau und Trend | Gerade |
+| Holt-Winters | Niveau, Trend und Saison | Gerade mit Saisonfigur |
+
+Alle drei sind Spezialfälle der ETS-Modellfamilie, die in R über `ets()`
+automatisch die passende Variante wählt.
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Genügend Perioden für die Saison | mindestens drei, besser vier vollständige | Länge prüfen | Saisonfigur nicht schätzbar | Saison weglassen oder Daten sammeln |
+| Kein Strukturbruch | Das Niveau springt nicht dauerhaft | Grafik | Modell mittelt über zwei Regime | Reihe teilen |
+| Passende Zerlegungsart | additiv oder multiplikativ richtig gewählt | Grafik: wachsen die Zacken | Prognoseintervalle falsch | logarithmieren oder multiplikative Variante |
+| Residuen ohne Struktur | Das Modell hat alles Systematische erfasst | ACF der Residuen, Ljung-Box-Test | Prognose systematisch daneben | Modell erweitern, ARIMA prüfen |
+| Prognose nur über kurze Horizonte | Die Unsicherheit wächst schnell | Prognoseintervall ansehen | Scheingenauigkeit | Horizont begrenzen |
+

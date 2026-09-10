@@ -148,86 +148,6 @@ automatisch die passende Variante wählt.
 | Residuen ohne Struktur | Das Modell hat alles Systematische erfasst | ACF der Residuen, Ljung-Box-Test | Prognose systematisch daneben | Modell erweitern, ARIMA prüfen |
 | Prognose nur über kurze Horizonte | Die Unsicherheit wächst schnell | Prognoseintervall ansehen | Scheingenauigkeit | Horizont begrenzen |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-glaettung-vergleich-r
-#| fig-cap: "Die Reihe mit gleitenden Durchschnitten über 3 und 12 Monate."
-absatz_ma3 <- ma(absatz, order = 3)
-absatz_ma12 <- ma(absatz, order = 12)
-
-plot(absatz, col = "grey70", ylab = "Absatz", xlab = "Jahr")
-lines(absatz_ma3, col = "#2166ac", lwd = 2)
-lines(absatz_ma12, col = "#b2182b", lwd = 2)
-legend("topleft", legend = c("Reihe", "MA(3)", "MA(12)"),
-       col = c("grey70", "#2166ac", "#b2182b"), lwd = c(1, 2, 2), bty = "n")
-```
-
-## Python
-
-```{python}
-#| label: fig-glaettung-vergleich-py
-#| fig-cap: "Dieselbe Gegenüberstellung in Python."
-fig, ax = plt.subplots()
-ax.plot(absatz, color="0.7", label="Reihe")
-ax.plot(absatz.rolling(3, center=True).mean(), color="#2166ac", lw=2, label="MA(3)")
-ax.plot(absatz.rolling(12, center=True).mean(), color="#b2182b", lw=2, label="MA(12)")
-ax.set_ylabel("Absatz")
-ax.legend(frameon=False)
-plt.show()
-```
-
-:::
-
-Das Fenster über drei Monate glättet das Rauschen und lässt die Saison stehen. Das
-Fenster über zwölf Monate entfernt die Saison vollständig und zeigt nur noch den
-Trend, verliert dafür an beiden Enden sechs Monate. Die Fensterbreite ist damit
-keine technische Einstellung, sondern die Entscheidung darüber, was man sehen
-will.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-glaettung-r
-modell_hw <- hw(training, h = 12, seasonal = "additive")
-
-modell_hw$model
-round(accuracy(modell_hw, test)[, c("RMSE", "MAE", "MAPE")], 2)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-glaettung-py
-modell_hw = ExponentialSmoothing(training, trend="add", seasonal="add",
-                                 seasonal_periods=12,
-                                 initialization_method="estimated").fit()
-
-prognose = modell_hw.forecast(12)
-
-print({k: round(float(v), 3) for k, v in modell_hw.params.items()
-       if k in {"smoothing_level", "smoothing_trend", "smoothing_seasonal"}})
-
-fehler = test.values - prognose.values
-print({"RMSE": round(float(np.sqrt((fehler ** 2).mean())), 2),
-       "MAE": round(float(np.abs(fehler).mean()), 2),
-       "MAPE": round(float((np.abs(fehler / test.values)).mean() * 100), 2)})
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 72 Monate mit
-Trend, Jahressaison und Rauschen. Die letzten zwölf Monate bleiben als Testteil
-ungesehen; geschätzt wird auf den ersten 60. Das ist die einzige zulässige
-Aufteilung bei Zeitreihen: Getestet wird auf der Zukunft, nie auf herausgelosten
-Zeitpunkten.
-
 ## Output lesen
 
 R, `hw()` und `ets()`:
@@ -263,97 +183,173 @@ ein einfacheres Startverfahren mit anderen Ergebnissen. Und `forecast()` liefert
 nur die Punktprognose: Prognoseintervalle gibt es erst über `ETSModel` aus
 `statsmodels.tsa.exponential_smoothing.ets` oder über wiederholte `simulate()`.
 
-## Ergebnisse interpretieren
+## Beispiele
 
-### Szenario A: Prognose mit Trend und Saison
+Alle Beispiele arbeiten mit derselben konstruierten Absatzreihe: 72 Monate ab
+Januar 2020 mit linearem Trend, Jahressaison und festem Rauschen. **Die letzten
+zwölf Monate bleiben ungesehen**; geschätzt wird auf den ersten 60. Das ist die
+einzige zulässige Aufteilung bei Zeitreihen: Getestet wird auf der Zukunft, nie
+auf herausgelosten Zeitpunkten.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Die Fensterbreite ist die Frage
+
+#### Frage und Datenlage
+
+Der gleitende Durchschnitt hat genau eine Einstellung: die Fensterbreite. Sie
+ist keine technische Nebensache, sondern die Entscheidung darüber, **was man
+sehen will**.
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: fig-szenario-a-glaettung-r
-#| fig-cap: "Holt-Winters auf den ersten 60 Monaten, Prognose für zwölf Monate mit Intervall, dazu die tatsächlichen Werte."
+#| label: fig-b1-gl-r
+#| fig-cap: "Beispiel 1: die Reihe mit gleitenden Durchschnitten über 3 und 12 Monate."
+absatz_ma3 <- ma(absatz, order = 3)
+absatz_ma12 <- ma(absatz, order = 12)
+
+par(mar = c(4, 4, 2, 1))
+plot(absatz, col = "grey70", ylab = "Absatz", xlab = "Jahr")
+lines(absatz_ma3, col = "#2166ac", lwd = 2)
+lines(absatz_ma12, col = "#b2182b", lwd = 2)
+legend("topleft", legend = c("Reihe", "MA(3)", "MA(12)"),
+       col = c("grey70", "#2166ac", "#b2182b"), lwd = c(1, 2, 2), bty = "n")
+
+round(rbind(
+  streuung = c(reihe = sd(absatz), ma3 = sd(absatz_ma3, na.rm = TRUE),
+               ma12 = sd(absatz_ma12, na.rm = TRUE)),
+  fehlende_werte = c(0, sum(is.na(absatz_ma3)), sum(is.na(absatz_ma12)))
+), 1)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-gl-py
+#| fig-cap: "Beispiel 1: dieselbe Gegenüberstellung in Python."
+ma3 = absatz.rolling(3, center=True).mean()
+ma12 = absatz.rolling(12, center=True).mean()
+
+fig, achse = plt.subplots()
+achse.plot(absatz, color="0.7", label="Reihe")
+achse.plot(ma3, color="#2166ac", lw=2, label="MA(3)")
+achse.plot(ma12, color="#b2182b", lw=2, label="MA(12)")
+achse.set_ylabel("Absatz")
+achse.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+
+print(pd.DataFrame({
+    "streuung": [absatz.std(ddof=1), ma3.std(ddof=1), ma12.std(ddof=1)],
+    "fehlende_werte": [0, int(ma3.isna().sum()), int(ma12.isna().sum())],
+}, index=["reihe", "ma3", "ma12"]).round(1))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| | Reihe | MA(3) | MA(12) |
+|---|---|---|---|
+| Streuung | 94.5 | 90.0 | **72.5** |
+| fehlende Werte | 0 | 2 | 11 |
+
+| Fenster | Was es glättet | Was es stehen lässt |
+|---|---|---|
+| **MA(3)** | das monatliche Rauschen | Trend **und** Saison. Die Streuung sinkt nur von 94.5 auf 90.0, weil die Saison den grössten Teil der Schwankung ausmacht und unberührt bleibt. |
+| **MA(12)** | Rauschen und Saison vollständig | nur den Trend. Die Streuung fällt auf 72.5 — was übrig bleibt, ist der Anstieg über sechs Jahre. |
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| Fensterbreite = Periode | Der entscheidende Punkt: Ein Fenster von genau **einer Periode** mittelt jeden Monat des Jahres genau einmal und löscht die Saison damit exakt aus. Jede andere Breite lässt einen Rest stehen. |
+| fehlende Werte: 2 und 11 | Ein zentriertes Fenster braucht Nachbarn auf beiden Seiten. Bei MA(3) fehlt je einer am Rand, bei MA(12) je rund ein halbes Jahr. |
+| Die fehlenden Werte am **rechten** Rand | sind der eigentliche Haken: Für die aktuellsten Monate gibt es keinen geglätteten Wert. **Ein gleitender Durchschnitt prognostiziert nicht** — er beschreibt. |
+
+::: {.note-box}
+Bei gerader Fensterbreite gibt es ein Zentrierungsproblem: Ein Fenster über 12
+Monate hat keinen mittleren Monat. R löst es in `ma(order = 12)` über ein
+doppeltes Mittel mit halbem Gewicht an den Enden, `rolling(12, center=True)` in
+Python legt das Fenster dagegen leicht asymmetrisch. Für die Betrachtung ändert
+das wenig, für exakte Vergleiche zwischen den Sprachen viel — daher die
+abweichende Zahl fehlender Werte.
+:::
+
+#### Interpretation
+
+Wer den Trend sehen will, nimmt die Periodenlänge. Wer den Verlauf inklusive
+Saison glätten will, ein kurzes Fenster. Beides ist beschreibend; für Prognosen
+braucht es die exponentielle Glättung.
+
+### Beispiel 2: Holt-Winters, Monat für Monat
+
+#### Frage und Datenlage
+
+Ein Modell mit Niveau, Trend und Saison wird auf 60 Monaten geschätzt und
+prognostiziert die folgenden zwölf. Die tatsächlichen Werte sind bekannt, aber
+das Modell hat sie nicht gesehen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-gl-r
+#| fig-cap: "Beispiel 2: Holt-Winters mit Prognoseintervall, dazu die tatsächlichen Werte."
+modell_hw <- hw(training, h = 12, seasonal = "additive")
+modell_hw$model
+
+par(mar = c(4, 4, 2, 1))
 plot(modell_hw, ylab = "Absatz", xlab = "Jahr", main = "Holt-Winters")
 lines(test, col = "#b2182b", lwd = 2)
 legend("topleft", legend = c("Prognose", "tatsächlich"),
        col = c("#2166ac", "#b2182b"), lwd = 2, bty = "n")
 
 round(cbind(prognose = as.numeric(modell_hw$mean),
+            unten = as.numeric(modell_hw$lower[, "95%"]),
+            oben = as.numeric(modell_hw$upper[, "95%"]),
             tatsaechlich = as.numeric(test),
             fehler = as.numeric(test) - as.numeric(modell_hw$mean)), 1)
+
+round(accuracy(modell_hw, test)[, c("RMSE", "MAE", "MAPE")], 2)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: fig-szenario-a-glaettung-py
-#| fig-cap: "Dieselbe Prognose in Python."
-fig, ax = plt.subplots()
-ax.plot(training, color="0.5", label="Training")
-ax.plot(test, color="#b2182b", lw=2, label="tatsächlich")
-ax.plot(prognose, color="#2166ac", lw=2, label="Prognose")
+#| label: fig-b2-gl-py
+#| fig-cap: "Beispiel 2: dieselbe Prognose in Python."
+modell_hw = ExponentialSmoothing(training, trend="add", seasonal="add",
+                                 seasonal_periods=12,
+                                 initialization_method="estimated").fit()
+prognose = modell_hw.forecast(12)
+
+print({k: round(float(v), 4) for k, v in modell_hw.params.items()
+       if k.startswith("smoothing")})
+print("Residuen, Standardabweichung:",
+      round(float(modell_hw.resid.std(ddof=1)), 2))
+
+fig, achse = plt.subplots()
+achse.plot(training, color="0.5", label="Training")
+achse.plot(test, color="#b2182b", lw=2, label="tatsächlich")
+achse.plot(prognose, color="#2166ac", lw=2, label="Prognose")
 # Die Holt-Winters-Umsetzung in statsmodels liefert keine analytischen
 # Prognoseintervalle. Das Band hier ist eine Naeherung aus der Streuung der
 # Residuen; exakte Intervalle liefert ETSModel oder simulate().
 band = 1.96 * modell_hw.resid.std(ddof=1)
-ax.fill_between(test.index, prognose - band, prognose + band,
-                color="#2166ac", alpha=0.15)
-ax.set_ylabel("Absatz")
-ax.legend(frameon=False)
+achse.fill_between(test.index, prognose - band, prognose + band,
+                   color="#2166ac", alpha=0.15)
+achse.set_ylabel("Absatz")
+achse.legend(frameon=False)
+plt.tight_layout()
 plt.show()
 
-print(pd.DataFrame({"prognose": prognose.round(1).values,
-                    "tatsaechlich": test.values,
-                    "fehler": (test.values - prognose.values).round(1)},
-                   index=test.index.strftime("%Y-%m")))
-```
-
-:::
-
-Die Prognose folgt Trend und Saisonfigur, und die tatsächlichen Werte liegen im
-Intervall, die beiden grössten Abweichungen im Juli und im November knapp am
-Rand. Zu berichten sind drei Dinge: die Punktprognose, das
-Intervall und ein Fehlermass auf dem Testteil. Ohne Intervall ist eine Prognose
-eine Behauptung; ohne Testteil ist ein gutes Fehlermass auf den Trainingsdaten
-wertlos, weil das Modell diese Werte gesehen hat.
-
-Wie das Intervall wächst, ist ebenfalls Teil der Aussage: In der R-Grafik ist es
-für den ersten Prognosemonat schmal und für den zwölften deutlich breiter. Genau
-deshalb gehört der Horizont begrenzt. Das Band in der Python-Grafik ist dagegen
-über den ganzen Horizont gleich breit, weil es nur aus der Residuenstreuung
-gebaut ist und nicht aus dem Modell stammt.
-
-Ergebnissatz: Holt-Winters mit additivem Trend und additiver Saison (geschätzt auf
-60 Monaten) prognostiziert die folgenden zwölf Monate mit einem RMSE von dem
-ausgegebenen Wert und einem MAPE von dem ausgegebenen Prozentsatz. Alle
-tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall, zwei davon knapp am
-Rand.
-
-### Szenario B: einfache Glättung, wo Trend und Saison vorliegen
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-b-glaettung-r
-#| fig-cap: "Einfache exponentielle Glättung: die Prognose ist eine waagrechte Linie."
-modell_ses <- ses(training, h = 12)
-
-plot(modell_ses, ylab = "Absatz", xlab = "Jahr", main = "einfache Glättung")
-lines(test, col = "#b2182b", lwd = 2)
-
-round(rbind(einfach = accuracy(modell_ses, test)["Test set", c("RMSE", "MAE", "MAPE")],
-            holt_winters = accuracy(modell_hw, test)["Test set", c("RMSE", "MAE", "MAPE")]), 2)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-glaettung-py
-modell_ses = SimpleExpSmoothing(training, initialization_method="estimated").fit()
-prognose_ses = modell_ses.forecast(12)
 
 def masse(wahr, geschaetzt):
     fehler = wahr - geschaetzt
@@ -361,124 +357,344 @@ def masse(wahr, geschaetzt):
             "MAE": round(float(np.abs(fehler).mean()), 2),
             "MAPE": round(float(np.abs(fehler / wahr).mean() * 100), 2)}
 
-print("einfach:     ", masse(test.values, prognose_ses.values))
-print("Holt-Winters:", masse(test.values, prognose.values))
+
+print(pd.DataFrame({"prognose": prognose.round(1).values,
+                    "tatsaechlich": test.values,
+                    "fehler": (test.values - prognose.values).round(1)},
+                   index=test.index.strftime("%Y-%m")))
+print(masse(test.values, prognose.values))
 ```
 
 :::
 
-Die einfache Glättung kennt nur ein Niveau und prognostiziert deshalb eine
-waagrechte Linie. Bei einer Reihe mit Trend und Saison ist der Fehler um ein
-Vielfaches grösser als bei Holt-Winters. Das ist kein Argument gegen das
-Verfahren, sondern eines für die Passung: Wo es keinen Trend und keine Saison
-gibt, ist die einfache Variante die richtige, weil sie weniger Parameter schätzt.
+#### Output Zeile für Zeile
 
-Der Vergleich ist zugleich die Begründung dafür, immer ein einfaches Modell
-mitzurechnen. Ein aufwendiges Verfahren muss sich gegen die naive Prognose
-beweisen; tut es das nicht, ist der Aufwand nicht gerechtfertigt.
+Die Prognose gegen die tatsächlichen Werte (Python-Ausgabe):
 
-Ergebnissatz: Die einfache exponentielle Glättung erreicht einen RMSE von dem
-ausgegebenen Wert gegenüber dem ausgegebenen Wert bei Holt-Winters; die
-Saisonstruktur ist für die Prognose entscheidend.
+| Monat | Prognose | tatsächlich | Fehler |
+|---|---|---|---|
+| 2025-01 | 802.5 | 803 | +0.5 |
+| 2025-02 | 813.3 | 806 | -7.3 |
+| 2025-03 | 812.5 | 796 | -16.5 |
+| 2025-04 | 789.7 | 780 | -9.7 |
+| 2025-05 | 779.3 | 754 | -25.3 |
+| 2025-06 | 749.1 | 741 | -8.1 |
+| **2025-07** | 701.5 | 738 | **+36.5** |
+| 2025-08 | 712.3 | 689 | -23.3 |
+| 2025-09 | 721.3 | 694 | -27.3 |
+| 2025-10 | 743.5 | 747 | +3.5 |
+| **2025-11** | 789.7 | 829 | **+39.3** |
+| 2025-12 | 805.1 | 788 | -17.1 |
 
-### Szenario C: Fallstrick zu grosses Alpha, und Prüfung der Residuen
+| Kennzahl | Wert | Bedeutung |
+|---|---|---|
+| **RMSE** | **21.59** | Wurzel des mittleren quadratischen Fehlers, in Einheiten der Reihe. Weil quadriert wird, schlagen die beiden Ausreisser im Juli und November überproportional durch. |
+| **MAE** | **17.87** | Mittlerer absoluter Fehler, ebenfalls in Einheiten der Reihe. Immer kleiner oder gleich dem RMSE; der Abstand zwischen beiden zeigt, wie ungleich die Fehler verteilt sind. |
+| **MAPE** | **2.36 %** | Mittlerer absoluter prozentualer Fehler. Nur brauchbar, weil die Reihe weit von null entfernt liegt. |
+| Residuenstreuung im Training | **19.89** | Fast identisch mit dem RMSE auf dem Testteil. Das ist das erwünschte Bild: Das Modell prognostiziert die ungesehenen Monate ungefähr so gut, wie es die gesehenen anpasst. |
+| Fehler mit **beiden Vorzeichen** | +0.5 bis -27.3 | Kein systematischer Versatz nach oben oder unten. Läge die Prognose durchgehend zu hoch, wäre der Trend falsch geschätzt. |
 
-Ein hoher Glättungsparameter lässt das Modell dem Rauschen folgen. Die Anpassung
-an die Trainingsdaten sieht dann gut aus, die Prognose wird schlechter.
+::: {.note-box}
+**Die Glättungsparameter fallen in Python auf null.** Das Verfahren entscheidet
+also, dass Niveau, Trend und Saisonfigur **gar nicht** nachgeführt werden müssen —
+und das ist richtig, denn die Reihe wurde mit einem festen Trend und einer festen
+Saisonfigur konstruiert. Aus Holt-Winters wird damit faktisch eine Regression mit
+Gerade und Saisondummies.
+
+R lässt exakte Nullen nicht zu (die Optimierung läuft in den Grenzen 0.0001 bis
+0.9999) und liefert deshalb winzige positive Werte.
+
+In echten Daten sind Werte nahe null ein Hinweis, dass ein einfacheres Modell
+genügt — und Werte nahe eins einer, dass das Modell dem Rauschen folgt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Holt-Winters mit additivem Trend und additiver Saison (geschätzt auf 60
+> Monaten) prognostiziert die folgenden zwölf Monate mit einem RMSE von 21.6 und
+> einem MAPE von 2.4 Prozent. Alle tatsächlichen Werte liegen im
+> 95-Prozent-Prognoseintervall; die grössten Abweichungen betreffen Juli (+36.5)
+> und November (+39.3).
+
+### Beispiel 3: Vier Modelle im Vergleich
+
+#### Frage und Datenlage
+
+Eine Prognose ist nur so gut wie ihr Vergleich. Vier Kandidaten auf denselben
+Daten: die naive saisonale Prognose (der Wert von vor zwölf Monaten), die
+einfache exponentielle Glättung, Holt (Niveau und Trend) und Holt-Winters
+(zusätzlich Saison).
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: fig-szenario-c-glaettung-r
-#| fig-cap: "Residuen des Holt-Winters-Modells: Verlauf, ACF und Verteilung."
-#| fig-height: 4
-starr <- ses(training, h = 12, alpha = 0.05, initial = "simple")
-nervoes <- ses(training, h = 12, alpha = 0.95, initial = "simple")
+#| label: fig-b3-gl-r
+#| fig-cap: "Beispiel 3: die vier Prognosen nebeneinander."
+#| fig-height: 3.6
+naiv <- snaive(training, h = 12)
+modell_ses <- ses(training, h = 12)
+modell_holt <- holt(training, h = 12)
 
-round(rbind(alpha_0.05 = accuracy(starr, test)["Test set", c("RMSE", "MAE")],
-            alpha_0.95 = accuracy(nervoes, test)["Test set", c("RMSE", "MAE")],
-            geschaetzt = accuracy(modell_ses, test)["Test set", c("RMSE", "MAE")]), 2)
+par(mar = c(4, 4, 2, 1))
+plot(test, col = "black", lwd = 2, ylim = c(600, 900),
+     ylab = "Absatz", xlab = "Jahr", main = "Testjahr 2025")
+lines(naiv$mean, col = "grey50", lwd = 2)
+lines(modell_ses$mean, col = "#1b7837", lwd = 2)
+lines(modell_holt$mean, col = "#b2182b", lwd = 2)
+lines(modell_hw$mean, col = "#2166ac", lwd = 2)
+legend("bottomleft",
+       legend = c("tatsächlich", "naiv", "einfach", "Holt", "Holt-Winters"),
+       col = c("black", "grey50", "#1b7837", "#b2182b", "#2166ac"),
+       lwd = 2, bty = "n", cex = 0.8)
 
-checkresiduals(modell_hw$model)
+spalten <- c("RMSE", "MAE", "MAPE")
+round(rbind(
+  naiv_saisonal = accuracy(naiv, test)["Test set", spalten],
+  einfach = accuracy(modell_ses, test)["Test set", spalten],
+  holt = accuracy(modell_holt, test)["Test set", spalten],
+  holt_winters = accuracy(modell_hw, test)["Test set", spalten]
+), 2)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: szenario-c-glaettung-py
-from statsmodels.stats.diagnostic import acorr_ljungbox
+#| label: b3-gl-py
+naiv = pd.Series(training.iloc[-12:].values, index=test.index)
+modell_ses = SimpleExpSmoothing(training,
+                                initialization_method="estimated").fit()
+modell_holt = ExponentialSmoothing(training, trend="add",
+                                   initialization_method="estimated").fit()
 
-for a in [0.05, 0.95]:
+kandidaten = {
+    "naiv_saisonal": naiv.values,
+    "einfach": modell_ses.forecast(12).values,
+    "holt": modell_holt.forecast(12).values,
+    "holt_winters": prognose.values,
+}
+
+print(pd.DataFrame({name: masse(test.values, werte)
+                    for name, werte in kandidaten.items()}).T)
+print("alpha der einfachen Glättung:",
+      round(float(modell_ses.params["smoothing_level"]), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Modell | RMSE | MAE | MAPE | Was es kann |
+|---|---|---|---|---|
+| naiv saisonal | 50.65 | 42.92 | 5.58 % | Saison ja, Trend nein |
+| einfache Glättung | 43.54 | 36.58 | 4.92 % | nur ein Niveau |
+| Holt | 56.94 | 45.74 | 6.25 % | Niveau und Trend, **keine Saison** |
+| **Holt-Winters** | **21.59** | **17.87** | **2.36 %** | Niveau, Trend und Saison |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Holt-Winters ist **mehr als doppelt so gut** wie alles andere | Die Reihe hat Trend **und** Saison; nur ein Modell, das beides kennt, kann sie prognostizieren. |
+| **Holt ist schlechter als die einfache Glättung** | Überraschend, aber erklärbar: Holt schreibt den Trend als Gerade fort und ignoriert die Saison — die Prognose läuft also mitten durch die Saisonzacken hindurch und verfehlt Hoch- wie Tiefpunkte. Die einfache Glättung liegt mit ihrer waagrechten Linie zufällig näher. **Ein zusätzlicher Modellbestandteil verbessert nicht automatisch.** |
+| Die einfache Glättung schätzt $\alpha = 1$ | Damit ist sie die naive Prognose "der letzte Wert" — die Vorhersage für alle zwölf Monate ist der Dezemberwert von 2024. |
+| Die naive saisonale Prognose | ist der eigentliche Massstab: Sie kostet nichts und erreicht 5.58 Prozent MAPE. Ein Modell, das sie nicht deutlich schlägt, ist den Aufwand nicht wert. |
+
+::: {.note-box}
+**Warum die naive Prognose in jeden Bericht gehört, und zwar als Zeile in
+derselben Tabelle:** Ein RMSE von 21.6 sagt für sich genommen nichts. Erst der
+Vergleich mit den 50.7 der naiven saisonalen Prognose macht daraus die Aussage
+"das Modell halbiert den Fehler".
+
+Formalisiert wird das im **MASE** (Mean Absolute Scaled Error), dem Verhältnis des
+MAE zum MAE der naiven Prognose: Werte unter eins heissen besser als naiv. R gibt
+ihn in `accuracy()` mit aus.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Holt-Winters mit additivem Trend und additiver Saison erreicht auf den letzten
+> zwölf Monaten einen RMSE von 21.6 (MAPE 2.4 Prozent) gegenüber 50.7 (5.6
+> Prozent) bei der naiven saisonalen Prognose. Modelle ohne Saisonkomponente
+> bleiben deutlich zurück (Holt: RMSE 56.9).
+
+### Beispiel 4: Alpha von Hand gesetzt
+
+#### Frage und Datenlage
+
+Der Glättungsparameter $\alpha$ steuert, wie stark das Modell auf den jüngsten
+Wert reagiert. Was passiert, wenn man ihn selbst wählt statt ihn schätzen zu
+lassen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-gl-r
+#| fig-cap: "Beispiel 4: dieselbe Glättung mit alpha = 0.05, 0.5 und 0.95."
+#| fig-height: 3.6
+alphas <- c(0.05, 0.5, 0.95)
+farben <- c("#1b7837", "#b2182b", "#2166ac")
+
+par(mar = c(4, 4, 2, 1))
+plot(training, col = "grey70", ylab = "Absatz", xlab = "Jahr",
+     main = "Geglättetes Niveau")
+for (i in seq_along(alphas)) {
+  m <- ses(training, h = 12, alpha = alphas[i], initial = "simple")
+  lines(fitted(m), col = farben[i], lwd = 2)
+}
+legend("topleft", legend = paste("alpha =", alphas), col = farben,
+       lwd = 2, bty = "n")
+
+spalten <- c("RMSE", "MAE")
+ergebnisse <- t(sapply(alphas, function(a) {
+  m <- ses(training, h = 12, alpha = a, initial = "simple")
+  accuracy(m, test)["Test set", spalten]
+}))
+rownames(ergebnisse) <- paste("alpha", alphas)
+round(rbind(ergebnisse,
+            geschaetzt = accuracy(modell_ses, test)["Test set", spalten]), 2)
+```
+
+##### Python
+
+```{python}
+#| label: b4-gl-py
+for a in [0.05, 0.5, 0.95]:
     m = SimpleExpSmoothing(training, initialization_method="known",
                            initial_level=float(training.iloc[0])).fit(
                                smoothing_level=a, optimized=False)
-    print(f"alpha = {a}: ", masse(test.values, m.forecast(12).values))
+    print(f"alpha = {a:<5}", masse(test.values, m.forecast(12).values))
 
-lb = acorr_ljungbox(modell_hw.resid, lags=[12], return_df=True)
-print(lb.round(4))
+print("geschätzt   ", masse(test.values, modell_ses.forecast(12).values))
 ```
 
 :::
 
-Das kleine Alpha ist klar am schlechtesten: Es reagiert zu träge auf den Trend und
-bleibt weit unter dem Niveau der Testmonate. Das grosse Alpha landet dagegen
-praktisch beim geschätzten Wert, weil die Schätzung bei dieser Reihe selbst nahe
-bei eins liegt. Der Vergleich zeigt also nicht, dass ein geschätztes Alpha immer
-gewinnt, sondern dass ein von Hand gesetzter Wert leicht daneben liegt: Deshalb
-schätzt man den Parameter statt ihn zu setzen; die Programme minimieren dafür den
-Fehler auf den Trainingsdaten.
+#### Output Zeile für Zeile
 
-Der zweite Teil ist die Residuenprüfung und der wichtigere. Der Ljung-Box-Test
-prüft, ob in den Residuen noch Abhängigkeit steckt. Ein kleiner p-Wert heisst: Das
-Modell hat Struktur übersehen, und die Prognoseintervalle sind zu schmal. Zu
-prüfen sind drei Dinge: Die ACF der Residuen soll innerhalb der Grenzen liegen, der
-Verlauf soll keine Muster zeigen, und die Verteilung soll ungefähr symmetrisch
-sein.
+| $\alpha$ | RMSE | MAE | Verhalten |
+|---|---|---|---|
+| **0.05** | **105.68** | 96.84 | Das Niveau folgt dem Trend viel zu träge und bleibt am Ende weit unter der Reihe. Der Fehler ist fünfmal so gross wie nötig. |
+| 0.5 | dazwischen | | |
+| **0.95** | **43.31** | 36.58 | Praktisch identisch mit dem geschätzten Wert. |
+| geschätzt ($\alpha = 1$) | 43.54 | 36.58 | |
 
-Ergebnissatz: Ein Alpha von 0.05 liegt beim Testfehler weit hinter dem geschätzten
-Wert, ein Alpha von 0.95 praktisch gleichauf (RMSE wie ausgegeben). Die Residuen
-des Holt-Winters-Modells zeigen im Ljung-Box-Test den ausgegebenen p-Wert. Dass
-die beiden Sprachen hier nicht denselben p-Wert liefern, liegt an der
-unterschiedlichen Zählung der Freiheitsgrade und daran, dass der Wert nahe an der
-Grenze von 0.05 liegt; ein solcher Befund trägt kein Urteil, sondern verlangt den
-Blick auf die Residuengrafik.
+| Beobachtung | Erklärung |
+|---|---|
+| Ein kleines $\alpha$ ist hier **klar schlecht** | Bei einer Reihe mit Trend muss das Niveau ständig nachgeführt werden. Mit $\alpha = 0.05$ zählt der jüngste Wert nur zu fünf Prozent, und das geglättete Niveau hinkt Jahre hinterher. |
+| Ein grosses $\alpha$ ist hier **fast optimal** | Weil die Reihe stark steigt, ist "der letzte Wert" die beste Schätzung, die ein Modell ohne Trendkomponente abgeben kann. |
+| Der geschätzte Wert ist $\alpha = 1$ | Die Optimierung landet am Rand des zulässigen Bereichs. Das ist selbst ein Befund: **Das Modell passt nicht.** Eine einfache Glättung, die $\alpha = 1$ wählt, sagt "ich kann nichts glätten" — die Reihe braucht eine Trendkomponente. |
 
-### Weiteres Szenario: gegen die naive Prognose messen
+::: {.note-box}
+**Die übliche Lehrbuchwarnung "$\alpha$ nahe eins heisst, das Modell folgt dem
+Rauschen" gilt hier nicht** — und das zeigt, warum Faustregeln über
+Parameterwerte mit Vorsicht zu geniessen sind. Ein $\alpha$ nahe eins bedeutet
+nur: Der jüngste Wert ist die beste verfügbare Information. Bei einer
+rauschenden Reihe ohne Trend ist das ein Warnzeichen, bei einer stark steigenden
+Reihe die richtige Antwort.
 
-Eine Prognose ist nur so gut wie ihr Vergleich. Bei saisonalen Reihen ist die
-naive saisonale Prognose der Standardmassstab: Der Wert von vor zwölf Monaten wird
-fortgeschrieben.
+Deshalb wird $\alpha$ geschätzt und nicht gesetzt: Die Programme minimieren den
+Fehler auf den Trainingsdaten. Und deshalb wird das Ergebnis **gedeutet** statt
+gegen eine Schwelle geprüft.
+:::
+
+#### Interpretation
+
+Ein von Hand gesetzter Parameter liegt fast immer daneben. Interessanter als sein
+Wert ist, was er über das Modell verrät — hier, dass die einfache Glättung für
+diese Reihe die falsche Wahl ist.
+
+### Beispiel 5: Die Residuen prüfen
+
+#### Frage und Datenlage
+
+Der letzte Schritt jeder Zeitreihenmodellierung: Steckt in den Residuen noch
+Struktur? Wenn ja, hat das Modell etwas übersehen, und die Prognoseintervalle
+sind zu schmal.
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: szenario-d-glaettung-r
-naiv <- snaive(training, h = 12)
-
-round(rbind(naiv_saisonal = accuracy(naiv, test)["Test set", c("RMSE", "MAE", "MAPE")],
-            holt_winters = accuracy(modell_hw, test)["Test set", c("RMSE", "MAE", "MAPE")]), 2)
+#| label: fig-b5-gl-r
+#| fig-cap: "Beispiel 5: Residuen des Holt-Winters-Modells — Verlauf, ACF und Verteilung."
+#| fig-height: 4
+checkresiduals(modell_hw$model)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: szenario-d-glaettung-py
-# naive saisonale Prognose: der Wert von vor zwoelf Monaten
-naiv = training.iloc[-12:].values
+#| label: fig-b5-gl-py
+#| fig-cap: "Beispiel 5: dieselbe Prüfung in Python."
+#| fig-height: 4
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.stats.diagnostic import acorr_ljungbox
 
-print("naiv saisonal:", masse(test.values, naiv))
-print("Holt-Winters: ", masse(test.values, prognose.values))
+residuen = modell_hw.resid
+
+fig, achsen = plt.subplots(1, 3, figsize=(7.5, 3))
+achsen[0].plot(residuen, color="#2166ac")
+achsen[0].axhline(0, ls="--", color="black", lw=0.8)
+achsen[0].set_title("Verlauf")
+plot_acf(residuen, ax=achsen[1], lags=20, title="ACF")
+achsen[2].hist(residuen, bins=15, color="#2166ac", edgecolor="white")
+achsen[2].set_title("Verteilung")
+plt.tight_layout()
+plt.show()
+
+print(acorr_ljungbox(residuen, lags=[6, 12, 18], return_df=True).round(4))
+print("Mittelwert der Residuen:", round(float(residuen.mean()), 3))
+print("Standardabweichung:    ", round(float(residuen.std(ddof=1)), 3))
 ```
 
 :::
 
-Wenn ein Modell die naive Prognose nicht deutlich schlägt, ist es den Aufwand
-nicht wert. Dieser Vergleich gehört in jeden Bericht, und zwar nicht als Fussnote,
-sondern als Zeile in derselben Tabelle wie das Modell.
+#### Output Zeile für Zeile
+
+Der Ljung-Box-Test in Python über zwölf Abstände ergibt eine Teststatistik von
+21.50 und **p = 0.044**.
+
+| Prüfpunkt | Befund | Wie er zu lesen ist |
+|---|---|---|
+| **Ljung-Box, p = 0.044** | knapp unter 0.05 | Der Test prüft, ob **irgendeine** der ersten zwölf Autokorrelationen von null verschieden ist. Die Nullhypothese lautet "keine Autokorrelation"; ein kleiner p-Wert heisst also, dass Struktur übrig ist. Hier: ein Grenzfall. |
+| **ACF der Residuen** | ein bis zwei Balken knapp ausserhalb | Bei 20 angezeigten Abständen ist ein Ausreisser zufällig zu erwarten. Entscheidend ist, ob er an einer **deutbaren** Stelle liegt — etwa bei 12, was auf eine unerfasste Saison hinweisen würde. |
+| **Verlauf** | schwankt um null, keine Trichterform | Keine wachsende Streuung, kein Muster. |
+| **Verteilung** | ungefähr symmetrisch | Grundlage der Prognoseintervalle; starke Schiefe würde sie unbrauchbar machen. |
+| Mittelwert der Residuen | nahe null | Ein deutlich von null verschiedener Mittelwert wäre ein systematischer Versatz. |
+
+::: {.note-box}
+**Ein Grenzfall wie p = 0.044 trägt kein Urteil.** Drei Gründe:
+
+1. Der Test wird mit wachsender Reihenlänge empfindlich und findet dann auch
+   praktisch bedeutungslose Autokorrelationen.
+2. Die Anzahl geprüfter Abstände ist eine Wahl — bei 6 oder 18 Abständen kommt
+   ein anderer p-Wert heraus.
+3. **R und Python zählen die Freiheitsgrade verschieden.** R zieht in
+   `checkresiduals()` die Anzahl geschätzter Parameter ab, `acorr_ljungbox()`
+   in der obigen Form nicht. Bei einem Wert nahe 0.05 kippt das die Entscheidung.
+
+Was zählt, ist die Grafik: Liegt der auffällige Balken bei Abstand 12, fehlt
+Saison. Liegt er irgendwo, ist es Zufall. Und wenn wirklich Struktur übrig ist,
+ist [ARIMA](arima-sarima.qmd) der nächste Schritt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Residuen des Modells schwanken ohne erkennbares Muster um null
+> (Standardabweichung 19.9); der Ljung-Box-Test über zwölf Abstände liegt mit
+> p = 0.044 im Grenzbereich, ohne dass die ACF eine deutbare Struktur zeigt. Die
+> Prognoseintervalle sind damit vertretbar.
+
+::::
 
 ## Interpretationsfallen
 

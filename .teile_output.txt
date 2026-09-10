@@ -1,0 +1,35 @@
+## Output lesen
+
+R, `hw()` und `ets()`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `ETS(A,A,A)` | gewählte Struktur: Fehler, Trend, Saison, je additiv oder multiplikativ | `N` heisst nicht vorhanden |
+| `alpha` | Glättung des Niveaus | nahe 1: folgt dem Rauschen; nahe 0: träge |
+| `beta` | Glättung des Trends | nahe 0 heisst nahezu konstanter Trend |
+| `gamma` | Glättung der Saison | nahe 0: starre Saisonfigur |
+| `sigma` | Streuung der Residuen | Grundlage der Prognoseintervalle |
+| `AIC`, `BIC` | Kennzahlen für Modellvergleiche | nur zwischen Modellen auf derselben Reihe vergleichbar |
+| `accuracy()` | Fehlermasse auf Trainings- und Testteil | die Zeile `Test set` zählt |
+| `RMSE` | Wurzel des mittleren quadratischen Fehlers | in Einheiten der Reihe, empfindlich für grosse Fehler |
+| `MAE` | mittlerer absoluter Fehler | robuster, ebenfalls in Einheiten der Reihe |
+| `MAPE` | mittlerer absoluter prozentualer Fehler | ungeeignet bei Werten nahe null |
+
+Python, `ExponentialSmoothing`:
+
+| Zugriff | Was er liefert | Unterschied zu R |
+|---|---|---|
+| `params` | `smoothing_level`, `smoothing_trend`, `smoothing_seasonal` | in R `alpha`, `beta`, `gamma` |
+| `forecast(h)` | Punktprognose | in R Teil des Ergebnisobjekts |
+| `fittedvalues` | angepasste Werte | wie `fitted()` |
+| `sse`, `aic`, `bic` | Anpassungskennzahlen | wie in R |
+| keine Prognoseintervalle | über `ETSModel` oder `simulate()` zu erzeugen | in R direkt in `hw()` enthalten |
+| keine Fehlermasse | RMSE und MAE selbst rechnen | in R `accuracy()` |
+
+Drei Unterschiede, über die man stolpert. R wählt mit `ets()` die Modellstruktur
+automatisch, in Python werden `trend` und `seasonal` von Hand gesetzt. Und
+`initialization_method="estimated"` gehört gesetzt, sonst verwendet statsmodels
+ein einfacheres Startverfahren mit anderen Ergebnissen. Und `forecast()` liefert
+nur die Punktprognose: Prognoseintervalle gibt es erst über `ETSModel` aus
+`statsmodels.tsa.exponential_smoothing.ets` oder über wiederholte `simulate()`.
+

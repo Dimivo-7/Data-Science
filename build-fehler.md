@@ -258,3 +258,29 @@ verschwinden ohne Fehlermeldung.
 Überschriftenebenen auf einer Methodenseite: `##` für Theorieabschnitte und für
 `## Beispiele`, `###` für die Beispiel-Reiter, `####` für die Abschnitte im
 Beispiel, `#####` für R und Python. In jedem Tabset steht R zuerst.
+
+---
+
+### 2026-09-10 — Freeze-Commit geht verloren, wenn waehrend eines Builds gepusht wird
+
+**Symptom:** Build gruen, `gh-pages` weitergerueckt, aber zu der neu gebauten
+Seite gibt es keinen aktualisierten Eintrag unter `_freeze/`. `zeige-ausgaben.py`
+zeigt dann die Zahlen der **vorherigen** Fassung, ohne dass etwas darauf
+hinweist. Konkret gesehen bei `statistik/ueberlebenszeit/cox-modell.qmd`: Die
+Freeze-Datei war einen Tag alt und enthielt noch die Ausgaben der Fassung mit
+`set.seed()`, in der R und Python verschiedene Daten hatten (245 gegen 253
+Ereignisse). Beim Pruefen sah das aus wie ein schwerer Fehler auf der neuen
+Seite.
+
+**Ursache:** Die Action schiebt die Freeze-Ergebnisse nach dem Build auf `main`
+zurueck. Wird in der Zwischenzeit selbst gepusht, schlaegt dieser Push fehl
+(non-fast-forward) und die Freeze-Aenderungen sind weg. Die Seite selbst ist
+korrekt gebaut, nur die Kopie der Ausgaben fehlt.
+
+**Regel:** Nach einem Push nicht weiterpushen, bevor der Commit
+"Freeze-Ergebnisse aktualisieren" im Log steht. Arbeit an weiteren Seiten
+laeuft in der Zwischenzeit lokal weiter und wird gesammelt.
+
+**Erkennungszeichen:** `git log -1 -- _freeze/<pfad>/execute-results/html.json`
+zeigt einen aelteren Commit als den eigenen. Oder direkt:
+`grep -c "<neues-chunk-label>" _freeze/<pfad>/execute-results/html.json` gibt 0.
