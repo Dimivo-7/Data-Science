@@ -1064,6 +1064,8 @@ Diese Regeln gelten weiter und werden hier nur benannt, nicht wiederholt:
       Output und Ergebnissatz, Vorlage für den Berichtssatz vorhanden, Python
       mit pingouin/statsmodels statt nacktem scipy
 - [ ] In jedem Tabset R zuerst; jedes Beispiel in beiden Sprachen
+- [ ] `python pruefe-chunks.py` ohne Befund: jede Seite laedt selbst, was
+      sie benutzt (Beispiele von Nachbarseiten bringen ihre Importe nicht mit)
 - [ ] Chunks laufen ohne Vorbedingung, Seed gesetzt, Labels eindeutig
 - [ ] Nur Pakete aus `DESCRIPTION` und `requirements.txt`
 - [ ] Befehle der Seite in `referenz/r.qmd` und `referenz/python.qmd`

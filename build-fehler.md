@@ -37,6 +37,40 @@ Die Kurzfassung dessen, was die Einträge unten gelehrt haben:
 
 ## Einträge
 
+### 2026-09-10 — fehlender Import, Beispiel von der Nachbarseite übernommen
+
+**Symptom:** Build rot, `render.log` meldet
+
+```
+Error in py_call_impl(...) : NameError: name 'sm' is not defined
+Quitting from t-test-gepaart.qmd:243-271 [fig-b1-gp-voraussetzungen-py]
+```
+
+**Ursache:** Der QQ-Plot im Beispiel ruft `sm.qqplot()` auf. Der Setup-Chunk
+von `t-test-eine-stichprobe.qmd` importiert `statsmodels.api as sm`, der von
+`t-test-gepaart.qmd` nicht. Beim Übertragen des Beispielaufbaus von der einen
+Seite auf die andere ist der Import nicht mitgekommen, und weil jede Seite eine
+eigene Sitzung hat, faellt das erst im Build auf.
+
+**Kosten:** Ein kompletter Build von rund acht Minuten, und alles im selben
+Push blieb undeployed: Der Dark-Mode-Fix und beide umgebauten Seiten waren
+nach dem roten Build nicht live.
+
+**Regel:** Vor jedem Push `python pruefe-chunks.py` laufen lassen. Das Skript
+liest die Chunks jeder Seite, sucht nach Kürzeln wie `sm.`, `pg.`, `stats.`
+oder R-Funktionen wie `bptest()` und meldet, wenn der zugehörige Import
+beziehungsweise `library()`-Aufruf auf der Seite fehlt. Geprüft wird pro Datei,
+nicht pro Chunk, weil Quarto alle Chunks einer Seite in derselben Sitzung
+ausführt.
+
+**Beim Bau des Prüfers gelernt:** Die erste Fassung suchte die Kürzel als
+blosse Zeichenkette und meldete sechs Fehlalarme, weil `sm.stats.diagnostic`
+die Zeichenkette `stats.` enthaelt und `stats.norm.ppf` die Zeichenkette
+`norm.ppf`. Ein Prüfer, der Fehlalarme liefert, wird nach dem dritten Mal
+ignoriert und ist damit wertlos. Gesucht wird deshalb mit Wortgrenze davor.
+
+---
+
 ### 2026-09-10 — Glossar markiert Wörter in der Navigation
 
 **Symptom:** In der Seitenleiste links und im Brotkrumenpfad standen
