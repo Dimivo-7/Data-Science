@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Binäre Zielvariable, Odds Ratio, Deviance und die Deutung der Koeffizienten.">
+<meta name="description" content="Binäre Zielgrösse modellieren, Odds Ratios und Wahrscheinlichkeiten lesen.">
 
 <title>Logistische Regression – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -80,6 +115,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -339,7 +403,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren.">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +451,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -410,7 +474,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung" tabindex="0">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus.">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -510,7 +574,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge" tabindex="0">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-topic="Werkzeuge" tabindex="0" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht.">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -560,7 +624,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik" tabindex="0">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse.">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -601,19 +665,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik" tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit.">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik" tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik" tabindex="0">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft.">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis.">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik" tabindex="0">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden.">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -631,13 +695,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik" tabindex="0">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären.">Normalverteilung</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind.">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik" tabindex="0">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder.">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -654,7 +718,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -672,7 +736,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -701,19 +765,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -725,7 +789,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik" tabindex="0">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus.">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -771,14 +835,14 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/regressionsdiagnostik.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Regressionsdiagnostik</span></a>
+  <a href="../../statistik/regression/logistische-regression.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Logistische Regression</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/logistische-regression.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Logistische Regression</span></a>
+  <a href="../../statistik/regression/regressionsdiagnostik.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Regressionsdiagnostik</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1099,12 +1163,11 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#wann-diese-methode-wann-nicht" id="toc-wann-diese-methode-wann-nicht" class="nav-link" data-scroll-target="#wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</a></li>
   <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a></li>
   <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
-  <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
   <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
@@ -1118,8 +1181,7 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-title">
 <h1 class="title">Logistische Regression</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Logistische Regression</div>
-    <div class="quarto-category">Klassifikation</div>
+    <div class="quarto-category">Regression</div>
     <div class="quarto-category">Interpretation</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
@@ -1128,7 +1190,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Binäre Zielvariable, Odds Ratio, Deviance und die Deutung der Koeffizienten.
+    Binäre Zielgrösse modellieren, Odds Ratios und Wahrscheinlichkeiten lesen.
   </div>
 </div>
 
@@ -1146,43 +1208,1124 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
+<p>Alle Beispiele rechnen mit demselben deterministisch konstruierten Datensatz: 200 Anlagen mit der Angabe, ob innerhalb eines Jahres ein Ausfall auftrat, der Laufzeit in Jahren und der Wartungsart.</p>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Wie hängt die Wahrscheinlichkeit eines Ereignisses von mehreren Einflussgrössen ab?</td>
+</tr>
+<tr class="even">
+<td>Zielvariable</td>
+<td>binär: ja oder nein, 0 oder 1</td>
+</tr>
+<tr class="odd">
+<td>Prädiktoren</td>
+<td>beliebig viele, metrisch oder kategorial</td>
+</tr>
+<tr class="even">
+<td>Was die Methode liefert</td>
+<td>Koeffizienten auf der Logit-Skala, daraus Odds Ratios mit Konfidenzintervall, vorhergesagte Wahrscheinlichkeiten</td>
+</tr>
+<tr class="odd">
+<td>R-Funktion</td>
+<td><code>glm(y ~ x1 + x2, family = binomial, data = df)</code></td>
+</tr>
+<tr class="even">
+<td>Python-Funktion</td>
+<td><code>smf.logit("y ~ x1 + x2", data=df).fit()</code></td>
+</tr>
+<tr class="odd">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/regression/multiple-lineare-regression.html">multiple lineare Regression</a>, <a href="../../statistik/regression/klassifikationsguete.html">Klassifikationsgüte</a>, <a href="../../statistik/tests/chi-quadrat-tests.html">Chi-Quadrat-Tests</a></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Typische Fragestellungen: Fällt eine Anlage aus, wird ein Kredit zurückgezahlt, klickt eine Besucherin, besteht eine Prüfung? Gemeinsam ist ihnen, dass die Zielgrösse genau zwei Ausprägungen hat und dass mehrere Einflussgrössen zugleich wirken.</p>
+<p>Warum nicht einfach eine lineare Regression auf 0 und 1? Sie liefert Vorhersagen unter 0 und über 1, die als Wahrscheinlichkeit sinnlos sind, unterstellt eine konstante Residuenstreuung, die bei binären Daten nicht existieren kann, und erzwingt einen geradlinigen Verlauf, obwohl Wahrscheinlichkeiten an den Rändern zwangsläufig abflachen.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Zielgrösse metrisch</td>
+<td><a href="../../statistik/regression/multiple-lineare-regression.html">multiple lineare Regression</a></td>
+</tr>
+<tr class="even">
+<td>Zielgrösse mit mehr als zwei ungeordneten Stufen</td>
+<td>multinomiale logistische Regression</td>
+</tr>
+<tr class="odd">
+<td>Zielgrösse mit geordneten Stufen</td>
+<td>ordinale Regression, Proportional-Odds-Modell</td>
+</tr>
+<tr class="even">
+<td>Zielgrösse ist eine Anzahl</td>
+<td>Poisson- oder negative Binomialregression</td>
+</tr>
+<tr class="odd">
+<td>Zeit bis zum Ereignis, mit zensierten Fällen</td>
+<td><a href="../../statistik/ueberlebenszeit/cox-modell.html">Cox-Modell</a></td>
+</tr>
+<tr class="even">
+<td>Nur zwei kategoriale Merkmale ohne weitere Einflussgrössen</td>
+<td><a href="../../statistik/tests/chi-quadrat-tests.html">Chi-Quadrat-Test</a></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
+<p>Modelliert wird nicht die Wahrscheinlichkeit selbst, sondern ihr Logarithmus der Chancen. Die Chance (englisch odds) ist das Verhältnis von Ereignis zu <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Das Ereignis, dass etwas nicht eintritt. Aufgaben nach dem Muster mindestens einmal lassen sich darüber meist mit einer einzigen Rechnung lösen.">Gegenereignis</span>:</p>
+<p><span class="math display">\[\text{Chance} = \frac{p}{1-p}, \qquad
+\log\left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots\]</span></p>
+<p>Diese Umformung löst genau die drei Probleme der linearen Regression: Der Logarithmus der Chancen kann jeden Wert zwischen minus und plus unendlich annehmen, während <span class="math inline">\(p\)</span> immer zwischen 0 und 1 bleibt.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Bereich</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Wahrscheinlichkeit <span class="math inline">\(p\)</span></td>
+<td>0 bis 1</td>
+<td>Anteil der Fälle mit Ereignis</td>
+</tr>
+<tr class="even">
+<td>Chance <span class="math inline">\(p/(1-p)\)</span></td>
+<td>0 bis unendlich</td>
+<td>Bei <span class="math inline">\(p = 0.5\)</span> ist die Chance 1, also “eins zu eins”</td>
+</tr>
+<tr class="odd">
+<td>Logit <span class="math inline">\(\log(p/(1-p))\)</span></td>
+<td>minus bis plus unendlich</td>
+<td>die Skala, auf der das Modell linear ist</td>
+</tr>
+</tbody>
+</table>
+<p>Die Rücktransformation lautet:</p>
+<p><span class="math display">\[p = \frac{1}{1 + e^{-(\beta_0 + \beta_1 x_1 + \dots)}}\]</span></p>
+<p>Geschätzt wird nicht mit kleinsten Quadraten, sondern mit der Maximum-Likelihood-Methode und einem iterativen Verfahren. Daraus folgen zwei praktische Unterschiede zur linearen Regression: Es gibt kein R², sondern nur Ersatzmasse, und die Schätzung kann scheitern, wenn die Gruppen zu sauber getrennt sind, siehe Beispiel 3.</p>
+<div class="note-box">
+<p><strong>Der Koeffizient ist nicht die Änderung der Wahrscheinlichkeit.</strong> Er ist die Änderung des Logits. Exponenziert ergibt er das Odds Ratio, also den <span class="glossary-term" data-topic="Programmierung, Statistik" tabindex="0" data-def="Programmierung: Datentyp in R für kategoriale Merkmale. Er speichert die Werte als Codes und führt die möglichen Ausprägungen als Stufen mit, auch solche, die in den Daten nicht vorkommen.  ·  Statistik: Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt.">Faktor</span>, um den sich die <strong>Chance</strong> ändert. Um wie viele Prozentpunkte sich die <strong>Wahrscheinlichkeit</strong> ändert, hängt davon ab, wo man startet. Das ist der wichtigste Punkt dieser Seite und der Inhalt von Beispiel 2.</p>
+</div>
 </section>
 <section id="voraussetzungen-und-ihre-prüfung" class="level2">
 <h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
-</section>
-<section id="durchführung-in-r-und-python" class="level2">
-<h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Voraussetzung</th>
+<th>Was sie bedeutet</th>
+<th>Prüfung</th>
+<th>Folge bei Verletzung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Unabhängige Beobachtungen</td>
+<td>Jede Zeile ist ein eigener Fall</td>
+<td>Erhebungsdesign</td>
+<td>Standardfehler zu klein</td>
+</tr>
+<tr class="even">
+<td>Binäre Zielgrösse</td>
+<td>genau zwei Ausprägungen</td>
+<td>Werte zählen</td>
+<td>falsches Modell</td>
+</tr>
+<tr class="odd">
+<td>Linearität im Logit</td>
+<td>Der Prädiktor wirkt geradlinig auf den Logit, nicht auf <span class="math inline">\(p\)</span></td>
+<td>Prädiktor gruppiert gegen den beobachteten Logit auftragen</td>
+<td>Effekt wird verzerrt geschätzt</td>
+</tr>
+<tr class="even">
+<td>Keine starke Multikollinearität</td>
+<td>Prädiktoren messen nicht dasselbe</td>
+<td>VIF wie bei der linearen Regression</td>
+<td>Standardfehler wachsen</td>
+</tr>
+<tr class="odd">
+<td>Genug Ereignisse je Prädiktor</td>
+<td>Faustregel: mindestens 10 Ereignisse je geschätztem Koeffizienten</td>
+<td>Ereignisse zählen</td>
+<td>Schätzung instabil, Intervalle unbrauchbar</td>
+</tr>
+<tr class="even">
+<td>Keine vollständige Trennung</td>
+<td>Kein Prädiktor trennt die Gruppen perfekt</td>
+<td>Warnung des Programms, absurd grosse Koeffizienten</td>
+<td>Schätzung existiert nicht, siehe Beispiel 3</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
-</section>
-<section id="ergebnisse-interpretieren" class="level2">
-<h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<p>R, <code>summary(glm(..., family = binomial))</code>:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Faustregel oder Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Estimate</code></td>
+<td>Koeffizient auf der <strong>Logit-Skala</strong></td>
+<td>nicht direkt deutbar; erst exponenziert ergibt er das Odds Ratio</td>
+</tr>
+<tr class="even">
+<td><code>Std. Error</code></td>
+<td>Unsicherheit auf der Logit-Skala</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>z value</code></td>
+<td>Estimate durch Std. Error</td>
+<td>heisst z, nicht t: die Verteilung ist nur näherungsweise normal</td>
+</tr>
+<tr class="even">
+<td><code>Pr(&gt;|z|)</code></td>
+<td>p-Wert des Koeffizienten</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>Null deviance</code></td>
+<td>Abweichung des Modells ohne Prädiktoren</td>
+<td>Ausgangspunkt</td>
+</tr>
+<tr class="even">
+<td><code>Residual deviance</code></td>
+<td>Abweichung des angepassten Modells</td>
+<td>Die Differenz zur Null-Devianz ist der Gewinn</td>
+</tr>
+<tr class="odd">
+<td><code>AIC</code></td>
+<td>für Modellvergleiche</td>
+<td>kleiner ist besser, siehe <a href="../../statistik/regression/modellauswahl.html">Modellauswahl</a></td>
+</tr>
+<tr class="even">
+<td><code>Number of Fisher Scoring iterations</code></td>
+<td>Anzahl Iterationen</td>
+<td>Werte über etwa 25 deuten auf Trennungsprobleme</td>
+</tr>
+<tr class="odd">
+<td>Warnung <code>fitted probabilities numerically 0 or 1 occurred</code></td>
+<td>Trennung</td>
+<td>ernst nehmen, siehe Beispiel 3</td>
+</tr>
+</tbody>
+</table>
+<p>Python, <code>smf.logit(...).fit()</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Was sie sagt</th>
+<th>Unterschied zu R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>coef</code>, <code>std err</code>, <code>z</code>, <code>P&gt;|z|</code></td>
+<td>wie in R</td>
+<td>nur andere Bezeichnung</td>
+</tr>
+<tr class="even">
+<td><code>[0.025 0.975]</code></td>
+<td>Konfidenzintervall auf der Logit-Skala</td>
+<td>steht direkt in der Tabelle</td>
+</tr>
+<tr class="odd">
+<td><code>Pseudo R-squ.</code></td>
+<td>McFadden-Pseudo-R²</td>
+<td>in R nicht enthalten, dort aus den Devianzen zu bilden</td>
+</tr>
+<tr class="even">
+<td><code>Log-Likelihood</code>, <code>LL-Null</code>, <code>LLR p-value</code></td>
+<td>Anpassungsgüte und Gesamttest</td>
+<td>in R als Devianzen ausgegeben, Devianz ist minus zweimal die Log-Likelihood</td>
+</tr>
+<tr class="odd">
+<td>keine Devianzen</td>
+<td>fehlen</td>
+<td>über <code>-2 * modell.llf</code> zu bekommen</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervalle</span> unterscheiden sich zwischen den Sprachen.</strong> <code>confint()</code> in R rechnet über die Profil-Likelihood, statsmodels und <code>confint.default()</code> in R über die Wald-Näherung. Die Ergebnisse liegen meist nah beieinander, können bei kleinen Stichproben aber merklich abweichen. Auf dieser Seite wird <code>confint.default()</code> verwendet, damit R und Python vergleichbar bleiben; für einen Bericht ist die Profil-Variante die genauere Wahl.</p>
+</div>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong>Odds Ratio ist kein Risikoverhältnis.</strong> Ein Odds Ratio von 3.8 bedeutet nicht, dass das Ereignis 3.8 mal so häufig auftritt. Bei häufigen Ereignissen überschätzt es das Risikoverhältnis deutlich.</li>
+<li><strong>Derselbe Koeffizient bedeutet verschiedene Wahrscheinlichkeitsänderungen.</strong> Siehe Beispiel 2.</li>
+<li><strong>Pseudo-R² ist nicht R².</strong> Werte von 0.2 bis 0.4 gelten bereits als gute Anpassung. Wer sie wie ein <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der Streuung der Zielgrösse, den ein Modell erklärt. Sagt etwas über die Enge des Zusammenhangs, aber nichts darüber, ob die Modellform angemessen ist.">Bestimmtheitsmass</span> liest, hält jedes Modell für schlecht.</li>
+<li><strong>Genauigkeit ist ein schlechtes Gütemass bei seltenen Ereignissen.</strong> Bei einem Ereignisanteil von 2 Prozent erreicht “immer nein” eine Genauigkeit von 98 Prozent, siehe <a href="../../statistik/regression/klassifikationsguete.html">Klassifikationsgüte</a>.</li>
+<li><strong>Die Schwelle 0.5 ist eine Konvention, keine Vorgabe.</strong> Sie ergibt sich aus der Annahme, dass beide Fehlerarten gleich teuer sind, siehe Beispiel 4.</li>
+<li><strong>Vollständige Trennung ist kein gutes Zeichen.</strong> Sie sieht nach einem perfekten Modell aus und bedeutet, dass keine Schätzung existiert.</li>
+<li><strong>Kausalität folgt auch hier nicht aus dem Modell.</strong> Ein Koeffizient beschreibt einen Zusammenhang bei konstant gehaltenen anderen Grössen, nicht eine Wirkung.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<p>Vorlage für den Ergebnissatz:</p>
+<blockquote class="blockquote">
+<p>[Prädiktor] hängt mit [Ereignis] zusammen: Odds Ratio [Wert], 95-Prozent-Konfidenzintervall [unten] bis [oben], p = [p]. Bei einer Ausgangswahrscheinlichkeit von [p1] entspricht das [p2], also einer Änderung um [Prozentpunkte] Prozentpunkte (n = [n], davon [Anzahl] Ereignisse).</p>
+</blockquote>
+<p>Genannt werden: Anzahl Beobachtungen <strong>und</strong> Anzahl Ereignisse, alle Koeffizienten als Odds Ratios mit Intervall, ein Anpassungsmass, und mindestens eine Übersetzung in Wahrscheinlichkeiten für eine konkrete Ausgangslage. Ohne diese Übersetzung bleibt das Ergebnis für die meisten Leser unzugänglich.</p>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt der logistischen Regression</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/regression/multiple-lineare-regression.html">Multiple lineare Regression</a></td>
+<td>Zielgrösse metrisch</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/tests/chi-quadrat-tests.html">Chi-Quadrat-Test</a></td>
+<td>nur zwei kategoriale Merkmale, keine weiteren Einflussgrössen</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/regression/klassifikationsguete.html">Klassifikationsgüte</a></td>
+<td>die Bewertung der Vorhersagen steht im Vordergrund</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/ueberlebenszeit/cox-modell.html">Cox-Modell</a></td>
+<td>es interessiert, <strong>wann</strong> das Ereignis eintritt, und es gibt zensierte Fälle</td>
+</tr>
+<tr class="odd">
+<td>Poisson-Regression</td>
+<td>die Zielgrösse ist eine Anzahl statt ja oder nein</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">Beispiel 1: Ausfall aus Laufzeit und Wartung</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Beispiel 2: Dasselbe Odds Ratio, verschiedene Wahrscheinlichkeiten</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-3" role="tab" aria-controls="tabset-6-3" aria-selected="false" href="">Beispiel 3: Vollständige Trennung</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-4" role="tab" aria-controls="tabset-6-4" aria-selected="false" href="">Beispiel 4: Von Wahrscheinlichkeiten zu Entscheidungen</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>Von 200 Anlagen ist bekannt, ob sie im Beobachtungsjahr ausgefallen sind, wie viele Jahre sie schon laufen und ob sie regelmässig gewartet werden. Die Frage lautet: Wie wirken Laufzeit und Wartungsart auf die Ausfallwahrscheinlichkeit?</p>
+</section>
+<section id="datenüberblick" class="level4">
+<h4 class="anchored" data-anchor-id="datenüberblick">Datenüberblick</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(anlagen<span class="sc">$</span>wartung, anlagen<span class="sc">$</span>ausfall)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                
+                  0  1
+  regelmaessig   64 36
+  unregelmaessig 40 60</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">anzahl =</span> <span class="fu">nrow</span>(anlagen), <span class="at">ausfaelle =</span> <span class="fu">sum</span>(anlagen<span class="sc">$</span>ausfall),</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">anteil =</span> <span class="fu">mean</span>(anlagen<span class="sc">$</span>ausfall)), <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   anzahl ausfaelle    anteil 
+   200.00     96.00      0.48 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.crosstab(anlagen[<span class="st">"wartung"</span>], anlagen[<span class="st">"ausfall"</span>]))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>ausfall          0   1
+wartung               
+regelmaessig    64  36
+unregelmaessig  40  60</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"n ="</span>, <span class="bu">len</span>(anlagen), <span class="st">" Ausfälle ="</span>, <span class="bu">int</span>(anlagen[<span class="st">"ausfall"</span>].<span class="bu">sum</span>()),</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>      <span class="st">" Anteil ="</span>, <span class="bu">round</span>(anlagen[<span class="st">"ausfall"</span>].mean(), <span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>n = 200  Ausfälle = 96  Anteil = 0.48</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>96 der 200 Anlagen sind ausgefallen, also 48 Prozent. Bei regelmässiger Wartung sind es 36 von 100, bei unregelmässiger 60 von 100. Damit ist die Faustregel “mindestens zehn Ereignisse je Koeffizient” mit grossem Abstand erfüllt: Zwei Koeffizienten stehen 96 Ereignissen gegenüber.</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>modell <span class="ot">&lt;-</span> <span class="fu">glm</span>(ausfall <span class="sc">~</span> laufzeit <span class="sc">+</span> wartung, <span class="at">family =</span> binomial, <span class="at">data =</span> anlagen)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(modell)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = ausfall ~ laufzeit + wartung, family = binomial, 
+    data = anlagen)
+
+Coefficients:
+                      Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)           -3.32241    0.53584  -6.200 5.63e-10 ***
+laufzeit               0.42304    0.07094   5.963 2.48e-09 ***
+wartungunregelmaessig  1.32944    0.34534   3.850 0.000118 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 276.94  on 199  degrees of freedom
+Residual deviance: 215.60  on 197  degrees of freedom
+AIC: 221.6
+
+Number of Fisher Scoring iterations: 4</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Odds Ratios mit Wald-Intervall</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">exp</span>(<span class="fu">cbind</span>(<span class="at">OR =</span> <span class="fu">coef</span>(modell), <span class="fu">confint.default</span>(modell))), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                          OR  2.5 % 97.5 %
+(Intercept)           0.0361 0.0126 0.1031
+laufzeit              1.5266 1.3284 1.7543
+wartungunregelmaessig 3.7789 1.9205 7.4358</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>modell <span class="op">=</span> smf.logit(<span class="st">"ausfall ~ laufzeit + C(wartung)"</span>, data<span class="op">=</span>anlagen).fit(disp<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(modell.summary())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                           Logit Regression Results                           
+==============================================================================
+Dep. Variable:                ausfall   No. Observations:                  200
+Model:                          Logit   Df Residuals:                      197
+Method:                           MLE   Df Model:                            2
+Date:                Thu, 10 Sep 2026   Pseudo R-squ.:                  0.2215
+Time:                        13:34:58   Log-Likelihood:                -107.80
+converged:                       True   LL-Null:                       -138.47
+Covariance Type:            nonrobust   LLR p-value:                 4.786e-14
+================================================================================================
+                                   coef    std err          z      P&gt;|z|      [0.025      0.975]
+------------------------------------------------------------------------------------------------
+Intercept                       -3.3224      0.536     -6.200      0.000      -4.373      -2.272
+C(wartung)[T.unregelmaessig]     1.3294      0.345      3.850      0.000       0.653       2.006
+laufzeit                         0.4230      0.071      5.963      0.000       0.284       0.562
+================================================================================================</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>odds <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"OR"</span>: np.exp(modell.params),</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"unten"</span>: np.exp(modell.conf_int()[<span class="dv">0</span>]),</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"oben"</span>: np.exp(modell.conf_int()[<span class="dv">1</span>]),</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(odds.<span class="bu">round</span>(<span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                  OR   unten    oben
+Intercept                     0.0361  0.0126  0.1031
+C(wartung)[T.unregelmaessig]  3.7789  1.9205  7.4358
+laufzeit                      1.5266  1.3284  1.7543</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Devianzen:"</span>, <span class="bu">round</span>(<span class="op">-</span><span class="dv">2</span> <span class="op">*</span> modell.llnull, <span class="dv">3</span>), <span class="st">"und"</span>,</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>      <span class="bu">round</span>(<span class="op">-</span><span class="dv">2</span> <span class="op">*</span> modell.llf, <span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Devianzen: 276.939 und 215.598</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Wert hier</th>
+<th>Bedeutung</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>(Intercept)</code> Estimate</td>
+<td>-3.3224</td>
+<td>Logit bei Laufzeit null und regelmässiger Wartung</td>
+<td>Auf der Logit-Skala nicht deutbar. Exponenziert ergibt sich eine Chance von 0.036, also rund 1 zu 28. Eine Laufzeit von null kommt in den Daten nicht vor, der Wert ist also ohnehin eine Extrapolation.</td>
+</tr>
+<tr class="even">
+<td><code>laufzeit</code> Estimate</td>
+<td>0.4230</td>
+<td>Änderung des Logits je Betriebsjahr</td>
+<td>Positiv, also steigt die Ausfallwahrscheinlichkeit mit der Laufzeit. Die Grösse ist auf dieser Skala nicht greifbar.</td>
+</tr>
+<tr class="odd">
+<td><code>laufzeit</code> Std. Error</td>
+<td>0.0709</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>laufzeit</code> z value</td>
+<td>5.963</td>
+<td>Estimate durch Std. Error</td>
+<td>Heisst z und nicht t, weil die Verteilung nur näherungsweise normal ist.</td>
+</tr>
+<tr class="odd">
+<td><code>laufzeit</code> Pr(&gt;|z|)</td>
+<td>&lt; 0.001</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>wartungunregelmaessig</code> Estimate</td>
+<td>1.3294</td>
+<td>Änderung des Logits gegenüber regelmässiger Wartung</td>
+<td>Die Referenzstufe <code>regelmaessig</code> erscheint nicht in der Ausgabe; sie ist alphabetisch die erste.</td>
+</tr>
+<tr class="odd">
+<td>Odds Ratio <code>laufzeit</code></td>
+<td>1.5266</td>
+<td>Faktor je Betriebsjahr</td>
+<td>Die zentrale Zahl: Jedes zusätzliche Betriebsjahr multipliziert die <strong>Chance</strong> eines Ausfalls mit 1.53, erhöht sie also um 53 Prozent.</td>
+</tr>
+<tr class="even">
+<td>Intervall <code>laufzeit</code></td>
+<td>1.3284 bis 1.7543</td>
+<td></td>
+<td>Es enthält die 1 nicht, der Effekt ist also nachgewiesen. Die 1 spielt bei Odds Ratios die Rolle, die bei linearen Koeffizienten die 0 hat.</td>
+</tr>
+<tr class="odd">
+<td>Odds Ratio <code>wartung</code></td>
+<td>3.7789</td>
+<td>Faktor für unregelmässige Wartung</td>
+<td>Unregelmässig gewartete Anlagen haben eine 3.78 mal so hohe Ausfallchance wie regelmässig gewartete gleicher Laufzeit.</td>
+</tr>
+<tr class="even">
+<td>Intervall <code>wartung</code></td>
+<td>1.9205 bis 7.4358</td>
+<td></td>
+<td>Deutlich breiter als beim Laufzeiteffekt. Bei Odds Ratios ist das Intervall immer unsymmetrisch, weil auf der Logit-Skala symmetrisch gerechnet und dann exponenziert wird.</td>
+</tr>
+<tr class="odd">
+<td><code>Null deviance</code></td>
+<td>276.94 auf 199 df</td>
+<td>Modell ohne Prädiktoren</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>Residual deviance</code></td>
+<td>215.60 auf 197 df</td>
+<td>angepasstes Modell</td>
+<td>Die Differenz von 61.34 ist der Gewinn durch die beiden Prädiktoren. Sie wird gegen eine Chi-Quadrat-Verteilung mit 2 Freiheitsgraden geprüft: p = 4.8e-14.</td>
+</tr>
+<tr class="odd">
+<td><code>AIC</code></td>
+<td>221.60</td>
+<td>für Modellvergleiche</td>
+<td>Residual deviance plus zweimal die Anzahl Parameter.</td>
+</tr>
+<tr class="even">
+<td><code>Pseudo R-squ.</code> (nur Python)</td>
+<td>0.2215</td>
+<td>McFadden</td>
+<td><strong>Nicht</strong> wie R² zu lesen. Werte zwischen 0.2 und 0.4 gelten bereits als gute Anpassung.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<p>Beide Effekte sind nachgewiesen, und beide lassen sich als <span class="glossary-term" data-topic="Programmierung, Statistik" tabindex="0" data-def="Programmierung: Datentyp in R für kategoriale Merkmale. Er speichert die Werte als Codes und führt die möglichen Ausprägungen als Stufen mit, auch solche, die in den Daten nicht vorkommen.  ·  Statistik: Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt.">Faktor</span> auf die Chance beziffern. Was daraus für die Praxis folgt, zeigt aber erst die Übersetzung in Wahrscheinlichkeiten, und die steht in Beispiel 2.</p>
+<blockquote class="blockquote">
+<p>Von 200 Anlagen fielen 96 aus (48 Prozent). Laufzeit und Wartungsart hängen beide mit der Ausfallwahrscheinlichkeit zusammen (Likelihood-Quotienten-Test über beide Prädiktoren: Devianzdifferenz 61.34 bei 2 Freiheitsgraden, p &lt; 0.001). Je Betriebsjahr steigt die Ausfallchance um den <span class="glossary-term" data-topic="Programmierung, Statistik" tabindex="0" data-def="Programmierung: Datentyp in R für kategoriale Merkmale. Er speichert die Werte als Codes und führt die möglichen Ausprägungen als Stufen mit, auch solche, die in den Daten nicht vorkommen.  ·  Statistik: Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt.">Faktor</span> 1.53 (95-Prozent-Konfidenzintervall 1.33 bis 1.75, p &lt; 0.001). Unregelmässig gewartete Anlagen haben bei gleicher Laufzeit eine 3.78 mal so hohe Ausfallchance (1.92 bis 7.44, p &lt; 0.001). McFaddens Pseudo-R² beträgt 0.22.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Das Odds Ratio für unregelmässige Wartung beträgt 3.78, <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre.">unabhängig</span> von der Laufzeit. Die Frage lautet: Um wie viele Prozentpunkte steigt dadurch die Ausfallwahrscheinlichkeit?</p>
+<p>Die Antwort ist: Das kommt darauf an. Und genau das ist der Punkt.</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>faelle <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">laufzeit =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">6</span>, <span class="dv">9</span>),</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">wartung =</span> <span class="fu">c</span>(<span class="st">"regelmaessig"</span>, <span class="st">"unregelmaessig"</span>)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>faelle<span class="sc">$</span>p <span class="ot">&lt;-</span> <span class="fu">round</span>(<span class="fu">predict</span>(modell, <span class="at">newdata =</span> faelle, <span class="at">type =</span> <span class="st">"response"</span>), <span class="dv">4</span>)</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>breit <span class="ot">&lt;-</span> <span class="fu">reshape</span>(faelle, <span class="at">idvar =</span> <span class="st">"laufzeit"</span>, <span class="at">timevar =</span> <span class="st">"wartung"</span>,</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>                 <span class="at">direction =</span> <span class="st">"wide"</span>)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(breit) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"laufzeit"</span>, <span class="st">"p_regelmaessig"</span>, <span class="st">"p_unregelmaessig"</span>)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>breit<span class="sc">$</span>differenz_punkte <span class="ot">&lt;-</span> <span class="fu">round</span>(</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  <span class="dv">100</span> <span class="sc">*</span> (breit<span class="sc">$</span>p_unregelmaessig <span class="sc">-</span> breit<span class="sc">$</span>p_regelmaessig), <span class="dv">1</span>)</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>breit</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  laufzeit p_regelmaessig p_unregelmaessig differenz_punkte
+1        3         0.1137           0.3265             21.3
+2        6         0.3134           0.6330             32.0
+3        9         0.6189           0.8599             24.1</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>faelle <span class="op">=</span> pd.DataFrame([(lz, w) <span class="cf">for</span> w <span class="kw">in</span> (<span class="st">"regelmaessig"</span>, <span class="st">"unregelmaessig"</span>)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>                       <span class="cf">for</span> lz <span class="kw">in</span> (<span class="dv">3</span>, <span class="dv">6</span>, <span class="dv">9</span>)],</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>                      columns<span class="op">=</span>[<span class="st">"laufzeit"</span>, <span class="st">"wartung"</span>])</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>faelle[<span class="st">"p"</span>] <span class="op">=</span> modell.predict(faelle).<span class="bu">round</span>(<span class="dv">4</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>breit <span class="op">=</span> faelle.pivot(index<span class="op">=</span><span class="st">"laufzeit"</span>, columns<span class="op">=</span><span class="st">"wartung"</span>, values<span class="op">=</span><span class="st">"p"</span>)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>breit[<span class="st">"differenz_punkte"</span>] <span class="op">=</span> (<span class="dv">100</span> <span class="op">*</span> (breit[<span class="st">"unregelmaessig"</span>]</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>                                    <span class="op">-</span> breit[<span class="st">"regelmaessig"</span>])).<span class="bu">round</span>(<span class="dv">1</span>)</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(breit)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>wartung   regelmaessig  unregelmaessig  differenz_punkte
+laufzeit                                                
+3               0.1137          0.3265              21.3
+6               0.3134          0.6330              32.0
+9               0.6189          0.8599              24.1</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Laufzeit</th>
+<th>p bei regelmässiger Wartung</th>
+<th>p bei unregelmässiger</th>
+<th>Differenz in Prozentpunkten</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>3 Jahre</td>
+<td>0.114</td>
+<td>0.327</td>
+<td>+21.3</td>
+</tr>
+<tr class="even">
+<td>6 Jahre</td>
+<td>0.313</td>
+<td>0.633</td>
+<td>+32.0</td>
+</tr>
+<tr class="odd">
+<td>9 Jahre</td>
+<td>0.619</td>
+<td>0.860</td>
+<td>+24.1</td>
+</tr>
+</tbody>
+</table>
+<p>In allen drei Zeilen ist das Odds Ratio exakt 3.78. Nachrechnen für die erste Zeile: Die Chance steigt von 0.114/0.886 = 0.129 auf 0.327/0.673 = 0.486, und 0.486 geteilt durch 0.129 ergibt 3.78.</p>
+<p>Die Änderung in Prozentpunkten schwankt dagegen zwischen 21 und 32. Sie ist am grössten in der Mitte, wo die Ausgangswahrscheinlichkeit nahe 50 Prozent liegt, und wird an beiden Rändern kleiner. Das ist keine Eigenheit dieser Daten, sondern folgt aus der Form der logistischen Kurve: Sie ist in der Mitte am steilsten und flacht zu beiden Seiten ab.</p>
+<div class="note-box">
+<p><strong>Warum das für den Bericht entscheidend ist.</strong> Der Satz “unregelmässige Wartung verdreifacht das Ausfallrisiko” ist bei einer Ausgangswahrscheinlichkeit von 62 Prozent schlicht unmöglich: Das Dreifache wäre über 100 Prozent. Er verwechselt Chance mit Wahrscheinlichkeit.</p>
+<p>Korrekt ist entweder “die Ausfallchance ist 3.78 mal so hoch” oder eine Aussage in Prozentpunkten <strong>für eine genannte Ausgangslage</strong>: “Bei einer sechs Jahre alten Anlage steigt die Ausfallwahrscheinlichkeit von 31 auf 63 Prozent.”</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<p>Für einen Bericht gehören beide Angaben dazu: das Odds Ratio, weil es vom Ausgangspunkt <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre.">unabhängig</span> und damit übertragbar ist, und mindestens eine Übersetzung in Wahrscheinlichkeiten für eine typische Ausgangslage, weil erst sie greifbar wird.</p>
+<blockquote class="blockquote">
+<p>Unregelmässige Wartung erhöht die Ausfallchance um den <span class="glossary-term" data-topic="Programmierung, Statistik" tabindex="0" data-def="Programmierung: Datentyp in R für kategoriale Merkmale. Er speichert die Werte als Codes und führt die möglichen Ausprägungen als Stufen mit, auch solche, die in den Daten nicht vorkommen.  ·  Statistik: Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt.">Faktor</span> 3.78 (95-Prozent- <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervall</span> 1.92 bis 7.44). Für eine sechs Jahre alte Anlage entspricht das einer Ausfallwahrscheinlichkeit von 63 statt 31 Prozent, also 32 Prozentpunkten mehr; für eine drei Jahre alte Anlage 33 statt 11 Prozent, also 21 Prozentpunkten mehr.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>Sechzehn Bauteile, geprüft wird der Zusammenhang zwischen Prüftemperatur und Ausfall. In diesen Daten fällt <strong>jedes</strong> Bauteil ab 82 Grad aus und keines darunter. Der Prädiktor trennt die beiden Gruppen perfekt.</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>bauteile <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">temperatur =</span> <span class="fu">c</span>(<span class="dv">62</span>, <span class="dv">65</span>, <span class="dv">68</span>, <span class="dv">70</span>, <span class="dv">72</span>, <span class="dv">74</span>, <span class="dv">76</span>, <span class="dv">78</span>, <span class="dv">82</span>, <span class="dv">84</span>, <span class="dv">86</span>, <span class="dv">88</span>, <span class="dv">90</span>, <span class="dv">92</span>, <span class="dv">95</span>, <span class="dv">98</span>),</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">ausfall    =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>)</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>getrennt <span class="ot">&lt;-</span> <span class="fu">glm</span>(ausfall <span class="sc">~</span> temperatur, <span class="at">family =</span> binomial, <span class="at">data =</span> bauteile)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: glm.fit: algorithm did not converge</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(getrennt)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = ausfall ~ temperatur, family = binomial, data = bauteile)
+
+Coefficients:
+              Estimate Std. Error z value Pr(&gt;|z|)
+(Intercept)    -878.13 1003759.01  -0.001    0.999
+temperatur       10.98   12543.07   0.001    0.999
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 2.2181e+01  on 15  degrees of freedom
+Residual deviance: 1.1691e-09  on 14  degrees of freedom
+AIC: 4
+
+Number of Fisher Scoring iterations: 25</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> warnings</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>bauteile <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"temperatur"</span>: [<span class="dv">62</span>, <span class="dv">65</span>, <span class="dv">68</span>, <span class="dv">70</span>, <span class="dv">72</span>, <span class="dv">74</span>, <span class="dv">76</span>, <span class="dv">78</span>,</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>                   <span class="dv">82</span>, <span class="dv">84</span>, <span class="dv">86</span>, <span class="dv">88</span>, <span class="dv">90</span>, <span class="dv">92</span>, <span class="dv">95</span>, <span class="dv">98</span>],</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ausfall"</span>: [<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>],</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> warnings.catch_warnings():</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>    warnings.simplefilter(<span class="st">"ignore"</span>)</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>    getrennt <span class="op">=</span> smf.logit(<span class="st">"ausfall ~ temperatur"</span>, data<span class="op">=</span>bauteile).fit(disp<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(getrennt.summary().tables[<span class="dv">1</span>])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>==============================================================================
+                 coef    std err          z      P&gt;|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept   -655.4634   1.02e+05     -0.006      0.995   -2.01e+05       2e+05
+temperatur     8.1936   1279.264      0.006      0.995   -2499.119    2515.506
+==============================================================================</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Was zu sehen ist</th>
+<th>Wie es zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Estimate</code> für <code>temperatur</code></td>
+<td>ein sehr grosser Wert</td>
+<td>Er wächst mit jeder Iteration weiter; das Verfahren strebt gegen unendlich.</td>
+</tr>
+<tr class="even">
+<td><code>Std. Error</code></td>
+<td>ein extrem grosser Wert, oft in der Grössenordnung von Tausenden</td>
+<td>Das eigentliche Warnzeichen. Ein Standardfehler, der um Grössenordnungen über dem Schätzwert liegt, ist keine Unsicherheit, sondern ein Rechenabbruch.</td>
+</tr>
+<tr class="odd">
+<td><code>Pr(&gt;&amp;#124;z&amp;#124;)</code></td>
+<td>nahe 1</td>
+<td>Absurd: Der Prädiktor sagt die Zielgrösse perfekt vorher und ist trotzdem “nicht signifikant”.</td>
+</tr>
+<tr class="even">
+<td><code>Residual deviance</code></td>
+<td>praktisch null</td>
+<td>Das Modell passt perfekt, weil es die Daten auswendig lernt.</td>
+</tr>
+<tr class="odd">
+<td>Warnung in R</td>
+<td><code>fitted probabilities numerically 0 or 1 occurred</code></td>
+<td>Der eindeutige Hinweis.</td>
+</tr>
+<tr class="even">
+<td><code>Number of Fisher Scoring iterations</code></td>
+<td>25, das Maximum</td>
+<td>Das Verfahren ist nicht konvergiert, sondern abgebrochen worden.</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong>Die konkreten Zahlen sind hier bedeutungslos</strong>, und zwar buchstäblich: Sie hängen davon ab, wann das Optimierungsverfahren abbricht, und unterscheiden sich deshalb zwischen R und Python und sogar zwischen Versionen desselben Pakets. Genau daran erkennt man das Problem. Bei einer normalen Schätzung liefern beide Sprachen dieselben Werte, wie Beispiel 1 zeigt.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<p>Es gibt keine Maximum-Likelihood-Schätzung. Jeder noch so grosse Koeffizient wird durch einen grösseren verbessert, weil sich die vorhergesagten Wahrscheinlichkeiten dadurch weiter an 0 und 1 annähern. Das Verfahren konvergiert nicht, es bricht ab.</p>
+<p>Was zu tun ist:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Vorgehen</th>
+<th>Wann es passt</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Firth-Korrektur (in R <code>logistf</code>, in Python <code>statsmodels</code> mit Penalisierung)</td>
+<td>der Standardweg; sie liefert endliche Schätzwerte und brauchbare Intervalle</td>
+</tr>
+<tr class="even">
+<td>Den trennenden Prädiktor weglassen</td>
+<td>wenn er inhaltlich verzichtbar ist</td>
+</tr>
+<tr class="odd">
+<td>Kategorien zusammenfassen</td>
+<td>wenn die Trennung von einer dünn besetzten Stufe kommt</td>
+</tr>
+<tr class="even">
+<td>Mehr Daten erheben</td>
+<td>Trennung tritt fast nur bei kleinen Stichproben auf</td>
+</tr>
+</tbody>
+</table>
+<p>Nicht zulässig ist, das Ergebnis als “perfektes Modell” zu berichten. Das Modell hat nichts gelernt, es hat die sechzehn Fälle auswendig gelernt.</p>
+<blockquote class="blockquote">
+<p>Die Prüftemperatur trennt ausgefallene und intakte Bauteile in diesen Daten vollständig (alle Ausfälle ab 82 Grad, kein Ausfall darunter). Eine logistische Regression liefert deshalb keine gültige Schätzung; berichtet wird stattdessen die Trenngrenze mit dem Hinweis, dass n = 16 für eine Schätzung nicht ausreicht.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>Das Modell aus Beispiel 1 liefert für jede Anlage eine Wahrscheinlichkeit. Für eine Entscheidung, etwa “vorsorglich warten oder nicht”, braucht es eine Schwelle. Die Frage lautet: Welche?</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>p_vorher <span class="ot">&lt;-</span> <span class="fu">predict</span>(modell, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (schwelle <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.3</span>, <span class="fl">0.5</span>, <span class="fl">0.7</span>)) {</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  vorhersage <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(p_vorher <span class="sc">&gt;</span> schwelle)</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  tp <span class="ot">&lt;-</span> <span class="fu">sum</span>(vorhersage <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> anlagen<span class="sc">$</span>ausfall <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  fp <span class="ot">&lt;-</span> <span class="fu">sum</span>(vorhersage <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> anlagen<span class="sc">$</span>ausfall <span class="sc">==</span> <span class="dv">0</span>)</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>  fn <span class="ot">&lt;-</span> <span class="fu">sum</span>(vorhersage <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> anlagen<span class="sc">$</span>ausfall <span class="sc">==</span> <span class="dv">1</span>)</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>  tn <span class="ot">&lt;-</span> <span class="fu">sum</span>(vorhersage <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> anlagen<span class="sc">$</span>ausfall <span class="sc">==</span> <span class="dv">0</span>)</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Schwelle %.1f: TP=%3d FP=%3d FN=%3d TN=%3d  Sensitivität=%.3f  Spezifität=%.3f  Genauigkeit=%.3f</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>    schwelle, tp, fp, fn, tn, tp <span class="sc">/</span> (tp <span class="sc">+</span> fn), tn <span class="sc">/</span> (tn <span class="sc">+</span> fp), (tp <span class="sc">+</span> tn) <span class="sc">/</span> <span class="fu">nrow</span>(anlagen)))</span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Schwelle 0.3: TP= 85 FP= 53 FN= 11 TN= 51  Sensitivität=0.885  Spezifität=0.490  Genauigkeit=0.680
+Schwelle 0.5: TP= 67 FP= 26 FN= 29 TN= 78  Sensitivität=0.698  Spezifität=0.750  Genauigkeit=0.725
+Schwelle 0.7: TP= 40 FP=  9 FN= 56 TN= 95  Sensitivität=0.417  Spezifität=0.913  Genauigkeit=0.675</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>p_vorher <span class="op">=</span> modell.predict(anlagen)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>tatsaechlich <span class="op">=</span> anlagen[<span class="st">"ausfall"</span>].to_numpy()</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> schwelle <span class="kw">in</span> (<span class="fl">0.3</span>, <span class="fl">0.5</span>, <span class="fl">0.7</span>):</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>    vorhersage <span class="op">=</span> (p_vorher <span class="op">&gt;</span> schwelle).astype(<span class="bu">int</span>)</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>    tp <span class="op">=</span> <span class="bu">int</span>(((vorhersage <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">1</span>)).<span class="bu">sum</span>())</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>    fp <span class="op">=</span> <span class="bu">int</span>(((vorhersage <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">0</span>)).<span class="bu">sum</span>())</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>    fn <span class="op">=</span> <span class="bu">int</span>(((vorhersage <span class="op">==</span> <span class="dv">0</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">1</span>)).<span class="bu">sum</span>())</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>    tn <span class="op">=</span> <span class="bu">int</span>(((vorhersage <span class="op">==</span> <span class="dv">0</span>) <span class="op">&amp;</span> (tatsaechlich <span class="op">==</span> <span class="dv">0</span>)).<span class="bu">sum</span>())</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Schwelle </span><span class="sc">{</span>schwelle<span class="sc">}</span><span class="ss">: TP=</span><span class="sc">{</span>tp<span class="sc">:3d}</span><span class="ss"> FP=</span><span class="sc">{</span>fp<span class="sc">:3d}</span><span class="ss"> FN=</span><span class="sc">{</span>fn<span class="sc">:3d}</span><span class="ss"> TN=</span><span class="sc">{</span>tn<span class="sc">:3d}</span><span class="ss">"</span></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"  Sensitivität=</span><span class="sc">{</span>tp<span class="op">/</span>(tp<span class="op">+</span>fn)<span class="sc">:.3f}</span><span class="ss">"</span></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"  Spezifität=</span><span class="sc">{</span>tn<span class="op">/</span>(tn<span class="op">+</span>fp)<span class="sc">:.3f}</span><span class="ss">"</span></span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"  Genauigkeit=</span><span class="sc">{</span>(tp<span class="op">+</span>tn)<span class="op">/</span><span class="bu">len</span>(anlagen)<span class="sc">:.3f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Schwelle 0.3: TP= 85 FP= 53 FN= 11 TN= 51  Sensitivität=0.885  Spezifität=0.490  Genauigkeit=0.680
+Schwelle 0.5: TP= 67 FP= 26 FN= 29 TN= 78  Sensitivität=0.698  Spezifität=0.750  Genauigkeit=0.725
+Schwelle 0.7: TP= 40 FP=  9 FN= 56 TN= 95  Sensitivität=0.417  Spezifität=0.913  Genauigkeit=0.675</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Schwelle</th>
+<th>Richtig erkannte Ausfälle</th>
+<th>Fehlalarme</th>
+<th>Übersehene Ausfälle</th>
+<th>Sensitivität</th>
+<th>Spezifität</th>
+<th>Genauigkeit</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.3</td>
+<td>85</td>
+<td>53</td>
+<td>11</td>
+<td>0.885</td>
+<td>0.490</td>
+<td>0.680</td>
+</tr>
+<tr class="even">
+<td>0.5</td>
+<td>67</td>
+<td>26</td>
+<td>29</td>
+<td>0.698</td>
+<td>0.750</td>
+<td>0.725</td>
+</tr>
+<tr class="odd">
+<td>0.7</td>
+<td>40</td>
+<td>9</td>
+<td>56</td>
+<td>0.417</td>
+<td>0.913</td>
+<td>0.675</td>
+</tr>
+</tbody>
+</table>
+<p>Dasselbe Modell, dieselben Wahrscheinlichkeiten, drei völlig verschiedene Entscheidungsverhalten. Bei einer Schwelle von 0.3 werden 85 der 96 Ausfälle vorhergesagt, dafür 53 Anlagen unnötig gewartet. Bei 0.7 sinken die Fehlalarme auf 9, dafür bleiben 56 Ausfälle unentdeckt.</p>
+<p>Bemerkenswert ist die Spalte Genauigkeit: Sie ist bei 0.5 am höchsten und unterscheidet sich zwischen 0.3 und 0.7 kaum. Sie ist damit gerade <strong>nicht</strong> das Kriterium, an dem sich die Wahl entscheidet.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<p>Die Schwelle ergibt sich aus den Kosten der beiden Fehlerarten, nicht aus der Statistik. Kostet ein übersehener Ausfall ein Vielfaches einer unnötigen Wartung, gehört die Schwelle nach unten. Ist die Wartung teuer und der Ausfall verkraftbar, nach oben.</p>
+<p>Die Voreinstellung 0.5 unterstellt, dass beide Fehler gleich teuer sind. Das ist selten der Fall und noch seltener geprüft.</p>
+<p>Zwei Warnungen zum Schluss. Erstens sind diese Kennzahlen an denselben Daten gemessen, mit denen das Modell geschätzt wurde; sie fallen deshalb zu gut aus. Belastbare Werte braucht getrennte Daten oder Kreuzvalidierung. Zweitens ist die Trennschärfe des Modells von der Schwelle <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre.">unabhängig</span> und wird mit der ROC-Kurve und dem AUC beurteilt. Beides steht auf der Seite <a href="../../statistik/regression/klassifikationsguete.html">Klassifikationsgüte</a>.</p>
+<blockquote class="blockquote">
+<p>Bei der üblichen Schwelle von 0.5 erkennt das Modell 67 der 96 Ausfälle (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> 0.70) und stuft 26 der 104 intakten Anlagen falsch ein (<span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der negativen Testergebnisse unter den tatsächlich nicht Betroffenen. Bei seltenen Zuständen bestimmt sie die Zahl der falsch positiven Fälle und damit die Aussagekraft eines positiven Ergebnisses.">Spezifität</span> 0.75). Eine Senkung der Schwelle auf 0.3 erhöht die <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der positiven Testergebnisse unter den tatsächlich Betroffenen. Eigenschaft des Tests, unabhängig davon, wie verbreitet der gesuchte Zustand ist.">Sensitivität</span> auf 0.89, verdoppelt aber die Fehlalarme. Die Wahl der Schwelle richtet sich nach dem Kostenverhältnis der beiden Fehlerarten. Alle Kennzahlen sind an den Schätzdaten gemessen und deshalb optimistisch.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Odds Ratio beträgt 3.78. Was folgt für die Wahrscheinlichkeit?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Das kommt auf die Ausgangswahrscheinlichkeit an
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das Odds Ratio wirkt auf die Chance, nicht auf die Wahrscheinlichkeit. Bei einer Ausgangswahrscheinlichkeit von 11 Prozent führt es zu 33 Prozent, bei 31 Prozent zu 63, bei 62 Prozent zu 86. Die Änderung in Prozentpunkten ist in der Mitte am grössten.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Die Wahrscheinlichkeit ist 3.78 mal so hoch
+</div>
+<div class="quiz__erklaerung">
+Das wäre ein Risikoverhältnis, und bei einer Ausgangswahrscheinlichkeit über 27 Prozent käme dabei ein Wert über 1 heraus.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Die Wahrscheinlichkeit steigt um 3.78 Prozentpunkte
+</div>
+<div class="quiz__erklaerung">
+Das Odds Ratio ist ein <span class="glossary-term" data-topic="Programmierung, Statistik" tabindex="0" data-def="Programmierung: Datentyp in R für kategoriale Merkmale. Er speichert die Werte als Codes und führt die möglichen Ausprägungen als Stufen mit, auch solche, die in den Daten nicht vorkommen.  ·  Statistik: Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt.">Faktor</span>, keine Differenz.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Koeffizient hat einen <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt.">Standardfehler</span> von 1279 bei einem Schätzwert von 8.2, und R warnt <code>fitted probabilities numerically 0 or 1 occurred</code>. Was liegt vor?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Vollständige Trennung: es existiert keine Schätzung
+</div>
+<div class="quiz__erklaerung">
+Richtig. Ein Prädiktor trennt die Gruppen perfekt, das Optimierungsverfahren strebt gegen unendlich und bricht ab. Die ausgegebenen Zahlen hängen nur davon ab, wann es abbricht.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Ein besonders starker Effekt
+</div>
+<div class="quiz__erklaerung">
+Er sieht so aus und ist keiner. Ein <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt.">Standardfehler</span>, der um Grössenordnungen über dem Schätzwert liegt, ist keine Unsicherheit, sondern ein Rechenabbruch.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Multikollinearität
+</div>
+<div class="quiz__erklaerung">
+Sie erhöht <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Streuung einer geschätzten Kennzahl von Stichprobe zu Stichprobe. Sinkt mit der Wurzel des Stichprobenumfangs, weshalb vierfacher Aufwand die Genauigkeit nur verdoppelt.">Standardfehler</span> ebenfalls, aber nicht um diese Grössenordnung und ohne diese Warnung.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Modell erreicht ein McFadden-Pseudo-R² von 0.22. Wie ist das einzuordnen?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Eine gute Anpassung; Werte zwischen 0.2 und 0.4 gelten als solche
+</div>
+<div class="quiz__erklaerung">
+Richtig. Pseudo-R² ist anders konstruiert als R² und erreicht selbst bei sehr guten Modellen selten hohe Werte. Wer es wie ein <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Anteil der Streuung der Zielgrösse, den ein Modell erklärt. Sagt etwas über die Enge des Zusammenhangs, aber nichts darüber, ob die Modellform angemessen ist.">Bestimmtheitsmass</span> liest, hält jedes logistische Modell für schlecht.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Schlecht, nur 22 Prozent der Streuung sind erklärt
+</div>
+<div class="quiz__erklaerung">
+Genau diese Übertragung ist der Fehler; Pseudo-R² misst keinen Streuungsanteil.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Nicht beurteilbar ohne Vergleichsmodell
+</div>
+<div class="quiz__erklaerung">
+Für einen Modellvergleich ist ein Vergleichsmodell nötig, für die Einordnung dieser Zahl nicht.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum ist die Schwelle 0.5 nicht automatisch die richtige?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Weil sie unterstellt, dass beide Fehlerarten gleich teuer sind
+</div>
+<div class="quiz__erklaerung">
+Richtig. Ein übersehener Ausfall und eine unnötige Wartung kosten selten dasselbe. Die Schwelle ist eine betriebswirtschaftliche Entscheidung, keine statistische.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Weil sie die Genauigkeit nicht maximiert
+</div>
+<div class="quiz__erklaerung">
+In diesem Beispiel tut sie das sogar. Genauigkeit ist nur nicht das entscheidende Kriterium.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Weil sie bei unausgeglichenen <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.">Klassen</span> mathematisch unzulässig ist
+</div>
+<div class="quiz__erklaerung">
+Unzulässig ist sie nie, nur oft unpassend.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://www.statlearning.com/">An Introduction to Statistical Learning, Kapitel 4</a></li>
+<li><a href="https://stat.ethz.ch/R-manual/R-devel/library/stats/html/glm.html">R-Dokumentation zu <code>glm</code></a></li>
+<li><a href="https://www.statsmodels.org/stable/generated/statsmodels.discrete.discrete_model.Logit.html">statsmodels: Logit</a></li>
+</ul>
 
 
 </section>
@@ -1627,9 +2770,42 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 15:22</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 15:38</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 
