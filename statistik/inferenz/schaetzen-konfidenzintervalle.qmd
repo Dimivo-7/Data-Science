@@ -16,7 +16,24 @@ order: 10
 library(ggplot2)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(42)
+
+# Zufallszahlen aus dem Lehmer-Generator: s <- (16807 * s) mod 2147483647.
+# Alle Zwischenwerte bleiben unter 2^53 und sind damit in R und Python exakt
+# gleich. Die eingebauten Generatoren waeren es nicht, und dann stuenden auf
+# dieser Seite in beiden Sprachen verschiedene Zahlen.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1) {
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+}
 ```
 
 ```{python}
@@ -30,7 +47,20 @@ from statsmodels.stats.proportion import proportion_confint
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
+
+
+def lehmer(saat, anzahl):
+    """Derselbe Generator wie im R-Teil, damit die Zahlen uebereinstimmen."""
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0.0, streuung=1.0):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
 ```
 
 ## Kurzsteckbrief
@@ -87,7 +117,8 @@ Das lässt sich simulieren, weil wir die Grundgesamtheit hier kennen:
 #| fig-cap: "2000 Stichproben aus derselben Grundgesamtheit. Jeder Punkt der Verteilung ist ein Stichprobenmittelwert."
 #| fig-height: 3.2
 # Grundgesamtheit: Erwartungswert 500, Standardabweichung 40
-mittelwerte <- replicate(2000, mean(rnorm(30, mean = 500, sd = 40)))
+werte <- normalwerte(2026, 2000 * 30, mittel = 500, streuung = 40)
+mittelwerte <- rowMeans(matrix(werte, nrow = 2000, ncol = 30, byrow = TRUE))
 
 ggplot(data.frame(mittelwerte), aes(mittelwerte)) +
   geom_histogram(bins = 40, fill = "grey75", colour = "white") +
@@ -100,7 +131,8 @@ ggplot(data.frame(mittelwerte), aes(mittelwerte)) +
 ```{python}
 #| label: fig-stichprobenverteilung-py
 #| fig-cap: "Dieselbe Stichprobenverteilung mit matplotlib."
-mittelwerte = rng.normal(500, 40, size=(2000, 30)).mean(axis=1)
+werte = normalwerte(2026, 2000 * 30, mittel=500, streuung=40)
+mittelwerte = werte.reshape(2000, 30).mean(axis=1)
 
 fig, ax = plt.subplots(figsize=(7, 3.2))
 ax.hist(mittelwerte, bins=40, color="0.75", edgecolor="white")
@@ -125,16 +157,20 @@ Der Unterschied wird ständig verwechselt und ist zentral.
 
 ```{r}
 #| label: standardfehler-r
-stichprobe <- rnorm(30, mean = 500, sd = 40)
+stichprobe <- werte[1:30]
 
 c(streuung_einzelwerte = sd(stichprobe),
   standardfehler       = sd(stichprobe) / sqrt(length(stichprobe)),
   simuliert            = sd(mittelwerte)) |> round(2)
 ```
 
-Der berechnete Standardfehler und die tatsächlich simulierte Streuung der
-Mittelwerte stimmen überein. Das ist der Beleg dafür, dass die Formel das
-Richtige tut.
+Die simulierte Streuung der 2000 Mittelwerte beträgt 7.32, die Formel
+$40/\sqrt{30}$ liefert 7.30. Das ist der Beleg dafür, dass der Standardfehler
+tatsächlich misst, was er messen soll: die Schwankung des Mittelwerts von
+Stichprobe zu Stichprobe.
+
+Der aus **einer** Stichprobe geschätzte Standardfehler weicht davon ab, hier
+6.44 statt 7.30, weil auch die geschätzte Standardabweichung schwankt.
 
 Die Wurzel im Nenner hat eine unangenehme Folge: Genauigkeit wird teuer. Wer
 den Standardfehler halbieren will, braucht die vierfache Stichprobe.
@@ -171,57 +207,6 @@ Bei grossem n sorgt der
 dafür, dass die dritte Voraussetzung praktisch erfüllt ist, auch wenn die
 Einzelwerte schief verteilt sind.
 
-## Durchführung in R und Python
-
-### Vom Punkt zum Intervall
-
-Ein einzelner Wert sagt nichts über seine Genauigkeit. Das Konfidenzintervall
-gibt stattdessen eine Spanne an, gebildet als Schätzwert plus minus ein
-Vielfaches des Standardfehlers.
-
-Bei unbekannter Varianz, also praktisch immer, wird nicht mit der
-Normalverteilung gerechnet, sondern mit der t-Verteilung. Sie hat schwerere
-Ränder und liefert dadurch etwas breitere und damit ehrlichere Intervalle. Mit
-wachsendem Umfang verschwindet der Unterschied:
-
-```{r}
-#| label: t-vs-normal-r
-n <- c(5, 10, 30, 100, 1000)
-data.frame(
-  n,
-  t_quantil      = round(qt(0.975, df = n - 1), 3),
-  normal_quantil = round(qnorm(0.975), 3)
-)
-```
-
-Der bekannte Faktor 1.96 ist der Grenzwert. Bei fünf Beobachtungen liegt der
-richtige Faktor bei 2.78, also deutlich darüber.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: ki-r
-x <- round(rnorm(25, mean = 12.2, sd = 0.8), 2)
-
-t.test(x, conf.level = 0.95)$conf.int
-
-# von Hand, damit sichtbar ist, was passiert
-se <- sd(x) / sqrt(length(x))
-mean(x) + c(-1, 1) * qt(0.975, df = length(x) - 1) * se
-```
-
-## Python
-
-```{python}
-#| label: ki-py
-x = np.round(rng.normal(12.2, 0.8, 25), 2)
-se = x.std(ddof=1) / np.sqrt(len(x))
-
-print(stats.t.interval(0.95, df=len(x) - 1, loc=x.mean(), scale=se))
-```
-:::
-
 ## Output lesen
 
 R, `t.test(x)`:
@@ -245,125 +230,6 @@ Für Anteile gibt `prop.test()` in R Schätzwert, Intervall und einen Test aus,
 Python ausdrücklich im Aufruf (`wilson`, `beta`, `normal`), in R entscheidet die
 Funktionswahl darüber.
 
-## Ergebnisse interpretieren
-
-### Szenario A: klares Ergebnis
-
-Ein Intervall, das eng ist und den interessierenden Referenzwert nicht enthält.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-a-ki-r
-set.seed(9)
-laufzeit <- rnorm(80, mean = 12.6, sd = 1.4)
-
-t.test(laufzeit, mu = 12)
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-ki-py
-rng_a = np.random.default_rng(9)
-laufzeit = rng_a.normal(12.6, 1.4, 80)
-
-se = laufzeit.std(ddof=1) / np.sqrt(len(laufzeit))
-print(laufzeit.mean().round(3))
-print(np.round(stats.t.interval(0.95, df=len(laufzeit) - 1,
-                                loc=laufzeit.mean(), scale=se), 3))
-```
-
-:::
-
-Der Schätzwert liegt bei rund 12.6, das Intervall ist schmal, weil n = 80 gross
-und die Streuung klein ist, und es liegt vollständig oberhalb von 12. Aussage:
-Die mittlere Laufzeit liegt über dem Referenzwert, und die Daten grenzen sie auf
-eine schmale Spanne ein.
-
-Ergebnissatz: Die mittlere Laufzeit beträgt 12.6 Einheiten
-(95-Prozent-Konfidenzintervall wie ausgegeben, n = 80) und liegt damit über dem
-Referenzwert von 12.
-
-### Szenario B: das Intervall lässt beides zu
-
-Derselbe Sachverhalt, aber mit kleiner Stichprobe.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-ki-r
-set.seed(4)
-klein <- rnorm(8, mean = 12.6, sd = 1.4)
-
-t.test(klein, mu = 12)$conf.int
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-ki-py
-rng_b = np.random.default_rng(4)
-klein = rng_b.normal(12.6, 1.4, 8)
-
-se_b = klein.std(ddof=1) / np.sqrt(len(klein))
-print(np.round(stats.t.interval(0.95, df=len(klein) - 1,
-                                loc=klein.mean(), scale=se_b), 3))
-```
-
-:::
-
-Bei acht Beobachtungen ist das Intervall so breit, dass es den Referenzwert 12
-einschliesst. Der Punktschätzer liegt weiterhin in derselben Grössenordnung wie
-in Szenario A, aber die Daten schliessen nichts aus. Das ist kein Beleg dafür,
-dass kein Unterschied besteht, sondern die Feststellung, dass die Stichprobe zu
-klein ist, um die Frage zu beantworten. Der Faktor aus der t-Verteilung ist bei
-sieben Freiheitsgraden deutlich grösser als 1.96, was die Breite zusätzlich
-erklärt.
-
-Ergebnissatz: Die mittlere Laufzeit wird auf den ausgegebenen Bereich geschätzt
-(n = 8). Der Referenzwert 12 liegt darin; die Daten erlauben keine Entscheidung.
-
-### Szenario C: Fallstrick bei kleinen Anteilen
-
-### Anteilswerte
-
-Für Anteile gilt dieselbe Logik mit einem eigenen Standardfehler. Die einfache
-Näherung wird bei sehr kleinen oder sehr grossen Anteilen unbrauchbar, weil das
-Intervall dann über null oder eins hinausragen kann.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: anteil-r
-treffer <- 42; versuche <- 200
-
-prop.test(treffer, versuche)$conf.int    # mit Stetigkeitskorrektur
-binom.test(treffer, versuche)$conf.int   # exakt
-
-# der problematische Fall: sehr kleiner Anteil
-prop.test(1, 40)$conf.int
-```
-
-## Python
-
-```{python}
-#| label: anteil-py
-print(proportion_confint(42, 200, alpha=0.05, method="wilson"))
-print(proportion_confint(42, 200, alpha=0.05, method="beta"))    # exakt
-print(proportion_confint(1, 40, alpha=0.05, method="normal"))    # laeuft ins Negative
-```
-:::
-
-Die letzte Zeile zeigt das Problem. Ein Intervall, dessen untere Grenze
-negativ ist, kann für einen Anteil nicht stimmen. Verfahren wie Wilson oder das
-exakte nach Clopper-Pearson vermeiden das.
-
 ## Interpretationsfallen
 
 ### Was das Intervall bedeutet, und was nicht
@@ -376,35 +242,13 @@ Richtig ist: Wendet man das Verfahren immer wieder an, überdecken 95 Prozent de
 so erzeugten Intervalle den wahren Wert. Falsch ist die Aussage, der Parameter
 liege mit 95 Prozent Wahrscheinlichkeit in diesem einen Bereich.
 
-Das lässt sich zeigen:
+Beispiel 3 zeigt das an hundert Wiederholungen: Die Intervalle wandern, der
+wahre Wert steht fest, und 94 der 100 enthalten ihn. Welche sechs danebenliegen,
+lässt sich einem einzelnen Intervall nicht ansehen. Genau deshalb ist die
+Aussage über das Verfahren und nicht über das Einzelintervall formuliert.
 
-```{r}
-#| label: fig-ueberdeckung-r
-#| fig-cap: "100 Konfidenzintervalle aus je 25 Beobachtungen. Die hervorgehobenen verfehlen den wahren Wert."
-#| fig-height: 3.6
-wahr <- 500
-proben <- replicate(100, rnorm(25, mean = wahr, sd = 40), simplify = FALSE)
-
-intervalle <- do.call(rbind, lapply(seq_along(proben), function(i) {
-  ki <- t.test(proben[[i]])$conf.int
-  data.frame(lauf = i, unten = ki[1], oben = ki[2])
-}))
-intervalle$trifft <- intervalle$unten <= wahr & intervalle$oben >= wahr
-
-ggplot(intervalle, aes(lauf, ymin = unten, ymax = oben, colour = trifft)) +
-  geom_linerange(linewidth = 0.5) +
-  geom_hline(yintercept = wahr, linewidth = 0.7) +
-  scale_colour_manual(values = c("TRUE" = "grey70", "FALSE" = "black")) +
-  labs(x = "Wiederholung", y = "Konfidenzintervall", colour = "überdeckt") +
-  theme(legend.position = "bottom")
-
-sum(!intervalle$trifft)     # wie viele verfehlen den wahren Wert
-```
-
-Von hundert Intervallen verfehlen einige den wahren Wert, und zwar
-ungefähr fünf. Welches davon betroffen ist, weiss man in der Praxis nie, weil
-der wahre Wert unbekannt ist. Genau deshalb ist die Aussage über das Verfahren
-und nicht über das Einzelintervall formuliert.
+Eine zulässige Kurzform für den Bericht lautet: "Mit den Daten vereinbar sind
+Werte zwischen [unten] und [oben]."
 
 Dazu kommen drei Verwechslungen, die regelmässig vorkommen:
 
@@ -446,6 +290,411 @@ Beispiel für eine Ergebnistabelle:
 | [t-Test für zwei Stichproben](../tests/t-test-zwei-stichproben.qmd) | zwei Gruppen sollen verglichen werden |
 | [Bootstrap und Resampling](bootstrap-resampling.qmd) | die Verteilung der Schätzung ist unbekannt oder die Kennzahl ist kein Mittelwert |
 | [Power und Stichprobenumfang](power-stichprobenumfang.qmd) | die nötige Stichprobengrösse soll vorher bestimmt werden |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Intervall für einen Mittelwert
+
+#### Frage und Datenlage
+
+Zwanzig Packungen werden gewogen, angegeben sind 250 Gramm. Gesucht ist nicht
+die Frage, **ob** das Sollgewicht eingehalten wird, sondern eine Spanne
+plausibler Werte für das mittlere Füllgewicht.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-ki-rechnung-r
+fuellgewicht <- c(249.1, 250.8, 248.6, 251.2, 249.9, 250.3, 248.2, 251.7,
+                  249.5, 250.1, 247.9, 250.6, 249.3, 251.0, 248.8, 250.4,
+                  249.7, 250.9, 248.4, 251.4)
+
+n <- length(fuellgewicht)
+mittel <- mean(fuellgewicht)
+streuung <- sd(fuellgewicht)
+standardfehler <- streuung / sqrt(n)
+t_kritisch <- qt(0.975, df = n - 1)
+
+round(c(n = n, mittel = mittel, sd = streuung,
+        standardfehler = standardfehler, t_kritisch = t_kritisch,
+        unten = mittel - t_kritisch * standardfehler,
+        oben = mittel + t_kritisch * standardfehler), 4)
+
+# Dasselbe in einem Aufruf
+t.test(fuellgewicht)$conf.int
+```
+
+##### Python
+
+```{python}
+#| label: b1-ki-rechnung-py
+fuellgewicht = np.array([249.1, 250.8, 248.6, 251.2, 249.9, 250.3, 248.2,
+                         251.7, 249.5, 250.1, 247.9, 250.6, 249.3, 251.0,
+                         248.8, 250.4, 249.7, 250.9, 248.4, 251.4])
+
+n = len(fuellgewicht)
+mittel = fuellgewicht.mean()
+streuung = fuellgewicht.std(ddof=1)
+standardfehler = streuung / np.sqrt(n)
+t_kritisch = stats.t.ppf(0.975, df=n - 1)
+
+print(f"n = {n}  Mittel = {mittel:.4f}  SD = {streuung:.4f}")
+print(f"Standardfehler = {standardfehler:.4f}  t_kritisch = {t_kritisch:.4f}")
+print(f"Intervall: {mittel - t_kritisch*standardfehler:.4f}"
+      f" bis {mittel + t_kritisch*standardfehler:.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| n | 20 | Anzahl Packungen | |
+| Mittelwert | 249.890 | Punktschätzung | Die beste Einzelschätzung, aber ohne Angabe ihrer Unsicherheit wertlos. |
+| Standardabweichung | 1.133 | Streuung der **einzelnen** Packungen | Beschreibt die Daten. Rund zwei Drittel der Packungen liegen im Bereich 249.89 ± 1.13. |
+| Standardfehler | 0.253 | Streuung des **Mittelwerts** | Beschreibt die Schätzung. Er ist $s/\sqrt{n}$ und damit rund viereinhalbmal kleiner als die Standardabweichung. Die Verwechslung dieser beiden Zahlen ist der häufigste Fehler auf dieser Seite. |
+| $t$-Quantil | 2.0930 | Faktor für 95 Prozent bei 19 Freiheitsgraden | Bei grossem n nähert er sich 1.96. Bei n = 20 ist er noch merklich grösser, was das Intervall verbreitert. |
+| Halbbreite | 0.530 | $t \cdot SE$ | |
+| Intervall | 249.360 bis 250.420 | | Der Sollwert 250 liegt darin. |
+
+#### Interpretation und Ergebnissatz
+
+Das Intervall enthält den Sollwert 250. Daraus folgt: Ein Test gegen 250 wäre
+auf dem 5-Prozent-Niveau nicht signifikant. Das Intervall sagt aber mehr als der
+Test, denn es beziffert, was noch vereinbar ist: Ein wahres mittleres Füllgewicht
+von 249.4 Gramm ist mit diesen Daten ebenso verträglich wie eines von 250.4.
+
+Ob das genügt, entscheidet die Vorgabe. Bei einer Toleranz von einem halben
+Gramm reicht das Intervall an beiden Enden knapp daran; für eine belastbare
+Aussage bräuchte es mehr Packungen, siehe Beispiel 4.
+
+> Das mittlere Füllgewicht beträgt 249.89 g (95-Prozent-Konfidenzintervall
+> 249.36 bis 250.42 g, n = 20, SD = 1.13). Der deklarierte Wert von 250 g liegt
+> im Intervall.
+
+### Beispiel 2: Intervall für einen Anteil
+
+#### Frage und Datenlage
+
+Von 40 geprüften Teilen sind 3 fehlerhaft. Der geschätzte Fehleranteil beträgt
+7.5 Prozent. Gesucht ist ein Konfidenzintervall.
+
+Bei Anteilen gibt es mehrere gebräuchliche Verfahren, und sie liefern spürbar
+verschiedene Ergebnisse. Das ist ein Fall, in dem die Wahl des Verfahrens die
+Aussage verändert.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-ki-rechnung-r
+treffer <- 3
+gesamt <- 40
+
+# Wald: die Lehrbuchformel
+p <- treffer / gesamt
+z <- qnorm(0.975)
+wald <- p + c(-1, 1) * z * sqrt(p * (1 - p) / gesamt)
+
+# Wilson: prop.test ohne Stetigkeitskorrektur
+wilson <- prop.test(treffer, gesamt, correct = FALSE)$conf.int
+
+# Clopper-Pearson: exakt
+exakt <- binom.test(treffer, gesamt)$conf.int
+
+round(rbind(Wald = wald, Wilson = as.numeric(wilson),
+            exakt = as.numeric(exakt)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b2-ki-rechnung-py
+treffer, gesamt = 3, 40
+p = treffer / gesamt
+z = stats.norm.ppf(0.975)
+
+wald = (p - z * np.sqrt(p * (1 - p) / gesamt),
+        p + z * np.sqrt(p * (1 - p) / gesamt))
+
+nenner = 1 + z ** 2 / gesamt
+mitte = (p + z ** 2 / (2 * gesamt)) / nenner
+halb = z * np.sqrt(p * (1 - p) / gesamt + z ** 2 / (4 * gesamt ** 2)) / nenner
+wilson = (mitte - halb, mitte + halb)
+
+exakt = (stats.beta.ppf(0.025, treffer, gesamt - treffer + 1),
+         stats.beta.ppf(0.975, treffer + 1, gesamt - treffer))
+
+print(pd.DataFrame([wald, wilson, exakt],
+                   index=["Wald", "Wilson", "exakt"],
+                   columns=["unten", "oben"]).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Verfahren | Intervall | Breite | Wie es zu lesen ist |
+|---|---|---|---|
+| Wald | **-0.007** bis 0.157 | 0.163 | Die untere Grenze ist **negativ**. Ein negativer Fehleranteil existiert nicht; die Formel weiss das nicht. |
+| Wilson | 0.026 bis 0.199 | 0.173 | Bleibt im zulässigen Bereich und ist auch bei kleinen Anteilen zuverlässig. |
+| Clopper-Pearson (exakt) | 0.016 bis 0.204 | 0.188 | Das breiteste. "Exakt" heisst hier: Es hält das Niveau garantiert ein, tut das aber, indem es eher zu breit ist. |
+
+Der Vergleich über verschiedene Ausgangslagen zeigt, wann der Unterschied zählt:
+
+| Beobachtung | Wald | Wilson | exakt |
+|---|---|---|---|
+| 3 von 40 (7.5 %) | -0.007 bis 0.157 | 0.026 bis 0.199 | 0.016 bis 0.204 |
+| 8 von 40 (20 %) | 0.076 bis 0.324 | 0.105 bis 0.348 | 0.091 bis 0.357 |
+| 20 von 40 (50 %) | 0.345 bis 0.655 | 0.352 bis 0.648 | 0.338 bis 0.662 |
+| 45 von 300 (15 %) | 0.110 bis 0.190 | 0.114 bis 0.195 | 0.112 bis 0.196 |
+
+Bei einem Anteil nahe 50 Prozent und bei grossem n stimmen alle drei praktisch
+überein. Nahe 0 oder 1 und bei kleinem n gehen sie auseinander, und dort ist
+Wald unbrauchbar.
+
+::: {.note-box}
+**Die Wald-Formel steht in jedem Lehrbuch und sollte trotzdem nicht verwendet
+werden.** Sie unterschreitet das versprochene Niveau von 95 Prozent
+regelmässig, und zwar nicht nur bei extremen Anteilen. Ihre Beliebtheit rührt
+daher, dass sie sich von Hand rechnen lässt.
+
+Empfohlen ist Wilson für den Normalfall und Clopper-Pearson, wenn das Niveau
+garantiert eingehalten werden muss. In R liefert `prop.test()` Wilson und
+`binom.test()` Clopper-Pearson; beide sind eine Zeile.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Von 40 geprüften Teilen waren 3 fehlerhaft (7.5 Prozent, 95-Prozent-
+> Konfidenzintervall nach Wilson 2.6 bis 19.9 Prozent). Das Intervall ist bei
+> diesem Umfang sehr breit; für eine Aussage über die Einhaltung einer
+> Fehlergrenze von 10 Prozent reicht die Datenlage nicht.
+
+### Beispiel 3: Was "95 Prozent" tatsächlich bedeutet
+
+#### Frage und Datenlage
+
+Die verbreitete Formulierung "der wahre Wert liegt mit 95-prozentiger
+Wahrscheinlichkeit im Intervall" ist falsch. Was stimmt, lässt sich am besten
+zeigen, indem man die Erhebung hundertmal wiederholt.
+
+Hier ist der wahre Mittelwert bekannt: 250 Gramm bei einer Streuung von 1.2. Aus
+dieser Grundgesamtheit werden hundert Stichproben zu je zwanzig Packungen
+gezogen, und für jede wird das Intervall berechnet.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-ki-r
+#| fig-cap: "Beispiel 3: hundert Intervalle aus derselben Grundgesamtheit."
+#| fig-height: 4.0
+# normalwerte() und lehmer() stehen im Setup-Chunk
+gewichte <- normalwerte(42, 2000, mittel = 250, streuung = 1.2)
+stichproben <- matrix(gewichte, nrow = 100, ncol = 20, byrow = TRUE)
+
+mittel_i <- rowMeans(stichproben)
+sd_i <- apply(stichproben, 1, sd)
+halb_i <- qt(0.975, 19) * sd_i / sqrt(20)
+unten_i <- mittel_i - halb_i
+oben_i <- mittel_i + halb_i
+trifft <- unten_i <= 250 & 250 <= oben_i
+
+par(mar = c(4, 4, 3, 1))
+plot(NULL, xlim = range(c(unten_i, oben_i)), ylim = c(0, 101),
+     xlab = "Füllgewicht (g)", ylab = "Stichprobe",
+     main = paste("100 Intervalle,", sum(trifft), "enthalten den wahren Wert"))
+segments(unten_i, 1:100, oben_i, 1:100,
+         col = ifelse(trifft, "grey60", "firebrick"), lwd = 1.5)
+abline(v = 250, lwd = 2, col = "steelblue")
+
+cat("getroffen:", sum(trifft), "von 100\n")
+cat("mittlere Breite:", round(mean(oben_i - unten_i), 4), "\n")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-ki-py
+#| fig-cap: "Beispiel 3: dieselbe Darstellung in Python."
+#| fig-height: 4.0
+# normalwerte() und lehmer() stehen im Setup-Chunk
+gewichte = normalwerte(42, 2000, mittel=250, streuung=1.2)
+stichproben = gewichte.reshape(100, 20)
+
+mittel_i = stichproben.mean(axis=1)
+sd_i = stichproben.std(axis=1, ddof=1)
+halb_i = stats.t.ppf(0.975, 19) * sd_i / np.sqrt(20)
+unten_i, oben_i = mittel_i - halb_i, mittel_i + halb_i
+trifft = (unten_i <= 250) & (250 <= oben_i)
+
+fig, achse = plt.subplots(figsize=(7, 4.0))
+for k in range(100):
+    achse.plot([unten_i[k], oben_i[k]], [k + 1, k + 1],
+               color="0.6" if trifft[k] else "firebrick", linewidth=1.5)
+achse.axvline(250, linewidth=2, color="steelblue")
+achse.set_xlabel("Füllgewicht (g)")
+achse.set_ylabel("Stichprobe")
+achse.set_title(f"100 Intervalle, {trifft.sum()} enthalten den wahren Wert")
+plt.tight_layout()
+plt.show()
+
+print("getroffen:", int(trifft.sum()), "von 100")
+print("mittlere Breite:", round(float((oben_i - unten_i).mean()), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| getroffene Intervalle | **94 von 100** | Nahe an den erwarteten 95. Die Abweichung ist Zufall: Bei hundert Wiederholungen schwankt die Zahl um 95 mit einer Standardabweichung von rund 2.2. |
+| verfehlte Intervalle | 6 | Im Bild rot. Sie sind nicht falsch gerechnet, sondern die vorgesehene Ausnahme. |
+| mittlere Breite | 1.122 | Die Intervalle sind verschieden breit, weil jede Stichprobe eine eigene Standardabweichung liefert. |
+
+Das Bild zeigt den entscheidenden Punkt: **Die Intervalle wandern, der wahre
+Wert steht fest.** Die blaue Linie bei 250 ist unverrückbar; was von Stichprobe
+zu Stichprobe schwankt, sind Lage und Breite der Intervalle.
+
+::: {.note-box}
+**Deshalb ist die Aussage "mit 95 Prozent Wahrscheinlichkeit liegt der wahre
+Wert in diesem Intervall" falsch.** Der wahre Wert ist eine feste Zahl. Er liegt
+im berechneten Intervall oder nicht; eine Wahrscheinlichkeit gibt es dafür
+nicht.
+
+Was stimmt: **Das Verfahren** trifft in 95 Prozent der Anwendungen. Die Aussage
+gilt der Methode, nicht dem einzelnen Ergebnis.
+
+Praktisch macht das selten einen Unterschied in der Entscheidung, wohl aber in
+der Formulierung. Eine zulässige Kurzform lautet: "Mit den Daten vereinbar sind
+Werte zwischen 249.4 und 250.4 Gramm."
+:::
+
+#### Interpretation
+
+Der zweite Punkt, den das Bild zeigt: Die verfehlten Intervalle sehen nicht
+anders aus als die getroffenen. Sie sind nicht auffällig schmal oder auffällig
+weit verschoben. Es gibt kein Merkmal, an dem sich einem einzelnen Intervall
+ansehen liesse, ob es zu den 95 oder zu den 5 Prozent gehört.
+
+### Beispiel 4: Wie viel Genauigkeit kostet
+
+#### Frage und Datenlage
+
+Das Intervall aus Beispiel 1 ist rund ein Gramm breit. Was kostet es, es auf ein
+halbes Gramm zu bringen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-ki-r
+#| fig-cap: "Beispiel 4: Halbbreite des Intervalls in Abhängigkeit vom Umfang."
+#| fig-height: 3.4
+sigma <- 1.2
+umfaenge <- seq(5, 320, by = 5)
+halbbreiten <- qt(0.975, umfaenge - 1) * sigma / sqrt(umfaenge)
+
+par(mar = c(4, 4, 3, 1))
+plot(umfaenge, halbbreiten, type = "l", lwd = 2, col = "steelblue",
+     xlab = "n", ylab = "Halbbreite (g)",
+     main = "Genauigkeit und Stichprobenumfang")
+abline(h = c(0.5, 0.25), lty = 2, col = "firebrick")
+
+for (nn in c(10, 20, 40, 80, 160, 320)) {
+  cat(sprintf("n = %3d: Halbbreite = %.4f g\n",
+              nn, qt(0.975, nn - 1) * sigma / sqrt(nn)))
+}
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-ki-py
+#| fig-cap: "Beispiel 4: dieselbe Kurve in Python."
+#| fig-height: 3.4
+sigma = 1.2
+umfaenge = np.arange(5, 325, 5)
+halbbreiten = stats.t.ppf(0.975, umfaenge - 1) * sigma / np.sqrt(umfaenge)
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+achse.plot(umfaenge, halbbreiten, color="steelblue", linewidth=2)
+for h in (0.5, 0.25):
+    achse.axhline(h, linestyle="--", color="firebrick")
+achse.set_xlabel("n")
+achse.set_ylabel("Halbbreite (g)")
+achse.set_title("Genauigkeit und Stichprobenumfang")
+plt.tight_layout()
+plt.show()
+
+for nn in (10, 20, 40, 80, 160, 320):
+    h = stats.t.ppf(0.975, nn - 1) * sigma / np.sqrt(nn)
+    print(f"n = {nn:3d}: Halbbreite = {h:.4f} g")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| n | Halbbreite | Verhältnis zum vorigen |
+|---|---|---|
+| 10 | 0.858 g | |
+| 20 | 0.562 g | 0.65 |
+| 40 | 0.384 g | 0.68 |
+| 80 | 0.267 g | 0.70 |
+| 160 | 0.187 g | 0.70 |
+| 320 | 0.132 g | 0.71 |
+
+Das Verhältnis nähert sich $1/\sqrt{2} = 0.707$: **Eine Verdoppelung des Umfangs
+verkleinert das Intervall um rund 29 Prozent, eine Halbierung der Breite
+verlangt viermal so viele Beobachtungen.**
+
+Von 20 auf 80 Packungen, also das Vierfache, halbiert die Halbbreite von 0.56
+auf 0.27 Gramm. Die Kurve fällt anfangs steil und wird dann flach; jenseits von
+etwa hundert Beobachtungen bringt jede weitere spürbar weniger.
+
+::: {.note-box}
+Das ist die Kehrseite derselben Wurzel, die auf der Seite zur
+[Power](power-stichprobenumfang.qmd) den Stichprobenumfang treibt. Beide Male
+steht $\sqrt{n}$ im Nenner, und beide Male folgt daraus dasselbe: Genauigkeit
+ist teuer, und der Preis steigt quadratisch.
+
+Wer ein Intervall bestimmter Breite braucht, kann den Umfang direkt planen. Für
+eine Halbbreite $h$ gilt näherungsweise $n \approx (1.96 \cdot \sigma / h)^2$;
+für $\sigma$ = 1.2 und $h$ = 0.25 ergibt das rund 89 Beobachtungen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Planung über die Intervallbreite ist der Powerrechnung oft vorzuziehen,
+weil sie eine inhaltlich fassbare Grösse verwendet: "Wir wollen das mittlere
+Füllgewicht auf ein Viertelgramm genau kennen" ist eine Vorgabe, über die sich
+mit Fachleuten sprechen lässt. "Wir wollen einen Effekt von d = 0.5 mit 80
+Prozent Wahrscheinlichkeit finden" ist es weniger.
+
+> Bei einer angenommenen Streuung von 1.2 g und einer angestrebten Halbbreite
+> von 0.25 g werden rund 89 Packungen benötigt. Mit den vorliegenden 20
+> Packungen beträgt die Halbbreite 0.53 g.
+
+::::
 
 ## Verständnisfragen
 
