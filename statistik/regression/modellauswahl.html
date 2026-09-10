@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="AIC, adjustiertes R², Modellvergleich und Validierung an neuen Daten.">
+<meta name="description" content="F-Test, AIC, BIC und Kreuzvalidierung, und warum schrittweise Auswahl täuscht.">
 
 <title>Modellauswahl – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -80,6 +115,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -339,7 +403,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" data-topic="Programmierung" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." tabindex="0">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." tabindex="0" data-topic="Programmierung">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +451,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0" data-topic="Programmierung">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -410,7 +474,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." tabindex="0">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." tabindex="0" data-topic="Programmierung">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -510,7 +574,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" data-topic="Werkzeuge" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." tabindex="0">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." tabindex="0" data-topic="Werkzeuge">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -560,7 +624,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." tabindex="0">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." tabindex="0" data-topic="Statistik">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -601,19 +665,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." tabindex="0" data-topic="Statistik">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-topic="Statistik" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." tabindex="0">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." tabindex="0" data-topic="Statistik">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." tabindex="0" data-topic="Statistik">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." tabindex="0">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." tabindex="0" data-topic="Statistik">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -631,13 +695,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." tabindex="0">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0" data-topic="Statistik">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." tabindex="0" data-topic="Statistik">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." tabindex="0">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." tabindex="0" data-topic="Statistik">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -654,7 +718,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0" data-topic="Statistik">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -672,7 +736,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span> und Stichprobenumfang</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0" data-topic="Statistik">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -701,19 +765,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0" data-topic="Statistik">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0" data-topic="Statistik">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0" data-topic="Statistik">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -725,7 +789,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." tabindex="0">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." tabindex="0" data-topic="Statistik">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -783,14 +847,14 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/klassifikationsguete.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Klassifikationsgüte</span></a>
+  <a href="../../statistik/regression/modellauswahl.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Modellauswahl</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/regression/modellauswahl.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Modellauswahl</span></a>
+  <a href="../../statistik/regression/klassifikationsguete.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Klassifikationsgüte</span></a>
   </div>
 </li>
       </ul>
@@ -1098,13 +1162,11 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#kurzsteckbrief" id="toc-kurzsteckbrief" class="nav-link active" data-scroll-target="#kurzsteckbrief">Kurzsteckbrief</a></li>
   <li><a href="#wann-diese-methode-wann-nicht" id="toc-wann-diese-methode-wann-nicht" class="nav-link" data-scroll-target="#wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</a></li>
   <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a></li>
-  <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
-  <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
   <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
@@ -1118,8 +1180,8 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-title">
 <h1 class="title">Modellauswahl</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Modellvalidierung</div>
     <div class="quarto-category">Regression</div>
+    <div class="quarto-category">Modelldiagnostik</div>
     <div class="quarto-category">Interpretation</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
@@ -1128,7 +1190,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    AIC, adjustiertes R², Modellvergleich und Validierung an neuen Daten.
+    F-Test, AIC, BIC und Kreuzvalidierung, und warum schrittweise Auswahl täuscht.
   </div>
 </div>
 
@@ -1146,43 +1208,1046 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
+<p>Alle Beispiele rechnen mit demselben Datensatz: 150 Fälle, zwei Prädiktoren <code>x1</code> und <code>x2</code>, die tatsächlich auf <code>y</code> wirken, und sechs Grössen <code>z1</code> bis <code>z6</code>, die nichts damit zu tun haben. Weil die Wahrheit hier bekannt ist, lässt sich prüfen, welches Auswahlverfahren sie findet.</p>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Welche Prädiktoren gehören ins Modell?</td>
+</tr>
+<tr class="even">
+<td>Eingang</td>
+<td>mehrere angepasste Modelle auf denselben Daten</td>
+</tr>
+<tr class="odd">
+<td>Was die Verfahren liefern</td>
+<td>F-Test für geschachtelte Modelle, AIC und BIC für beliebige, Kreuzvalidierungsfehler als direkte Schätzung der Vorhersagegüte</td>
+</tr>
+<tr class="even">
+<td>R-Funktionen</td>
+<td><code>anova(m1, m2)</code>, <code>AIC()</code>, <code>BIC()</code>, <code>step()</code></td>
+</tr>
+<tr class="odd">
+<td>Python-Funktionen</td>
+<td><code>sm.stats.anova_lm(m1, m2)</code>, <code>modell.aic</code>, <code>modell.bic</code></td>
+</tr>
+<tr class="even">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/regression/multiple-lineare-regression.html">multiple lineare Regression</a>, <a href="../../statistik/regression/regressionsdiagnostik.html">Regressionsdiagnostik</a>, <a href="../../statistik/regression/klassifikationsguete.html">Klassifikationsgüte</a></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Modellauswahl beantwortet eine andere Frage als die <a href="../../statistik/regression/regressionsdiagnostik.html">Diagnostik</a>. Die Diagnostik fragt, ob ein gegebenes Modell zulässig ist; die Auswahl fragt, welches von mehreren zulässigen vorzuziehen ist.</p>
+<p>Entscheidend ist zuerst eine Vorfrage, die kein Verfahren beantworten kann: <strong>Wozu dient das Modell?</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ziel</th>
+<th>Welches Kriterium passt</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Vorhersage neuer Fälle</td>
+<td>Kreuzvalidierung, ersatzweise AIC</td>
+</tr>
+<tr class="even">
+<td>Das wahre Modell finden</td>
+<td>BIC; es bevorzugt sparsame Modelle stärker</td>
+</tr>
+<tr class="odd">
+<td>Eine bestimmte Wirkung schätzen</td>
+<td><strong>gar keines.</strong> Die Prädiktoren ergeben sich aus dem Fachwissen, nicht aus den Daten</td>
+</tr>
+<tr class="even">
+<td>Beschreiben, was zusammenhängt</td>
+<td>Fachwissen zuerst, Kennzahlen als Ergänzung</td>
+</tr>
+</tbody>
+</table>
+<p>Die dritte Zeile ist die wichtigste. Wer den Effekt einer Grösse schätzen will und dafür Prädiktoren nach statistischen Kriterien auswählt, verzerrt genau die Schätzung, um die es geht. Welche Störgrössen kontrolliert werden müssen, ist eine inhaltliche Frage.</p>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
-</section>
-<section id="voraussetzungen-und-ihre-prüfung" class="level2">
-<h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
-</section>
-<section id="durchführung-in-r-und-python" class="level2">
-<h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<p>Jedes Kriterium wägt Anpassung gegen Sparsamkeit ab. Sie unterscheiden sich nur darin, wie teuer ein zusätzlicher Parameter ist.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kriterium</th>
+<th>Formel im Kern</th>
+<th>Preis je Parameter</th>
+<th>Neigung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>R²</td>
+<td>erklärter Anteil</td>
+<td><strong>null</strong></td>
+<td>wählt immer das grösste Modell</td>
+</tr>
+<tr class="even">
+<td>adjustiertes R²</td>
+<td>R² mit Abzug je Parameter</td>
+<td>klein</td>
+<td>zu nachsichtig, siehe Beispiel 2</td>
+</tr>
+<tr class="odd">
+<td>F-Test</td>
+<td>Vergleich zweier geschachtelter Modelle</td>
+<td>über das Signifikanzniveau</td>
+<td>nur für geschachtelte Modelle</td>
+</tr>
+<tr class="even">
+<td>AIC</td>
+<td><span class="math inline">\(-2\log L + 2k\)</span></td>
+<td>2</td>
+<td>zielt auf gute Vorhersage</td>
+</tr>
+<tr class="odd">
+<td>BIC</td>
+<td><span class="math inline">\(-2\log L + \log(n)\,k\)</span></td>
+<td><span class="math inline">\(\log(n)\)</span>, hier 5.01</td>
+<td>zielt auf das wahre Modell</td>
+</tr>
+<tr class="even">
+<td>Kreuzvalidierung</td>
+<td>gemessener Fehler auf ungesehenen Daten</td>
+<td>keine Formel, direkte Messung</td>
+<td>die ehrlichste Antwort, aber rechenaufwendig</td>
+</tr>
+</tbody>
+</table>
+<p>Zwei Modelle heissen <strong>geschachtelt</strong>, wenn das kleinere aus dem grösseren entsteht, indem man Koeffizienten auf null setzt. Nur dann ist der F-Test anwendbar. AIC, BIC und Kreuzvalidierung vergleichen auch nicht geschachtelte Modelle, solange sie auf <strong>denselben Beobachtungen</strong> beruhen.</p>
+<div class="note-box">
+<p><strong>AIC und BIC sind nur als Differenz deutbar.</strong> Der absolute Wert hängt an Konstanten, die je nach Software mitgezählt werden oder nicht. R zählt die Reststreuung als zusätzlichen Parameter, statsmodels nicht; dadurch liegen die R-Werte um genau 2 (AIC) beziehungsweise <span class="math inline">\(\log(n)\)</span> (BIC) höher. Die Differenzen zwischen Modellen und damit die Rangfolge sind identisch, siehe Beispiel 2.</p>
+<p>Als Anhaltspunkt für die Grösse einer Differenz: unter 2 ist sie kaum bedeutsam, ab etwa 4 spricht sie deutlich für das kleinere Modell, ab 10 ist das grössere praktisch ausgeschlossen.</p>
+</div>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
-</section>
-<section id="ergebnisse-interpretieren" class="level2">
-<h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Ausgabe</th>
+<th>Was sie sagt</th>
+<th>Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>anova(m1, m2)</code> <code>F</code> und <code>Pr(&gt;F)</code></td>
+<td>Bringen die zusätzlichen Terme gemeinsam etwas?</td>
+<td>nur für geschachtelte Modelle auf identischen Daten</td>
+</tr>
+<tr class="even">
+<td><code>AIC()</code></td>
+<td>Vergleichswert, kleiner ist besser</td>
+<td>absolute Höhe bedeutungslos</td>
+</tr>
+<tr class="odd">
+<td><code>BIC()</code></td>
+<td>dasselbe mit strengerem Abzug</td>
+<td>wählt bei grossem n deutlich sparsamer</td>
+</tr>
+<tr class="even">
+<td><code>Adjusted R-squared</code></td>
+<td>R² mit Abzug</td>
+<td>zu nachsichtig; steigt oft noch, wenn AIC schon fällt</td>
+</tr>
+<tr class="odd">
+<td><code>step()</code> in R</td>
+<td>schrittweise Auswahl</td>
+<td>die Ausgabe sieht objektiv aus und ist es nicht, siehe Beispiel 3</td>
+</tr>
+<tr class="even">
+<td>Kreuzvalidierungsfehler</td>
+<td>geschätzter Fehler auf neuen Daten</td>
+<td>hängt an der Aufteilung; bei kleinen Datensätzen schwankt er merklich</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong>R² ist als Auswahlkriterium unbrauchbar.</strong> Es kann durch einen zusätzlichen Prädiktor nie sinken.</li>
+<li><strong>Adjustiertes R² ist zu nachsichtig.</strong> In Beispiel 2 ist es für das Modell mit sechs wertlosen Prädiktoren am höchsten.</li>
+<li><strong>AIC und BIC lassen sich nicht zwischen Datensätzen vergleichen</strong>, auch nicht zwischen Modellen mit unterschiedlich vielen Zeilen. Fehlende Werte in einem Prädiktor verkleinern die Zeilenzahl unbemerkt und machen den Vergleich ungültig.</li>
+<li><strong>Ein signifikanter Koeffizient nach schrittweiser Auswahl ist nicht <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0" data-topic="Statistik">signifikant</span>.</strong> Der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span> unterstellt, dass die Frage vorab feststand.</li>
+<li><strong>Die schrittweise Auswahl ist nicht <span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0" data-topic="Programmierung">reproduzierbar</span> in ihrer Aussage.</strong> Kleine Änderungen an den Daten führen zu anderen Modellen.</li>
+<li><strong>Kein Kriterium ersetzt Fachwissen.</strong> Alle vergleichen nur die Modelle, die man ihnen vorlegt.</li>
+<li><strong>Das beste Modell nach AIC muss nicht gut sein.</strong> Die Kriterien sind relativ; sie sagen nichts darüber, ob das Gewinnermodell die Daten überhaupt angemessen beschreibt. Das beantwortet die <a href="../../statistik/regression/regressionsdiagnostik.html">Diagnostik</a>.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<blockquote class="blockquote">
+<p>Verglichen wurden [Anzahl] Modelle auf denselben [n] Beobachtungen. Gewählt wurde [Modell] mit [Kriterium] = [Wert]; das nächstbeste Modell liegt um [Differenz] darüber. Die Auswahl der Kandidaten erfolgte [Begründung].</p>
+</blockquote>
+<p>Genannt werden: welche Modelle verglichen wurden und warum diese, welches Kriterium mit welcher Begründung, die Werte aller Kandidaten und nicht nur des Gewinners, und ob eine schrittweise Auswahl stattfand. Der letzte Punkt ist keine Formalie: Er ändert die Deutung aller <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Werte</span> im gewählten Modell.</p>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt der Modellauswahl</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/regression/regressionsdiagnostik.html">Regressionsdiagnostik</a></td>
+<td>die Frage lautet, ob ein Modell zulässig ist</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/regression/multiple-lineare-regression.html">Multiple lineare Regression</a></td>
+<td>die Schätzung eines feststehenden Modells</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/regression/klassifikationsguete.html">Klassifikationsgüte</a></td>
+<td>die Zielgrösse ist binär</td>
+</tr>
+<tr class="even">
+<td>Regularisierung (Ridge, Lasso)</td>
+<td>viele Prädiktoren im Verhältnis zu n; sie wählen und schätzen in einem Schritt</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Beispiel 1: Geschachtelte Modelle vergleichen</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Beispiel 2: AIC, BIC und adjustiertes R² im Vergleich</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Beispiel 3: Schrittweise Auswahl</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-4" role="tab" aria-controls="tabset-5-4" aria-selected="false" href="">Beispiel 4: Kreuzvalidierung als Schiedsrichter</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>Lohnt sich <code>x2</code> zusätzlich zu <code>x1</code>? Und lohnen sich die sechs Grössen <code>z1</code> bis <code>z6</code> zusätzlich zu beiden? Beide Fragen betreffen geschachtelte Modelle, also ist der F-Test anwendbar.</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>m1   <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1, <span class="at">data =</span> daten)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>m12  <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2, <span class="at">data =</span> daten)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>mall <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> z1 <span class="sc">+</span> z2 <span class="sc">+</span> z3 <span class="sc">+</span> z4 <span class="sc">+</span> z5 <span class="sc">+</span> z6, <span class="at">data =</span> daten)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(m1, m12)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Model 1: y ~ x1
+Model 2: y ~ x1 + x2
+  Res.Df     RSS Df Sum of Sq      F    Pr(&gt;F)    
+1    148 14004.1                                  
+2    147  5207.9  1    8796.2 248.28 &lt; 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(m12, mall)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Model 1: y ~ x1 + x2
+Model 2: y ~ x1 + x2 + z1 + z2 + z3 + z4 + z5 + z6
+  Res.Df    RSS Df Sum of Sq      F  Pr(&gt;F)  
+1    147 5207.9                              
+2    141 4824.2  6     383.7 1.8691 0.09018 .
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">r2_x1 =</span> <span class="fu">summary</span>(m1)<span class="sc">$</span>r.squared,</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">r2_x1x2 =</span> <span class="fu">summary</span>(m12)<span class="sc">$</span>r.squared,</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">r2_alle =</span> <span class="fu">summary</span>(mall)<span class="sc">$</span>r.squared), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  r2_x1 r2_x1x2 r2_alle 
+ 0.6555  0.8719  0.8813 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>m1 <span class="op">=</span> smf.ols(<span class="st">"y ~ x1"</span>, data<span class="op">=</span>daten).fit()</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>m12 <span class="op">=</span> smf.ols(<span class="st">"y ~ x1 + x2"</span>, data<span class="op">=</span>daten).fit()</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>mall <span class="op">=</span> smf.ols(<span class="st">"y ~ x1 + x2 + z1 + z2 + z3 + z4 + z5 + z6"</span>, data<span class="op">=</span>daten).fit()</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sm.stats.anova_lm(m1, m12).<span class="bu">round</span>(<span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   df_resid         ssr  df_diff    ss_diff         F  Pr(&gt;F)
+0     148.0  14004.1057      0.0        NaN       NaN     NaN
+1     147.0   5207.9344      1.0  8796.1713  248.2822     0.0</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sm.stats.anova_lm(m12, mall).<span class="bu">round</span>(<span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   df_resid        ssr  df_diff   ss_diff       F  Pr(&gt;F)
+0     147.0  5207.9344      0.0       NaN     NaN     NaN
+1     141.0  4824.2336      6.0  383.7008  1.8691  0.0902</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"R^2:"</span>, <span class="bu">round</span>(m1.rsquared, <span class="dv">4</span>), <span class="bu">round</span>(m12.rsquared, <span class="dv">4</span>),</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>      <span class="bu">round</span>(mall.rsquared, <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R^2: 0.6555 0.8719 0.8813</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Vergleich</th>
+<th>F</th>
+<th>df</th>
+<th>p</th>
+<th>Wie das zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>x1</code> gegen <code>x1 + x2</code></td>
+<td>248.28</td>
+<td>1 und 147</td>
+<td>&lt; 0.001</td>
+<td><code>x2</code> bringt einen massiven Gewinn. Die Residuenquadratsumme fällt von 14004 auf 5208.</td>
+</tr>
+<tr class="even">
+<td><code>x1 + x2</code> gegen alle acht</td>
+<td>1.869</td>
+<td>6 und 141</td>
+<td>0.090</td>
+<td>Die sechs Zusatzgrössen bringen <strong>gemeinsam</strong> nichts Nachweisbares, obwohl sie die Residuenquadratsumme rechnerisch weiter senken (von 5208 auf 4824).</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>R²</th>
+<th>Wert</th>
+<th>Wie er zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>x1</code></td>
+<td>0.6555</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><code>x1 + x2</code></td>
+<td>0.8719</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>alle acht</td>
+<td><strong>0.8813</strong></td>
+<td>Der höchste Wert, und trotzdem das schlechteste Modell. R² kann durch einen zusätzlichen Prädiktor nie sinken, auch nicht durch reines Rauschen.</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong>Warum der gemeinsame F-Test besser ist als sechs einzelne <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0" data-topic="Statistik">t-Tests</span>.</strong> In der Koeffiziententabelle des vollen Modells hat <code>z6</code> einen <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span> von 0.051 und <code>z3</code> einen von 0.141. Wer die sechs einzeln ansieht und den kleinsten herausgreift, findet fast immer etwas: Bei sechs wirkungslosen Prädiktoren liegt die Wahrscheinlichkeit, dass mindestens einer unter 0.05 fällt, bei rund 26 Prozent.</p>
+<p>Der F-Test prüft alle sechs in <strong>einem</strong> Test und beantwortet damit die Frage, die tatsächlich interessiert: Bringt diese Gruppe zusammen etwas?</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Die Aufnahme von <code>x2</code> verbessert das Modell deutlich (F(1, 147) = 248.3, p &lt; 0.001). Die sechs weiteren Grössen bringen gemeinsam keinen nachweisbaren Gewinn (F(6, 141) = 1.87, p = 0.090), obwohl R² von 0.872 auf 0.881 steigt. Berichtet wird das Modell mit <code>x1</code> und <code>x2</code>.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Fünf Modelle, von leer bis voll besetzt. Welches wählt welches Kriterium? Und welches ist das richtige? Letzteres ist hier bekannt: <code>x1 + x2</code>.</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>m0   <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> daten)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>m12z <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x1 <span class="sc">+</span> x2 <span class="sc">+</span> z1, <span class="at">data =</span> daten)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>uebersicht <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">modell =</span> <span class="fu">c</span>(<span class="st">"nur Achsenabschnitt"</span>, <span class="st">"x1"</span>, <span class="st">"x1 + x2"</span>, <span class="st">"x1 + x2 + z1"</span>, <span class="st">"alle acht"</span>),</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">parameter =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">9</span>),</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">r2 =</span> <span class="fu">sapply</span>(<span class="fu">list</span>(m0, m1, m12, m12z, mall), <span class="cf">function</span>(m) <span class="fu">summary</span>(m)<span class="sc">$</span>r.squared),</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">adj_r2 =</span> <span class="fu">sapply</span>(<span class="fu">list</span>(m0, m1, m12, m12z, mall), <span class="cf">function</span>(m) <span class="fu">summary</span>(m)<span class="sc">$</span>adj.r.squared),</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">AIC =</span> <span class="fu">sapply</span>(<span class="fu">list</span>(m0, m1, m12, m12z, mall), AIC),</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">BIC =</span> <span class="fu">sapply</span>(<span class="fu">list</span>(m0, m1, m12, m12z, mall), BIC)</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>uebersicht[, <span class="dv">3</span><span class="sc">:</span><span class="dv">6</span>] <span class="ot">&lt;-</span> <span class="fu">round</span>(uebersicht[, <span class="dv">3</span><span class="sc">:</span><span class="dv">6</span>], <span class="dv">4</span>)</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>uebersicht</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>               modell parameter     r2 adj_r2       AIC       BIC
+1 nur Achsenabschnitt         1 0.0000 0.0000 1270.0127 1276.0340
+2                  x1         2 0.6555 0.6532 1112.1521 1121.1840
+3             x1 + x2         3 0.8719 0.8702  965.7771  977.8196
+4        x1 + x2 + z1         4 0.8748 0.8722  964.3622  979.4154
+5           alle acht         9 0.8813 0.8746  966.2973  996.4037</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"bestes nach AIC:"</span>, uebersicht<span class="sc">$</span>modell[<span class="fu">which.min</span>(uebersicht<span class="sc">$</span>AIC)], <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>bestes nach AIC: x1 + x2 + z1 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"bestes nach BIC:"</span>, uebersicht<span class="sc">$</span>modell[<span class="fu">which.min</span>(uebersicht<span class="sc">$</span>BIC)], <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>bestes nach BIC: x1 + x2 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"bestes nach adj. R2:"</span>, uebersicht<span class="sc">$</span>modell[<span class="fu">which.max</span>(uebersicht<span class="sc">$</span>adj_r2)], <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>bestes nach adj. R2: alle acht </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>m0 <span class="op">=</span> smf.ols(<span class="st">"y ~ 1"</span>, data<span class="op">=</span>daten).fit()</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>m12z <span class="op">=</span> smf.ols(<span class="st">"y ~ x1 + x2 + z1"</span>, data<span class="op">=</span>daten).fit()</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>modelle <span class="op">=</span> {<span class="st">"nur Achsenabschnitt"</span>: m0, <span class="st">"x1"</span>: m1, <span class="st">"x1 + x2"</span>: m12,</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>           <span class="st">"x1 + x2 + z1"</span>: m12z, <span class="st">"alle acht"</span>: mall}</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>uebersicht <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"parameter"</span>: [<span class="bu">int</span>(m.df_model) <span class="op">+</span> <span class="dv">1</span> <span class="cf">for</span> m <span class="kw">in</span> modelle.values()],</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"r2"</span>: [m.rsquared <span class="cf">for</span> m <span class="kw">in</span> modelle.values()],</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"adj_r2"</span>: [m.rsquared_adj <span class="cf">for</span> m <span class="kw">in</span> modelle.values()],</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"AIC"</span>: [m.aic <span class="cf">for</span> m <span class="kw">in</span> modelle.values()],</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"BIC"</span>: [m.bic <span class="cf">for</span> m <span class="kw">in</span> modelle.values()],</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>}, index<span class="op">=</span><span class="bu">list</span>(modelle)).<span class="bu">round</span>(<span class="dv">4</span>)</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(uebersicht)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                     parameter      r2  adj_r2        AIC        BIC
+nur Achsenabschnitt          1  0.0000  0.0000  1268.0127  1271.0233
+x1                           2  0.6555  0.6532  1110.1521  1116.1734
+x1 + x2                      3  0.8719  0.8702   963.7771   972.8090
+x1 + x2 + z1                 4  0.8748  0.8722   962.3622   974.4047
+alle acht                    9  0.8813  0.8746   964.2973   991.3931</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"bestes nach AIC:    "</span>, uebersicht[<span class="st">"AIC"</span>].idxmin())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>bestes nach AIC:     x1 + x2 + z1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"bestes nach BIC:    "</span>, uebersicht[<span class="st">"BIC"</span>].idxmin())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>bestes nach BIC:     x1 + x2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"bestes nach adj. R2:"</span>, uebersicht[<span class="st">"adj_r2"</span>].idxmax())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>bestes nach adj. R2: alle acht</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Modell</th>
+<th>Parameter</th>
+<th>R²</th>
+<th>adj. R²</th>
+<th>AIC (Python)</th>
+<th>AIC (R)</th>
+<th>BIC (Python)</th>
+<th>BIC (R)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>nur Achsenabschnitt</td>
+<td>1</td>
+<td>0.0000</td>
+<td>0.0000</td>
+<td>1268.01</td>
+<td>1270.01</td>
+<td>1271.02</td>
+<td>1276.03</td>
+</tr>
+<tr class="even">
+<td>x1</td>
+<td>2</td>
+<td>0.6555</td>
+<td>0.6532</td>
+<td>1110.15</td>
+<td>1112.15</td>
+<td>1116.17</td>
+<td>1121.18</td>
+</tr>
+<tr class="odd">
+<td><strong>x1 + x2</strong> (die Wahrheit)</td>
+<td>3</td>
+<td>0.8719</td>
+<td>0.8702</td>
+<td>963.78</td>
+<td>965.78</td>
+<td><strong>972.81</strong></td>
+<td><strong>977.82</strong></td>
+</tr>
+<tr class="even">
+<td>x1 + x2 + z1</td>
+<td>4</td>
+<td>0.8748</td>
+<td>0.8722</td>
+<td><strong>962.36</strong></td>
+<td><strong>964.36</strong></td>
+<td>974.40</td>
+<td>979.42</td>
+</tr>
+<tr class="odd">
+<td>alle acht</td>
+<td>9</td>
+<td><strong>0.8813</strong></td>
+<td><strong>0.8746</strong></td>
+<td>964.30</td>
+<td>966.30</td>
+<td>991.39</td>
+<td>996.40</td>
+</tr>
+</tbody>
+</table>
+<p>Vier Kriterien, drei verschiedene Antworten:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Kriterium</th>
+<th>Wahl</th>
+<th>Urteil</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>R²</td>
+<td>alle acht</td>
+<td>Falsch, und zwar immer: R² wählt stets das grösste Modell.</td>
+</tr>
+<tr class="even">
+<td>adjustiertes R²</td>
+<td>alle acht</td>
+<td>Ebenfalls falsch. Der Abzug je Parameter ist zu klein, um sechs wertlose Prädiktoren auszuschliessen.</td>
+</tr>
+<tr class="odd">
+<td>AIC</td>
+<td>x1 + x2 + z1</td>
+<td>Fast richtig; es nimmt einen wertlosen Prädiktor mit. <code>z1</code> korreliert zufällig mit 0.22 mit <code>y</code>.</td>
+</tr>
+<tr class="even">
+<td><strong>BIC</strong></td>
+<td><strong>x1 + x2</strong></td>
+<td>Richtig. Der strengere Abzug von <span class="math inline">\(\log(150) = 5.01\)</span> je Parameter reicht aus.</td>
+</tr>
+</tbody>
+</table>
+<p>Die AIC-Differenz zwischen <code>x1 + x2</code> und <code>x1 + x2 + z1</code> beträgt nur 1.42 und liegt damit unter der Schwelle von 2, ab der eine Differenz überhaupt beachtet wird. <strong>Die beiden Modelle sind nach AIC praktisch gleichwertig</strong>, und in einem solchen Fall wählt man das kleinere.</p>
+<div class="note-box">
+<p><strong>Warum die absoluten Werte zwischen R und Python auseinandergehen.</strong> R zählt die Reststreuung <span class="math inline">\(\sigma\)</span> als eigenen Parameter, statsmodels nicht. R addiert deshalb <span class="math inline">\(2 \cdot 1 = 2\)</span> beim AIC und <span class="math inline">\(\log(150) = 5.01\)</span> beim BIC.</p>
+<p>Die Differenzen zwischen Modellen sind davon nicht betroffen, und nur sie zählen. Wer AIC-Werte aus zwei Programmen nebeneinanderstellt, muss trotzdem wissen, dass die Reihen gegeneinander verschoben sind.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<p>Die Reihenfolge der Strenge lautet: R² &lt; adjustiertes R² &lt; AIC &lt; BIC. Welches davon passt, hängt am Ziel. Wer vorhersagen will, ist mit AIC besser bedient; wer die tatsächlich wirksamen Grössen finden will, mit BIC. Dass BIC hier die Wahrheit trifft, ist kein Zufall, aber auch keine Garantie: Bei kleinerem n oder schwächeren Effekten übersieht BIC auch echte Prädiktoren.</p>
+<blockquote class="blockquote">
+<p>Verglichen wurden fünf geschachtelte Modelle auf denselben 150 Beobachtungen. BIC wählt <code>x1 + x2</code> (972.8; nächstbestes Modell 974.4), AIC wählt <code>x1 + x2 + z1</code> (962.4), liegt damit aber nur 1.42 unter <code>x1 + x2</code> und ist damit praktisch gleichwertig. Gewählt wurde <code>x1 + x2</code>.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>Ein verbreitetes Verfahren: Man startet mit allen acht Prädiktoren und entfernt schrittweise jenen, dessen Wegfall den AIC am stärksten senkt, bis keine Verbesserung mehr möglich ist. Findet es die Wahrheit?</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>gewaehlt <span class="ot">&lt;-</span> <span class="fu">step</span>(mall, <span class="at">direction =</span> <span class="st">"backward"</span>, <span class="at">trace =</span> <span class="dv">0</span>)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">formula</span>(gewaehlt)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>y ~ x1 + x2 + z1 + z3 + z6</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(gewaehlt)<span class="sc">$</span>coefficients</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              Estimate Std. Error    t value     Pr(&gt;|t|)
+(Intercept) 95.0898498 3.12635031  30.415609 1.463745e-64
+x1           2.6636392 0.09838869  27.072616 2.339494e-58
+x2          -0.7672567 0.04801305 -15.980169 1.049163e-33
+z1           0.8063556 0.49123003   1.641503 1.028753e-01
+z3          -0.7348353 0.48265875  -1.522474 1.300834e-01
+z6           0.9443364 0.48040918   1.965692 5.125793e-02</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>kandidaten <span class="op">=</span> [<span class="st">"x1"</span>, <span class="st">"x2"</span>] <span class="op">+</span> [<span class="ss">f"z</span><span class="sc">{</span>k<span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">1</span>, <span class="dv">7</span>)]</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>aktuell <span class="op">=</span> <span class="bu">list</span>(kandidaten)</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    jetzt <span class="op">=</span> smf.ols(<span class="st">"y ~ "</span> <span class="op">+</span> <span class="st">" + "</span>.join(aktuell), data<span class="op">=</span>daten).fit()</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>    beste_aic, beste_var <span class="op">=</span> jetzt.aic, <span class="va">None</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> kandidat <span class="kw">in</span> aktuell:</span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>        rest <span class="op">=</span> [v <span class="cf">for</span> v <span class="kw">in</span> aktuell <span class="cf">if</span> v <span class="op">!=</span> kandidat]</span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>        formel <span class="op">=</span> <span class="st">"y ~ "</span> <span class="op">+</span> (<span class="st">" + "</span>.join(rest) <span class="cf">if</span> rest <span class="cf">else</span> <span class="st">"1"</span>)</span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>        aic <span class="op">=</span> smf.ols(formel, data<span class="op">=</span>daten).fit().aic</span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> aic <span class="op">&lt;</span> beste_aic:</span>
+<span id="cb33-12"><a href="#cb33-12" aria-hidden="true" tabindex="-1"></a>            beste_aic, beste_var <span class="op">=</span> aic, kandidat</span>
+<span id="cb33-13"><a href="#cb33-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> beste_var <span class="kw">is</span> <span class="va">None</span>:</span>
+<span id="cb33-14"><a href="#cb33-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">break</span></span>
+<span id="cb33-15"><a href="#cb33-15" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"entferne </span><span class="sc">{</span>beste_var<span class="sc">}</span><span class="ss">: AIC </span><span class="sc">{</span>jetzt<span class="sc">.</span>aic<span class="sc">:.2f}</span><span class="ss"> -&gt; </span><span class="sc">{</span>beste_aic<span class="sc">:.2f}</span><span class="ss">"</span>)</span>
+<span id="cb33-16"><a href="#cb33-16" aria-hidden="true" tabindex="-1"></a>    aktuell.remove(beste_var)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>entferne z5: AIC 964.30 -&gt; 962.59
+entferne z2: AIC 962.59 -&gt; 961.09
+entferne z4: AIC 961.09 -&gt; 960.31</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"gewählt:"</span>, aktuell)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>gewählt: ['x1', 'x2', 'z1', 'z3', 'z6']</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>gewaehlt <span class="op">=</span> smf.ols(<span class="st">"y ~ "</span> <span class="op">+</span> <span class="st">" + "</span>.join(aktuell), data<span class="op">=</span>daten).fit()</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(gewaehlt.summary().tables[<span class="dv">1</span>])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>==============================================================================
+                 coef    std err          t      P&gt;|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept     95.0898      3.126     30.416      0.000      88.910     101.269
+x1             2.6636      0.098     27.073      0.000       2.469       2.858
+x2            -0.7673      0.048    -15.980      0.000      -0.862      -0.672
+z1             0.8064      0.491      1.642      0.103      -0.165       1.777
+z3            -0.7348      0.483     -1.522      0.130      -1.689       0.219
+z6             0.9443      0.480      1.966      0.051      -0.005       1.894
+==============================================================================</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Schritt</th>
+<th>Entfernt</th>
+<th>AIC (Python)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Start</td>
+<td></td>
+<td>964.30</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>z5</td>
+<td>962.59</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>z2</td>
+<td>961.09</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td>z4</td>
+<td>960.31</td>
+</tr>
+<tr class="odd">
+<td>Ende</td>
+<td></td>
+<td>gewählt: <code>x1</code>, <code>x2</code>, <code>z1</code>, <code>z3</code>, <code>z6</code></td>
+</tr>
+</tbody>
+</table>
+<p>Das Verfahren behält <strong>drei</strong> der sechs wertlosen Prädiktoren. Und es sieht dabei völlig plausibel aus: Jeder Schritt senkt den AIC, das Verfahren konvergiert, und am Ende steht ein Modell mit fünf Prädiktoren, von denen die meisten einen kleinen <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span> haben.</p>
+<div class="note-box">
+<p><strong>Warum die <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Werte</span> im gewählten Modell nicht mehr gelten.</strong> Ein <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span> beantwortet die Frage: Wie wahrscheinlich wäre dieser Koeffizient, wenn der Prädiktor wirkungslos wäre und ich ihn <strong>vorab</strong> ausgewählt hätte? Bei schrittweiser Auswahl ist die zweite Bedingung verletzt. Die Prädiktoren sind gerade deshalb im Modell, weil sie in <strong>diesen</strong> Daten gut aussahen.</p>
+<p>Die Folge: Die <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Werte</span> sind systematisch zu klein, die <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0" data-topic="Statistik">Konfidenzintervalle</span> zu schmal, und die Koeffizienten sind vom Betrag her zu gross. In der Literatur heisst das Problem “selection bias” oder “the winner’s curse”. Es verschwindet nicht dadurch, dass man ein anderes Auswahlkriterium nimmt.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<p>Was daraus folgt, ist keine Verurteilung der schrittweisen Auswahl, sondern eine Einschränkung ihres Einsatzbereichs:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Zweck</th>
+<th>Schrittweise Auswahl geeignet?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Ein Vorhersagemodell aus vielen Kandidaten bauen</td>
+<td>bedingt, und nur mit Bewertung auf getrennten Daten</td>
+</tr>
+<tr class="even">
+<td>Herausfinden, welche Grössen wirken</td>
+<td>nein</td>
+</tr>
+<tr class="odd">
+<td>p-Werte und Intervalle berichten</td>
+<td>nein, jedenfalls nicht ohne Korrektur</td>
+</tr>
+<tr class="even">
+<td>Ein vorab begründetes Modell prüfen</td>
+<td>die Frage stellt sich nicht</td>
+</tr>
+</tbody>
+</table>
+<p>Der saubere Weg für die zweite Zeile ist: Kandidaten aus dem Fachwissen ableiten, das Modell vorab festlegen, und die Auswahl gar nicht erst den Daten überlassen. Wo das nicht geht, sind Regularisierungsverfahren wie Lasso die bessere Wahl, weil sie Auswahl und Schätzung in einem Schritt vornehmen und den Schrumpfeffekt einrechnen.</p>
+<blockquote class="blockquote">
+<p>Eine rückwärts gerichtete schrittweise Auswahl nach AIC wählt <code>x1</code>, <code>x2</code>, <code>z1</code>, <code>z3</code> und <code>z6</code>, also drei der sechs konstruktionsbedingt wirkungslosen Grössen. Die <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Werte</span> dieses Modells sind wegen der datengetriebenen Auswahl nicht als Signifikanzaussagen zu lesen.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>AIC und BIC schätzen die Vorhersagegüte über eine Formel. Die Kreuzvalidierung misst sie direkt: Das Modell wird auf einem Teil der Daten geschätzt und auf dem zurückgehaltenen Teil geprüft, und das für jeden Teil einmal.</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>cv_fehler <span class="ot">&lt;-</span> <span class="cf">function</span>(spalten, <span class="at">k =</span> <span class="dv">5</span>) {</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  formel <span class="ot">&lt;-</span> <span class="fu">as.formula</span>(<span class="fu">paste</span>(<span class="st">"y ~"</span>, <span class="cf">if</span> (<span class="fu">length</span>(spalten)) <span class="fu">paste</span>(spalten, <span class="at">collapse =</span> <span class="st">" + "</span>) <span class="cf">else</span> <span class="st">"1"</span>))</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  quadrate <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">0</span><span class="sc">:</span>(k <span class="sc">-</span> <span class="dv">1</span>), <span class="cf">function</span>(teil) {</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>    ist_test <span class="ot">&lt;-</span> (<span class="fu">seq_len</span>(<span class="fu">nrow</span>(daten)) <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">%%</span> k <span class="sc">==</span> teil</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>    modell <span class="ot">&lt;-</span> <span class="fu">lm</span>(formel, <span class="at">data =</span> daten[<span class="sc">!</span>ist_test, ])</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>((daten<span class="sc">$</span>y[ist_test] <span class="sc">-</span> <span class="fu">predict</span>(modell, <span class="at">newdata =</span> daten[ist_test, ]))<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sqrt</span>(<span class="fu">mean</span>(quadrate))</span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>kandidatenlisten <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">"nur Achsenabschnitt"</span> <span class="ot">=</span> <span class="fu">character</span>(<span class="dv">0</span>),</span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a>  <span class="st">"x1"</span> <span class="ot">=</span> <span class="st">"x1"</span>,</span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">"x1 + x2"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"x1"</span>, <span class="st">"x2"</span>),</span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">"x1 + x2 + z1"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"x1"</span>, <span class="st">"x2"</span>, <span class="st">"z1"</span>),</span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a>  <span class="st">"alle acht"</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="st">"x1"</span>, <span class="st">"x2"</span>, <span class="fu">paste0</span>(<span class="st">"z"</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>))</span>
+<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-19"><a href="#cb39-19" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">sapply</span>(kandidatenlisten, cv_fehler), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>nur Achsenabschnitt                  x1             x1 + x2        x1 + x2 + z1 
+            16.4752              9.6976              5.9398              5.8967 
+          alle acht 
+             6.4145 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> cv_fehler(spalten, k<span class="op">=</span><span class="dv">5</span>):</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>    formel <span class="op">=</span> <span class="st">"y ~ "</span> <span class="op">+</span> (<span class="st">" + "</span>.join(spalten) <span class="cf">if</span> spalten <span class="cf">else</span> <span class="st">"1"</span>)</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>    quadrate <span class="op">=</span> []</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> teil <span class="kw">in</span> <span class="bu">range</span>(k):</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>        ist_test <span class="op">=</span> np.arange(<span class="bu">len</span>(daten)) <span class="op">%</span> k <span class="op">==</span> teil</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>        modell <span class="op">=</span> smf.ols(formel, data<span class="op">=</span>daten[<span class="op">~</span>ist_test]).fit()</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>        rest <span class="op">=</span> daten.loc[ist_test, <span class="st">"y"</span>] <span class="op">-</span> modell.predict(daten[ist_test])</span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>        quadrate.append(np.mean(rest <span class="op">**</span> <span class="dv">2</span>))</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sqrt(np.mean(quadrate))</span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a>kandidatenlisten <span class="op">=</span> {</span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"nur Achsenabschnitt"</span>: [],</span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">"x1"</span>: [<span class="st">"x1"</span>],</span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">"x1 + x2"</span>: [<span class="st">"x1"</span>, <span class="st">"x2"</span>],</span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">"x1 + x2 + z1"</span>: [<span class="st">"x1"</span>, <span class="st">"x2"</span>, <span class="st">"z1"</span>],</span>
+<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">"alle acht"</span>: [<span class="st">"x1"</span>, <span class="st">"x2"</span>] <span class="op">+</span> [<span class="ss">f"z</span><span class="sc">{</span>k<span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> k <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">1</span>, <span class="dv">7</span>)],</span>
+<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> name, spalten <span class="kw">in</span> kandidatenlisten.items():</span>
+<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>name<span class="sc">:22s}</span><span class="ss"> </span><span class="sc">{</span>cv_fehler(spalten)<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>nur Achsenabschnitt    16.4752
+x1                     9.6976
+x1 + x2                5.9398
+x1 + x2 + z1           5.8967
+alle acht              6.4145</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Modell</th>
+<th>Kreuzvalidierungsfehler</th>
+<th>Residualstreuung im Gesamtmodell</th>
+<th>Wie das zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>nur Achsenabschnitt</td>
+<td>16.475</td>
+<td>16.518</td>
+<td>Der Bezugswert: die blosse Streuung von <code>y</code>.</td>
+</tr>
+<tr class="even">
+<td>x1</td>
+<td>9.698</td>
+<td>9.727</td>
+<td>Deutliche Verbesserung.</td>
+</tr>
+<tr class="odd">
+<td>x1 + x2</td>
+<td>5.940</td>
+<td>5.952</td>
+<td>Nochmals deutlich besser.</td>
+</tr>
+<tr class="even">
+<td>x1 + x2 + z1</td>
+<td><strong>5.897</strong></td>
+<td>5.905</td>
+<td>Minimal besser, dieselbe Wahl wie beim AIC.</td>
+</tr>
+<tr class="odd">
+<td>alle acht</td>
+<td>6.414</td>
+<td><strong>5.849</strong></td>
+<td><strong>Der entscheidende Vergleich.</strong> Auf den eigenen Daten ist dieses Modell das beste (5.849), auf zurückgehaltenen Daten das zweitschlechteste (6.414).</td>
+</tr>
+</tbody>
+</table>
+<p>Die letzte Zeile zeigt Überanpassung in Reinform. Die sechs wertlosen Prädiktoren senken die Residualstreuung im Gesamtmodell, weil sie sich an das Rauschen dieser 150 Fälle anpassen. Auf Fälle, die das Modell nicht gesehen hat, überträgt sich davon nichts, im Gegenteil: Der Fehler steigt um rund 9 Prozent gegenüber dem sparsamen Modell.</p>
+<p>Bemerkenswert ist auch, wie nah die Kreuzvalidierungsfehler bei den sparsamen Modellen an der Residualstreuung liegen (5.940 gegen 5.952). Solange ein Modell nicht überangepasst ist, schätzt die Residualstreuung den Vorhersagefehler brauchbar; die Schere öffnet sich erst mit der Anzahl der Parameter.</p>
+<div class="note-box">
+<p>Der Kreuzvalidierungsfehler hängt an der Aufteilung. Hier ist sie deterministisch (jeder fünfte Fall bildet einen Teil), damit die Zahlen nachprüfbar bleiben. In der Praxis wird zufällig aufgeteilt und die Kreuzvalidierung mehrfach wiederholt, weil einzelne Aufteilungen bei kleinen Datensätzen merklich schwanken.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<p>Die Kreuzvalidierung ist die direkteste Antwort auf die Frage nach der Vorhersagegüte, weil sie sie misst statt schätzt. Ihr Preis ist Rechenzeit und die Abhängigkeit von der Aufteilung.</p>
+<p>Bemerkenswert ist die Übereinstimmung mit dem AIC: Beide wählen <code>x1 + x2 + z1</code>, und bei beiden ist der Vorsprung vor <code>x1 + x2</code> winzig. Das ist kein Zufall, sondern eine bekannte Eigenschaft: AIC ist asymptotisch äquivalent zur Kreuzvalidierung mit einem zurückgehaltenen Fall. Wer eines von beiden gerechnet hat, gewinnt durch das andere selten neue Erkenntnisse.</p>
+<blockquote class="blockquote">
+<p>Eine fünffache Kreuzvalidierung bestätigt die Auswahl: Der Vorhersagefehler beträgt 5.94 für <code>x1 + x2</code> und 5.90 für <code>x1 + x2 + z1</code>, während das Modell mit allen acht Prädiktoren trotz kleinster Residualstreuung (5.85) den höchsten Kreuzvalidierungsfehler der ernsthaften Kandidaten aufweist (6.41). Gewählt wurde <code>x1 + x2</code>.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Modell mit sechs zusätzlichen, wirkungslosen Prädiktoren hat das höchste adjustierte R². Was folgt daraus?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Das adjustierte R² ist als alleiniges Auswahlkriterium zu nachsichtig
+</div>
+<div class="quiz__erklaerung">
+Richtig. Sein Abzug je Parameter ist klein; er reicht oft nicht, um wertlose Prädiktoren auszuschliessen. AIC ist strenger, BIC deutlich strenger.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Die sechs Prädiktoren wirken doch
+</div>
+<div class="quiz__erklaerung">
+In diesem Beispiel ist die Wahrheit bekannt: Sie sind konstruktionsbedingt wirkungslos.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Das adjustierte R² wurde falsch berechnet
+</div>
+<div class="quiz__erklaerung">
+Es ist korrekt berechnet, nur für diesen Zweck ungeeignet.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Zwei Modelle unterscheiden sich im AIC um 1.4. Welches wird gewählt?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Das kleinere, denn eine Differenz unter 2 ist kaum bedeutsam
+</div>
+<div class="quiz__erklaerung">
+Richtig. Bei praktisch gleichwertigen Modellen entscheidet die Sparsamkeit. Erst ab einer Differenz von etwa 4 spricht der AIC deutlich für ein Modell.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Das mit dem kleineren AIC, egal wie klein der Abstand ist
+</div>
+<div class="quiz__erklaerung">
+Damit würde man systematisch grössere Modelle wählen, weil zufällige Schwankungen immer irgendeinen Vorteil erzeugen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Keines, die Entscheidung braucht einen Test
+</div>
+<div class="quiz__erklaerung">
+AIC-Differenzen sind keine Testgrössen; ein <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span> gehört nicht dazu.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Nach schrittweiser Auswahl hat ein Prädiktor p = 0.01. Wie ist das zu deuten?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Gar nicht als Signifikanzaussage; der Prädiktor wurde anhand derselben Daten ausgewählt
+</div>
+<div class="quiz__erklaerung">
+Richtig. Der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span> unterstellt, dass die Frage vorab feststand. Bei datengetriebener Auswahl sind <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Werte</span> zu klein, Intervalle zu schmal und Koeffizienten zu gross.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Als gewöhnlicher <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span>, die Auswahl ändert daran nichts
+</div>
+<div class="quiz__erklaerung">
+Sie ändert genau die Bedingung, unter der der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0" data-topic="Statistik">p-Wert</span> definiert ist.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Er müsste mit der Anzahl der Schritte multipliziert werden
+</div>
+<div class="quiz__erklaerung">
+Eine so einfache Korrektur gibt es nicht; das Problem ist grundsätzlicher.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Modell hat die kleinste Residualstreuung und zugleich den höchsten Kreuzvalidierungsfehler. Was liegt vor?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Überanpassung
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das Modell passt sich dem Rauschen der vorliegenden Daten an, was die Residualstreuung senkt, aber auf neue Fälle nicht übertragbar ist. Genau dafür ist die Kreuzvalidierung da.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Ein Rechenfehler, beide Masse müssten in dieselbe Richtung zeigen
+</div>
+<div class="quiz__erklaerung">
+Sie zeigen bei sparsamen Modellen in dieselbe Richtung und laufen mit wachsender Parameterzahl auseinander.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Die Aufteilung der Kreuzvalidierung ist ungünstig gewählt
+</div>
+<div class="quiz__erklaerung">
+Möglich bei kleinen Unterschieden, aber nicht bei einem so deutlichen Muster.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://www.statlearning.com/">An Introduction to Statistical Learning, Kapitel 6</a></li>
+<li><a href="https://stat.ethz.ch/R-manual/R-devel/library/stats/html/step.html">R-Dokumentation zu <code>step</code></a></li>
+<li><a href="../../statistik/regression/regressionsdiagnostik.html">Regressionsdiagnostik</a></li>
+</ul>
 
 
 </section>
@@ -1627,9 +2692,42 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 17:52</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 18:06</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 
