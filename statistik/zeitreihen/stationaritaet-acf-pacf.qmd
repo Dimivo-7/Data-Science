@@ -13,50 +13,109 @@ order: 20
 #| include: false
 library(tseries)
 
-set.seed(2026)
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1) {
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+}
 
 monate <- 120
 t <- 1:monate
+start_jahr <- c(2016, 1)
 
-# drei Reihen: stationaer, mit Trend, mit Saison
-weiss <- ts(rnorm(monate, 100, 10), start = c(2016, 1), frequency = 12)
-mit_trend <- ts(100 + 0.8 * t + rnorm(monate, 0, 10), start = c(2016, 1), frequency = 12)
-mit_saison <- ts(100 + 25 * sin(2 * pi * t / 12) + rnorm(monate, 0, 8),
-                 start = c(2016, 1), frequency = 12)
+# Fuenf Reihen mit verschiedenen Eigenschaften
+weiss <- ts(normalwerte(1515, monate, 100, 10), start = start_jahr, frequency = 12)
+mit_trend <- ts(100 + 0.8 * t + normalwerte(1616, monate, 0, 10),
+                start = start_jahr, frequency = 12)
+mit_saison <- ts(100 + 25 * sin(2 * pi * t / 12) + normalwerte(1717, monate, 0, 8),
+                 start = start_jahr, frequency = 12)
+zufallspfad <- ts(100 + cumsum(normalwerte(1919, monate, 0.8, 6)),
+                  start = start_jahr, frequency = 12)
+
+# AR(1) mit phi = 0.7 und MA(1) mit theta = 0.8 aus demselben Rauschen
+stoerung <- normalwerte(1818, monate + 1, 0, 1)
+ar_werte <- numeric(monate)
+ar_werte[1] <- stoerung[1]
+for (i in 2:monate) ar_werte[i] <- 0.7 * ar_werte[i - 1] + stoerung[i]
+ar1 <- ts(ar_werte, start = start_jahr, frequency = 12)
+ma1 <- ts(stoerung[-1] + 0.8 * stoerung[-(monate + 1)],
+          start = start_jahr, frequency = 12)
 ```
 
 ```{python}
 #| label: setup-python
 #| include: false
+import warnings
+warnings.filterwarnings("ignore")
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from scipy import stats
 from statsmodels.tsa.stattools import adfuller, kpss, acf, pacf
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
 
-rng = np.random.default_rng(2026)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0.0, streuung=1.0):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+
 
 monate = 120
 t = np.arange(1, monate + 1)
 zeitachse = pd.date_range("2016-01-01", periods=monate, freq="MS")
 
-weiss = pd.Series(rng.normal(100, 10, monate), index=zeitachse)
-mit_trend = pd.Series(100 + 0.8 * t + rng.normal(0, 10, monate), index=zeitachse)
-mit_saison = pd.Series(100 + 25 * np.sin(2 * np.pi * t / 12) + rng.normal(0, 8, monate),
-                       index=zeitachse)
+weiss = pd.Series(normalwerte(1515, monate, 100, 10), index=zeitachse)
+mit_trend = pd.Series(100 + 0.8 * t + normalwerte(1616, monate, 0, 10),
+                      index=zeitachse)
+mit_saison = pd.Series(100 + 25 * np.sin(2 * np.pi * t / 12)
+                       + normalwerte(1717, monate, 0, 8), index=zeitachse)
+zufallspfad = pd.Series(100 + np.cumsum(normalwerte(1919, monate, 0.8, 6)),
+                        index=zeitachse)
+
+stoerung = normalwerte(1818, monate + 1, 0, 1)
+ar_werte = np.zeros(monate)
+ar_werte[0] = stoerung[0]
+for i in range(1, monate):
+    ar_werte[i] = 0.7 * ar_werte[i - 1] + stoerung[i]
+ar1 = pd.Series(ar_werte, index=zeitachse)
+ma1 = pd.Series(stoerung[1:] + 0.8 * stoerung[:-1], index=zeitachse)
 ```
 
 ## Kernideen
 
-- Stationär heisst: Mittelwert, Streuung und Abhängigkeitsstruktur ändern sich nicht über die Zeit
-- Fast alle Modelle setzen Stationarität voraus, echte Reihen erfüllen sie selten
-- Differenzieren entfernt Trend, saisonales Differenzieren die Saison
-- Die ACF zeigt die Gesamtabhängigkeit, die PACF die direkte
-- Aus dem Muster der beiden lässt sich die Modellordnung ablesen
-- Ein Test auf Stationarität ergänzt die Grafik, er ersetzt sie nicht
+- **Stationär** heisst: Mittelwert, Streuung und Abhängigkeitsstruktur ändern
+  sich nicht über die Zeit.
+- Fast alle Modelle setzen Stationarität voraus, echte Reihen erfüllen sie
+  selten.
+- Differenzieren entfernt einen Trend, saisonales Differenzieren die Saison.
+- **Nicht jeder Trend gehört wegdifferenziert**: Ein deterministischer Trend wird
+  besser herausgerechnet, sonst überdifferenziert man.
+- Die **ACF** zeigt die Gesamtabhängigkeit, die **PACF** die direkte.
+- Aus dem Muster der beiden lässt sich die Modellordnung ablesen: AR bricht in
+  der PACF ab, MA in der ACF.
+- Ein Test auf Stationarität ergänzt die Grafik, er ersetzt sie nicht — und ADF
+  und KPSS haben **entgegengesetzte** Nullhypothesen.
 
 ## Erklärung
 
@@ -70,8 +129,8 @@ ist die Modellwahl unter [ARIMA und SARIMA](arima-sarima.qmd).
 
 Eine Reihe ist stationär, wenn ihre statistischen Eigenschaften nicht davon
 abhängen, wann man hinschaut: konstanter Mittelwert, konstante Streuung, und eine
-Abhängigkeitsstruktur, die nur vom Abstand zweier Zeitpunkte abhängt, nicht von
-deren Lage.
+Abhängigkeitsstruktur, die nur vom **Abstand** zweier Zeitpunkte abhängt, nicht
+von deren Lage.
 
 Der Grund für die Wichtigkeit ist praktisch: Ein Modell lernt aus der
 Vergangenheit für die Zukunft. Wenn sich das Niveau laufend verschiebt, gibt es
@@ -82,9 +141,22 @@ Drei typische Verletzungen und ihr Gegenmittel:
 
 | Verletzung | Erkennbar an | Gegenmittel |
 |---|---|---|
-| Trend | Niveau wandert | einmal differenzieren |
+| Trend | Niveau wandert | einmal differenzieren oder den Trend herausrechnen |
 | Saison | wiederkehrendes Muster | saisonal differenzieren, Abstand gleich Periode |
 | wachsende Streuung | Zacken werden höher | logarithmieren oder Wurzel ziehen |
+
+### Zwei Arten von Trend
+
+Diese Unterscheidung entscheidet über die Behandlung und wird häufig übersehen:
+
+| Art | Modell | Was passiert ohne Störung | Richtige Behandlung |
+|---|---|---|---|
+| **deterministisch** | $y_t = a + bt + \varepsilon_t$ | die Reihe kehrt zur Geraden zurück | Trend herausrechnen (Regression gegen die Zeit) |
+| **stochastisch** | $y_t = y_{t-1} + \delta + \varepsilon_t$ (Zufallspfad) | die Reihe wandert beliebig weit weg | differenzieren |
+
+Im Bild sehen beide ähnlich aus. Der Unterschied zeigt sich erst in der
+Behandlung: Wer einen deterministischen Trend wegdifferenziert, erzeugt eine
+künstliche negative Abhängigkeit — siehe Beispiel 3.
 
 ### Differenzieren
 
@@ -93,53 +165,9 @@ $\Delta y_t = y_t - y_{t-1}$. Aus einem linearen Trend wird damit ein konstantes
 Niveau. Saisonales Differenzieren nimmt den Abstand einer ganzen Periode:
 $y_t - y_{t-12}$ bei Monatsdaten.
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-differenzieren-r
-#| fig-cap: "Oben die Reihe mit Trend, unten ihre erste Differenz. Das Niveau ist danach konstant."
-#| fig-height: 3.6
-par(mfrow = c(2, 1), mar = c(3, 4, 2.5, 1))
-plot(mit_trend, ylab = "Wert", main = "mit Trend")
-plot(diff(mit_trend), ylab = "Differenz", main = "einmal differenziert")
-abline(h = 0, lty = 2)
-par(mfrow = c(1, 1))
-
-round(c(sd_original = sd(mit_trend), sd_differenz = sd(diff(mit_trend))), 2)
-```
-
-## Python
-
-```{python}
-#| label: fig-differenzieren-py
-#| fig-cap: "Dieselbe Gegenüberstellung in Python."
-#| fig-height: 3.6
-fig, achsen = plt.subplots(2, 1, figsize=(7, 3.6))
-achsen[0].plot(mit_trend, color="#2166ac")
-achsen[0].set_title("mit Trend")
-achsen[1].plot(mit_trend.diff().dropna(), color="#b2182b")
-achsen[1].axhline(0, linestyle="--", color="black", linewidth=0.8)
-achsen[1].set_title("einmal differenziert")
-plt.tight_layout()
-plt.show()
-
-print({"sd_original": round(float(mit_trend.std(ddof=1)), 2),
-       "sd_differenz": round(float(mit_trend.diff().std(ddof=1)), 2)})
-```
-
-:::
-
-Zwei Beobachtungen. Erstens ist das Niveau nach dem Differenzieren konstant.
-Zweitens ist die Streuung der Differenzen kleiner als die der Originalreihe, weil
-der Trendanteil verschwunden ist. Das ist der Normalfall; nimmt die Streuung durch
-Differenzieren dagegen zu, war die Reihe schon stationär und man hat sie
-verschlechtert.
-
-Diese Überdifferenzierung ist ein häufiger Fehler: Jede zusätzliche Differenz
-erzeugt künstliche negative Abhängigkeit und macht das Modell schlechter. In der
-Praxis genügt fast immer eine Differenz, gelegentlich zwei, mehr praktisch nie.
+Die Faustregel: In der Praxis genügt fast immer **eine** Differenz, gelegentlich
+zwei, mehr praktisch nie. Und: Nimmt die Streuung durch das Differenzieren zu,
+war eine Differenz zu viel.
 
 ### ACF und PACF
 
@@ -157,110 +185,563 @@ Einfluss aller dazwischenliegenden Zeitpunkte herausgerechnet ist. Es ist diesel
 Idee wie der Unterschied zwischen einfacher und
 [multipler Regression](../regression/multiple-lineare-regression.qmd).
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-acf-pacf-r
-#| fig-cap: "ACF und PACF für drei Reihen: weisses Rauschen, mit Trend, mit Saison."
-#| fig-height: 5
-par(mfrow = c(3, 2), mar = c(4, 4, 2.5, 1))
-acf(weiss, main = "weisses Rauschen: ACF")
-pacf(weiss, main = "weisses Rauschen: PACF")
-acf(mit_trend, main = "mit Trend: ACF")
-pacf(mit_trend, main = "mit Trend: PACF")
-acf(mit_saison, main = "mit Saison: ACF")
-pacf(mit_saison, main = "mit Saison: PACF")
-par(mfrow = c(1, 1))
-```
-
-## Python
-
-```{python}
-#| label: fig-acf-pacf-py
-#| fig-cap: "Dieselben sechs Korrelogramme in Python."
-#| fig-height: 5
-fig, achsen = plt.subplots(3, 2, figsize=(7, 5))
-for zeile, (reihe, name) in enumerate([(weiss, "weisses Rauschen"),
-                                       (mit_trend, "mit Trend"),
-                                       (mit_saison, "mit Saison")]):
-    plot_acf(reihe, ax=achsen[zeile, 0], lags=24, title=f"{name}: ACF")
-    plot_pacf(reihe, ax=achsen[zeile, 1], lags=24, title=f"{name}: PACF",
-              method="ywm")
-plt.tight_layout()
-plt.show()
-```
-
-:::
-
-Die drei Muster sind die, die man wiedererkennen muss:
-
-- **Weisses Rauschen:** Alle Balken liegen innerhalb der Konfidenzgrenzen. Es gibt
-  nichts zu modellieren, und das ist das Ziel für die Residuen eines Modells.
-- **Trend:** Die ACF fällt sehr langsam ab und bleibt lange deutlich über null.
-  Das ist das klassische Zeichen für Nichtstationarität, und es heisst
-  differenzieren, nicht ein Modell mit vielen Ordnungen anpassen.
-- **Saison:** Die ACF zeigt Spitzen bei Abständen, die ein Vielfaches der
-  Periode sind, also bei 12, 24 und so weiter, mit Wellen dazwischen.
+Die Konfidenzgrenzen in beiden Korrelogrammen liegen bei $\pm 1.96/\sqrt{n}$ —
+bei 120 Werten also bei ±0.179. Sie prüfen jeden Abstand einzeln; bei 24
+angezeigten Abständen ist rund einer davon zufällig ausserhalb, siehe
+[multiples Testen](../inferenz/multiples-testen.qmd).
 
 ### Tests auf Stationarität
 
-Der ADF-Test prüft die Nullhypothese, dass die Reihe **nicht** stationär ist. Ein
-kleiner p-Wert spricht also für Stationarität. Der KPSS-Test dreht die Richtung:
-Dort lautet die Nullhypothese Stationarität, ein kleiner p-Wert spricht dagegen.
-Diese Umkehrung ist die häufigste Verwechslung.
+| Test | Nullhypothese | kleiner p-Wert heisst |
+|---|---|---|
+| **ADF** (Augmented Dickey-Fuller) | die Reihe ist **nicht** stationär (Einheitswurzel) | Beleg **für** Stationarität |
+| **KPSS** | die Reihe **ist** stationär | Beleg **gegen** Stationarität |
+
+Diese Umkehrung ist die häufigste Verwechslung des ganzen Gebiets. Weil die
+beiden Tests entgegengesetzte Nullhypothesen haben, ergänzen sie sich: Erst wenn
+**beide** in dieselbe Richtung zeigen, ist die Sache klar.
+
+## Beispiele
+
+Alle Beispiele arbeiten mit konstruierten Monatsreihen zu je 120 Werten ab
+Januar 2016. Weil die erzeugende Struktur bekannt ist, lässt sich prüfen, ob die
+Diagnose sie findet.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Vier Reihen und ihre Korrelogramme
+
+#### Frage und Datenlage
+
+Vier Reihen mit bekannter Struktur: weisses Rauschen, ein deterministischer
+Trend, eine Jahressaison und ein Zufallspfad. Wie sehen ihre ACF und PACF aus?
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: tests-stationaer-r
-#| warning: true
-reihen <- list(weiss = weiss, mit_trend = mit_trend,
-               differenziert = diff(mit_trend))
+#| label: fig-b1-st-r
+#| fig-cap: "Beispiel 1: ACF und PACF für vier Reihen mit bekannter Struktur."
+#| fig-height: 6
+reihen <- list("weisses Rauschen" = weiss, "mit Trend" = mit_trend,
+               "mit Saison" = mit_saison, "Zufallspfad" = zufallspfad)
 
+par(mfrow = c(4, 2), mar = c(3.5, 4, 2.5, 1))
 for (name in names(reihen)) {
-  adf <- suppressWarnings(adf.test(reihen[[name]]))
-  kp <- suppressWarnings(kpss.test(reihen[[name]]))
-  cat(sprintf("%-14s ADF p = %.3f | KPSS p = %.3f\n", name, adf$p.value, kp$p.value))
+  acf(reihen[[name]], lag.max = 24, main = paste(name, "ACF"))
+  pacf(reihen[[name]], lag.max = 24, main = paste(name, "PACF"))
 }
+par(mfrow = c(1, 1))
+
+# Die ersten sechs Werte als Zahlen
+for (name in names(reihen)) {
+  a <- acf(reihen[[name]], lag.max = 6, plot = FALSE)$acf[2:7]
+  cat(sprintf("%-18s ACF %s\n", name, paste(sprintf("%6.3f", a), collapse = " ")))
+}
+round(1.96 / sqrt(monate), 3)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: tests-stationaer-py
-import warnings
-warnings.filterwarnings("ignore")
+#| label: fig-b1-st-py
+#| fig-cap: "Beispiel 1: dieselben acht Korrelogramme in Python."
+#| fig-height: 6
+reihen = {"weisses Rauschen": weiss, "mit Trend": mit_trend,
+          "mit Saison": mit_saison, "Zufallspfad": zufallspfad}
 
-for name, reihe in [("weiss", weiss), ("mit_trend", mit_trend),
-                    ("differenziert", mit_trend.diff().dropna())]:
-    adf_p = adfuller(reihe)[1]
-    kpss_p = kpss(reihe, nlags="auto")[1]
-    print(f"{name:<14} ADF p = {adf_p:.3f} | KPSS p = {kpss_p:.3f}")
+fig, achsen = plt.subplots(4, 2, figsize=(7, 6))
+for zeile, (name, reihe) in enumerate(reihen.items()):
+    plot_acf(reihe, ax=achsen[zeile, 0], lags=24, title=f"{name} ACF")
+    plot_pacf(reihe, ax=achsen[zeile, 1], lags=24, title=f"{name} PACF",
+              method="ywm")
+plt.tight_layout()
+plt.show()
+
+for name, reihe in reihen.items():
+    werte = acf(reihe, nlags=6)[1:7]
+    print(f"{name:18s} ACF " + " ".join(f"{w:6.3f}" for w in werte))
+print("Konfidenzgrenze 1.96/sqrt(n):", round(1.96 / np.sqrt(monate), 3))
 ```
 
 :::
 
-Zu lesen ist die Tabelle so: Für weisses Rauschen und die differenzierte Reihe
-spricht der ADF-Test für Stationarität (kleiner p-Wert) und der KPSS-Test dagegen
-nicht (grosser p-Wert). Für die Reihe mit Trend ist es umgekehrt. Beide Tests
-zeigen also dasselbe, nur mit vertauschten Richtungen.
+#### Output Zeile für Zeile
 
-Wichtig bleibt die Rangfolge: Die Grafik entscheidet, der Test bestätigt. Der
-ADF-Test hat bei kurzen Reihen wenig Schärfe und findet Nichtstationarität dann
-nicht, obwohl sie im Bild offensichtlich ist. Und er prüft nur den Trend, nicht
-die Saison.
+Die ersten sechs Autokorrelationen (Konfidenzgrenze ±0.179):
+
+| Reihe | k=1 | k=2 | k=3 | k=4 | k=5 | k=6 |
+|---|---|---|---|---|---|---|
+| weisses Rauschen | -0.069 | 0.030 | -0.089 | -0.007 | -0.039 | -0.004 |
+| mit Trend | **0.876** | 0.823 | 0.807 | 0.788 | 0.756 | 0.732 |
+| mit Saison | **0.708** | 0.398 | 0.008 | **-0.404** | -0.679 | **-0.800** |
+| Zufallspfad | **0.958** | 0.922 | 0.879 | 0.827 | 0.776 | 0.724 |
+
+| Reihe | Muster | Diagnose |
+|---|---|---|
+| **weisses Rauschen** | alle Balken innerhalb der Grenzen, in ACF wie PACF | Nichts zu modellieren. Genau dieses Bild sollen die **Residuen** eines fertigen Modells zeigen. |
+| **mit Trend** | ACF fällt sehr langsam ab und bleibt über zwanzig Abstände deutlich positiv; PACF hat einen grossen Wert bei k=1 (0.876) und wird danach klein | Das klassische Zeichen für Nichtstationarität. Die Reaktion ist **differenzieren oder detrenden**, nicht ein Modell mit vielen Ordnungen. |
+| **mit Saison** | ACF schwingt: positiv bei k=1, durch null bei k=3, stark negativ bei k=6, wieder positiv bei k=12 (0.729) und k=24 (0.629) | Die Wellenform mit Spitzen bei Vielfachen der Periode ist die Signatur der Saison. |
+| **Zufallspfad** | ACF fällt noch langsamer ab (0.958 bei k=1); PACF hat nur bei k=1 einen grossen Wert | Optisch fast identisch mit dem deterministischen Trend — der Unterschied wird erst in Beispiel 3 sichtbar. |
+
+::: {.note-box}
+**Die Reihen mit Trend und der Zufallspfad sehen in ACF und PACF praktisch gleich
+aus.** Beide zeigen eine langsam abfallende ACF und eine PACF mit einem einzigen
+grossen Wert bei k=1. Kein Korrelogramm der Welt unterscheidet die beiden. Das
+ist kein Mangel der Grafik, sondern eine echte Schwierigkeit — und der Grund,
+warum Beispiel 3 nötig ist.
+:::
+
+#### Interpretation
+
+Die Korrelogramme beantworten zuverlässig die Frage "ist die Reihe stationär"
+und zeigen die Periodenlänge der Saison. Die Frage "welche Art von Trend" können
+sie nicht beantworten.
+
+### Beispiel 2: Die Signaturen von AR und MA
+
+#### Frage und Datenlage
+
+Der eigentliche Zweck von ACF und PACF ist die Wahl der Modellordnung. Dafür
+gibt es zwei Signaturen, die man auswendig kennen sollte. Verglichen werden ein
+AR(1)-Prozess ($y_t = 0.7\, y_{t-1} + \varepsilon_t$) und ein MA(1)-Prozess
+($y_t = \varepsilon_t + 0.8\, \varepsilon_{t-1}$), beide aus demselben Rauschen
+erzeugt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-st-r
+#| fig-cap: "Beispiel 2: AR(1) bricht in der PACF ab, MA(1) in der ACF."
+#| fig-height: 4
+par(mfrow = c(2, 2), mar = c(3.5, 4, 2.5, 1))
+acf(ar1, lag.max = 12, main = "AR(1): ACF")
+pacf(ar1, lag.max = 12, main = "AR(1): PACF")
+acf(ma1, lag.max = 12, main = "MA(1): ACF")
+pacf(ma1, lag.max = 12, main = "MA(1): PACF")
+par(mfrow = c(1, 1))
+
+for (name in c("ar1", "ma1")) {
+  reihe <- get(name)
+  a <- acf(reihe, lag.max = 5, plot = FALSE)$acf[2:6]
+  p <- pacf(reihe, lag.max = 5, plot = FALSE)$acf[1:5]
+  cat(sprintf("%-5s ACF  %s\n", name, paste(sprintf("%6.3f", a), collapse = " ")))
+  cat(sprintf("%-5s PACF %s\n", "", paste(sprintf("%6.3f", p), collapse = " ")))
+}
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-st-py
+#| fig-cap: "Beispiel 2: dieselben vier Korrelogramme in Python."
+#| fig-height: 4
+fig, achsen = plt.subplots(2, 2, figsize=(7, 4))
+for zeile, (reihe, name) in enumerate([(ar1, "AR(1)"), (ma1, "MA(1)")]):
+    plot_acf(reihe, ax=achsen[zeile, 0], lags=12, title=f"{name}: ACF")
+    plot_pacf(reihe, ax=achsen[zeile, 1], lags=12, title=f"{name}: PACF",
+              method="ywm")
+plt.tight_layout()
+plt.show()
+
+for name, reihe in [("ar1", ar1), ("ma1", ma1)]:
+    a = acf(reihe, nlags=5)[1:6]
+    p = pacf(reihe, nlags=5, method="ywm")[1:6]
+    print(f"{name:5s} ACF  " + " ".join(f"{w:6.3f}" for w in a))
+    print(f"{'':5s} PACF " + " ".join(f"{w:6.3f}" for w in p))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Prozess | | k=1 | k=2 | k=3 | k=4 | k=5 |
+|---|---|---|---|---|---|---|
+| **AR(1)**, $\phi = 0.7$ | ACF | 0.602 | 0.412 | 0.272 | 0.284 | 0.278 |
+| | PACF | **0.602** | **0.078** | **-0.007** | 0.164 | 0.069 |
+| **MA(1)**, $\theta = 0.8$ | ACF | **0.386** | **-0.153** | **-0.102** | 0.117 | 0.209 |
+| | PACF | 0.386 | -0.355 | 0.155 | 0.069 | 0.127 |
+
+| Beobachtung | Deutung |
+|---|---|
+| **AR(1)**: ACF fällt **allmählich** (0.60, 0.41, 0.27) | Der Einfluss läuft über die Kette weiter: Heute wirkt auf morgen, morgen auf übermorgen. Deshalb ist auch bei Abstand 2 noch etwas messbar, obwohl keine direkte Verbindung besteht. |
+| **AR(1)**: PACF **bricht nach k=1 ab** (0.602, dann 0.078 und -0.007) | Die direkte Abhängigkeit besteht nur zum Vormonat. Genau das ist die Signatur. |
+| **MA(1)**: ACF **bricht nach k=1 ab** (0.386, dann -0.153 und -0.102, beide innerhalb ±0.179) | Ein MA(1)-Prozess teilt mit dem Vormonat eine Störung, mit dem Vorvormonat keine. |
+| **MA(1)**: PACF fällt **allmählich** mit wechselndem Vorzeichen (0.386, -0.355, 0.155) | Die spiegelbildliche Eigenschaft. |
+
+Daraus die Merkregel:
+
+| Signatur | Modell | Ordnung ablesen |
+|---|---|---|
+| ACF fällt ab, **PACF bricht ab nach $p$** | AR($p$) | aus der PACF |
+| **ACF bricht ab nach $q$**, PACF fällt ab | MA($q$) | aus der ACF |
+| beide fallen allmählich ab | ARMA($p,q$) | nicht direkt ablesbar — über [Informationskriterien](arima-sarima.qmd) |
+
+::: {.note-box}
+**Die Schätzungen treffen die eingebauten Werte nicht genau.** Theoretisch müsste
+die ACF des AR(1) bei k=1 genau 0.7 betragen, gemessen werden 0.602; beim MA(1)
+wären $0.8/(1+0.8^2) = 0.488$ zu erwarten, gemessen 0.386. Bei 120 Werten ist der
+Standardfehler einer Autokorrelation etwa 0.09 — die Abweichungen liegen in
+dieser Grössenordnung.
+
+Praktisch heisst das: **Aus einem Korrelogramm liest man Muster, nicht
+Parameterwerte.** Die Ordnung ist ablesbar, der Koeffizient wird geschätzt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die PACF bricht nach dem ersten Abstand ab (0.60, danach innerhalb der
+> Konfidenzgrenzen), während die ACF allmählich abfällt. Das spricht für ein
+> AR(1)-Modell.
+
+### Beispiel 3: Differenzieren oder detrenden
+
+#### Frage und Datenlage
+
+Zwei Reihen, die im Bild fast gleich aussehen: der Zufallspfad und die Reihe mit
+deterministischem Trend aus Beispiel 1. Beide sind nicht stationär. Werden sie
+gleich behandelt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-st-r
+#| fig-cap: "Beispiel 3: oben der Zufallspfad und seine Differenz, unten die Trendreihe differenziert und detrendet."
+#| fig-height: 4.6
+detrend <- function(reihe) residuals(lm(as.numeric(reihe) ~ t))
+
+par(mfrow = c(2, 2), mar = c(3.5, 4, 2.5, 1))
+plot(diff(zufallspfad), ylab = "", main = "Zufallspfad, differenziert")
+abline(h = 0, lty = 2)
+acf(diff(zufallspfad), lag.max = 12, main = "dessen ACF")
+plot(diff(mit_trend), ylab = "", main = "Trendreihe, differenziert")
+abline(h = 0, lty = 2)
+acf(diff(mit_trend), lag.max = 12, main = "dessen ACF")
+par(mfrow = c(1, 1))
+
+kennzahlen <- function(reihe) {
+  c(sd = sd(reihe), acf1 = acf(reihe, lag.max = 1, plot = FALSE)$acf[2])
+}
+
+round(rbind(
+  "Zufallspfad roh" = kennzahlen(zufallspfad),
+  "Zufallspfad differenziert" = kennzahlen(diff(zufallspfad)),
+  "Trendreihe roh" = kennzahlen(mit_trend),
+  "Trendreihe differenziert" = kennzahlen(diff(mit_trend)),
+  "Trendreihe detrendet" = kennzahlen(detrend(mit_trend)),
+  "Trendreihe zweimal differenziert" = kennzahlen(diff(diff(mit_trend)))
+), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-st-py
+#| fig-cap: "Beispiel 3: dieselbe Gegenüberstellung in Python."
+#| fig-height: 4.6
+detrend = pd.Series(sm.OLS(mit_trend.values, sm.add_constant(t)).fit().resid,
+                    index=zeitachse)
+
+fig, achsen = plt.subplots(2, 2, figsize=(7, 4.6))
+achsen[0, 0].plot(zufallspfad.diff().dropna(), color="#2166ac")
+achsen[0, 0].axhline(0, ls="--", color="black", lw=0.8)
+achsen[0, 0].set_title("Zufallspfad, differenziert")
+plot_acf(zufallspfad.diff().dropna(), ax=achsen[0, 1], lags=12,
+         title="dessen ACF")
+achsen[1, 0].plot(mit_trend.diff().dropna(), color="#b2182b")
+achsen[1, 0].axhline(0, ls="--", color="black", lw=0.8)
+achsen[1, 0].set_title("Trendreihe, differenziert")
+plot_acf(mit_trend.diff().dropna(), ax=achsen[1, 1], lags=12,
+         title="dessen ACF")
+plt.tight_layout()
+plt.show()
+
+zeilen = {
+    "Zufallspfad roh": zufallspfad,
+    "Zufallspfad differenziert": zufallspfad.diff().dropna(),
+    "Trendreihe roh": mit_trend,
+    "Trendreihe differenziert": mit_trend.diff().dropna(),
+    "Trendreihe detrendet": detrend,
+    "Trendreihe zweimal differenziert": mit_trend.diff().diff().dropna(),
+}
+print(pd.DataFrame({
+    name: {"sd": round(float(r.std(ddof=1)), 3),
+           "acf1": round(float(acf(r, nlags=1)[1]), 3)}
+    for name, r in zeilen.items()}).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Reihe | Streuung | ACF(1) | Beurteilung |
+|---|---|---|---|
+| Zufallspfad, roh | 26.51 | 0.958 | nicht stationär |
+| **Zufallspfad, differenziert** | **5.78** | **-0.151** | **richtig**: Streuung stark gesunken, ACF(1) innerhalb ±0.179 — weisses Rauschen |
+| Trendreihe, roh | 29.75 | 0.876 | nicht stationär |
+| Trendreihe, differenziert | **12.35** | **-0.354** | **überdifferenziert**: ACF(1) deutlich negativ |
+| **Trendreihe, detrendet** | **9.28** | **0.099** | **richtig**: kleinste Streuung, ACF(1) unauffällig |
+| Trendreihe, zweimal differenziert | 20.25 | -0.518 | doppelt überdifferenziert |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Der Zufallspfad wird durch **eine** Differenz zu weissem Rauschen | Er **ist** ja die kumulierte Summe von Rauschen; das Differenzieren macht sie wieder rückgängig. Die Streuung fällt von 26.5 auf 5.8. |
+| Die Trendreihe wird durch Differenzieren **schlechter** | Ihre Störung ist bereits weisses Rauschen mit Streuung 10. Differenzieren erzeugt daraus $\varepsilon_t - \varepsilon_{t-1}$ — einen MA(1)-Prozess mit theoretischer ACF(1) von **-0.5**, gemessen -0.354. Die Streuung steigt von 9.3 (nach Detrending) auf 12.3, also um den Faktor $\sqrt{2}$. |
+| Detrending trifft es | Nach Herausrechnen der Geraden bleibt Streuung 9.28 und ACF(1) = 0.099 — die eingebaute Störung, sauber zurückgewonnen. |
+| Zweimal differenziert: ACF(1) = -0.518 | Es wird noch schlimmer. Jede unnötige Differenz erzeugt zusätzliche negative Abhängigkeit, die das Modell dann mit MA-Termen wieder reparieren muss. |
+
+::: {.note-box}
+**Die praktische Faustregel** — weil man in echten Daten nicht weiss, welcher
+Trend vorliegt:
+
+1. Streuung vor und nach dem Differenzieren vergleichen. **Steigt** sie, war es
+   eine Differenz zu viel.
+2. ACF(1) der differenzierten Reihe ansehen. Ein Wert nahe **-0.5** ist das
+   Kennzeichen der Überdifferenzierung.
+3. Im Zweifel beide Wege durchrechnen und über ein
+   [Informationskriterium](../regression/modellauswahl.qmd) entscheiden.
+
+Was beide Fälle unterscheidet, ist auch inhaltlich verschieden: Eine
+trendstationäre Reihe kehrt nach einer Störung zur Geraden zurück, ein
+Zufallspfad nicht. Wer eine Prognose über mehrere Perioden braucht, sollte das
+nicht dem Zufall überlassen — die Vorhersageintervalle unterscheiden sich
+drastisch.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Der Zufallspfad wird durch eine einfache Differenz stationär (Streuung von 26.5
+> auf 5.8, ACF(1) = -0.15). Bei der Reihe mit deterministischem Trend führt
+> dasselbe Vorgehen zur Überdifferenzierung (ACF(1) = -0.35, Streuung steigt von
+> 9.3 auf 12.3); dort wird der Trend stattdessen durch eine Regression gegen die
+> Zeit entfernt.
+
+### Beispiel 4: ADF und KPSS
+
+#### Frage und Datenlage
+
+Zwei Tests mit entgegengesetzten Nullhypothesen, angewendet auf sechs Reihen.
+Die Frage: Was sagen sie, und wo hilft ihre Kombination?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-st-r
+#| warning: false
+kandidaten <- list(
+  "weisses Rauschen" = weiss,
+  "mit Trend" = mit_trend,
+  "Trend differenziert" = diff(mit_trend),
+  "mit Saison" = mit_saison,
+  "Saison saisonal diff" = diff(mit_saison, lag = 12),
+  "Zufallspfad" = zufallspfad,
+  "Zufallspfad diff" = diff(zufallspfad)
+)
+
+for (name in names(kandidaten)) {
+  reihe <- kandidaten[[name]]
+  adf <- suppressWarnings(adf.test(reihe))
+  kp <- suppressWarnings(kpss.test(reihe))
+  cat(sprintf("%-22s ADF p = %.3f | KPSS p = %.3f\n",
+              name, adf$p.value, kp$p.value))
+}
+```
+
+##### Python
+
+```{python}
+#| label: b4-st-py
+kandidaten = {
+    "weisses Rauschen": weiss,
+    "mit Trend": mit_trend,
+    "Trend differenziert": mit_trend.diff().dropna(),
+    "mit Saison": mit_saison,
+    "Saison saisonal diff": mit_saison.diff(12).dropna(),
+    "Zufallspfad": zufallspfad,
+    "Zufallspfad diff": zufallspfad.diff().dropna(),
+}
+
+for name, reihe in kandidaten.items():
+    print(f"{name:22s} ADF p = {adfuller(reihe)[1]:.3f}"
+          f" | KPSS p = {kpss(reihe, nlags='auto')[1]:.3f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Reihe | ADF p | KPSS p | Urteil |
+|---|---|---|---|
+| weisses Rauschen | **0.000** | 0.100 | stationär, beide einig |
+| mit Trend | 0.939 | **0.010** | nicht stationär, beide einig |
+| Trend differenziert | **0.000** | 0.100 | stationär (aber überdifferenziert, siehe Beispiel 3) |
+| mit Saison | **0.000** | 0.100 | **stationär — und das ist irreführend** |
+| Saison saisonal diff | **0.001** | 0.100 | stationär |
+| Zufallspfad | 0.713 | **0.010** | nicht stationär, beide einig |
+| Zufallspfad diff | **0.000** | 0.100 | stationär |
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| **ADF p = 0.000** heisst stationär | Kleiner p-Wert verwirft die Nullhypothese "Einheitswurzel". |
+| **KPSS p = 0.100** heisst stationär | Grosser p-Wert kann die Nullhypothese "stationär" nicht verwerfen. **Umgekehrte Richtung.** |
+| Die Werte 0.100 und 0.010 wiederholen sich | Das sind die Ränder der Tabelle, aus der der KPSS-Test seine p-Werte interpoliert. "0.100" heisst "mindestens 0.1", "0.010" heisst "höchstens 0.01". Beide Programme geben dazu eine Warnung aus. |
+| **Die Saisonreihe gilt beiden Tests als stationär** | Und formal haben sie recht: Eine rein saisonale Reihe hat konstanten Mittelwert über ganze Perioden und keine Einheitswurzel. Für die Modellierung ist sie trotzdem nicht brauchbar — die Saison muss weg. |
+
+::: {.note-box}
+**Die wichtigste Lehre dieses Beispiels** steht in der Zeile "mit Saison": Beide
+Tests melden Stationarität, und die ACF aus Beispiel 1 zeigt eine unübersehbare
+Saisonstruktur mit Spitzen bei 12 und 24.
+
+Die Tests prüfen **nur die Einheitswurzel**, also den stochastischen Trend. Sie
+sagen nichts über Saison, nichts über wachsende Streuung und nichts darüber, ob
+man richtig differenziert hat. Deshalb gilt die Rangfolge:
+
+> **Die Grafik entscheidet, der Test bestätigt.**
+
+Zwei weitere Einschränkungen: Der ADF-Test hat bei kurzen Reihen wenig Schärfe
+und findet eine Einheitswurzel dann nicht, obwohl sie vorliegt. Und beide Tests
+reagieren empfindlich auf die Wahl der Lag-Ordnung — `adf.test()` in R und
+`adfuller()` in Python wählen sie verschieden, weshalb die p-Werte leicht
+auseinanderliegen können.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Reihe ist nicht stationär (ADF p = 0.71, KPSS p = 0.01). Nach einfacher
+> Differenzenbildung sprechen beide Tests für Stationarität (ADF p < .001,
+> KPSS p > 0.1), und die ACF der differenzierten Reihe zeigt keine
+> Autokorrelation ausserhalb der Konfidenzgrenzen.
+
+### Beispiel 5: Saisonales Differenzieren
+
+#### Frage und Datenlage
+
+Die Saisonreihe aus Beispiel 1 besteht die Stationaritätstests, ist aber
+offensichtlich nicht brauchbar. Was leistet saisonales Differenzieren,
+$y_t - y_{t-12}$?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-st-r
+#| fig-cap: "Beispiel 5: oben die Saisonreihe und ihre ACF, unten dieselbe nach saisonalem Differenzieren."
+#| fig-height: 4.6
+saison_diff <- diff(mit_saison, lag = 12)
+
+par(mfrow = c(2, 2), mar = c(3.5, 4, 2.5, 1))
+plot(mit_saison, ylab = "", main = "mit Saison")
+acf(mit_saison, lag.max = 30, main = "dessen ACF")
+plot(saison_diff, ylab = "", main = "saisonal differenziert")
+abline(h = 0, lty = 2)
+acf(saison_diff, lag.max = 30, main = "dessen ACF")
+par(mfrow = c(1, 1))
+
+acf_werte <- function(reihe, stellen) {
+  round(acf(reihe, lag.max = 24, plot = FALSE)$acf[stellen + 1], 3)
+}
+rbind(vorher = acf_werte(mit_saison, c(1, 6, 12, 24)),
+      nachher = acf_werte(saison_diff, c(1, 6, 12, 24)))
+
+round(c(sd_vorher = sd(mit_saison), sd_nachher = sd(saison_diff),
+        verlorene_werte = 12), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-st-py
+#| fig-cap: "Beispiel 5: dieselbe Gegenüberstellung in Python."
+#| fig-height: 4.6
+saison_diff = mit_saison.diff(12).dropna()
+
+fig, achsen = plt.subplots(2, 2, figsize=(7, 4.6))
+achsen[0, 0].plot(mit_saison, color="#2166ac")
+achsen[0, 0].set_title("mit Saison")
+plot_acf(mit_saison, ax=achsen[0, 1], lags=30, title="dessen ACF")
+achsen[1, 0].plot(saison_diff, color="#b2182b")
+achsen[1, 0].axhline(0, ls="--", color="black", lw=0.8)
+achsen[1, 0].set_title("saisonal differenziert")
+plot_acf(saison_diff, ax=achsen[1, 1], lags=30, title="dessen ACF")
+plt.tight_layout()
+plt.show()
+
+stellen = [1, 6, 12, 24]
+print(pd.DataFrame({
+    "vorher": acf(mit_saison, nlags=24)[stellen].round(3),
+    "nachher": acf(saison_diff, nlags=24)[stellen].round(3),
+}, index=[f"k={k}" for k in stellen]).T)
+
+print("sd vorher: ", round(float(mit_saison.std(ddof=1)), 3))
+print("sd nachher:", round(float(saison_diff.std(ddof=1)), 3))
+print("verlorene Werte:", len(mit_saison) - len(saison_diff))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| | k=1 | k=6 | k=12 | k=24 |
+|---|---|---|---|---|
+| vorher | 0.708 | **-0.800** | **0.729** | **0.629** |
+| nachher | -0.076 | 0.063 | **-0.390** | -0.058 |
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| ACF(12) vorher: **0.729** | Der Monat und derselbe Monat im Vorjahr sind stark korreliert. Bei k=24 noch 0.629 — die Saison hört nicht auf. |
+| ACF(6) vorher: **-0.800** | Der Gegenmonat: Wo im Sommer ein Hoch ist, ist im Winter ein Tief. |
+| ACF(12) nachher: **-0.390** | Vom starken positiven Wert bleibt ein deutlich negativer übrig. **Das ist kein Fehler**, sondern die bekannte Nebenwirkung: Saisonales Differenzieren erzeugt eine saisonale MA-Struktur, genau wie einfaches Differenzieren eine gewöhnliche. Sie wird in einem [SARIMA-Modell](arima-sarima.qmd) durch einen Term $Q = 1$ abgebildet. |
+| ACF(1) nachher: -0.076 | Innerhalb der Konfidenzgrenzen. Auf der kurzen Zeitskala ist nichts mehr übrig. |
+| Streuung 18.70 → 11.28 | Deutlich gesunken; das saisonale Differenzieren war also angebracht. |
+| verlorene Werte | **12** | Die ersten zwölf Monate haben keinen Vorjahreswert. Bei einer kurzen Reihe ist das ein spürbarer Preis. |
+
+::: {.note-box}
+**Die Reihenfolge, wenn beides nötig ist:** Zuerst saisonal differenzieren, dann
+prüfen, ob noch eine gewöhnliche Differenz nötig ist. Oft erledigt das saisonale
+Differenzieren den Trend gleich mit, denn $y_t - y_{t-12}$ entfernt auch einen
+linearen Trend bis auf eine Konstante.
+
+**Und die Warnung:** Zwei Differenzen kosten 13 Beobachtungen und erzeugen zwei
+MA-Strukturen. Im Zweifel eine weniger.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Reihe zeigt eine ausgeprägte Jahressaison (ACF bei k=12 gleich 0.73, bei
+> k=24 gleich 0.63). Nach saisonalem Differenzieren mit Abstand 12 sinkt die
+> Streuung von 18.7 auf 11.3, und ausserhalb der Konfidenzgrenzen bleibt nur der
+> Wert bei k=12 von -0.39, der auf einen saisonalen MA-Term hinweist.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Die ACF einer Reihe fällt über zwanzig Abstände hinweg nur langsam ab. Was ist zu
 tun?
 
-- [x] Differenzieren, die Reihe ist nicht stationär ~ Richtig. Eine langsam
-      abfallende ACF ist das klassische Zeichen für einen Trend. Nach dem
-      Differenzieren wird die ACF neu beurteilt.
+- [x] Die Reihe ist nicht stationär; Trend entfernen ~ Richtig. Eine langsam
+      abfallende ACF ist das klassische Zeichen. Ob differenziert oder detrendet
+      wird, entscheidet sich danach — die ACF unterscheidet die beiden Trendarten
+      nicht.
 - [ ] Ein Modell mit hoher Ordnung anpassen ~ Damit modelliert man den Trend mit
       vielen Parametern statt ihn zu entfernen.
 - [ ] Nichts, langsames Abfallen ist normal ~ Bei stationären Reihen fällt die
@@ -273,35 +754,49 @@ Der ADF-Test ergibt p = 0.42. Was folgt?
 - [ ] Die Reihe ist stationär, der p-Wert ist gross ~ Die Richtung ist vertauscht:
       Beim ADF-Test lautet die Nullhypothese Nichtstationarität.
 - [x] Nichtstationarität kann nicht verworfen werden ~ Richtig. Ein grosser p-Wert
-      heisst hier: Es gibt keinen Beleg für Stationarität. Zusammen mit einer
-      langsam abfallenden ACF spricht das für Differenzieren.
+      heisst hier: kein Beleg für Stationarität. Zusammen mit einer langsam
+      abfallenden ACF spricht das für Differenzieren.
 - [ ] Der Test ist ungültig ~ Er ist gültig, nur schwach bei kurzen Reihen.
 :::
 
 ::: {.quiz}
-Nach dem Differenzieren ist die Streuung der Reihe grösser als vorher. Was heisst
-das?
+Nach dem Differenzieren steigt die Streuung von 9.3 auf 12.3 und die ACF beim
+ersten Abstand beträgt -0.35. Was heisst das?
 
-- [x] Die Reihe war schon stationär, es wurde überdifferenziert ~ Richtig.
-      Differenzieren einer stationären Reihe erzeugt künstliche negative
-      Abhängigkeit und vergrössert die Streuung. Die Differenz wird
-      zurückgenommen.
-- [ ] Es muss ein zweites Mal differenziert werden ~ Das verschärft das Problem.
-- [ ] Die Reihe enthält einen Ausreisser ~ Möglich, erklärt aber nicht den
-      systematischen Anstieg der Streuung.
+- [x] Es wurde überdifferenziert ~ Richtig. Beide Zeichen zusammen sind das
+      Kennzeichen: Differenzieren einer bereits stationären Reihe erzeugt eine
+      künstliche MA(1)-Struktur mit einer ACF(1) nahe -0.5 und vergrössert die
+      Streuung um etwa den Faktor Wurzel zwei.
+- [ ] Es muss ein zweites Mal differenziert werden ~ Das verschärft das Problem;
+      im Beispiel sinkt die ACF(1) dann auf -0.52.
+- [ ] Die Reihe enthält einen Ausreisser ~ Möglich, erklärt aber nicht die
+      systematisch negative Autokorrelation.
 :::
 
 ::: {.quiz}
-Worin unterscheiden sich ACF und PACF?
+Die PACF bricht nach dem zweiten Abstand ab, die ACF fällt allmählich. Welches
+Modell?
 
-- [x] Die ACF enthält indirekte Abhängigkeiten, die PACF nur die direkten ~
-      Richtig. Wenn heute mit gestern zusammenhängt und gestern mit vorgestern,
-      zeigt die ACF auch bei Abstand zwei einen Wert; die PACF rechnet die
-      Zwischenzeitpunkte heraus.
-- [ ] Die PACF ist die ACF der differenzierten Reihe ~ Das sind zwei
-      verschiedene Dinge.
-- [ ] Die ACF gilt für stationäre, die PACF für nichtstationäre Reihen ~ Beide
-      werden auf stationären Reihen gelesen.
+- [x] AR(2) ~ Richtig. Eine abbrechende PACF bei $k = p$ mit allmählich fallender
+      ACF ist die Signatur eines AR($p$)-Prozesses; die Ordnung wird aus der PACF
+      abgelesen.
+- [ ] MA(2) ~ Dort wäre es umgekehrt: Die ACF bricht ab, die PACF fällt
+      allmählich.
+- [ ] ARMA(2,2) ~ Bei einem gemischten Prozess fallen **beide** allmählich ab und
+      die Ordnung ist aus den Korrelogrammen nicht ablesbar.
+:::
+
+::: {.quiz}
+ADF und KPSS melden für eine Reihe mit deutlicher Jahressaison beide
+Stationarität. Was folgt?
+
+- [x] Die Tests prüfen nur die Einheitswurzel, nicht die Saison ~ Richtig. Formal
+      haben sie recht, die Reihe hat konstanten Mittelwert über ganze Perioden.
+      Für die Modellierung muss die Saison trotzdem weg — sichtbar wird sie in
+      der ACF an den Spitzen bei Vielfachen der Periode.
+- [ ] Die Reihe ist damit modellierbar ~ Die Saisonstruktur ist unbehandelt.
+- [ ] Einer der beiden Tests muss falsch gerechnet sein ~ Beide sind korrekt und
+      beantworten eine andere Frage als die gestellte.
 :::
 
 ## Verlinkte Ressourcen
