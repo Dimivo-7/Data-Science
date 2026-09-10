@@ -16,7 +16,33 @@ library(car)
 library(lmtest)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(2026)
+
+# Mietdaten von 120 Wohnungen, deterministisch konstruiert, damit R und Python
+# exakt dieselben Zahlen sehen: Grundlage sind die Quantile der
+# Normalverteilung, die je Groesse nach einer festen Regel umsortiert werden.
+n <- 120
+lauf <- 0:(n - 1)
+
+richtung <- function(faktor) qnorm(((lauf * faktor) %% n + 0.5) / n)
+
+flaeche   <- round(80 + 18 * richtung(1), 1)
+alter     <- round(pmax(30 + 15 * richtung(29), 0), 1)
+stockwerk <- round(3 + 1.5 * richtung(53))
+zimmer    <- round(flaeche / 22 + 0.25 * richtung(73), 1)
+lage      <- factor(c("Zentrum", "Mittel", "Rand")[lauf %% 3 + 1])
+rausch    <- richtung(97)
+
+lage_effekt <- ifelse(lage == "Zentrum", 250,
+                      ifelse(lage == "Mittel", 0, -180))
+
+wohnung <- data.frame(
+  miete = round(400 + 12 * flaeche - 3 * alter + lage_effekt + 150 * rausch, 1),
+  flaeche = flaeche,
+  alter = alter,
+  stockwerk = stockwerk,
+  zimmer = zimmer,
+  lage = lage
+)
 ```
 
 ```{python}
@@ -27,10 +53,40 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
+from scipy import stats
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
+
+# Dieselbe Konstruktion wie im R-Teil.
+n = 120
+lauf = np.arange(n)
+
+
+def richtung(faktor):
+    return stats.norm.ppf(((lauf * faktor) % n + 0.5) / n)
+
+
+flaeche = np.round(80 + 18 * richtung(1), 1)
+alter = np.round(np.clip(30 + 15 * richtung(29), 0, None), 1)
+stockwerk = np.round(3 + 1.5 * richtung(53)).astype(int)
+zimmer = np.round(flaeche / 22 + 0.25 * richtung(73), 1)
+lage = np.array(["Zentrum", "Mittel", "Rand"])[lauf % 3]
+rausch = richtung(97)
+
+lage_effekt = np.where(lage == "Zentrum", 250.0,
+                       np.where(lage == "Mittel", 0.0, -180.0))
+
+wohnung = pd.DataFrame({
+    "miete": np.round(400 + 12 * flaeche - 3 * alter + lage_effekt
+                      + 150 * rausch, 1),
+    "flaeche": flaeche,
+    "alter": alter,
+    "stockwerk": stockwerk,
+    "zimmer": zimmer,
+    "lage": lage,
+})
 ```
 
 ## Kurzsteckbrief
@@ -105,106 +161,6 @@ deutlich ändern, und deshalb ist er nicht dasselbe wie eine einfache Korrelatio
 | Keine starke Multikollinearität | Prädiktoren sind nicht nahezu Linearkombinationen voneinander | VIF, Werte über 5 sind auffällig, über 10 kritisch | einzelne Koeffizienten instabil und nicht signifikant, obwohl das Modell gut passt | eine Variable entfernen oder zusammenfassen |
 | Keine einflussreichen Einzelfälle | Kein einzelner Punkt bestimmt das Ergebnis | Cook-Distanz, Hebelwerte | Koeffizient hängt an einer Beobachtung | Fall prüfen, Modell mit und ohne ihn berichten |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-diagnostik-r
-#| fig-cap: "Residuen gegen vorhergesagte Werte und QQ-Plot der Residuen."
-n <- 200
-wohnung <- data.frame(
-  flaeche = rnorm(n, mean = 80, sd = 18),
-  alter   = runif(n, min = 0, max = 60)
-)
-wohnung$miete <- 400 + 12 * wohnung$flaeche - 3 * wohnung$alter +
-  rnorm(n, mean = 0, sd = 150)
-
-modell <- lm(miete ~ flaeche + alter, data = wohnung)
-
-par(mfrow = c(1, 2))
-plot(modell, which = 1)
-plot(modell, which = 2)
-par(mfrow = c(1, 1))
-
-bptest(modell)
-vif(modell)
-```
-
-## Python
-
-```{python}
-#| label: fig-diagnostik-py
-#| fig-cap: "Dieselbe Diagnostik in Python: Residuenplot und QQ-Plot."
-rng = np.random.default_rng(2026)
-
-n = 200
-wohnung = pd.DataFrame({
-    "flaeche": rng.normal(80, 18, n),
-    "alter": rng.uniform(0, 60, n),
-})
-wohnung["miete"] = (400 + 12 * wohnung["flaeche"] - 3 * wohnung["alter"]
-                    + rng.normal(0, 150, n))
-
-modell = smf.ols("miete ~ flaeche + alter", data=wohnung).fit()
-
-fig, axes = plt.subplots(1, 2)
-axes[0].scatter(modell.fittedvalues, modell.resid, s=12, alpha=0.7)
-axes[0].axhline(0, linestyle="--", color="black")
-axes[0].set_xlabel("vorhergesagte Werte")
-axes[0].set_ylabel("Residuen")
-sm.qqplot(modell.resid, line="s", ax=axes[1])
-axes[1].set_title("QQ-Plot der Residuen")
-plt.tight_layout()
-plt.show()
-
-print(sm.stats.diagnostic.het_breuschpagan(modell.resid, modell.model.exog))
-
-X = sm.add_constant(wohnung[["flaeche", "alter"]])
-print([round(variance_inflation_factor(X.values, i), 2)
-       for i in range(X.shape[1])])
-```
-
-:::
-
-Im Residuenplot soll eine strukturlose Wolke um die Nulllinie stehen, ohne
-Trichter und ohne Bogen. Im QQ-Plot sollen die Punkte nah an der Geraden
-liegen; Abweichungen an den beiden Enden sind normal. Der Breusch-Pagan-Test
-gibt in Python die Reihenfolge Statistik, p-Wert, F-Statistik, F-p-Wert zurück;
-ein grosser p-Wert bedeutet keinen Hinweis auf ungleiche Streuung. Die
-VIF-Werte werden in Python samt Konstante ausgegeben, deren Wert ist ohne
-Bedeutung.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-r
-summary(modell)
-confint(modell)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-py
-print(modell.summary())
-print(modell.conf_int())
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 200
-Wohnungen, Fläche normalverteilt um 80 Quadratmeter, Alter gleichverteilt
-zwischen 0 und 60 Jahren, Miete gleich 400 plus 12 mal Fläche minus 3 mal Alter
-plus normalverteiltes Rauschen mit Standardabweichung 150. Die wahren Werte sind
-damit bekannt, und der Output lässt sich daran prüfen. Weil die Zufallszahlen
-der beiden Sprachen verschieden erzeugt werden, unterscheiden sich die Zahlen
-leicht; die Struktur des Ergebnisses ist dieselbe.
-
 ## Output lesen
 
 R, `summary(modell)`:
@@ -243,257 +199,6 @@ Python, `modell.summary()`, mit den Unterschieden zu R:
 Ausgelassen wird kein Wert: auch Freiheitsgrade, Residualstreuung und die
 Normalitätskennzahlen gehören zur Beurteilung, und Warnhinweise am Fuss der
 Python-Tabelle sind Teil des Ergebnisses.
-
-## Ergebnisse interpretieren
-
-### Szenario A: klares Ergebnis
-
-Beide Prädiktoren wirken deutlich, die Voraussetzungen sind erfüllt. Das ist
-der Datensatz aus der Durchführung, hier mit den Koeffizienten und Intervallen
-nebeneinander.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-a-r
-round(cbind(Schaetzwert = coef(modell), confint(modell)), 2)
-summary(modell)$adj.r.squared
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-py
-ergebnis = pd.concat([modell.params, modell.conf_int()], axis=1)
-ergebnis.columns = ["Schaetzwert", "unten", "oben"]
-print(ergebnis.round(2))
-print(round(modell.rsquared_adj, 3))
-```
-
-:::
-
-Der Koeffizient der Fläche ist deutlich positiv, und sein Konfidenzintervall
-liegt vollständig oberhalb der Null: jeder zusätzliche Quadratmeter geht bei
-gleichem Alter mit einer entsprechend höheren Miete einher. Der Koeffizient des
-Alters ist negativ, sein Intervall liegt vollständig unterhalb der Null: ein
-Jahr mehr entspricht bei gleicher Fläche einer geringeren Miete. Beide
-Schätzwerte liegen in der Grössenordnung der simulierten Werte 12 und -3, und
-sie treffen sie nicht exakt; genau diese Abweichung ist der Stichprobenzufall,
-den das Konfidenzintervall beziffert. Der Vergleich zwischen R und Python zeigt
-denselben Effekt: zwei Stichproben aus derselben Vorschrift ergeben zwei
-verschiedene Schätzwerte. Das adjustierte R² sagt, welcher Anteil der
-Mietstreuung durch die beiden Grössen erklärt ist; der Rest steckt im Rauschen,
-das bewusst mit Standardabweichung 150 eingebaut wurde.
-
-Ergebnissatz: Fläche und Alter erklären die Miete gemeinsam deutlich
-(F-Test signifikant, adjustiertes R² wie ausgegeben, n = 200). Pro Quadratmeter
-steigt die erwartete Miete bei konstantem Alter um den geschätzten Betrag
-(95-Prozent-Intervall wie ausgegeben, p < 0.001), pro Jahr Alter sinkt sie bei
-konstanter Fläche entsprechend.
-
-### Szenario B: kein Ergebnis für einen Prädiktor
-
-Zum Modell kommt die Etage hinzu, die in den simulierten Daten keinen Einfluss
-hat, und der Stichprobenumfang ist mit 60 klein.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-r
-set.seed(11)
-n_b <- 60
-wohnung_b <- data.frame(
-  flaeche = rnorm(n_b, mean = 80, sd = 18),
-  etage   = sample(0:5, n_b, replace = TRUE)
-)
-wohnung_b$miete <- 400 + 12 * wohnung_b$flaeche +
-  rnorm(n_b, mean = 0, sd = 150)
-
-modell_b <- lm(miete ~ flaeche + etage, data = wohnung_b)
-summary(modell_b)
-confint(modell_b)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-py
-rng_b = np.random.default_rng(11)
-n_b = 60
-wohnung_b = pd.DataFrame({
-    "flaeche": rng_b.normal(80, 18, n_b),
-    "etage": rng_b.integers(0, 6, n_b),
-})
-wohnung_b["miete"] = (400 + 12 * wohnung_b["flaeche"]
-                      + rng_b.normal(0, 150, n_b))
-
-modell_b = smf.ols("miete ~ flaeche + etage", data=wohnung_b).fit()
-print(modell_b.summary())
-print(modell_b.conf_int())
-```
-
-:::
-
-Der Koeffizient der Etage ist klein gegenüber seinem Standardfehler, der p-Wert
-liegt weit über 0.05, und das Konfidenzintervall reicht von einem negativen zu
-einem positiven Wert, schliesst die Null also ein. Daraus folgt: die Daten
-zeigen keinen Einfluss der Etage. Sie zeigen nicht, dass es keinen gibt. Das
-Intervall nennt die Effektgrössen, die weiterhin möglich sind, und bei n = 60
-ist dieser Bereich breit. Wer daraus "die Etage spielt keine Rolle" macht,
-verwechselt fehlenden Nachweis mit Nachweis der Abwesenheit.
-
-Die Fläche bleibt trotz des kleinen Stichprobenumfangs signifikant, weil ihr
-Effekt gross gegenüber dem Rauschen ist. Das zeigt den Unterschied zwischen den
-beiden Fragen "gibt es einen Effekt in diesen Daten" und "reicht die Stichprobe,
-um ihn zu erkennen".
-
-Ergebnissatz: Für die Etage ergibt sich kein Zusammenhang mit der Miete
-(Schätzwert und 95-Prozent-Intervall wie ausgegeben, p wie ausgegeben, n = 60).
-Das Intervall lässt Effekte in beide Richtungen zu; ein Einfluss ist mit diesen
-Daten nicht ausgeschlossen, nur nicht belegt.
-
-### Szenario C: Multikollinearität als Fallstrick
-
-Zusätzlich zur Fläche wird die Nutzfläche aufgenommen, die fast dasselbe misst.
-Das Modell passt weiterhin, aber die beiden Koeffizienten werden unbrauchbar.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-c-r
-set.seed(7)
-n_c <- 120
-wohnung_c <- data.frame(
-  flaeche = rnorm(n_c, mean = 80, sd = 18),
-  alter   = runif(n_c, min = 0, max = 60)
-)
-wohnung_c$nutzflaeche <- wohnung_c$flaeche - runif(n_c, min = 0, max = 4)
-wohnung_c$miete <- 400 + 12 * wohnung_c$flaeche - 3 * wohnung_c$alter +
-  rnorm(n_c, mean = 0, sd = 150)
-
-modell_c <- lm(miete ~ flaeche + nutzflaeche + alter, data = wohnung_c)
-summary(modell_c)
-vif(modell_c)
-cor(wohnung_c$flaeche, wohnung_c$nutzflaeche)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-py
-rng_c = np.random.default_rng(7)
-n_c = 120
-wohnung_c = pd.DataFrame({
-    "flaeche": rng_c.normal(80, 18, n_c),
-    "alter": rng_c.uniform(0, 60, n_c),
-})
-wohnung_c["nutzflaeche"] = wohnung_c["flaeche"] - rng_c.uniform(0, 4, n_c)
-wohnung_c["miete"] = (400 + 12 * wohnung_c["flaeche"] - 3 * wohnung_c["alter"]
-                      + rng_c.normal(0, 150, n_c))
-
-modell_c = smf.ols("miete ~ flaeche + nutzflaeche + alter",
-                   data=wohnung_c).fit()
-print(modell_c.summary())
-
-X_c = sm.add_constant(wohnung_c[["flaeche", "nutzflaeche", "alter"]])
-print([round(variance_inflation_factor(X_c.values, i), 1)
-       for i in range(X_c.shape[1])])
-print(round(wohnung_c["flaeche"].corr(wohnung_c["nutzflaeche"]), 4))
-```
-
-:::
-
-Erkennbar ist das Problem an drei Stellen gleichzeitig. Erstens sind die
-VIF-Werte von Fläche und Nutzfläche sehr hoch, weit über der kritischen Marke
-von 10, während der VIF des Alters unauffällig bleibt. Zweitens sind die
-Standardfehler der beiden Flächenvariablen um ein Vielfaches grösser als im
-Modell aus Szenario A, obwohl der F-Test des Gesamtmodells klar signifikant ist
-und R² hoch bleibt. Im R-Output ist deshalb keine der beiden Flächenvariablen
-signifikant, im Python-Output bleibt eine von beiden knapp unter der Schwelle.
-Dass die Signifikanz je nach Stichprobe zwischen zwei fast identischen
-Variablen hin- und herspringt, ist dasselbe Symptom: gutes Gesamtmodell,
-unzuverlässige Einzelkoeffizienten. Drittens sind die Vorzeichen unplausibel: einer
-der beiden Flächenkoeffizienten kann negativ ausfallen, weil die Aufteilung des
-gemeinsamen Effekts auf zwei fast identische Variablen willkürlich ist. In
-Python steht zusätzlich der Warnhinweis zur Konditionszahl unter der Tabelle.
-
-Verzerrt sind dabei nicht die Vorhersagen, sondern die Aussagen über die
-einzelnen Variablen. Wer das Modell nur zur Prognose nutzt, wird kaum gestört;
-wer einen Koeffizienten interpretieren will, darf es nicht. Das Vorgehen: eine
-der beiden Variablen entfernen, oder beide zu einer zusammenfassen, danach neu
-schätzen und die Wahl im Bericht begründen.
-
-Ergebnissatz: Fläche und Nutzfläche sind mit einer Korrelation nahe eins
-praktisch identisch (VIF wie ausgegeben). Ihre Koeffizienten sind einzeln nicht
-interpretierbar; berichtet wird das Modell mit nur einer der beiden Variablen.
-
-### Weiteres Szenario: kategorialer Prädiktor mit mehreren Stufen
-
-Wird eine kategoriale Variable aufgenommen, erzeugen beide Sprachen
-Indikatorvariablen und lassen eine Stufe als Referenz weg. Jeder Koeffizient ist
-dann der Unterschied zu dieser Referenz, nicht zum Gesamtmittel.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-d-r
-set.seed(3)
-n_d <- 150
-lage_stufen <- c("Rand", "Mitte", "Zentrum")
-wohnung_d <- data.frame(
-  flaeche = rnorm(n_d, mean = 80, sd = 18),
-  lage    = factor(sample(lage_stufen, n_d, replace = TRUE),
-                   levels = lage_stufen)
-)
-zuschlag <- c(Rand = 0, Mitte = 200, Zentrum = 500)
-wohnung_d$miete <- 400 + 12 * wohnung_d$flaeche +
-  zuschlag[as.character(wohnung_d$lage)] + rnorm(n_d, mean = 0, sd = 150)
-
-modell_d <- lm(miete ~ flaeche + lage, data = wohnung_d)
-summary(modell_d)
-anova(modell_d)
-```
-
-## Python
-
-```{python}
-#| label: szenario-d-py
-rng_d = np.random.default_rng(3)
-n_d = 150
-stufen = ["Rand", "Mitte", "Zentrum"]
-wohnung_d = pd.DataFrame({
-    "flaeche": rng_d.normal(80, 18, n_d),
-    "lage": rng_d.choice(stufen, n_d),
-})
-zuschlag = {"Rand": 0, "Mitte": 200, "Zentrum": 500}
-wohnung_d["miete"] = (400 + 12 * wohnung_d["flaeche"]
-                      + wohnung_d["lage"].map(zuschlag)
-                      + rng_d.normal(0, 150, n_d))
-
-modell_d = smf.ols(
-    "miete ~ flaeche + C(lage, Treatment(reference='Rand'))",
-    data=wohnung_d).fit()
-print(modell_d.summary())
-print(sm.stats.anova_lm(modell_d, typ=2))
-```
-
-:::
-
-Referenz ist die Lage am Rand. Die beiden ausgegebenen Lage-Koeffizienten
-schätzen den Mietunterschied von Mitte und Zentrum gegenüber dem Rand bei
-gleicher Fläche und liegen in der Nähe der simulierten Zuschläge von 200 und
-500. In Python muss die Referenzstufe angegeben werden, sonst wird alphabetisch
-gewählt; in R bestimmt die Reihenfolge der Faktorstufen die Referenz. Ob die
-Variable Lage insgesamt etwas beiträgt, beantwortet nicht der einzelne p-Wert,
-sondern der gemeinsame Test über alle Stufen aus der Varianzanalysetabelle.
 
 ## Interpretationsfallen
 
@@ -554,6 +259,404 @@ Beispiel für eine Ergebnistabelle:
 | [Modellauswahl](modellauswahl.qmd) | Vergleich mehrerer Modelle, AIC, Validierung |
 | Varianzanalyse | nur kategoriale Prädiktoren, Frage nach Gruppenunterschieden; rechnerisch ein Spezialfall dieses Modells |
 | [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) | Zielvariable ist eine Zeit bis zu einem Ereignis mit zensierten Fällen |
+
+## Beispiele
+
+Alle Beispiele rechnen mit demselben Datensatz aus dem Setup-Chunk: 120
+Wohnungen mit Miete, Fläche, Alter, Stockwerk, Zimmerzahl und Lage. Die Daten
+sind deterministisch konstruiert, damit R und Python dieselben Zahlen sehen und
+jeder Wert im Text nachprüfbar ist.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Miete aus Fläche und Alter
+
+#### Frage und Datenlage
+
+Von 120 Wohnungen liegen Miete in Franken, Wohnfläche in Quadratmetern und
+Alter in Jahren vor. Die Frage lautet: Wie viel kostet ein zusätzlicher
+Quadratmeter, **wenn das Alter konstant gehalten wird**, und wie viel kostet
+ein zusätzliches Jahr Alter bei gleicher Fläche?
+
+Genau dieses "bei konstant gehaltenen anderen" ist der Grund für die multiple
+Regression. Zwei getrennte einfache Regressionen könnten die Frage nicht
+beantworten, sobald Fläche und Alter zusammenhängen.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-mlr-voraussetzungen-r
+#| fig-cap: "Beispiel 1: Residuen gegen Vorhersage und QQ-Plot der Residuen."
+#| fig-height: 3.2
+modell <- lm(miete ~ flaeche + alter, data = wohnung)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(modell, which = 1)
+plot(modell, which = 2)
+par(mfrow = c(1, 1))
+
+bptest(modell)
+vif(modell)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-mlr-voraussetzungen-py
+#| fig-cap: "Beispiel 1: dieselbe Diagnostik in Python."
+#| fig-height: 3.2
+modell = smf.ols("miete ~ flaeche + alter", data=wohnung).fit()
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].scatter(modell.fittedvalues, modell.resid, s=14, color="0.3")
+achsen[0].axhline(0, linestyle="--", color="black")
+achsen[0].set_xlabel("Vorhersage")
+achsen[0].set_ylabel("Residuum")
+sm.qqplot(modell.resid, line="s", ax=achsen[1])
+achsen[1].set_title("QQ-Plot der Residuen")
+plt.tight_layout()
+plt.show()
+
+lm_wert, lm_p = sm.stats.diagnostic.het_breuschpagan(
+    modell.resid, modell.model.exog)[:2]
+print("Breusch-Pagan LM =", round(lm_wert, 4), " p =", round(lm_p, 4))
+
+X = sm.add_constant(wohnung[["flaeche", "alter"]])
+print({name: round(variance_inflation_factor(X.values, i), 3)
+       for i, name in enumerate(X.columns)})
+```
+
+:::
+
+Die Residuen streuen strukturlos um die Nulllinie, der QQ-Plot zeigt keine
+auffällige Abweichung, und der Breusch-Pagan-Test liefert p = 0.37, also keinen
+Hinweis auf ungleiche Streuung. Die VIF-Werte liegen bei 1.0: Fläche und Alter
+hängen in diesen Daten praktisch nicht zusammen (r = 0.02), jede der beiden
+Grössen trägt also eigene Information bei.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-mlr-rechnung-r
+summary(modell)
+confint(modell)
+```
+
+##### Python
+
+```{python}
+#| label: b1-mlr-rechnung-py
+print(modell.summary())
+print("Residualstreuung:", round(np.sqrt(modell.mse_resid), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `(Intercept)` | 422.55 | erwartete Miete bei Fläche null und Alter null | Rechnerisch nötig, inhaltlich sinnlos: Eine Wohnung mit null Quadratmetern gibt es nicht. Wer eine deutbare Zahl braucht, zentriert die Prädiktoren. |
+| `flaeche` Estimate | 12.10 | Franken je Quadratmeter, **bei gleichem Alter** | Die zentrale Zahl. Der Zusatz "bei gleichem Alter" ist kein Beiwerk, sondern die eigentliche Leistung der multiplen Regression. |
+| `flaeche` Std. Error | 1.170 | Unsicherheit dieser Schätzung | Rund ein Zehntel des Schätzwerts. |
+| `flaeche` t value | 10.340 | Schätzwert durch Standardfehler | |
+| `flaeche` Pr(>&#124;t&#124;) | < 0.001 | p-Wert für "der Koeffizient ist null" | |
+| `alter` Estimate | -3.23 | Franken je Jahr, **bei gleicher Fläche** | Ältere Wohnungen sind bei gleicher Fläche günstiger. |
+| `alter` Std. Error | 1.429 | | Fast die Hälfte des Schätzwerts, die Schätzung ist also viel unsicherer als die der Fläche. |
+| `alter` Pr(>&#124;t&#124;) | 0.026 | | Signifikant, aber knapp. |
+| Konfidenzintervall `flaeche` | 9.78 bis 14.41 | plausibler Bereich | Rund fünf Franken breit. |
+| Konfidenzintervall `alter` | -6.06 bis -0.40 | plausibler Bereich | Die aufschlussreichste Zeile der ganzen Ausgabe: Der Alterseffekt liegt irgendwo zwischen 40 Rappen und gut sechs Franken je Jahr. Das ist ein Faktor von 15. Der p-Wert von 0.026 verdeckt diese Unsicherheit vollständig. |
+| `Residual standard error` | 229.35 auf 117 Freiheitsgraden | typischer Vorhersagefehler in Franken | Die praktisch nützlichste Gütezahl. Wer eine Miete aus Fläche und Alter vorhersagt, liegt typischerweise um 229 Franken daneben. |
+| Freiheitsgrade | 117 | n minus Anzahl Parameter | 120 minus 3, also Achsenabschnitt plus zwei Koeffizienten. |
+| `Multiple R-squared` | 0.4869 | Anteil erklärter Streuung | Knapp die Hälfte. |
+| `Adjusted R-squared` | 0.4782 | um die Parameterzahl korrigiert | Der Abstand zu R² wächst mit jedem zusätzlichen Prädiktor, siehe Beispiel 2. |
+| `F-statistic` | 55.5 auf 2 und 117 df | Gesamttest | Prüft, ob **alle** Koeffizienten zugleich null sind. Bei mehreren Prädiktoren ist er nicht mehr redundant zu den t-Tests. |
+
+#### Interpretation und Ergebnissatz
+
+Die beiden Koeffizienten sind sehr unterschiedlich gut bestimmt, obwohl beide
+signifikant sind. Bei der Fläche ist der Effekt auf rund fünf Franken genau
+eingegrenzt; beim Alter reicht das Intervall über einen Faktor 15. Wer nur die
+p-Werte liest, sieht diesen Unterschied nicht.
+
+Und die Residualstreuung von 229 Franken setzt den Rahmen: Für die Bewertung
+einer einzelnen Wohnung ist das Modell zu ungenau. Für die Aussage "ein
+Quadratmeter kostet rund zwölf Franken" reicht es.
+
+> Fläche und Alter erklären zusammen 49 Prozent der Mietunterschiede
+> (F(2, 117) = 55.5, p < 0.001, n = 120). Je Quadratmeter steigt die Miete um
+> 12.10 Franken (95-Prozent-Konfidenzintervall 9.78 bis 14.41, p < 0.001), je
+> Jahr Alter sinkt sie um 3.23 Franken (-6.06 bis -0.40, p = 0.026), jeweils bei
+> konstant gehaltener anderer Grösse. Die typische Abweichung einer Vorhersage
+> beträgt 229 Franken.
+
+### Beispiel 2: Ein Prädiktor ohne Beitrag
+
+#### Frage und Datenlage
+
+Dem Modell wird das Stockwerk hinzugefügt. Die Frage lautet: Trägt es etwas
+bei?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-mlr-rechnung-r
+modell_stock <- lm(miete ~ flaeche + alter + stockwerk, data = wohnung)
+summary(modell_stock)
+
+anova(modell, modell_stock)
+```
+
+##### Python
+
+```{python}
+#| label: b2-mlr-rechnung-py
+modell_stock = smf.ols("miete ~ flaeche + alter + stockwerk",
+                       data=wohnung).fit()
+print(modell_stock.summary().tables[1])
+print("R^2:", round(modell_stock.rsquared, 4),
+      " adj. R^2:", round(modell_stock.rsquared_adj, 4))
+print(sm.stats.anova_lm(modell, modell_stock).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Ohne Stockwerk | Mit Stockwerk | Wie das zu lesen ist |
+|---|---|---|---|
+| `stockwerk` Estimate | | -0.11 | Elf Rappen je Stockwerk. Praktisch null. |
+| `stockwerk` Std. Error | | 13.881 | Der Standardfehler ist mehr als hundertmal so gross wie der Schätzwert. |
+| `stockwerk` p-Wert | | 0.994 | So gross, wie ein p-Wert kaum werden kann. |
+| Konfidenzintervall | | -27.6 bis 27.4 | Symmetrisch um null und knapp 55 Franken breit. Das Stockwerk könnte durchaus 25 Franken wert sein, in beide Richtungen; ausgeschlossen ist nur ein sehr grosser Effekt. |
+| `Multiple R-squared` | 0.4869 | 0.4869 | Unverändert in der vierten Stelle. |
+| `Adjusted R-squared` | 0.4782 | 0.4737 | **Gesunken.** Das ist der Unterschied zwischen den beiden Massen. |
+| `Residual standard error` | 229.35 | 230.34 | Ebenfalls leicht schlechter geworden. |
+| Modellvergleich `anova()` | | F = 0.0001, p = 0.994 | Derselbe Test wie der t-Test des Koeffizienten; bei einem einzelnen zusätzlichen Prädiktor sind sie gleichwertig, und F ist exakt t². |
+
+::: {.note-box}
+**Warum R² nicht sinken kann und adjustiertes R² schon.** R² misst, wie viel
+Streuung das Modell erklärt, und ein zusätzlicher Prädiktor kann diesen Anteil
+nie verringern: Im schlechtesten Fall bekommt er den Koeffizienten null. Deshalb
+ist R² für den Vergleich von Modellen mit verschieden vielen Prädiktoren
+unbrauchbar.
+
+Das adjustierte R² zieht für jeden Parameter einen Betrag ab. Trägt ein
+Prädiktor weniger bei, als dieser Abzug ausmacht, sinkt es. Genau das ist hier
+passiert, und deshalb ist es die Zahl, die man beim Modellvergleich ansieht,
+siehe [Modellauswahl](modellauswahl.qmd).
+:::
+
+#### Interpretation und Ergebnissatz
+
+Der Prädiktor wird entfernt, aber nicht wegen des p-Werts allein. Die
+Entscheidung stützt sich auf drei Dinge: kein erkennbarer Beitrag zur erklärten
+Streuung, ein gesunkenes adjustiertes R², und ein Konfidenzintervall, das keinen
+praktisch bedeutsamen Effekt nahelegt.
+
+Wäre das Intervall stattdessen von -5 bis +120 Franken gegangen, wäre "kein
+Effekt nachweisbar" die falsche Zusammenfassung gewesen: Dann wäre ein grosser
+Effekt weiterhin vereinbar, und das Modell hätte schlicht zu wenig Daten.
+
+> Das Stockwerk trägt nichts zur Erklärung der Miete bei (Koeffizient -0.11
+> Franken, 95-Prozent-Konfidenzintervall -27.6 bis 27.4, p = 0.99); das
+> adjustierte R² sinkt von 0.478 auf 0.474. Der Prädiktor wurde nicht ins
+> Modell aufgenommen.
+
+### Beispiel 3: Multikollinearität
+
+#### Frage und Datenlage
+
+Statt des Stockwerks kommt die Zimmerzahl ins Modell. Sie hängt naturgemäss eng
+mit der Fläche zusammen: grössere Wohnungen haben mehr Zimmer. In diesen Daten
+beträgt die Korrelation 0.96.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-mlr-rechnung-r
+round(cor(wohnung$flaeche, wohnung$zimmer), 4)
+
+modell_zimmer <- lm(miete ~ flaeche + alter + zimmer, data = wohnung)
+summary(modell_zimmer)
+vif(modell_zimmer)
+
+# Zimmerzahl allein, ohne die Flaeche daneben
+coef(lm(miete ~ zimmer, data = wohnung))
+```
+
+##### Python
+
+```{python}
+#| label: b3-mlr-rechnung-py
+print("Korrelation Fläche/Zimmer:",
+      round(np.corrcoef(wohnung["flaeche"], wohnung["zimmer"])[0, 1], 4))
+
+modell_zimmer = smf.ols("miete ~ flaeche + alter + zimmer",
+                        data=wohnung).fit()
+print(modell_zimmer.summary().tables[1])
+
+X = sm.add_constant(wohnung[["flaeche", "alter", "zimmer"]])
+print({name: round(variance_inflation_factor(X.values, i), 3)
+       for i, name in enumerate(X.columns)})
+
+print(smf.ols("miete ~ zimmer", data=wohnung).fit().params.round(3).to_dict())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Ohne Zimmer | Mit Zimmer | Wie das zu lesen ist |
+|---|---|---|---|
+| `flaeche` Estimate | 12.10 | 10.64 | Der Schätzwert verschiebt sich merklich. |
+| `flaeche` Std. Error | 1.170 | 4.082 | **Dreieinhalbmal so gross.** Das ist die eigentliche Wirkung von Multikollinearität: nicht falsche Schätzwerte, sondern unsichere. |
+| Konfidenzintervall `flaeche` | 9.78 bis 14.41 | 2.56 bis 18.73 | Aus einer Spanne von fünf Franken wird eine von sechzehn. |
+| `zimmer` Estimate | | 31.49 | |
+| `zimmer` Std. Error | | 84.706 | Fast dreimal so gross wie der Schätzwert. |
+| `zimmer` p-Wert | | 0.711 | Nicht signifikant, obwohl die Zimmerzahl offensichtlich mit der Miete zusammenhängt. |
+| `Multiple R-squared` | 0.4869 | 0.4876 | Praktisch unverändert. Das Modell als Ganzes ist genauso gut wie vorher. |
+| `VIF` | 1.0 | 12.09 für Fläche und Zimmer | Der Varianzinflationsfaktor sagt, um welchen Faktor die **Varianz** des Koeffizienten gegenüber unkorrelierten Prädiktoren wächst. 12.09 heisst: Der Standardfehler ist um Wurzel 12.09, also rund 3.5, grösser. Genau der beobachtete Faktor. |
+| Zimmerzahl allein | | 242.22 Franken je Zimmer | Ohne die Fläche daneben ist der Effekt gross und deutlich. Er beschreibt dann aber die Fläche gleich mit. |
+
+::: {.note-box}
+**Faustregeln zum VIF und was sie bedeuten.** Werte unter 5 gelten als
+unbedenklich, über 10 als kritisch. Wichtiger als die Schwelle ist die
+Übersetzung: VIF ist der Faktor, um den die Varianz wächst; für den
+Standardfehler zieht man die Wurzel. Ein VIF von 4 bedeutet einen doppelt so
+grossen Standardfehler, ein VIF von 100 einen zehnfachen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Multikollinearität macht das Modell nicht falsch. Die Vorhersagen bleiben genau
+so gut wie vorher, R² ändert sich nicht, und die Schätzwerte sind
+erwartungstreu. Was leidet, ist die Aussage über **einzelne** Koeffizienten:
+Wenn zwei Prädiktoren fast dasselbe messen, kann kein Verfahren entscheiden,
+welchem von beiden der gemeinsame Effekt zuzurechnen ist.
+
+Daraus folgt, was zu tun ist:
+
+| Ziel | Vorgehen |
+|---|---|
+| Vorhersage | Nichts. Multikollinearität stört die Vorhersage nicht. |
+| Aussage über einzelne Effekte | Einen der beiden Prädiktoren weglassen, inhaltlich begründet |
+| Beide Informationen behalten | Zu einer Grösse zusammenfassen, etwa Fläche je Zimmer, oder eine [Hauptkomponente](../multivariat/hauptkomponentenanalyse.qmd) bilden |
+
+Nicht zulässig ist, nacheinander beide einzeln zu testen und den signifikanten
+zu berichten.
+
+> Fläche und Zimmerzahl sind stark korreliert (r = 0.96, VIF = 12.1). Bei
+> gemeinsamer Aufnahme steigt der Standardfehler der Fläche von 1.17 auf 4.08,
+> und die Zimmerzahl wird nicht signifikant (p = 0.71), obwohl sie allein
+> betrachtet 242 Franken je Zimmer erklärt. Ins Modell aufgenommen wurde die
+> Fläche, weil sie feiner abgestuft ist; die Vorhersagegüte ist von dieser
+> Entscheidung nicht betroffen (R² = 0.487 in beiden Modellen).
+
+### Beispiel 4: Ein kategorialer Prädiktor
+
+#### Frage und Datenlage
+
+Zu Fläche und Alter kommt die Lage mit drei Stufen: Zentrum, Mittel, Rand. Ein
+kategorialer Prädiktor mit drei Stufen wird zu zwei Indikatorvariablen; eine
+Stufe dient als Referenz.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-mlr-rechnung-r
+levels(wohnung$lage)          # die erste Stufe ist die Referenz
+
+modell_lage <- lm(miete ~ flaeche + alter + lage, data = wohnung)
+summary(modell_lage)
+
+anova(modell_lage)            # gemeinsamer Test aller Lage-Stufen
+```
+
+##### Python
+
+```{python}
+#| label: b4-mlr-rechnung-py
+modell_lage = smf.ols("miete ~ flaeche + alter + C(lage)",
+                      data=wohnung).fit()
+print(modell_lage.summary().tables[1])
+print("R^2:", round(modell_lage.rsquared, 4),
+      " Residualstreuung:", round(np.sqrt(modell_lage.mse_resid), 3))
+print(sm.stats.anova_lm(modell_lage, typ=2).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Referenzstufe | `Mittel` | die weggelassene Stufe | Sie erscheint **nicht** in der Ausgabe. R und statsmodels sortieren die Stufen alphabetisch, und Mittel steht vor Rand und Zentrum. Das ist eine reine Zufälligkeit des Alphabets, keine inhaltliche Wahl. |
+| `lageRand` | -173.26 | Differenz Rand gegenüber Mittel | Eine Wohnung am Rand kostet bei gleicher Fläche und gleichem Alter 173 Franken weniger als eine in mittlerer Lage. |
+| `lageZentrum` | +243.22 | Differenz Zentrum gegenüber Mittel | Entsprechend 243 Franken mehr. |
+| Differenz Zentrum zu Rand | 416.48 | nicht in der Ausgabe | Sie ergibt sich als Differenz der beiden Koeffizienten. Ihr p-Wert steht dort **nicht**; dafür braucht es einen eigenen Kontrast oder eine andere Referenzstufe. |
+| `flaeche` Estimate | 12.46 | Franken je Quadratmeter | Kaum verändert gegenüber Beispiel 1 (12.10), weil die Lage nicht mit der Fläche zusammenhängt. |
+| `flaeche` Std. Error | 0.776 | | **Kleiner** als in Beispiel 1 (1.170). Ein zusätzlicher Prädiktor, der Streuung erklärt, macht die übrigen Schätzungen genauer. |
+| `Multiple R-squared` | 0.7783 | | Sprung von 0.487 auf 0.778. |
+| `Residual standard error` | 152.06 | | Von 229 auf 152 Franken gefallen. |
+| `anova()` | gemeinsamer F-Test für `lage` | | Die Frage "spielt die Lage überhaupt eine Rolle" wird mit **einem** Test über beide Indikatorvariablen beantwortet, nicht mit zwei einzelnen t-Tests. |
+
+::: {.note-box}
+**Zwei p-Werte für eine Frage.** Die `summary()`-Ausgabe liefert je einen
+t-Test pro Indikatorvariable, also den Vergleich jeder Stufe mit der Referenz.
+Die Frage "hat die Lage insgesamt einen Einfluss" beantwortet keiner dieser
+Tests. Dafür ist der F-Test aus `anova()` da, der beide Indikatorvariablen
+gemeinsam prüft.
+
+Der Unterschied wird wichtig, wenn eine Stufe wenige Beobachtungen hat: Die
+einzelnen t-Tests können dann alle unauffällig sein, während der gemeinsame Test
+anschlägt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Lage ist in diesen Daten der stärkste Einflussfaktor. Bemerkenswert ist der
+Nebeneffekt: Weil sie viel Streuung erklärt, sinkt die Residualstreuung, und
+dadurch werden **alle** Koeffizienten genauer geschätzt. Der Standardfehler der
+Fläche fällt von 1.17 auf 0.78, ohne dass sich am Schätzwert viel ändert.
+
+Das ist das Gegenstück zu Beispiel 3: Ein Prädiktor, der eigene Information
+beiträgt, verbessert die Schätzung der anderen; einer, der dieselbe Information
+noch einmal bringt, verschlechtert sie.
+
+Zur Referenzstufe: Dass hier "Mittel" als Bezugspunkt dient, ist alphabetischer
+Zufall und passt hier ausnahmsweise gut. Wenn eine andere Stufe inhaltlich der
+natürliche Bezugspunkt ist, wird sie mit `relevel()` beziehungsweise
+`Treatment(reference=...)` gesetzt, und der Bericht nennt sie ausdrücklich.
+
+> Fläche, Alter und Lage erklären zusammen 78 Prozent der Mietunterschiede
+> (n = 120, Residualstreuung 152 Franken). Gegenüber mittlerer Lage kostet eine
+> Wohnung im Zentrum 243 Franken mehr (p < 0.001) und am Rand 173 Franken
+> weniger (p < 0.001), bei gleicher Fläche und gleichem Alter. Je Quadratmeter
+> steigt die Miete um 12.46 Franken (p < 0.001), je Jahr Alter sinkt sie um
+> 3.02 Franken (p = 0.002). Referenzstufe der Lage ist "Mittel".
+
+::::
 
 ## Verständnisfragen
 
