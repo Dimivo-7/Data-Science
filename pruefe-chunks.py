@@ -38,6 +38,11 @@ PYTHON_KUERZEL = {
     "PCA(": "from sklearn.decomposition import PCA",
     "StandardScaler(": "from sklearn.preprocessing import StandardScaler",
     "norm.ppf": "from scipy.stats import norm",
+    # Keine Importe, sondern Namen, die im Setup-Chunk definiert sein muessen.
+    # Anlass: Beim Umbau einer Seite wurde der Seed aus dem Setup entfernt,
+    # waehrend ein Chunk weiter unten noch rng.normal() aufrief.
+    "rng.": "rng = np.random.default_rng",
+    "analyse.": "analyse = TTestIndPower",
 }
 
 # R-Funktion -> Paket, das geladen sein muss. Basis-R steht hier nicht drin.
