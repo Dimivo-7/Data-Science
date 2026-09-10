@@ -359,55 +359,74 @@ end
 -- Filter
 -- ---------------------------------------------------------------------------
 
+-- Der Inhaltsfilter. Er wird bewusst nicht als Filtertabelle zurueckgegeben,
+-- sondern weiter unten von Hand auf doc.blocks angewendet. Grund: Pandoc
+-- wendet einen zurueckgegebenen Filter auch auf die Metadaten an, und Quarto
+-- legt dort die Navigation ab (Seitenleiste links, Brotkrumenpfad oben).
+-- Sonst bekaemen Menueeintraege wie "t-Test fuer zwei Stichproben" oder
+-- "Linux und Shell" mitten im Wort einen Glossar-Tooltip.
+local inhaltsfilter = {
+  traverse = "topdown",
+
+  -- Diese Bloecke bleiben komplett aussen vor. Das zweite Rueckgabe-
+  -- argument false stoppt den Abstieg, sodass auch ihr Innenleben
+  -- unberuehrt bleibt - bei Table etwa die Zellen, bei Figure die
+  -- Bildunterschrift.
+  Header = function(el) return el, false end,
+  Table  = function(el) return el, false end,
+  Figure = function(el) return el, false end,
+
+  -- Quarto baut Abbildungen und Tabellen als Div auf. Der einzige Text
+  -- darin ist die Bildunterschrift, und ein Tooltip dort sprengt den
+  -- Ausgabecontainer: der traegt overflow: auto, der absolut positionierte
+  -- Kasten vergroessert dessen scrollWidth und die Abbildung bekommt
+  -- Scrollleisten. Der Figure-Ausschluss oben greift hier nicht, weil die
+  -- Abbildung zu diesem Zeitpunkt noch kein pandoc-Figure ist.
+  Div = function(el)
+    if el.identifier == "glossar-liste" then
+      return pandoc.Div(glossarListe(), el.attr), false
+    end
+    for _, klasse in ipairs(el.classes) do
+      if klasse == "quarto-float"
+        or klasse == "cell-output-display"
+        or klasse == "quarto-figure" then
+        return el, false
+      end
+    end
+    return el
+  end,
+
+  -- Bewusst Para und Plain statt eines generischen Inlines-Filters.
+  -- Mit Inlines wurden Aufzaehlungen nicht erreicht - und dort steht in
+  -- diesem Projekt unter "Kernideen" jeder Begriff zum ersten Mal.
+  -- Plain deckt die Listenpunkte ab, Para den Fliesstext; markiere()
+  -- steigt selbst in Emph, Strong und Span ab und laesst Links und Code
+  -- in Ruhe. Deshalb hier false: der Abstieg ist bereits erledigt.
+  Para = function(el)
+    if not active then return nil end
+    el.content = markiere(el.content)
+    return el, false
+  end,
+
+  Plain = function(el)
+    if not active then return nil end
+    el.content = markiere(el.content)
+    return el, false
+  end,
+}
+
+-- ---------------------------------------------------------------------------
+-- Filter
+-- ---------------------------------------------------------------------------
+
 return {
   { Meta = Meta },
   {
-    traverse = "topdown",
-
-    -- Diese Bloecke bleiben komplett aussen vor. Das zweite Rueckgabe-
-    -- argument false stoppt den Abstieg, sodass auch ihr Innenleben
-    -- unberuehrt bleibt - bei Table etwa die Zellen, bei Figure die
-    -- Bildunterschrift.
-    Header = function(el) return el, false end,
-    Table  = function(el) return el, false end,
-    Figure = function(el) return el, false end,
-
-    -- Quarto baut Abbildungen und Tabellen als Div auf. Der einzige Text
-    -- darin ist die Bildunterschrift, und ein Tooltip dort sprengt den
-    -- Ausgabecontainer: der traegt overflow: auto, der absolut positionierte
-    -- Kasten vergroessert dessen scrollWidth und die Abbildung bekommt
-    -- Scrollleisten. Der Figure-Ausschluss oben greift hier nicht, weil die
-    -- Abbildung zu diesem Zeitpunkt noch kein pandoc-Figure ist.
-    Div = function(el)
-      if el.identifier == "glossar-liste" then
-        return pandoc.Div(glossarListe(), el.attr), false
-      end
-      for _, klasse in ipairs(el.classes) do
-        if klasse == "quarto-float"
-          or klasse == "cell-output-display"
-          or klasse == "quarto-figure" then
-          return el, false
-        end
-      end
-      return el
-    end,
-
-    -- Bewusst Para und Plain statt eines generischen Inlines-Filters.
-    -- Mit Inlines wurden Aufzaehlungen nicht erreicht - und dort steht in
-    -- diesem Projekt unter "Kernideen" jeder Begriff zum ersten Mal.
-    -- Plain deckt die Listenpunkte ab, Para den Fliesstext; markiere()
-    -- steigt selbst in Emph, Strong und Span ab und laesst Links und Code
-    -- in Ruhe. Deshalb hier false: der Abstieg ist bereits erledigt.
-    Para = function(el)
-      if not active then return nil end
-      el.content = markiere(el.content)
-      return el, false
-    end,
-
-    Plain = function(el)
-      if not active then return nil end
-      el.content = markiere(el.content)
-      return el, false
+    -- Nur doc.blocks durchlaufen, nicht doc.meta. Damit bleiben Navigation,
+    -- Brotkrumenpfad und Seitentitel unberuehrt.
+    Pandoc = function(doc)
+      doc.blocks = doc.blocks:walk(inhaltsfilter)
+      return doc
     end,
   },
 }

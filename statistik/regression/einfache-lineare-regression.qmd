@@ -37,11 +37,7 @@ ausgeben; die Ausgaben unterscheiden sich nur in Anordnung und Benennung.
 
 
 
-:::: {.panel-tabset}
-
-## Theorie
-
-### Kurzsteckbrief
+## Kurzsteckbrief
 
 | | |
 |---|---|
@@ -53,7 +49,7 @@ ausgeben; die Ausgaben unterscheiden sich nur in Anordnung und Benennung.
 | Python-Funktion | `smf.ols("y ~ x", data=df).fit()`, gelesen mit `.summary()` |
 | Verwandte Methoden | [Korrelation](../grundlagen/korrelation.qmd), [multiple lineare Regression](multiple-lineare-regression.qmd), [Korrelationstests](../tests/korrelationstests.qmd) |
 
-### Wann diese Methode, wann nicht
+## Wann diese Methode, wann nicht
 
 Typische Fragestellungen: Verbrauch aus Laufzeit, Miete aus Fläche, Ertrag aus
 Düngermenge. Gemeinsam ist ihnen eine metrische Zielgrösse, eine einzige
@@ -75,7 +71,7 @@ Sie passt nicht in diesen Fällen:
 | Erkennbar krummer Zusammenhang | Transformation, Polynomterm oder ein anderes Modell |
 | Zielvariable ist eine Zeit bis zu einem Ereignis mit zensierten Fällen | [Kaplan-Meier](../ueberlebenszeit/kaplan-meier.qmd) und [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) |
 
-### Grundidee und Modell
+## Grundidee und Modell
 
 Gesucht ist die Gerade, die möglichst nah an allen Punkten liegt. Nah heisst:
 die Summe der quadrierten senkrechten Abstände zwischen beobachteten und
@@ -101,7 +97,7 @@ Quadrat der Korrelation zwischen $x$ und $y$, und der p-Wert der Steigung ist
 derselbe wie der des Pearson-Korrelationstests. Beide Verfahren beantworten
 dieselbe Frage in verschiedener Sprache.
 
-### Voraussetzungen und ihre Prüfung
+## Voraussetzungen und ihre Prüfung
 
 | Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
 |---|---|---|---|---|
@@ -115,7 +111,7 @@ Die Voraussetzungen betreffen die Residuen, nicht die Rohdaten. Weder $x$ noch
 $y$ müssen normalverteilt sein; eine rechtsschiefe Zielgrösse ist kein Grund zur
 Sorge, solange die Residuen es nicht sind.
 
-### Output lesen
+## Output lesen
 
 R, `summary(modell)`:
 
@@ -148,7 +144,7 @@ Python, `modell.summary()`, mit den Unterschieden zu R:
 | `Durbin-Watson` | Autokorrelation der Residuen | Werte um 2 sind unauffällig |
 | kein `Residual standard error` | fehlt in der Tabelle | über `np.sqrt(modell.mse_resid)` |
 
-### Interpretationsfallen
+## Interpretationsfallen
 
 - **Der Achsenabschnitt ist meist keine Aussage.** Er beschreibt den Fall
   $x = 0$, und der liegt oft ausserhalb der Daten. Wer ihn deuten will,
@@ -171,7 +167,7 @@ Python, `modell.summary()`, mit den Unterschieden zu R:
   dem Mittelwert bei gegebenem $x$, das breite einer einzelnen künftigen
   Beobachtung.
 
-### Ergebnis berichten
+## Ergebnis berichten
 
 Vorlage für den Ergebnissatz:
 
@@ -185,7 +181,7 @@ Immer genannt werden Steigung in ihrer Einheit, Konfidenzintervall,
 Teststatistik mit Freiheitsgraden, p-Wert, R², Residualstreuung und n, dazu
 welche Voraussetzungen geprüft wurden und mit welchem Ergebnis.
 
-### Abgrenzung zu verwandten Methoden
+## Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt der einfachen linearen Regression |
 |---|---|
@@ -196,9 +192,15 @@ welche Voraussetzungen geprüft wurden und mit welchem Ergebnis.
 | [Regressionsdiagnostik](regressionsdiagnostik.qmd) | Vertiefung zu Residuen, Hebelwerten und Ausreissern |
 | [t-Test für zwei Stichproben](../tests/t-test-zwei-stichproben.qmd) | der Prädiktor ist zweistufig kategorial; rechnerisch derselbe Fall, andere Darstellung |
 
-## Beispiel 1: Verbrauch aus Laufzeit
+## Beispiele
 
-### Frage und Datenlage
+Jedes Beispiel steht in einem eigenen Reiter.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Verbrauch aus Laufzeit
+
+#### Frage und Datenlage
 
 Von 24 Anlagen liegen die Betriebsstunden einer Woche und der Verbrauch in
 Litern vor. Gefragt ist, um wie viele Liter der Verbrauch je zusätzlicher
@@ -209,11 +211,11 @@ Beide Grössen sind metrisch, es gibt genau einen Prädiktor, und die Richtung
 steht fest: Die Laufzeit erklärt den Verbrauch, nicht umgekehrt. Das ist die
 Standardsituation der einfachen linearen Regression.
 
-### Modell schätzen
+#### Modell schätzen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b1-modell-r
@@ -231,7 +233,7 @@ summary(modell)
 confint(modell)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b1-modell-py
@@ -251,7 +253,7 @@ print("Residualstreuung:", round(np.sqrt(modell.mse_resid), 4))
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
 |---|---|---|---|
@@ -267,7 +269,7 @@ print("Residualstreuung:", round(np.sqrt(modell.mse_resid), 4))
 | `Adjusted R-squared` | 0.8109 | um die Parameterzahl korrigiert | Bei einem Prädiktor kaum verschieden. Der Abstand wächst mit der Zahl der Prädiktoren. |
 | `F-statistic` | 99.60 auf 1 und 22 df, p = 1.25e-09 | Gesamttest des Modells | Bei genau einem Prädiktor redundant: F ist exakt das Quadrat des t-Werts (9.98² = 99.6), und die p-Werte sind identisch. |
 
-### Bestimmtheitsmass und Korrelation
+#### Bestimmtheitsmass und Korrelation
 
 Bei einem Prädiktor ist R² exakt das Quadrat der Korrelation. Das lässt sich
 direkt nachrechnen und ist der beste Merksatz gegen die Verwechslung der beiden
@@ -275,7 +277,7 @@ Zahlen.
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b1-r2-r
@@ -284,7 +286,7 @@ round(c(r = cor(anlagen$laufzeit, anlagen$verbrauch),
         aus_dem_modell = summary(modell)$r.squared), 4)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b1-r2-py
@@ -302,11 +304,11 @@ Streuung. Die Steigung von 2.854 Litern je Stunde sagt dagegen etwas über die
 Grösse des Effekts, und die drei Zahlen sind nicht ineinander überführbar, ohne
 die Streuungen zu kennen.
 
-### Voraussetzungen prüfen
+#### Voraussetzungen prüfen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: fig-b1-diagnostik-r
@@ -323,7 +325,7 @@ par(mfrow = c(1, 1))
 bptest(modell)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: fig-b1-diagnostik-py
@@ -360,7 +362,7 @@ Breusch-Pagan-Test bestätigt das mit einem p-Wert von 0.988: kein Hinweis auf
 ungleiche Streuung. Ein grosser p-Wert ist hier die gute Nachricht, weil die
 Nullhypothese die konstante Streuung ist.
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Drei Zahlen tragen die Aussage, und sie beantworten drei verschiedene Fragen.
 Die Steigung von 2.854 Litern je Stunde beantwortet "wie stark". Das Intervall
@@ -375,20 +377,20 @@ keine davon.
 > die typische Abweichung einer Vorhersage beträgt 6.1 Liter (n = 24). Residuen
 > und Streudiagramm zeigen keine Auffälligkeiten.
 
-## Beispiel 2: Kein erkennbarer Zusammenhang
+### Beispiel 2: Kein erkennbarer Zusammenhang
 
-### Frage und Datenlage
+#### Frage und Datenlage
 
 Aus derselben Halle liegen für 20 Tage die Hallentemperatur in Grad Celsius und
 der Tagesverbrauch vor. Die Vermutung lautet, dass wärmere Tage den Verbrauch
 treiben. Das Beispiel zeigt, wie ein Nullbefund aussieht und was er nicht
 bedeutet.
 
-### Modell schätzen
+#### Modell schätzen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b2-modell-r
@@ -404,7 +406,7 @@ summary(modell_b2)
 confint(modell_b2)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b2-modell-py
@@ -421,7 +423,7 @@ print(modell_b2.summary())
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -435,7 +437,7 @@ print(modell_b2.summary())
 | `Residual standard error` | 14.163 auf 18 Freiheitsgraden | Die Vorhersage aus der Temperatur ist kaum besser als der blosse Mittelwert des Verbrauchs. |
 | `F-statistic` | 0.498, p = 0.489 | Wie erwartet identisch mit dem t-Test der Steigung. |
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Der Nullbefund erlaubt genau eine Aussage: In diesen Daten ist kein Zusammenhang
 erkennbar. Er erlaubt nicht die Aussage, dass keiner existiert. Der Unterschied
@@ -453,20 +455,20 @@ Tage mit stärker unterschiedlichen Temperaturen.
 > lässt Effekte in beide Richtungen zu; ein Einfluss ist damit nicht
 > ausgeschlossen, sondern unbelegt.
 
-## Beispiel 3: Übersehene Krümmung
+### Beispiel 3: Übersehene Krümmung
 
-### Frage und Datenlage
+#### Frage und Datenlage
 
 An 24 Werkzeugen wurde die Laufzeit in tausend Stunden und der Verschleiss in
 Mikrometern gemessen. Verschleiss wächst bei vielen Prozessen überproportional,
 weil eine bereits abgenutzte Schneide schneller weiter abnutzt. Genau dieser
 Fall ist gefährlich, weil er sich in den Kennzahlen gut versteckt.
 
-### Modell schätzen
+#### Modell schätzen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b3-modell-r
@@ -483,7 +485,7 @@ modell_b3 <- lm(verschleiss ~ laufzeit, data = werkzeug)
 summary(modell_b3)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b3-modell-py
@@ -504,7 +506,7 @@ print("R^2 =", round(modell_b3.rsquared, 4),
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -519,11 +521,11 @@ print("R^2 =", round(modell_b3.rsquared, 4),
 Alle klassischen Gütezahlen sind gut, und das Modell ist trotzdem falsch. Warum,
 zeigen erst die Residuen.
 
-### Voraussetzungen prüfen
+#### Voraussetzungen prüfen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: fig-b3-diagnostik-r
@@ -541,7 +543,7 @@ lines(lowess(fitted(modell_b3), resid(modell_b3)), col = "firebrick", lwd = 2)
 par(mfrow = c(1, 1))
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: fig-b3-diagnostik-py
@@ -574,11 +576,11 @@ Glättungslinie bildet einen deutlichen Bogen. Im linken Bild ist zu sehen,
 warum: Die Gerade liegt bei kleinen und grossen Laufzeiten über den Punkten und
 im mittleren Bereich darunter.
 
-### Modell korrigieren
+#### Modell korrigieren
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b3-quadratisch-r
@@ -586,7 +588,7 @@ modell_b3q <- lm(verschleiss ~ laufzeit + I(laufzeit^2), data = werkzeug)
 summary(modell_b3q)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b3-quadratisch-py
@@ -616,7 +618,7 @@ bleibt trotzdem im Modell. Polynomterme werden von unten aufgebaut und nicht
 einzeln nach p-Werten entfernt, sonst hängt das Ergebnis am willkürlich
 gewählten Nullpunkt der x-Achse.
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Die Lehre aus diesem Beispiel: Kennzahlen erkennen das Problem nicht. R² war
 hoch, der p-Wert winzig, und beides blieb auch dann so, als das Modell
@@ -630,20 +632,20 @@ angesehen, bevor irgendeine Zahl berichtet wird.
 > 7.4 Mikrometer, n = 24); der quadratische Koeffizient beträgt 0.593 Mikrometer je
 > (1000 h)² (p < 0.001).
 
-## Beispiel 4: Ein einziger Punkt kippt das Modell
+### Beispiel 4: Ein einziger Punkt kippt das Modell
 
-### Frage und Datenlage
+#### Frage und Datenlage
 
 Zu den 24 Anlagen aus Beispiel 1 kommt eine weitere hinzu: 45 Betriebsstunden
 bei nur 20 Litern Verbrauch. Der Wert stammt aus einer Anlage, deren Zähler in
 der Woche ausgefallen war. Er liegt weit rechts ausserhalb der übrigen
 Laufzeiten und weit unter der Geraden.
 
-### Modell schätzen
+#### Modell schätzen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b4-modell-r
@@ -659,7 +661,7 @@ einfluss <- data.frame(
 round(tail(einfluss, 3), 3)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b4-modell-py
@@ -682,7 +684,7 @@ print("mittlerer Hebelwert:          ",
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 | Ausgabe | Ohne den Fall | Mit dem Fall | Wie das zu lesen ist |
 |---|---|---|---|
@@ -699,11 +701,11 @@ aussen auf der x-Achse, richtet aber keinen Schaden an, solange er auf der Linie
 der übrigen liegt. Gefährlich wird die Kombination: extremer x-Wert **und**
 Abweichung nach oben oder unten. Genau die misst die Cook-Distanz.
 
-### Voraussetzungen prüfen
+#### Voraussetzungen prüfen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: fig-b4-einfluss-r
@@ -723,7 +725,7 @@ abline(h = 1, lty = 2, col = "firebrick")
 par(mfrow = c(1, 1))
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: fig-b4-einfluss-py
@@ -759,7 +761,7 @@ Im linken Bild ist zu sehen, wie der eine Punkt die Gerade zu sich
 herunterzieht. Rechts ragt seine Cook-Distanz so weit über die Schwelle von 1
 hinaus, dass die übrigen 24 Werte optisch auf der Nulllinie verschwinden.
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Entscheidend ist, was jetzt **nicht** passiert: Der Punkt wird nicht kommentarlos
 gelöscht, weil er stört. Die Reihenfolge lautet erstens Ursache klären,
