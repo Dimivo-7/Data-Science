@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Bonferroni, Holm und FDR, und wann eine Korrektur nötig ist.">
+<meta name="description" content="Warum viele Tests falsche Alarme erzeugen und wie Bonferroni, Holm und Benjamini-Hochberg gegensteuern.">
 
 <title>Multiples Testen – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-465920036d67acc459edb9c5a85eb638.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -80,6 +118,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -339,7 +406,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-topic="Programmierung" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." tabindex="0">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +454,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -410,7 +477,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung" tabindex="0">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." tabindex="0">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -510,7 +577,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge" tabindex="0">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-topic="Werkzeuge" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." tabindex="0">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -560,7 +627,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik" tabindex="0">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." tabindex="0">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -601,19 +668,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik" tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik" tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik" tabindex="0">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-topic="Statistik" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." tabindex="0">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik" tabindex="0">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." tabindex="0">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -631,13 +698,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik" tabindex="0">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-topic="Statistik" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." tabindex="0">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik" tabindex="0">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." tabindex="0">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -654,7 +721,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-topic="Statistik" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." tabindex="0">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -671,20 +738,20 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">Multiples Testen</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/bootstrap-resampling.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Bootstrap und Resampling</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Multiples Testen</span></a>
   </div>
 </li>
       </ul>
@@ -701,19 +768,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-topic="Statistik" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." tabindex="0">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -725,7 +792,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik" tabindex="0">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-topic="Statistik" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." tabindex="0">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1096,7 +1163,16 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
-  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#wie-schnell-die-fehlerrate-wächst" id="toc-wie-schnell-die-fehlerrate-wächst" class="nav-link" data-scroll-target="#wie-schnell-die-fehlerrate-wächst">Wie schnell die Fehlerrate wächst</a></li>
+  <li><a href="#wo-überall-unbemerkt-mehrfach-getestet-wird" id="toc-wo-überall-unbemerkt-mehrfach-getestet-wird" class="nav-link" data-scroll-target="#wo-überall-unbemerkt-mehrfach-getestet-wird">Wo überall unbemerkt mehrfach getestet wird</a></li>
+  <li><a href="#zwei-fehlerbegriffe" id="toc-zwei-fehlerbegriffe" class="nav-link" data-scroll-target="#zwei-fehlerbegriffe">Zwei Fehlerbegriffe</a></li>
+  <li><a href="#die-drei-verfahren" id="toc-die-drei-verfahren" class="nav-link" data-scroll-target="#die-drei-verfahren">Die drei Verfahren</a></li>
+  <li><a href="#was-die-korrektur-kostet" id="toc-was-die-korrektur-kostet" class="nav-link" data-scroll-target="#was-die-korrektur-kostet">Was die Korrektur kostet</a></li>
+  </ul></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
+  <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -1118,7 +1194,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Bonferroni, Holm und FDR, und wann eine Korrektur nötig ist.
+    Warum viele Tests falsche Alarme erzeugen und wie Bonferroni, Holm und Benjamini-Hochberg gegensteuern.
   </div>
 </div>
 
@@ -1136,16 +1212,944 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
 <section id="kernideen" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Ein <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">Signifikanzniveau</span> von 0.05 bedeutet: In fünf von hundert Fällen wird ein Effekt behauptet, den es nicht gibt. Bei <strong>einem</strong> Test. Bei zwanzig Tests liegt die Wahrscheinlichkeit für mindestens einen falschen Alarm bei 64 Prozent.</li>
+<li>Das Problem entsteht nicht durch das Rechnen, sondern durch das <strong>Auswählen</strong>: Wer viele Tests rechnet und den kleinsten <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> berichtet, hat eine Auswahl getroffen, die der <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> nicht kennt.</li>
+<li>Korrekturverfahren senken die Schwelle. Sie kosten dafür <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span>: Dieselbe Studie findet nach der Korrektur weniger.</li>
+<li>Es gibt zwei verschiedene Fehlerbegriffe, und sie verlangen verschiedene Verfahren: die Wahrscheinlichkeit <strong>mindestens eines</strong> Fehlalarms (FWER) und der <strong>Anteil</strong> der Fehlalarme unter den Funden (FDR).</li>
+<li>Am wirksamsten ist es, die Zahl der Tests von vornherein klein zu halten und vorab festzulegen, welche gerechnet werden.</li>
+</ul>
 </section>
 <section id="erklärung" class="level2">
 <h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
+<section id="wie-schnell-die-fehlerrate-wächst" class="level3">
+<h3 class="anchored" data-anchor-id="wie-schnell-die-fehlerrate-wächst">Wie schnell die Fehlerrate wächst</h3>
+<p>Sind alle Nullhypothesen wahr und die Tests <span class="glossary-term" data-topic="Statistik" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre." tabindex="0">unabhängig</span>, beträgt die Wahrscheinlichkeit für mindestens einen falschen Alarm <span class="math inline">\(1 - (1-\alpha)^m\)</span>:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Anzahl Tests</th>
+<th>Wahrscheinlichkeit mindestens eines Fehlalarms</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>5.0 %</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td>14.3 %</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>22.6 %</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>40.1 %</td>
+</tr>
+<tr class="odd">
+<td>20</td>
+<td>64.2 %</td>
+</tr>
+<tr class="even">
+<td>50</td>
+<td>92.3 %</td>
+</tr>
+<tr class="odd">
+<td>100</td>
+<td>99.4 %</td>
+</tr>
+</tbody>
+</table>
+<p>Bei zwanzig Tests ist ein falscher Alarm also der Normalfall, nicht die <span class="glossary-term" data-topic="Programmierung" data-def="Fehler, der die Ausführung unterbricht, statt einen besonderen Rückgabewert zu liefern. Gefangen werden sollte nur, was erwartet wird und sinnvoll behandelt werden kann." tabindex="0">Ausnahme</span>. Und zwanzig Tests sind schnell erreicht: Fünf Gruppen paarweise verglichen ergeben zehn Tests, drei Zielgrössen bei vier Gruppen ergeben achtzehn.</p>
+</section>
+<section id="wo-überall-unbemerkt-mehrfach-getestet-wird" class="level3">
+<h3 class="anchored" data-anchor-id="wo-überall-unbemerkt-mehrfach-getestet-wird">Wo überall unbemerkt mehrfach getestet wird</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Anzahl Tests</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Paarweise Vergleiche nach einer <a href="../../statistik/tests/anova.html">Varianzanalyse</a></td>
+<td>bei <span class="math inline">\(k\)</span> Gruppen: <span class="math inline">\(k(k-1)/2\)</span></td>
+</tr>
+<tr class="even">
+<td>Mehrere Zielgrössen in derselben Studie</td>
+<td>eine je Zielgrösse</td>
+</tr>
+<tr class="odd">
+<td>Zwischenauswertungen während der Erhebung</td>
+<td>eine je Blick auf die Daten</td>
+</tr>
+<tr class="even">
+<td>Untergruppen nachträglich betrachten</td>
+<td>eine je Untergruppe</td>
+</tr>
+<tr class="odd">
+<td>Mehrere Verfahren ausprobieren und das passende berichten</td>
+<td>so viele wie ausprobiert</td>
+</tr>
+<tr class="even">
+<td>Koeffizienten einer <a href="../../statistik/regression/multiple-lineare-regression.html">Regression</a></td>
+<td>einer je Prädiktor</td>
+</tr>
+</tbody>
+</table>
+<p>Die letzten drei Zeilen sind die gefährlichen, weil dort meist gar nicht gezählt wird, wie viele Tests tatsächlich stattgefunden haben.</p>
+</section>
+<section id="zwei-fehlerbegriffe" class="level3">
+<h3 class="anchored" data-anchor-id="zwei-fehlerbegriffe">Zwei Fehlerbegriffe</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Begriff</th>
+<th>Was kontrolliert wird</th>
+<th>Wann passend</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>FWER, familienweise Fehlerrate</td>
+<td>Wahrscheinlichkeit für <strong>mindestens einen</strong> Fehlalarm in der ganzen Gruppe von Tests</td>
+<td>wenn ein einziger falscher Befund teuer ist: Zulassung, Sicherheitsnachweis, Bestätigungsstudie</td>
+</tr>
+<tr class="even">
+<td>FDR, False Discovery Rate</td>
+<td>erwarteter <strong>Anteil</strong> falscher Befunde unter den verworfenen Hypothesen</td>
+<td>bei explorativen Auswertungen mit vielen Tests, wenn die Funde ohnehin nachgeprüft werden</td>
+</tr>
+</tbody>
+</table>
+<p>Der Unterschied ist praktisch bedeutsam. FWER auf 5 Prozent heisst: “Mit 95 Prozent Wahrscheinlichkeit ist unter allen Befunden kein einziger falsch.” FDR auf 5 Prozent heisst: “Von den Befunden sind im Mittel 5 Prozent falsch.” Bei hundert Tests und zwanzig Funden erlaubt das eine Falschmeldung, das andere etwa eine unter den zwanzig.</p>
+</section>
+<section id="die-drei-verfahren" class="level3">
+<h3 class="anchored" data-anchor-id="die-drei-verfahren">Die drei Verfahren</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Verfahren</th>
+<th>Kontrolliert</th>
+<th>Wie es rechnet</th>
+<th>Schärfe</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Bonferroni</td>
+<td>FWER</td>
+<td>jeder p-Wert mit <span class="math inline">\(m\)</span> multipliziert, gleichbedeutend mit Schwelle <span class="math inline">\(\alpha/m\)</span></td>
+<td>am strengsten, einfach zu erklären</td>
+</tr>
+<tr class="even">
+<td>Holm</td>
+<td>FWER</td>
+<td>schrittweise: p-Werte sortieren, den kleinsten gegen <span class="math inline">\(\alpha/m\)</span> prüfen, den zweiten gegen <span class="math inline">\(\alpha/(m-1)\)</span> und so weiter, bis der erste nicht mehr verworfen wird</td>
+<td>hält dasselbe Niveau wie Bonferroni, verwirft aber nie weniger</td>
+</tr>
+<tr class="odd">
+<td>Benjamini-Hochberg</td>
+<td>FDR</td>
+<td>sortieren, den <span class="math inline">\(i\)</span>-ten gegen <span class="math inline">\(\alpha \cdot i/m\)</span> prüfen, vom grössten her rückwärts</td>
+<td>deutlich mehr Funde, dafür ein anderes Versprechen</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong>Holm ist Bonferroni ohne Nachteil.</strong> Beide kontrollieren die familienweise Fehlerrate gleich streng, aber Holm verwirft in jeder denkbaren Lage mindestens so viele Hypothesen wie Bonferroni und oft mehr. Es gibt deshalb keinen statistischen Grund, Bonferroni zu verwenden; der einzige Vorteil ist, dass sich “Schwelle geteilt durch Anzahl Tests” leichter erklären lässt.</p>
+</div>
+</section>
+<section id="was-die-korrektur-kostet" class="level3">
+<h3 class="anchored" data-anchor-id="was-die-korrektur-kostet">Was die Korrektur kostet</h3>
+<p>Eine gesenkte Schwelle senkt die <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span>. Bei einem mittleren Effekt und 64 Fällen je Gruppe:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Anzahl Tests</th>
+<th>Schwelle nach Bonferroni</th>
+<th>Power</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>0.0500</td>
+<td>0.80</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>0.0100</td>
+<td>0.59</td>
+</tr>
+<tr class="odd">
+<td>10</td>
+<td>0.0050</td>
+<td>0.49</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>0.0025</td>
+<td>0.40</td>
+</tr>
+</tbody>
+</table>
+<p>Wer die Zahl der Tests nicht begrenzt, verliert also an beiden Enden: ohne Korrektur falsche Alarme, mit Korrektur die Fähigkeit, echte Effekte zu finden. Der einzige Ausweg ist, vorab weniger zu testen, siehe <a href="../../statistik/inferenz/power-stichprobenumfang.html">Power</a>.</p>
+</section>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Beispiel 1: Wie schnell die Fehlerrate wächst</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Beispiel 2: Drei Korrekturen im Vergleich</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Beispiel 3: Holm Schritt für Schritt</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-4" role="tab" aria-controls="tabset-5-4" aria-selected="false" href="">Beispiel 4: Was die Korrektur kostet</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>Alle Nullhypothesen sind wahr, es gibt also nichts zu finden. Wie oft wird trotzdem etwas gefunden?</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>anzahl <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">100</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>rate <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> (<span class="dv">1</span> <span class="sc">-</span> <span class="fl">0.05</span>)<span class="sc">^</span>anzahl</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(anzahl, rate, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"steelblue"</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>),</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Anzahl Tests"</span>, <span class="at">ylab =</span> <span class="st">"Wahrscheinlichkeit"</span>,</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Mindestens ein falscher Alarm"</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="fl">0.05</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">c</span>(<span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">20</span>), <span class="at">lty =</span> <span class="dv">3</span>, <span class="at">col =</span> <span class="st">"grey60"</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">data.frame</span>(<span class="at">tests =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">50</span>, <span class="dv">100</span>),</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>                 <span class="at">rate =</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fl">0.95</span><span class="sc">^</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">50</span>, <span class="dv">100</span>)), <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  tests   rate
+1     1 0.0500
+2     3 0.1426
+3     5 0.2262
+4    10 0.4013
+5    20 0.6415
+6    50 0.9231
+7   100 0.9941</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-b1-mt-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-mt-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="multiples-testen_files/figure-html/fig-b1-mt-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Beispiel 1: Wahrscheinlichkeit mindestens eines falschen Alarms."><img src="multiples-testen_files/figure-html/fig-b1-mt-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-mt-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Beispiel 1: Wahrscheinlichkeit mindestens eines falschen Alarms.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>anzahl <span class="op">=</span> np.arange(<span class="dv">1</span>, <span class="dv">101</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>rate <span class="op">=</span> <span class="dv">1</span> <span class="op">-</span> <span class="fl">0.95</span> <span class="op">**</span> anzahl</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>fig, achse <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.4</span>))</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>achse.plot(anzahl, rate, color<span class="op">=</span><span class="st">"steelblue"</span>, linewidth<span class="op">=</span><span class="dv">2</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>achse.axhline(<span class="fl">0.05</span>, linestyle<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"firebrick"</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> x <span class="kw">in</span> (<span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">20</span>):</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    achse.axvline(x, linestyle<span class="op">=</span><span class="st">":"</span>, color<span class="op">=</span><span class="st">"0.6"</span>)</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>achse.set_xlabel(<span class="st">"Anzahl Tests"</span>)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>achse.set_ylabel(<span class="st">"Wahrscheinlichkeit"</span>)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>achse.set_ylim(<span class="dv">0</span>, <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>(0.0, 1.0)</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>achse.set_title(<span class="st">"Mindestens ein falscher Alarm"</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b1-mt-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-mt-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="multiples-testen_files/figure-html/fig-b1-mt-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Beispiel 1: dieselbe Kurve in Python."><img src="multiples-testen_files/figure-html/fig-b1-mt-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-mt-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Beispiel 1: dieselbe Kurve in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> m <span class="kw">in</span> (<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">50</span>, <span class="dv">100</span>):</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>m<span class="sc">:4d}</span><span class="ss"> Tests: </span><span class="sc">{</span><span class="dv">1</span> <span class="op">-</span> <span class="fl">0.95</span> <span class="op">**</span> m<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   1 Tests: 0.0500
+   3 Tests: 0.1426
+   5 Tests: 0.2262
+  10 Tests: 0.4013
+  20 Tests: 0.6415
+  50 Tests: 0.9231
+ 100 Tests: 0.9941</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Anzahl Tests</th>
+<th>Wahrscheinlichkeit</th>
+<th>Wie das zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>0.050</td>
+<td>Das versprochene Niveau.</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td>0.143</td>
+<td>Schon drei paarweise Vergleiche nach einer Varianzanalyse verdreifachen die Rate fast.</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>0.226</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>0.401</td>
+<td>In vier von zehn Auswertungen mit zehn Tests steht mindestens ein falscher Befund.</td>
+</tr>
+<tr class="odd">
+<td>20</td>
+<td>0.642</td>
+<td>Der falsche Alarm ist jetzt wahrscheinlicher als kein falscher Alarm.</td>
+</tr>
+<tr class="even">
+<td>50</td>
+<td>0.923</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>100</td>
+<td>0.994</td>
+<td>Praktisch sicher.</td>
+</tr>
+</tbody>
+</table>
+<p>Die Kurve steigt anfangs steil und flacht dann ab; die entscheidenden Schritte passieren zwischen einem und zwanzig Tests, also genau in dem Bereich, in dem sich die meisten Auswertungen bewegen.</p>
+</section>
+<section id="interpretation" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation">Interpretation</h4>
+<p>Die Zahlen gelten unter der Annahme unabhängiger Tests. Bei abhängigen Tests, etwa mehreren Zielgrössen, die miteinander korrelieren, fällt die Rate etwas niedriger aus. Kleiner als das Einzelniveau wird sie aber nie, und die Grössenordnung bleibt.</p>
+<p>Wichtig ist die Umkehrung: Wenn in einer Auswertung mit zwanzig Tests genau ein Ergebnis knapp <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">signifikant</span> ist, dann ist das <strong>kein</strong> Befund, sondern die Erwartung.</p>
+</section>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Zwölf <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Werte</span> aus einer Auswertung. Sechs liegen unter 0.05, davon einer sehr deutlich. Die Frage lautet: Was bleibt nach einer Korrektur übrig?</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>vergleich <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> p_werte,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">bonferroni =</span> <span class="fu">p.adjust</span>(p_werte, <span class="at">method =</span> <span class="st">"bonferroni"</span>),</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">holm =</span> <span class="fu">p.adjust</span>(p_werte, <span class="at">method =</span> <span class="st">"holm"</span>),</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">BH =</span> <span class="fu">p.adjust</span>(p_werte, <span class="at">method =</span> <span class="st">"BH"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(vergleich, <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        p bonferroni   holm     BH
+1  0.0001     0.0012 0.0012 0.0012
+2  0.0080     0.0960 0.0880 0.0480
+3  0.0190     0.2280 0.1900 0.0690
+4  0.0230     0.2760 0.2070 0.0690
+5  0.0410     0.4920 0.3280 0.0960
+6  0.0480     0.5760 0.3360 0.0960
+7  0.1100     1.0000 0.6600 0.1886
+8  0.2600     1.0000 1.0000 0.3900
+9  0.3400     1.0000 1.0000 0.4533
+10 0.5100     1.0000 1.0000 0.6120
+11 0.6800     1.0000 1.0000 0.7418
+12 0.9200     1.0000 1.0000 0.9200</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colSums</span>(vergleich <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         p bonferroni       holm         BH 
+         6          1          1          2 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>vergleich <span class="op">=</span> pd.DataFrame({<span class="st">"p"</span>: p_werte})</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> methode, name <span class="kw">in</span> [(<span class="st">"bonferroni"</span>, <span class="st">"bonferroni"</span>), (<span class="st">"holm"</span>, <span class="st">"holm"</span>),</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>                      (<span class="st">"fdr_bh"</span>, <span class="st">"BH"</span>)]:</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    vergleich[name] <span class="op">=</span> multipletests(p_werte, alpha<span class="op">=</span><span class="fl">0.05</span>, method<span class="op">=</span>methode)[<span class="dv">1</span>]</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(vergleich.<span class="bu">round</span>(<span class="dv">4</span>).to_string())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         p  bonferroni    holm      BH
+0   0.0001      0.0012  0.0012  0.0012
+1   0.0080      0.0960  0.0880  0.0480
+2   0.0190      0.2280  0.1900  0.0690
+3   0.0230      0.2760  0.2070  0.0690
+4   0.0410      0.4920  0.3280  0.0960
+5   0.0480      0.5760  0.3360  0.0960
+6   0.1100      1.0000  0.6600  0.1886
+7   0.2600      1.0000  1.0000  0.3900
+8   0.3400      1.0000  1.0000  0.4533
+9   0.5100      1.0000  1.0000  0.6120
+10  0.6800      1.0000  1.0000  0.7418
+11  0.9200      1.0000  1.0000  0.9200</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>((vergleich <span class="op">&lt;</span> <span class="fl">0.05</span>).<span class="bu">sum</span>())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>p             6
+bonferroni    1
+holm          1
+BH            2
+dtype: int64</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>p</th>
+<th>Bonferroni</th>
+<th>Holm</th>
+<th>Benjamini-Hochberg</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.0001</td>
+<td><strong>0.0012</strong></td>
+<td><strong>0.0012</strong></td>
+<td><strong>0.0012</strong></td>
+</tr>
+<tr class="even">
+<td>0.0080</td>
+<td>0.0960</td>
+<td>0.0880</td>
+<td><strong>0.0480</strong></td>
+</tr>
+<tr class="odd">
+<td>0.0190</td>
+<td>0.2280</td>
+<td>0.1900</td>
+<td>0.0690</td>
+</tr>
+<tr class="even">
+<td>0.0230</td>
+<td>0.2760</td>
+<td>0.2070</td>
+<td>0.0690</td>
+</tr>
+<tr class="odd">
+<td>0.0410</td>
+<td>0.4920</td>
+<td>0.3280</td>
+<td>0.0960</td>
+</tr>
+<tr class="even">
+<td>0.0480</td>
+<td>0.5760</td>
+<td>0.3360</td>
+<td>0.0960</td>
+</tr>
+<tr class="odd">
+<td>0.1100</td>
+<td>1.0000</td>
+<td>0.6600</td>
+<td>0.1886</td>
+</tr>
+<tr class="even">
+<td>0.2600</td>
+<td>1.0000</td>
+<td>1.0000</td>
+<td>0.3900</td>
+</tr>
+<tr class="odd">
+<td>…</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><strong>verworfen bei 0.05</strong></td>
+<td><strong>1</strong></td>
+<td><strong>1</strong></td>
+<td><strong>2</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Ohne Korrektur wären sechs Hypothesen verworfen worden. Nach Bonferroni und Holm bleibt eine übrig, nach Benjamini-Hochberg zwei.</p>
+<p>Drei Beobachtungen zu den Zahlen:</p>
+<p><strong>Bonferroni multipliziert einfach mit 12.</strong> Aus 0.008 wird 0.096, aus 0.0001 wird 0.0012. Werte über 1 werden auf 1 gekappt.</p>
+<p><strong>Holm ist nie strenger als Bonferroni.</strong> In der ersten Zeile sind beide gleich (0.0012), ab der zweiten liegt Holm darunter: 0.088 gegen 0.096, 0.190 gegen 0.228, und mit wachsendem Rang wird der Abstand grösser. Der Grund ist der kleiner werdende Divisor.</p>
+<p><strong>Benjamini-Hochberg ist deutlich grosszügiger.</strong> Der Wert 0.008 wird zu 0.048 und bleibt damit knapp <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">signifikant</span>, während er bei den FWER-Verfahren ausscheidet. Das ist kein Fehler, sondern das andere Versprechen: BH garantiert nicht, dass unter den beiden Funden kein falscher ist, sondern dass im Mittel höchstens 5 Prozent der Funde falsch sind.</p>
+<div class="note-box">
+<p><strong>Korrigierte <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Werte</span> sind eine Bequemlichkeit, keine echten <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Werte</span>.</strong> Sie werden so umgerechnet, dass man sie weiterhin gegen 0.05 halten kann. Ein “korrigierter <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> von 0.048” bedeutet nicht, dass die Wahrscheinlichkeit für diese Daten 4.8 Prozent beträgt, sondern nur: Bei einem FDR-Niveau von 0.048 oder mehr wäre diese Hypothese verworfen worden.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Von zwölf Tests waren sechs bei einem unkorrigierten Niveau von 0.05 <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">signifikant</span>. Nach Holm-Korrektur bleibt einer (p korrigiert = 0.0012), nach Benjamini-Hochberg bleiben zwei (0.0012 und 0.0480). Berichtet wird die Holm-Korrektur, da ein einzelner falscher Befund die Folgeentscheidung tragen würde.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>Das Holm-Verfahren wird oft als Zauberkasten verwendet. Es ist aber in vier Zeilen nachvollziehbar, und wer es einmal von Hand durchgeht, versteht auch, warum es an einer Stelle abbricht.</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> <span class="fu">length</span>(p_werte)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>sortiert <span class="ot">&lt;-</span> <span class="fu">sort</span>(p_werte)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>schritte <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">rang =</span> <span class="dv">1</span><span class="sc">:</span>m,</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">p =</span> sortiert,</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">divisor =</span> m<span class="sc">:</span><span class="dv">1</span>,</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">schwelle =</span> <span class="fl">0.05</span> <span class="sc">/</span> (m<span class="sc">:</span><span class="dv">1</span>)</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>schritte<span class="sc">$</span>unter_schwelle <span class="ot">&lt;-</span> schritte<span class="sc">$</span>p <span class="sc">&lt;</span> schritte<span class="sc">$</span>schwelle</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(schritte, <span class="dv">5</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   rang      p divisor schwelle unter_schwelle
+1     1 0.0001      12  0.00417              1
+2     2 0.0080      11  0.00455              0
+3     3 0.0190      10  0.00500              0
+4     4 0.0230       9  0.00556              0
+5     5 0.0410       8  0.00625              0
+6     6 0.0480       7  0.00714              0
+7     7 0.1100       6  0.00833              0
+8     8 0.2600       5  0.01000              0
+9     9 0.3400       4  0.01250              0
+10   10 0.5100       3  0.01667              0
+11   11 0.6800       2  0.02500              0
+12   12 0.9200       1  0.05000              0</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Das Verfahren stoppt beim ersten FALSE; alles danach bleibt stehen</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>erster_stopp <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="sc">!</span>schritte<span class="sc">$</span>unter_schwelle)[<span class="dv">1</span>]</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Verworfen werden die Raenge 1 bis"</span>, erster_stopp <span class="sc">-</span> <span class="dv">1</span>, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Verworfen werden die Raenge 1 bis 1 </code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>m <span class="op">=</span> <span class="bu">len</span>(p_werte)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>sortiert <span class="op">=</span> np.sort(p_werte)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>schritte <span class="op">=</span> pd.DataFrame({</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"rang"</span>: np.arange(<span class="dv">1</span>, m <span class="op">+</span> <span class="dv">1</span>),</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"p"</span>: sortiert,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"divisor"</span>: np.arange(m, <span class="dv">0</span>, <span class="op">-</span><span class="dv">1</span>),</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"schwelle"</span>: <span class="fl">0.05</span> <span class="op">/</span> np.arange(m, <span class="dv">0</span>, <span class="op">-</span><span class="dv">1</span>),</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>schritte[<span class="st">"unter_schwelle"</span>] <span class="op">=</span> schritte[<span class="st">"p"</span>] <span class="op">&lt;</span> schritte[<span class="st">"schwelle"</span>]</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(schritte.<span class="bu">round</span>(<span class="dv">5</span>).to_string(index<span class="op">=</span><span class="va">False</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> rang      p  divisor  schwelle  unter_schwelle
+    1 0.0001       12   0.00417            True
+    2 0.0080       11   0.00455           False
+    3 0.0190       10   0.00500           False
+    4 0.0230        9   0.00556           False
+    5 0.0410        8   0.00625           False
+    6 0.0480        7   0.00714           False
+    7 0.1100        6   0.00833           False
+    8 0.2600        5   0.01000           False
+    9 0.3400        4   0.01250           False
+   10 0.5100        3   0.01667           False
+   11 0.6800        2   0.02500           False
+   12 0.9200        1   0.05000           False</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>erster_stopp <span class="op">=</span> <span class="bu">int</span>(np.argmin(schritte[<span class="st">"unter_schwelle"</span>].to_numpy()))</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Verworfen werden die Ränge 1 bis"</span>, erster_stopp)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Verworfen werden die Ränge 1 bis 1</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Rang</th>
+<th>p</th>
+<th>Divisor</th>
+<th>Schwelle</th>
+<th>unter Schwelle?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>0.0001</td>
+<td>12</td>
+<td>0.00417</td>
+<td><strong>ja</strong></td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>0.0080</td>
+<td>11</td>
+<td>0.00455</td>
+<td><strong>nein, STOPP</strong></td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>0.0190</td>
+<td>10</td>
+<td>0.00500</td>
+<td>(wird nicht mehr geprüft)</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>0.0230</td>
+<td>9</td>
+<td>0.00556</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Das Verfahren geht die sortierten <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Werte</span> von unten durch und vergleicht jeden mit einer Schwelle, die von Rang zu Rang <strong>steigt</strong>: erst <span class="math inline">\(\alpha/12\)</span>, dann <span class="math inline">\(\alpha/11\)</span> und so weiter. Beim ersten Wert, der seine Schwelle nicht unterschreitet, hört es auf, und alle folgenden bleiben unverworfen — auch solche, die ihre eigene Schwelle unterschritten hätten.</p>
+<p>Der zweite <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> ist mit 0.0080 knapp über seiner Schwelle von 0.00455. Läge er bei 0.004, wären beide verworfen, und der dritte Rang käme gegen 0.005 an die Reihe.</p>
+<div class="note-box">
+<p><strong>Warum das Abbrechen nötig ist.</strong> Ohne die Stoppregel wäre das Verfahren keine gültige FWER-Kontrolle mehr. Die steigenden Schwellen sind nur deshalb zulässig, weil ein Rang erst geprüft wird, wenn alle kleineren verworfen wurden. Wer die Schwellen einzeln anwendet und die Stoppregel weglässt, hält das Niveau nicht ein.</p>
+</div>
+</section>
+<section id="interpretation-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-1">Interpretation</h4>
+<p>Das Nachvollziehen lohnt sich, weil es zwei verbreitete Missverständnisse ausräumt. Erstens ist Holm <strong>kein</strong> Verfahren, das jeden <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." tabindex="0">p-Wert</span> einzeln umrechnet; die Reihenfolge ist wesentlich. Zweitens erklärt es, warum das Ergebnis eines einzelnen Tests davon abhängt, welche <strong>anderen</strong> Tests mitgerechnet wurden — was zunächst befremdlich wirkt und der Kern der ganzen Sache ist.</p>
+</section>
+</div>
+<div id="tabset-5-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>Korrekturen sind nicht umsonst. Wie viel <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span> geht verloren?</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pwr)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (m <span class="cf">in</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">20</span>)) {</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  alpha <span class="ot">&lt;-</span> <span class="fl">0.05</span> <span class="sc">/</span> m</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">pwr.t.test</span>(<span class="at">n =</span> <span class="dv">64</span>, <span class="at">d =</span> <span class="fl">0.5</span>, <span class="at">sig.level =</span> alpha)<span class="sc">$</span>power</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  n_noetig <span class="ot">&lt;-</span> <span class="fu">pwr.t.test</span>(<span class="at">d =</span> <span class="fl">0.5</span>, <span class="at">power =</span> <span class="fl">0.80</span>, <span class="at">sig.level =</span> alpha)<span class="sc">$</span>n</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"%2d Tests: alpha = %.4f  Power bei n = 64: %.4f  n fuer Power 0.80: %6.2f</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>              m, alpha, p, n_noetig))</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> 1 Tests: alpha = 0.0500  Power bei n = 64: 0.8015  n fuer Power 0.80:  63.77
+ 5 Tests: alpha = 0.0100  Power bei n = 64: 0.5853  n fuer Power 0.80:  95.10
+10 Tests: alpha = 0.0050  Power bei n = 64: 0.4909  n fuer Power 0.80: 108.48
+20 Tests: alpha = 0.0025  Power bei n = 64: 0.4028  n fuer Power 0.80: 121.80</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>analyse <span class="op">=</span> TTestIndPower()</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> m <span class="kw">in</span> (<span class="dv">1</span>, <span class="dv">5</span>, <span class="dv">10</span>, <span class="dv">20</span>):</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    alpha <span class="op">=</span> <span class="fl">0.05</span> <span class="op">/</span> m</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    power <span class="op">=</span> analyse.power(effect_size<span class="op">=</span><span class="fl">0.5</span>, nobs1<span class="op">=</span><span class="dv">64</span>, alpha<span class="op">=</span>alpha)</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>    n_noetig <span class="op">=</span> analyse.solve_power(effect_size<span class="op">=</span><span class="fl">0.5</span>, power<span class="op">=</span><span class="fl">0.80</span>, alpha<span class="op">=</span>alpha,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>                                   ratio<span class="op">=</span><span class="fl">1.0</span>)</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>m<span class="sc">:2d}</span><span class="ss"> Tests: alpha = </span><span class="sc">{</span>alpha<span class="sc">:.4f}</span><span class="ss">  Power bei n = 64: </span><span class="sc">{</span>power<span class="sc">:.4f}</span><span class="ss">"</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"  n für Power 0.80: </span><span class="sc">{</span>n_noetig<span class="sc">:6.2f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> 1 Tests: alpha = 0.0500  Power bei n = 64: 0.8015  n für Power 0.80:  63.77
+ 5 Tests: alpha = 0.0100  Power bei n = 64: 0.5853  n für Power 0.80:  95.10
+10 Tests: alpha = 0.0050  Power bei n = 64: 0.4909  n für Power 0.80: 108.48
+20 Tests: alpha = 0.0025  Power bei n = 64: 0.4028  n für Power 0.80: 121.80</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Anzahl Tests</th>
+<th>Schwelle</th>
+<th>Power bei n = 64 je Gruppe</th>
+<th>nötiges n für Power 0.80</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>0.0500</td>
+<td>0.80</td>
+<td>63.77</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>0.0100</td>
+<td>0.59</td>
+<td>95.10</td>
+</tr>
+<tr class="odd">
+<td>10</td>
+<td>0.0050</td>
+<td>0.49</td>
+<td>108.48</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>0.0025</td>
+<td>0.40</td>
+<td>121.80</td>
+</tr>
+</tbody>
+</table>
+<p>Wer denselben Versuch mit zwanzig statt einem Test auswertet, halbiert die <span class="glossary-term" data-topic="Statistik" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." tabindex="0">Power</span> und bräuchte fast doppelt so viele Fälle, um sie zurückzugewinnen.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<p>Daraus folgt die praktisch wichtigste Konsequenz dieser Seite, und sie ist keine Rechenregel: <strong>Die Zahl der Tests gehört vor der Auswertung festgelegt und klein gehalten.</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Vorgehen</th>
+<th>Wirkung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Eine Hauptfragestellung vorab benennen</td>
+<td>Der Haupttest bleibt unkorrigiert, alles Weitere ist ausdrücklich explorativ</td>
+</tr>
+<tr class="even">
+<td>Zielgrössen zusammenfassen</td>
+<td>Ein Gesamtmass statt fünf Einzelmasse ergibt einen Test statt fünf</td>
+</tr>
+<tr class="odd">
+<td>Gemeinsamen Test statt vieler Einzeltests</td>
+<td><a href="../../statistik/tests/anova.html">Varianzanalyse</a> statt paarweiser Vergleiche, gemeinsamer F-Test statt einzelner t-Tests</td>
+</tr>
+<tr class="even">
+<td>Explorative Funde als solche kennzeichnen</td>
+<td>Sie brauchen dann keine Korrektur, aber auch keine Signifikanzaussage</td>
+</tr>
+</tbody>
+</table>
+<p>Der letzte Punkt ist der ehrlichste Ausweg. Ein exploratives Ergebnis darf berichtet werden, wenn dazugesagt wird, dass es aus einer ungeplanten Suche stammt und in einer neuen Erhebung zu prüfen ist.</p>
+<blockquote class="blockquote">
+<p>Vorab festgelegt war eine Hauptfragestellung; die übrigen elf Vergleiche sind explorativ. Für die Hauptfrage wurde ohne Korrektur auf dem 5-Prozent-Niveau geprüft. Die explorativen Vergleiche sind nach Benjamini-Hochberg korrigiert und als vorläufig gekennzeichnet.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
+</section>
+<section id="verständnisfragen" class="level2">
+<h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Nach einer Varianzanalyse mit fünf Gruppen werden alle Paare verglichen. Wie viele Tests sind das, und wie hoch ist die Fehlerrate ohne Korrektur?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Zehn Tests, rund 40 Prozent
+</div>
+<div class="quiz__erklaerung">
+Richtig. Bei fünf Gruppen gibt es 5·4/2 = 10 Paare. Ohne Korrektur liegt die Wahrscheinlichkeit für mindestens einen falschen Alarm bei 1 - 0.95¹⁰ = 0.40.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Fünf Tests, rund 23 Prozent
+</div>
+<div class="quiz__erklaerung">
+Fünf Gruppen ergeben zehn Paare, nicht fünf.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Zehn Tests, weiterhin 5 Prozent
+</div>
+<div class="quiz__erklaerung">
+Die 5 Prozent gelten je Einzeltest, nicht für die Gruppe von Tests.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum sollte Holm gegenüber Bonferroni bevorzugt werden?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Es hält dasselbe Niveau ein und verwirft nie weniger
+</div>
+<div class="quiz__erklaerung">
+Richtig. Holm ist in jeder Lage mindestens so scharf wie Bonferroni und oft schärfer, bei identischer Kontrolle der familienweisen Fehlerrate. Ein statistischer Grund für Bonferroni existiert nicht.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Es ist weniger streng und findet deshalb mehr
+</div>
+<div class="quiz__erklaerung">
+Weniger streng im Sinne eines schwächeren Versprechens ist es gerade nicht; das Versprechen ist dasselbe.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Es kontrolliert die FDR statt der FWER
+</div>
+<div class="quiz__erklaerung">
+Das ist Benjamini-Hochberg.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Benjamini-Hochberg auf 5 Prozent liefert zwanzig Funde. Was bedeutet das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Im Mittel ist etwa einer davon falsch
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die FDR kontrolliert den erwarteten Anteil falscher Befunde unter den Funden: 5 Prozent von zwanzig ist einer. Das ist ein anderes Versprechen als “mit 95 Prozent Wahrscheinlichkeit ist keiner falsch”.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Mit 95 Prozent Wahrscheinlichkeit ist keiner falsch
+</div>
+<div class="quiz__erklaerung">
+Das wäre eine FWER-Kontrolle, wie sie Bonferroni und Holm leisten.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Alle zwanzig sind mit 95 Prozent Wahrscheinlichkeit richtig
+</div>
+<div class="quiz__erklaerung">
+Die FDR sagt nichts über einzelne Funde.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Eine Auswertung mit zwanzig Tests liefert genau ein knapp signifikantes Ergebnis (p = 0.04). Wie ist das zu bewerten?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Als <span class="glossary-term" data-topic="Statistik" data-def="Mit Wahrscheinlichkeiten gewichtetes Mittel der möglichen Werte einer Zufallsvariablen. Eigenschaft des Modells, nicht der Daten, und selbst kein notwendigerweise möglicher Wert." tabindex="0">Erwartungswert</span>, nicht als Befund
+</div>
+<div class="quiz__erklaerung">
+Richtig. Bei zwanzig Tests unter lauter wahren Nullhypothesen wird im Mittel einer <span class="glossary-term" data-topic="Statistik" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." tabindex="0">signifikant</span>. Ein einzelnes knappes Ergebnis unter vielen Tests ist genau das, was der Zufall liefert.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Als Befund, p liegt unter 0.05
+</div>
+<div class="quiz__erklaerung">
+Die Schwelle 0.05 gilt für einen einzelnen vorab festgelegten Test.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Als Befund, wenn er inhaltlich plausibel ist
+</div>
+<div class="quiz__erklaerung">
+Nachträgliche <span class="glossary-term" data-topic="Statistik" data-def="Kontrolle, ob Werte überhaupt möglich sind, etwa negative Mengen, Datumsangaben in der Zukunft oder gehäufte Rundwerte. Auffälligkeiten verweisen meist auf die Erhebung, nicht auf den Gegenstand." tabindex="0">Plausibilität</span> ist kein Ersatz für eine vorab formulierte Hypothese; sie findet sich fast immer.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://stat.ethz.ch/R-manual/R-devel/library/stats/html/p.adjust.html">R-Dokumentation zu <code>p.adjust</code></a></li>
+<li><a href="https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html">statsmodels: multipletests</a></li>
+<li><a href="../../statistik/inferenz/power-stichprobenumfang.html">Power und Stichprobenumfang</a></li>
+</ul>
 
 
 </section>
@@ -1590,11 +2594,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 18:22</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 18:35</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
