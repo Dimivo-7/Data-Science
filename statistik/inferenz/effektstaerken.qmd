@@ -1,14 +1,525 @@
 ---
 title: "Effektstärken"
-description: "Cohens d, Korrelation als Effektmass und warum sie neben dem p-Wert stehen."
+description: "Cohens d, Hedges g, r und η²: wie gross ist der Unterschied wirklich?"
 categories: ["Effektstärke", "Interpretation", "R", "Python"]
-quelle: ["ESDS"]
+quelle: ["ESDS", "STATDA"]
 seitentyp: konzept
-stand: geruest
-order: 30
+stand: entwurf
+order: 40
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(effectsize)
+
+# Zwei Datensaetze mit derselben Mittelwertdifferenz, aber verschiedener
+# Streuung. Fest eingetragen, damit R und Python dieselben Zahlen sehen.
+eng_a  <- c(12.1, 12.4, 11.9, 12.3, 12.0, 12.6, 11.8, 12.2, 12.5, 11.7, 12.3, 12.0)
+eng_b  <- c(12.6, 12.9, 12.4, 12.8, 12.5, 13.1, 12.3, 12.7, 13.0, 12.2, 12.8, 12.5)
+weit_a <- c(10.5, 13.8, 11.2, 14.1, 12.6, 10.9, 13.4, 11.8, 12.2, 14.5, 10.2, 13.0)
+weit_b <- c(11.0, 14.3, 11.7, 14.6, 13.1, 11.4, 13.9, 12.3, 12.7, 15.0, 10.7, 13.5)
+
+# Cohens d, Hedges g und ein Naeherungsintervall. Beide Sprachen rechnen hier
+# nach derselben Formel, damit die Zahlen vergleichbar sind.
+effekt <- function(a, b) {
+  n1 <- length(a); n2 <- length(b)
+  gepoolt <- sqrt(((n1 - 1) * var(a) + (n2 - 1) * var(b)) / (n1 + n2 - 2))
+  d <- (mean(b) - mean(a)) / gepoolt
+  korrektur <- 1 - 3 / (4 * (n1 + n2) - 9)
+  se <- sqrt((n1 + n2) / (n1 * n2) + d^2 / (2 * (n1 + n2)))
+  round(c(differenz = mean(b) - mean(a), gepoolte_sd = gepoolt,
+          d = d, hedges_g = d * korrektur,
+          unten = d - 1.96 * se, oben = d + 1.96 * se), 4)
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+eng_a = np.array([12.1, 12.4, 11.9, 12.3, 12.0, 12.6, 11.8, 12.2, 12.5, 11.7, 12.3, 12.0])
+eng_b = np.array([12.6, 12.9, 12.4, 12.8, 12.5, 13.1, 12.3, 12.7, 13.0, 12.2, 12.8, 12.5])
+weit_a = np.array([10.5, 13.8, 11.2, 14.1, 12.6, 10.9, 13.4, 11.8, 12.2, 14.5, 10.2, 13.0])
+weit_b = np.array([11.0, 14.3, 11.7, 14.6, 13.1, 11.4, 13.9, 12.3, 12.7, 15.0, 10.7, 13.5])
+
+
+def effekt(a, b):
+    n1, n2 = len(a), len(b)
+    gepoolt = np.sqrt(((n1 - 1) * a.var(ddof=1) + (n2 - 1) * b.var(ddof=1))
+                      / (n1 + n2 - 2))
+    d = (b.mean() - a.mean()) / gepoolt
+    korrektur = 1 - 3 / (4 * (n1 + n2) - 9)
+    se = np.sqrt((n1 + n2) / (n1 * n2) + d ** 2 / (2 * (n1 + n2)))
+    return pd.Series({
+        "differenz": b.mean() - a.mean(),
+        "gepoolte_sd": gepoolt,
+        "d": d,
+        "hedges_g": d * korrektur,
+        "unten": d - 1.96 * se,
+        "oben": d + 1.96 * se,
+    }).round(4)
+```
+
 ## Kernideen
+
+- Eine Effektstärke beantwortet die Frage **wie gross**, ein p-Wert die Frage
+  **vom Zufall unterscheidbar**. Die beiden hängen nur über den
+  Stichprobenumfang zusammen.
+- Cohens $d$ misst die Mittelwertdifferenz in Einheiten der Streuung. Dieselbe
+  Differenz kann je nach Streuung ein winziger oder ein riesiger Effekt sein.
+- Effektstärken sind vom Stichprobenumfang unabhängig. Der p-Wert ist es nicht:
+  Mit wachsendem n wird jeder noch so kleine Effekt signifikant.
+- Eine Effektstärke ohne Konfidenzintervall ist eine Punktschätzung wie jede
+  andere und bei kleinem n sehr unsicher.
+- Die Anhaltspunkte "0.2 klein, 0.5 mittel, 0.8 gross" sind eine Notlösung für
+  Gebiete ohne eigene Erfahrungswerte, keine Naturkonstanten.
 
 ## Erklärung
 
+### Die drei Familien
+
+| Familie | Masse | Wofür | Bereich |
+|---|---|---|---|
+| Differenzmasse | Cohens $d$, Hedges $g$ | Mittelwertunterschiede zwischen Gruppen | unbeschränkt, praktisch -3 bis 3 |
+| Zusammenhangsmasse | $r$, $R^2$, $\eta^2$, Cramérs $V$ | Stärke eines Zusammenhangs | 0 bis 1, $r$ auch negativ |
+| Verhältnismasse | Odds Ratio, Risikoverhältnis | binäre Zielgrössen | 0 bis unendlich, 1 heisst kein Effekt |
+
+Welches passt, ergibt sich aus dem Verfahren:
+
+| Verfahren | Übliches Mass |
+|---|---|
+| [t-Test](../tests/t-test-zwei-stichproben.qmd) | Cohens $d$, bei kleinem n Hedges $g$ |
+| [gepaarter t-Test](../tests/t-test-gepaart.qmd) | $d_z$ auf den Differenzen, siehe dortigen Kasten |
+| [Varianzanalyse](../tests/anova.qmd) | $\eta^2$ oder partielles $\eta^2$ |
+| [Korrelation](../grundlagen/korrelation.qmd) | $r$ ist bereits eine Effektstärke |
+| [Regression](../regression/multiple-lineare-regression.qmd) | $R^2$, und der Koeffizient in seiner Einheit |
+| [Chi-Quadrat](../tests/chi-quadrat-tests.qmd) | Cramérs $V$ |
+| [logistische Regression](../regression/logistische-regression.qmd) | Odds Ratio |
+| [Rangtests](../tests/nichtparametrische-tests.qmd) | rangbiseriale Korrelation, CLES |
+
+### Cohens d und seine Geschwister
+
+$$d = \frac{\bar{x}_2 - \bar{x}_1}{s_{\text{gepoolt}}}, \qquad
+s_{\text{gepoolt}} = \sqrt{\frac{(n_1-1)s_1^2 + (n_2-1)s_2^2}{n_1+n_2-2}}$$
+
+Der Zähler ist die Effektgrösse in der Einheit der Messung, der Nenner macht sie
+einheitenlos. Genau dadurch wird $d$ zwischen Studien vergleichbar und verliert
+zugleich den Bezug zur Sache: 0.5 sagt nichts darüber, ob es um Millimeter oder
+Monate geht.
+
+**Hedges $g$** korrigiert eine Verzerrung, die $d$ bei kleinen Stichproben nach
+oben treibt. Der Korrekturfaktor beträgt $1 - \frac{3}{4(n_1+n_2)-9}$, bei
+insgesamt 24 Fällen also rund 0.965. Ab etwa 50 Fällen ist der Unterschied
+belanglos; darunter gehört $g$ berichtet.
+
+### Die Anhaltspunkte und ihre Grenzen
+
+| $d$ | Bezeichnung | Überlappung der Verteilungen | Anteil von B über dem Median von A |
+|---|---|---|---|
+| 0.2 | klein | 92 % | 58 % |
+| 0.5 | mittel | 80 % | 69 % |
+| 0.8 | gross | 69 % | 79 % |
+| 1.2 | sehr gross | 55 % | 88 % |
+
+Diese Bezeichnungen stammen aus einem Vorschlag für die Sozialwissenschaften und
+wurden dort ausdrücklich als Notlösung eingeführt. In einem Fachgebiet mit
+eigenen Erfahrungswerten ist der Vergleich mit früheren Studien die bessere
+Einordnung. In der Fertigung kann $d = 0.2$ teuer sein, in der Psychologie ist
+$d = 0.8$ ungewöhnlich gross.
+
+### Umrechnung
+
+Die Masse lassen sich ineinander überführen, was beim Vergleich von Studien mit
+verschiedenen Verfahren hilft:
+
+| Von | Nach | Formel | Beispiel $d = 0.5$ |
+|---|---|---|---|
+| $d$ | $r$ | $r = d/\sqrt{d^2+4}$ | 0.243 |
+| $r$ | $d$ | $d = 2r/\sqrt{1-r^2}$ | |
+| $d$ | CLES | $\Phi(d/\sqrt{2})$ | 0.638 |
+| $\eta^2$ | $f$ | $f = \sqrt{\eta^2/(1-\eta^2)}$ | |
+
+::: {.note-box}
+**Die Common Language Effect Size ist die verständlichste Übersetzung.** Sie
+beantwortet die Frage: Wie wahrscheinlich ist es, dass ein zufällig gewählter
+Fall aus Gruppe B über einem zufällig gewählten aus Gruppe A liegt? Bei
+$d = 0.5$ sind das 64 Prozent, bei $d = 0$ genau 50 Prozent.
+
+Diese Zahl braucht keine Statistikkenntnisse und macht sofort deutlich, wie
+bescheiden ein "mittlerer" Effekt ist: In gut einem Drittel der Vergleiche
+gewinnt die andere Gruppe.
+:::
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Dieselbe Differenz, zwei Effektstärken
+
+#### Frage und Datenlage
+
+Zwei Vergleiche, beide mit einer Mittelwertdifferenz von genau 0.50 Einheiten.
+Im ersten streuen die Werte eng, im zweiten weit. Die Frage lautet: Ist das
+derselbe Effekt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-eff-r
+#| fig-cap: "Beispiel 1: dieselbe Differenz vor unterschiedlichem Hintergrund."
+#| fig-height: 3.2
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+boxplot(list(A = eng_a, B = eng_b), main = "enge Streuung",
+        ylab = "Messwert", ylim = c(10, 15.2))
+boxplot(list(A = weit_a, B = weit_b), main = "weite Streuung",
+        ylab = "Messwert", ylim = c(10, 15.2))
+par(mfrow = c(1, 1))
+
+effekt(eng_a, eng_b)
+effekt(weit_a, weit_b)
+
+t.test(eng_b, eng_a, var.equal = TRUE)$p.value
+t.test(weit_b, weit_a, var.equal = TRUE)$p.value
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-eff-py
+#| fig-cap: "Beispiel 1: dieselbe Darstellung in Python."
+#| fig-height: 3.2
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+for achse, paar, titel in zip(achsen, [(eng_a, eng_b), (weit_a, weit_b)],
+                              ["enge Streuung", "weite Streuung"]):
+    achse.boxplot(list(paar))
+    achse.set_xticks([1, 2], ["A", "B"])
+    achse.set_ylim(10, 15.2)
+    achse.set_ylabel("Messwert")
+    achse.set_title(titel)
+plt.tight_layout()
+plt.show()
+
+print(pd.DataFrame({"eng": effekt(eng_a, eng_b),
+                    "weit": effekt(weit_a, weit_b)}))
+print("p eng: ", round(stats.ttest_ind(eng_b, eng_a).pvalue, 6))
+print("p weit:", round(stats.ttest_ind(weit_b, weit_a).pvalue, 6))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kennzahl | enge Streuung | weite Streuung | Wie das zu lesen ist |
+|---|---|---|---|
+| Mittelwertdifferenz | 0.500 | 0.500 | **Identisch.** In der Einheit der Messung ist der Unterschied derselbe. |
+| gepoolte Standardabweichung | 0.281 | 1.451 | Der Unterschied steckt hier: gut fünfmal so gross. |
+| Cohens $d$ | **1.778** | **0.345** | Ein Faktor von fünf, allein aus der Streuung. Links ein sehr grosser, rechts ein kleiner Effekt. |
+| Hedges $g$ | 1.717 | 0.333 | Um 3.5 Prozent kleiner, weil bei 24 Fällen die Korrektur greift. |
+| Näherungsintervall für $d$ | 0.83 bis 2.72 | -0.46 bis 1.15 | Beide Intervalle sind breit; bei 12 Fällen je Gruppe ist die Effektstärke schlecht bestimmt. |
+| p-Wert | 0.00025 | 0.408 | Derselbe Unterschied, einmal hochsignifikant, einmal weit von jeder Schwelle entfernt. |
+
+#### Interpretation
+
+Die Boxplots machen sichtbar, was die Zahlen sagen: Links liegen die beiden
+Gruppen fast getrennt nebeneinander, rechts überlappen sie fast vollständig.
+
+Daraus folgt, wozu die Standardisierung dient und wo ihre Grenze liegt. Sie
+macht Effekte über Messgrössen hinweg vergleichbar, indem sie die Differenz an
+der natürlichen Schwankung misst. Zugleich geht die Einheit verloren: $d = 1.78$
+sagt nicht, dass der Unterschied praktisch zählt.
+
+**Deshalb gehören immer beide Zahlen in den Bericht**: die Differenz in ihrer
+Einheit für die Sache, die Effektstärke für den Vergleich mit anderen Studien.
+
+### Beispiel 2: Derselbe Effekt, verschiedene Stichprobenumfänge
+
+#### Frage und Datenlage
+
+Der Effekt ist festgehalten bei $d = 0.5$. Verändert wird nur der
+Stichprobenumfang. Die Frage lautet: Was macht das mit dem p-Wert, und was mit
+der Effektstärke?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-eff-rechnung-r
+d <- 0.5
+tabelle <- data.frame(n_je_gruppe = c(10, 20, 50, 100, 400))
+tabelle$t <- d * sqrt(tabelle$n_je_gruppe / 2)
+tabelle$p <- 2 * (1 - pt(abs(tabelle$t), 2 * tabelle$n_je_gruppe - 2))
+tabelle$d <- d
+round(tabelle, 5)
+```
+
+##### Python
+
+```{python}
+#| label: b2-eff-rechnung-py
+d = 0.5
+n_je = np.array([10, 20, 50, 100, 400])
+t = d * np.sqrt(n_je / 2)
+p = 2 * (1 - stats.t.cdf(np.abs(t), 2 * n_je - 2))
+print(pd.DataFrame({"n_je_gruppe": n_je, "t": t.round(3),
+                    "p": p.round(5), "d": d}))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| n je Gruppe | t | p | d |
+|---|---|---|---|
+| 10 | 1.118 | 0.278 | 0.5 |
+| 20 | 1.581 | 0.122 | 0.5 |
+| 50 | 2.500 | **0.014** | 0.5 |
+| 100 | 3.536 | **0.0005** | 0.5 |
+| 400 | 7.071 | **< 0.00001** | 0.5 |
+
+Derselbe Effekt wandert von "nicht nachweisbar" zu "hochsignifikant", ohne dass
+sich an der Sache etwas ändert. Die Effektstärke bleibt konstant, weil sie den
+Stichprobenumfang gar nicht enthält.
+
+::: {.note-box}
+Daraus folgen zwei praktische Regeln.
+
+**Ein nicht signifikantes Ergebnis bei kleinem n sagt wenig.** Bei zehn Fällen
+je Gruppe bleibt ein mittlerer Effekt in vier von fünf Fällen unentdeckt, siehe
+[Power](power-stichprobenumfang.qmd).
+
+**Ein signifikantes Ergebnis bei sehr grossem n sagt ebenfalls wenig**, jedenfalls
+nicht über die Grösse. Bei 400 Fällen je Gruppe genügt $d = 0.14$ für p < 0.05.
+:::
+
+#### Interpretation
+
+Diese Tabelle ist der Grund, warum ein p-Wert allein keine Aussage über die
+Sache trägt. Er vermischt zwei Dinge: wie gross der Effekt ist und wie viele
+Daten vorliegen. Die Effektstärke trennt das erste heraus.
+
+### Beispiel 3: Effektstärke mit Konfidenzintervall
+
+#### Frage und Datenlage
+
+Effektstärken werden meist als blosse Zahl berichtet. Sie sind aber Schätzungen
+wie jede andere und haben eine Unsicherheit. Wie gross ist sie?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-eff-rechnung-r
+effekt(eng_a, eng_b)
+
+# Zum Vergleich das Paket, das die genauere Methode ueber die
+# nichtzentrale t-Verteilung verwendet
+effectsize::cohens_d(eng_b, eng_a)
+effectsize::hedges_g(eng_b, eng_a)
+```
+
+##### Python
+
+```{python}
+#| label: b3-eff-rechnung-py
+print(effekt(eng_a, eng_b))
+
+# Wie breit waere das Intervall bei mehr Daten? Dieselbe Effektstaerke,
+# verschiedene Umfaenge.
+d_fest = 1.7779
+for n in (12, 30, 100, 300):
+    se = np.sqrt(2 * n / (n * n) + d_fest ** 2 / (4 * n))
+    print(f"n je Gruppe = {n:3d}: {d_fest - 1.96*se:.3f} bis {d_fest + 1.96*se:.3f}"
+          f"  (Breite {2*1.96*se:.3f})")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| $d$ | 1.778 | Ein sehr grosser Effekt. |
+| Hedges $g$ | 1.717 | Die Korrektur um Faktor 0.965 bei 24 Fällen. Der Unterschied ist hier klein, bei sechs Fällen je Gruppe wären es rund 8 Prozent. |
+| Näherungsintervall | 0.83 bis 2.72 | **Fast zwei Einheiten breit.** Mit denselben Daten ist alles zwischen "gross" und "extrem gross" vereinbar. |
+| Intervall bei n = 30 | siehe Ausgabe | Es schrumpft mit wachsendem n, aber langsam: Für eine Halbierung der Breite braucht es viermal so viele Fälle. |
+
+::: {.note-box}
+**Warum die Intervalle zwischen den Verfahren abweichen.** Die Hilfsfunktion auf
+dieser Seite verwendet eine Normalapproximation, damit R und Python dieselbe
+Zahl liefern und die Rechnung nachvollziehbar bleibt. Das Paket `effectsize`
+rechnet über die nichtzentrale t-Verteilung und ist damit genauer, besonders bei
+kleinem n und grossem $d$. Die Grössenordnung ist dieselbe, die Grenzen
+unterscheiden sich.
+
+Für einen Bericht ist die Paketvariante die richtige Wahl. Für das Verständnis
+ist die Formel nützlich: Der Standardfehler von $d$ hängt fast nur an n, und
+deshalb sind Effektstärken aus kleinen Studien grundsätzlich unzuverlässig.
+:::
+
+#### Interpretation
+
+Die verbreitete Praxis, eine Effektstärke als blosse Zahl zu berichten, verdeckt
+diese Unsicherheit. Bei zwölf Fällen je Gruppe ist die Angabe "$d = 1.78$"
+technisch richtig und praktisch wenig wert; "$d = 1.78$, Intervall 0.83 bis
+2.72" ist ehrlich.
+
+Das erklärt auch, warum Effektstärken aus kleinen Studien in Metaanalysen
+regelmässig nach unten korrigiert werden: Kleine Studien, die es überhaupt in
+eine Veröffentlichung schaffen, haben meist überschätzte Effekte, weil nur die
+zufällig grossen signifikant wurden.
+
+### Beispiel 4: Eine Effektstärke verständlich machen
+
+#### Frage und Datenlage
+
+"$d = 0.5$" sagt Fachleuten etwas und sonst niemandem. Welche Übersetzungen gibt
+es, und was sagen sie?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-eff-rechnung-r
+uebersetzung <- function(d) {
+  round(c(d = d,
+          r = d / sqrt(d^2 + 4),
+          CLES = pnorm(d / sqrt(2)),
+          ueberlappung = 2 * pnorm(-abs(d) / 2),
+          ueber_median_A = pnorm(d)), 4)
+}
+
+t(sapply(c(0.2, 0.5, 0.8, 1.2, 1.78), uebersetzung))
+```
+
+##### Python
+
+```{python}
+#| label: b4-eff-rechnung-py
+def uebersetzung(d):
+    return {
+        "d": d,
+        "r": d / np.sqrt(d ** 2 + 4),
+        "CLES": stats.norm.cdf(d / np.sqrt(2)),
+        "ueberlappung": 2 * stats.norm.cdf(-abs(d) / 2),
+        "ueber_median_A": stats.norm.cdf(d),
+    }
+
+
+print(pd.DataFrame([uebersetzung(d) for d in (0.2, 0.5, 0.8, 1.2, 1.78)]).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| $d$ | $r$ | CLES | Überlappung | Anteil über dem Median von A |
+|---|---|---|---|---|
+| 0.2 | 0.100 | 0.556 | 0.920 | 0.579 |
+| 0.5 | 0.243 | 0.638 | 0.803 | 0.691 |
+| 0.8 | 0.371 | 0.714 | 0.689 | 0.788 |
+| 1.2 | 0.514 | 0.802 | 0.549 | 0.885 |
+| 1.78 | 0.665 | 0.896 | 0.374 | 0.962 |
+
+| Übersetzung | Wie sie sich liest |
+|---|---|
+| $r$ | Für den Vergleich mit Korrelationsstudien. Bemerkenswert: Ein "grosses" $d$ von 0.8 entspricht einem $r$ von 0.37, das für sich genommen als mittel gilt. Die Anhaltspunkte der beiden Masse passen nicht zueinander. |
+| CLES | "Greift man je einen Fall aus beiden Gruppen heraus, liegt der aus B in X Prozent der Fälle höher." Die beste Zahl für Nichtfachleute. |
+| Überlappung | "So viel Prozent der beiden Verteilungen liegen übereinander." Macht deutlich, wie viel Gemeinsamkeit auch bei grossen Effekten bleibt. |
+| Anteil über dem Median von A | "So viele aus B liegen über der Hälfte von A." Nützlich, wenn eine Schwelle inhaltlich bedeutsam ist. |
+
+#### Interpretation
+
+Die Zeile für $d = 0.5$ ist die lehrreichste. Ein "mittlerer" Effekt bedeutet:
+Die beiden Verteilungen überlappen zu 80 Prozent, und in gut einem Drittel aller
+Paarvergleiche liegt die Kontrollgruppe höher. Wer das ausspricht, erzeugt ein
+sehr viel realistischeres Bild als "mittlerer Effekt, p < 0.05".
+
+Umgekehrt zeigt die letzte Zeile, wie ungewöhnlich der Effekt aus Beispiel 1
+ist: Bei $d = 1.78$ überlappen die Verteilungen nur noch zu 37 Prozent. Solche
+Werte kommen in erhobenen Daten selten vor und sind ein Anlass zu prüfen, ob die
+beiden Gruppen sich nicht in etwas anderem unterscheiden als gedacht.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Zwei Studien finden dieselbe Mittelwertdifferenz von 0.5 Einheiten. Studie A
+berichtet $d = 1.78$, Studie B $d = 0.35$. Wie ist das möglich?
+
+- [x] Die Streuung in den Gruppen ist verschieden ~ Richtig. Cohens $d$ misst
+      die Differenz in Einheiten der gepoolten Standardabweichung. Bei enger
+      Streuung ist dieselbe Differenz ein grosser Effekt, bei weiter ein
+      kleiner.
+- [ ] Eine der beiden hat sich verrechnet ~ Beide können korrekt gerechnet
+      haben; $d$ hängt eben nicht nur an der Differenz.
+- [ ] Die Stichprobenumfänge sind verschieden ~ Der Umfang beeinflusst $d$
+      nicht, sondern nur seine Unsicherheit und den p-Wert.
+:::
+
+::: {.quiz}
+Ein Versuch mit n = 400 je Gruppe liefert p < 0.001 bei $d = 0.14$. Wie ist das
+zu berichten?
+
+- [x] Als nachweisbarer, aber sehr kleiner Effekt, mit der Differenz in ihrer
+      Einheit ~ Richtig. Der p-Wert sagt nur, dass der Effekt bei diesem Umfang
+      vom Zufall unterscheidbar ist. Ob er zählt, entscheidet die
+      Effektstärke und die Sache.
+- [ ] Als starker Nachweis eines Effekts ~ Stark ist der Nachweis, nicht der
+      Effekt. Die beiden Wörter meinen Verschiedenes.
+- [ ] Gar nicht, $d = 0.14$ liegt unter der Schwelle für "klein" ~ Berichtet
+      wird, was gefunden wurde; die Einordnung gehört dazu, das Verschweigen
+      nicht.
+:::
+
+::: {.quiz}
+Warum sollte bei zwölf Fällen je Gruppe Hedges $g$ statt Cohens $d$ berichtet
+werden?
+
+- [x] Weil $d$ bei kleinen Stichproben systematisch zu gross ausfällt ~ Richtig.
+      Der Korrekturfaktor beträgt hier rund 0.965 und wird mit sinkendem n
+      grösser. Ab etwa 50 Fällen insgesamt ist der Unterschied belanglos.
+- [ ] Weil $g$ ein Konfidenzintervall hat und $d$ nicht ~ Beide haben eines.
+- [ ] Weil $d$ eine Normalverteilung voraussetzt und $g$ nicht ~ Die
+      Voraussetzungen sind dieselben.
+:::
+
+::: {.quiz}
+Ein Effekt von $d = 0.5$ gilt als mittel. Was bedeutet das anschaulich?
+
+- [x] Die Verteilungen überlappen zu 80 Prozent; in gut einem Drittel der
+      Paarvergleiche liegt die Kontrollgruppe höher ~ Richtig. Die Common
+      Language Effect Size beträgt 0.638, also gewinnt die Vergleichsgruppe in
+      36 Prozent der Vergleiche. "Mittel" klingt deutlicher, als es ist.
+- [ ] Die Hälfte der Fälle verbessert sich ~ Effektstärken beschreiben
+      Verteilungen, nicht Anteile von Personen mit einer Veränderung.
+- [ ] Der Unterschied beträgt 50 Prozent ~ $d$ ist kein Prozentwert, sondern ein
+      Vielfaches der Standardabweichung.
+:::
+
 ## Verlinkte Ressourcen
+
+- [effectsize: Übersicht der Masse](https://easystats.github.io/effectsize/)
+- [Power und Stichprobenumfang](power-stichprobenumfang.qmd)
+- [t-Test für zwei Stichproben](../tests/t-test-zwei-stichproben.qmd)
