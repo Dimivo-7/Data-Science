@@ -1084,4 +1084,7 @@ Diese Regeln gelten weiter und werden hier nur benannt, nicht wiederholt:
       Theorieabschnitte und `## Beispiele`, `###` Beispiel-Reiter, `####`
       Abschnitte im Beispiel, `#####` R und Python
 - [ ] Action-Log nach dem Push gelesen, Build grün
+- [ ] Nach dem Build die Ausgaben aus `_freeze/` gegen den Fliesstext
+      geprüft (`python zeige-ausgaben.py`): Testbezeichnungen, p-Werte,
+      Warnungen und Konfidenzniveaus stehen so da, wie sie ausgegeben werden
 - [ ] Bei rotem Build: Eintrag in `build-fehler.md`, bevor neu gepusht wird

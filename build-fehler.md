@@ -37,6 +37,44 @@ Die Kurzfassung dessen, was die Einträge unten gelehrt haben:
 
 ## Einträge
 
+### 2026-09-10 — Verhalten von R vorhergesagt statt nachgesehen
+
+**Symptom:** Kein Build-Fehler. Die Seite zu den nichtparametrischen Tests ging
+grün durch, und fünf Zahlen im Fliesstext stimmten trotzdem nicht mit der
+gerenderten Ausgabe überein.
+
+| behauptet | tatsächlich ausgegeben |
+|---|---|
+| `Wilcoxon rank sum test with continuity correction` | `Wilcoxon rank sum exact test` |
+| p = 0.00014 | p = 0.00005774 |
+| Warnung `cannot compute exact p-value with ties` | keine Warnung |
+| gepaart: R 0.0042, Python 0.0020 | beide 0.001953 |
+| `95 percent confidence interval` | `97.7 percent confidence interval` |
+
+**Ursache:** Die Werte stammten aus einer Nachbildung von R in Python plus einer
+Annahme darüber, wann R auf die Normalapproximation ausweicht. Die Annahme war
+falsch, und zwar in beide Richtungen: In einem Fall rechnete R exakt, wo ich
+eine Näherung erwartet hatte, im anderen stimmten beide Sprachen überein, wo ich
+eine Abweichung beschrieben hatte. Das Konfidenzniveau von 97.7 Prozent
+schliesslich ist eine Eigenschaft exakter Verfahren auf diskreten Daten, an die
+ich nicht gedacht hatte.
+
+**Regel:** Zahlen, die eine **Bibliothek** ausgibt, werden nicht vorhergesagt,
+sondern abgelesen. Für R heisst das: Nach dem ersten grünen Build die Ausgaben
+aus `_freeze/` holen und den Text dagegen prüfen, bevor die Seite als fertig
+gilt. Dafür liegt `zeige-ausgaben.py` im Repo:
+
+```bash
+python zeige-ausgaben.py _freeze/statistik/tests/<seite>/execute-results/html.json
+```
+
+Statistische Kennzahlen, die sich aus den Daten ergeben (Mittelwerte, t, F,
+Konfidenzintervalle), lassen sich weiterhin vorab in Python nachrechnen. Was
+sich **nicht** vorab bestimmen lässt, ist die Wahl des Verfahrens durch das
+Paket, die Beschriftung der Ausgabe und alles, was von Voreinstellungen abhängt.
+
+---
+
 ### 2026-09-10 — Glossar-Tooltip in der Reiterbeschriftung
 
 **Symptom:** Kein Build-Fehler. Im Reiter "Beispiel 1: Unabhängigkeit, und wo

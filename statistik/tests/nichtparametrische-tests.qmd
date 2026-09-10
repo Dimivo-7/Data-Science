@@ -30,7 +30,7 @@ plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
 Alle Beispiele rechnen mit fest eingetragenen Zahlen, damit R und Python
 dieselben Daten sehen und jeder Wert im Text nachprüfbar ist. Wo sich die
 Ausgaben trotzdem unterscheiden, liegt es an der Behandlung von Bindungen; das
-wird bei Beispiel 2 ausführlich erklärt.
+wird bei Beispiel 1 ausführlich erklärt.
 
 ## Kurzsteckbrief
 
@@ -140,8 +140,10 @@ R, `wilcox.test()` und `kruskal.test()`:
 | `Kruskal-Wallis chi-squared` | Teststatistik | folgt näherungsweise einer Chi-Quadrat-Verteilung |
 | `df` | Freiheitsgrade bei Kruskal-Wallis | Anzahl Gruppen minus eins |
 | `p-value` | Wahrscheinlichkeit einer mindestens so ungleichen Rangverteilung | keine Aussage über die Grösse des Unterschieds |
-| Warnung `cannot compute exact p-value with ties` | Bindungen vorhanden | R weicht auf die Normalapproximation aus, siehe Beispiel 2 |
-| Warnung `with zeroes` | Differenzen von genau null | diese Paare werden entfernt, das wirksame n sinkt |
+| `exact test` im Titel | R hat die Verteilung abgezählt | die genaueste Variante; sie ist nur bei kleinen Stichproben möglich |
+| `test with continuity correction` im Titel | R hat genähert | tritt bei grossen Stichproben auf und wenn Bindungen die Abzählung verhindern |
+| Warnung `cannot compute exact p-value with ties` | Bindungen verhindern die Abzählung | R weicht dann auf die Normalapproximation aus und sagt es |
+| Warnung `with zeroes` | Differenzen von genau null | diese Paare werden entfernt, das wirksame n sinkt, siehe Beispiel 2 |
 | `conf.int = TRUE` | geschätzte Verschiebung mit Intervall | die einzige Grössenangabe, die das Verfahren liefert, siehe Beispiel 4 |
 
 Python, `pingouin`:
@@ -285,7 +287,9 @@ sie sind gegeneinander verschoben. Das ist der Fall, in dem die Deutung als
 Medianvergleich zulässig ist.
 
 Bindungen gibt es reichlich: Bei 29 Personen und sieben möglichen Werten kommt
-jede Note mehrfach vor. Darauf reagieren die Programme, wie Beispiel 2 zeigt.
+jede Note mehrfach vor. Genau daran entscheidet sich, ob ein Programm die exakte
+Verteilung abzählt oder näherungsweise rechnet, und die beiden Sprachen
+entscheiden das verschieden.
 
 #### Rechnung
 
@@ -312,12 +316,28 @@ print(pg.mwu(variante_a, variante_b).round(4).T)
 
 | Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
 |---|---|---|---|
-| Testname | `Wilcoxon rank sum test with continuity correction` | Mann-Whitney-U für zwei unabhängige Gruppen | R nennt das Verfahren nach Wilcoxon, gemeint ist derselbe Test wie Mann-Whitneys U. |
-| `W` bzw. `U_val` | 190.5 | Anzahl der gewonnenen Paarvergleiche | Von 14 mal 15 = 210 Vergleichen gewinnt A 190.5, wobei Gleichstände halb zählen. Bei Gleichheit der Varianten läge der Wert bei 105. |
-| `p-value` | 0.00014 | Wahrscheinlichkeit einer mindestens so ungleichen Rangverteilung bei gleichen Varianten | Deutlich unter 0.05. |
-| Warnung | `cannot compute exact p-value with ties` | Bindungen vorhanden | Erwartbar bei einer Skala mit sieben Stufen; R rechnet mit der Normalapproximation weiter. |
+| Testname | `Wilcoxon rank sum exact test` | Mann-Whitney-U für zwei unabhängige Gruppen | R nennt das Verfahren nach Wilcoxon, gemeint ist derselbe Test wie Mann-Whitneys U. `exact` heisst, dass R die Verteilung der Teststatistik abgezählt und nicht genähert hat. |
+| `W` bzw. `U_val` | 190.5 | Anzahl der gewonnenen Paarvergleiche | Von 14 mal 15 = 210 Vergleichen gewinnt A 190.5, wobei Gleichstände halb zählen. Bei Gleichheit der Varianten läge der Wert bei 105. Die halbe Zahl zeigt an, dass es Gleichstände gibt. |
+| `p-value` in R | 0.00005774 | Wahrscheinlichkeit einer mindestens so ungleichen Rangverteilung bei gleichen Varianten | Deutlich unter 0.05. |
+| `p_val` in Python | 0.000142 | dasselbe, anders gerechnet | Rund zweieinhalbmal so gross wie in R, siehe den Kasten unten. An der Entscheidung ändert es nichts. |
 | `RBC` (nur Python) | 0.814 | rangbiseriale Korrelation | Sie ergibt sich direkt aus U: 190.5 von 210 Vergleichen gewonnen entspricht 0.814 auf einer Skala von -1 bis 1. |
 | `CLES` (nur Python) | 0.907 | Common Language Effect Size | Die anschaulichste Zahl der ganzen Ausgabe: Greift man zufällig je eine Person aus beiden Gruppen heraus, bewertet die aus Gruppe A in rund 91 Prozent der Fälle besser. |
+
+::: {.note-box}
+**Warum R und Python hier verschiedene p-Werte zeigen.** Beide rechnen richtig,
+sie wählen nur ein anderes Verfahren für dieselbe Frage.
+
+R zählt die exakte Verteilung der Teststatistik ab und kommt auf 0.00005774.
+scipy und pingouin schalten bei Bindungen auf die Normalapproximation um und
+kommen auf 0.000142. Der Unterschied ist ein Faktor von rund 2.5 und trotzdem
+belanglos, weil beide Werte weit unter jeder Schwelle liegen.
+
+Bei einem Ergebnis nahe 0.05 wäre er das nicht. Deshalb gehört ins Protokoll,
+mit welchem Programm und welcher Einstellung gerechnet wurde. Wer beide
+Sprachen verwendet und abweichende p-Werte sieht, prüft bei Rangtests zuerst,
+ob Bindungen vorliegen: Die halbe Stelle in W = 190.5 ist bereits der Hinweis
+darauf.
+:::
 
 #### Interpretation und Ergebnissatz
 
@@ -379,27 +399,28 @@ print(pg.wilcoxon(nachher, vorher).round(4).T)
 |---|---|---|---|
 | Differenzen | zehnmal negativ, zweimal null | Veränderung je Person | Keine einzige Person hat sich verschlechtert. Das ist der ganze Befund; der Test quantifiziert nur noch, wie unwahrscheinlich das bei Wirkungslosigkeit wäre. |
 | `V` bzw. `W_val` | 0 | Rangsumme der **positiven** Differenzen | Null, weil es keine positiven Differenzen gibt. Der kleinstmögliche Wert. |
-| `p-value` in R | 0.0042 | | Normalapproximation mit Stetigkeitskorrektur. |
-| `p_val` in Python | 0.0020 | | Exakte Verteilung. |
-| Warnungen in R | `cannot compute exact p-value with ties`, `with zeroes` | Bindungen und Nulldifferenzen | Beide treffen hier zu: Die Differenz -2 kommt siebenmal vor, und zwei Personen zeigen keine Veränderung. |
+| `p-value` | 0.001953 in R, 0.002 in Python | | Hier stimmen beide Sprachen überein, anders als in Beispiel 1. |
+| Nulldifferenzen | zwei | Personen ohne Veränderung | Sie werden aus der Rechnung entfernt. Das wirksame n sinkt von 12 auf 10, und beide Programme rechnen dann auf derselben Grundlage. |
 | `RBC` (nur Python) | -1.0 | rangbiseriale Korrelation | Der Extremwert. Alle von null verschiedenen Differenzen zeigen in dieselbe Richtung. |
+| `CLES` (nur Python) | 0.156 | Common Language Effect Size | Ein zufällig gewählter Nachher-Wert ist nur in 16 Prozent der Vergleiche höher als ein zufällig gewählter Vorher-Wert. |
 
 ::: {.note-box}
-**Warum die p-Werte auseinandergehen.** Der exakte Test zählt alle möglichen
-Vorzeichenverteilungen ab. Diese Abzählung setzt voraus, dass es keine
-Bindungen und keine Nulldifferenzen gibt, denn beide sind bei stetigen Daten
-unmöglich. Hier gibt es beides.
+**Nulldifferenzen verschwinden aus der Rechnung.** Beide Personen ohne
+Veränderung werden vor dem Test entfernt, weil ihre Differenz kein Vorzeichen
+hat. Das wirksame n sinkt damit von 12 auf 10.
 
-R erkennt das, warnt und weicht auf die Normalapproximation aus: p = 0.0042.
-scipy und pingouin rechnen die exakte Verteilung trotzdem, nachdem sie die
-beiden Nulldifferenzen entfernt haben: p = 0.0020.
+Das ist mehr als eine Formalie. Die Aussage "hat sich nicht verändert" ist ein
+Befund, und der Test verwertet ihn nicht. Bei zwei von zwölf Fällen ist das
+verkraftbar; wären es sechs, wäre der Vorzeichen-Rangtest das falsche
+Verfahren. Dann gehört die Richtung der Veränderung als kategoriale Grösse
+ausgewertet, etwa mit einem Vorzeichentest oder über die Häufigkeiten
+"besser, gleich, schlechter".
 
-Keines von beiden ist falsch, aber sie beantworten die Frage unterschiedlich
-genau. **Praktisch heisst das:** Wer Ergebnisse zwischen den Sprachen
-vergleicht, prüft bei Rangtests zuerst auf Bindungen. Und wer berichtet,
-schreibt dazu, welches Verfahren gerechnet wurde. An der Entscheidung ändert
-sich hier nichts, beide liegen deutlich unter 0.05; bei einem Ergebnis nahe der
-Schwelle könnte der Unterschied den Ausschlag geben.
+Anders als in Beispiel 1 stimmen R und Python hier überein: Beide rechnen nach
+dem Entfernen der Nullen mit der exakten Verteilung. Ob das gelingt, hängt an
+den Daten und nicht an der Sprache, und deshalb lohnt der Blick auf die
+Testbezeichnung in der R-Ausgabe. Steht dort `exact test`, wurde abgezählt;
+steht dort `test with continuity correction`, wurde genähert.
 :::
 
 #### Interpretation und Ergebnissatz
@@ -473,7 +494,7 @@ print(schulung.groupby("variante")["bewertung"].median())
 | `df` | 2 | Freiheitsgrade | Anzahl Gruppen minus eins. |
 | `p-value` | 0.000085 | | Irgendwo unterscheiden sich die Varianten. |
 | Mediane | 6.0 / 8.0 / 6.0 | Lagemass je Gruppe | Hier deutet sich bereits an, wo der Unterschied sitzt: B liegt höher, A und C liegen gleich. |
-| Paarweise p-Werte (nur R) | siehe Ausgabe | Post-hoc nach Holm | Erst diese Zeilen beantworten, welche Varianten sich unterscheiden. |
+| Paarweise p-Werte (nur R) | B gegen A 0.00022, C gegen B 0.00019, C gegen A 0.76 | Post-hoc nach Holm | Erst diese Zeilen beantworten die eigentliche Frage: B unterscheidet sich von beiden anderen, A und C nicht voneinander. |
 
 Der Aufbau ist derselbe wie bei der [Varianzanalyse](anova.qmd): Der Gesamttest
 sagt nur, dass es irgendwo einen Unterschied gibt. Ohne Post-hoc-Vergleiche
@@ -538,9 +559,22 @@ print("CLES =", round(float(ergebnis["CLES"].iloc[0]), 4))
 | Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
 |---|---|---|---|
 | `difference in location` | 2.0 | geschätzte Verschiebung zwischen den Verteilungen | Der Hodges-Lehmann-Schätzer, also der Median aller 210 paarweisen Differenzen. Nicht die Differenz der Mediane, auch wenn beide hier zufällig übereinstimmen. |
-| `95 percent confidence interval` | 1 bis 3 | Intervall für diese Verschiebung | Die Verschiebung liegt plausibel zwischen einem und drei Skalenpunkten. Auf einer Skala von 1 bis 7 ist das viel. |
+| `97.7 percent confidence interval` | 1 bis 3 | Intervall für diese Verschiebung | Die Verschiebung liegt plausibel zwischen einem und drei Skalenpunkten. Auf einer Skala von 1 bis 7 ist das viel. Zur Prozentzahl siehe den Kasten unten. |
 | `CLES` | 0.907 | Wahrscheinlichkeit, dass A besser bewertet | Braucht keine Einheit und ist deshalb auch Laien erklärbar. |
 | `RBC` | 0.814 | rangbiseriale Korrelation | Anhaltspunkte wie bei einer Korrelation: 0.1 klein, 0.3 mittel, 0.5 gross. |
+
+::: {.note-box}
+**Warum dort 97.7 Prozent steht und nicht 95.** Das Intervall entsteht aus den
+210 paarweisen Differenzen, und diese sind bei einer siebenstufigen Skala nur
+ganze Zahlen. Ein Intervall lässt sich deshalb nicht beliebig fein einstellen:
+R nimmt die nächstgelegene erreichbare Grenze und schreibt ehrlich dazu,
+welches Niveau dabei herauskommt. Angefordert waren 95 Prozent, erreichbar
+waren 97.7.
+
+Das ist kein Fehler, sondern eine Eigenschaft aller exakten Verfahren auf
+diskreten Daten. Berichtet wird das tatsächlich erreichte Niveau, nicht das
+angeforderte.
+:::
 
 ::: {.note-box}
 Der Hodges-Lehmann-Schätzer ist nicht die Differenz der Mediane. Er ist der
@@ -563,9 +597,9 @@ Effektmass. Rangtests sind darin nicht schlechter, sie werden nur seltener so
 berichtet.
 
 > Variante A wird um geschätzte 2 Skalenpunkte besser bewertet als Variante B
-> (Hodges-Lehmann-Schätzer, 95-Prozent-Konfidenzintervall 1 bis 3;
-> Mann-Whitney-U-Test, U = 190.5, p < 0.001, n = 14 und 15). Die Common
-> Language Effect Size beträgt 0.91.
+> (Hodges-Lehmann-Schätzer, Konfidenzintervall 1 bis 3 bei einem erreichten
+> Niveau von 97.7 Prozent; Mann-Whitney-U-Test, U = 190.5, p < 0.001, n = 14
+> und 15). Die Common Language Effect Size beträgt 0.91.
 
 ::::
 
