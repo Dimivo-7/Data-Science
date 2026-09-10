@@ -12,8 +12,6 @@ order: 10
 #| label: setup-r
 #| include: false
 library(cluster)
-
-set.seed(2026)
 ```
 
 ```{python}
@@ -28,12 +26,17 @@ pd.set_option("display.width", 100)
 
 ## Kernideen
 
-- Jedes Clustering und jede Dimensionsreduktion beruht auf einem Distanzbegriff
-- Die euklidische Distanz ist der Standard, aber nicht immer der richtige
-- Ohne Standardisierung bestimmt die Variable mit der grössten Spannweite alles
-- Manhattan reagiert schwächer auf Ausreisser als euklidisch
-- Für gemischte Datentypen gibt es Gower, nicht euklidisch mit Hilfskonstruktion
-- Korrelierte Variablen zählen mehrfach, solange man sie nicht behandelt
+- Jedes Clustering und jede Dimensionsreduktion beruht auf einem Distanzbegriff.
+  Was "nah" heisst, steht **nicht in den Daten**, sondern in dieser Wahl.
+- Die euklidische Distanz ist der Standard, aber nicht immer der richtige.
+- Ohne Standardisierung bestimmt die Variable mit der grössten Streuung das
+  Ergebnis — allein wegen ihrer Masseinheit.
+- Manhattan reagiert schwächer auf einzelne grosse Abweichungen als euklidisch.
+- Für gemischte Datentypen gibt es Gower; euklidisch mit Hilfskonstruktion führt
+  zu willkürlichen Gewichten.
+- Korrelierte Variablen zählen mehrfach, solange man sie nicht behandelt.
+- Zwei korrekt gerechnete Distanzmatrizen desselben Datensatzes können zu
+  **verschiedenen Gruppen** führen. Die Wahl gehört deshalb in den Methodenteil.
 
 ## Erklärung
 
@@ -61,13 +64,13 @@ als der Algorithmus danach.
 | Manhattan | Summe der absoluten Differenzen | robuster gegen Ausreisser | metrisch, viele Dimensionen, robustere Gruppierung |
 | Maximum | grösste einzelne Differenz | eine Dimension entscheidet | wenn ein einzelnes Merkmal ausschlaggebend sein soll |
 | Korrelationsdistanz | eins minus Korrelation der Profile | ignoriert Niveau, achtet auf Verlauf | Zeitverläufe, Ausgabeprofile |
-| Gower | gewichteter Mittelwert je Variable, typgerecht | für gemischte Typen gebaut | metrisch, ordinal und nominal zusammen |
+| Gower | Mittelwert typgerechter Einzeldistanzen | für gemischte Typen gebaut | metrisch, ordinal und nominal zusammen |
 | Jaccard | Anteil gemeinsamer Einsen an allen Einsen | ignoriert gemeinsame Nullen | binäre Merkmale, Warenkörbe |
 
 Für binäre Daten ist der Unterschied zwischen Jaccard und euklidisch bedeutsam:
 Jaccard zählt gemeinsame Nullen nicht als Ähnlichkeit. Bei einem Warenkorb ist
-das richtig, denn zwei Personen, die dieselben 900 Artikel nicht gekauft haben,
-sind sich deswegen nicht ähnlich.
+das richtig, denn zwei Personen, die dieselben 900 Artikel **nicht** gekauft
+haben, sind sich deswegen nicht ähnlich.
 
 ### Standardisierung ist keine Kosmetik
 
@@ -76,116 +79,247 @@ Millimetern trägt damit millionenfach mehr bei als dieselbe Grösse in Metern,
 obwohl es dieselbe Information ist. Ohne Standardisierung entscheidet also die
 Einheit über das Ergebnis.
 
+Die Regel lautet deshalb: **Bei metrischen Variablen verschiedener Einheiten wird
+standardisiert**, es sei denn, die Einheiten sind vergleichbar und die
+Unterschiede in der Streuung sind inhaltlich gewollt.
+
+Zwei Varianten sind gebräuchlich:
+
+| Verfahren | Rechnung | Wirkung |
+|---|---|---|
+| z-Standardisierung | minus Mittelwert, geteilt durch Standardabweichung | jede Variable hat danach Streuung eins; empfindlich gegenüber Ausreissern, weil diese die Standardabweichung aufblähen |
+| Bereichsskalierung | minus Minimum, geteilt durch Spannweite | jede Variable liegt danach zwischen 0 und 1; noch empfindlicher gegenüber Ausreissern, weil zwei Werte alles bestimmen |
+
+### Korrelierte Variablen zählen mehrfach
+
+Wenn drei Variablen dasselbe messen, geht dieses Merkmal dreifach in die Distanz
+ein. Das Ergebnis ist eine Gruppierung, die vor allem dieses eine Merkmal
+abbildet, ohne dass es jemand entschieden hätte. Die Standardisierung hilft hier
+**nicht** — sie gleicht die Streuungen an, nicht die Doppelungen.
+
+Drei Auswege: inhaltlich auswählen und Doppelungen entfernen; die Variablen zu
+einer zusammenfassen; oder vorab eine
+[Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) rechnen und auf den
+Komponenten clustern, die unkorreliert sind.
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Dieselben Daten, zwei Gruppierungen
+
+#### Frage und Datenlage
+
+Vier Maschinen, zwei Merkmale: Laufzeit in Stunden (Spannweite 600) und
+Temperatur in Grad (Spannweite 14). Die Frage: Welche zwei Maschinen sind sich
+am ähnlichsten?
+
+| Maschine | Laufzeit (h) | Temperatur (°C) |
+|---|---|---|
+| A | 1200 | 62 |
+| B | 1800 | 61 |
+| C | 1250 | 75 |
+| D | 1750 | 74 |
+
+In den Daten stecken zwei Strukturen: A und C haben ähnliche Laufzeiten (ebenso
+B und D), während A und B eine niedrige und C und D eine hohe Temperatur haben.
+Welche der beiden Strukturen ein Clusterverfahren findet, entscheidet die
+Skalierung.
+
+#### Rechnung
+
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: skalierung-r
+#| label: b1-dist-r
 maschinen <- data.frame(
-  laufzeit_h = c(1200, 1800, 1250, 1750),      # Spannweite 600
-  temperatur = c(62, 61, 75, 74),              # Spannweite 14
+  laufzeit_h = c(1200, 1800, 1250, 1750),
+  temperatur = c(62, 61, 75, 74),
   row.names = c("A", "B", "C", "D")
 )
 
 round(dist(maschinen), 1)                       # ohne Standardisierung
+round(scale(maschinen), 3)                      # die z-Werte
 round(dist(scale(maschinen)), 2)                # mit Standardisierung
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: skalierung-py
+#| label: b1-dist-py
 maschinen = pd.DataFrame(
     {"laufzeit_h": [1200, 1800, 1250, 1750],
      "temperatur": [62, 61, 75, 74]},
     index=["A", "B", "C", "D"])
 
-roh = pd.DataFrame(squareform(pdist(maschinen)), index=maschinen.index,
-                   columns=maschinen.index)
-standardisiert = (maschinen - maschinen.mean()) / maschinen.std(ddof=1)
-skaliert = pd.DataFrame(squareform(pdist(standardisiert)),
-                        index=maschinen.index, columns=maschinen.index)
 
-print(roh.round(1))
-print(skaliert.round(2))
+def matrix(daten):
+    return pd.DataFrame(squareform(pdist(daten)),
+                        index=daten.index, columns=daten.index)
+
+
+standardisiert = (maschinen - maschinen.mean()) / maschinen.std(ddof=1)
+
+print(matrix(maschinen).round(1))
+print(standardisiert.round(3))
+print(matrix(standardisiert).round(2))
 ```
 
 :::
 
-Ohne Standardisierung sind A und C nah beieinander, weil ihre Laufzeiten
-ähnlich sind; die Temperatur fällt praktisch nicht ins Gewicht. Nach der
-Standardisierung tritt die zweite Struktur hervor: A und B bilden ein Paar
-niedriger Temperatur, C und D eines hoher Temperatur. Beide Distanzmatrizen sind
-korrekt gerechnet, und sie führen zu verschiedenen Gruppierungen.
+#### Output Zeile für Zeile
 
-Die Regel lautet deshalb: **Bei metrischen Variablen verschiedener Einheiten wird
-standardisiert**, es sei denn, die Einheiten sind vergleichbar und die
-Unterschiede in der Streuung sind inhaltlich gewollt.
+Ohne Standardisierung:
 
-### Ausreisser und die Wahl zwischen euklidisch und Manhattan
+| | A | B | C | D |
+|---|---|---|---|---|
+| A | 0.0 | 600.0 | **51.7** | 550.1 |
+| B | 600.0 | 0.0 | 550.2 | **51.7** |
+| C | 51.7 | 550.2 | 0.0 | 500.0 |
+| D | 550.1 | 51.7 | 500.0 | 0.0 |
 
-Weil euklidisch quadriert, wirkt eine einzelne grosse Abweichung stärker als
-mehrere kleine. Manhattan summiert nur, also wirken alle Abweichungen
-proportional.
+Mit z-Standardisierung:
+
+| | A | B | C | D |
+|---|---|---|---|---|
+| A | 0.00 | **1.89** | 1.73 | 2.35 |
+| B | 1.89 | 0.00 | 2.54 | **1.73** |
+| C | 1.73 | 2.54 | 0.00 | **1.57** |
+| D | 2.35 | 1.73 | 1.57 | 0.00 |
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| d(A, C) roh | **51.7** | Der Beitrag der Laufzeit ist $50^2 = 2500$, der der Temperatur $13^2 = 169$. Die Wurzel aus 2669 ist 51.7 — die Temperatur macht **6 Prozent** der Distanz aus, obwohl es der grössere Unterschied in Standardabweichungen ist. |
+| kleinste rohe Distanzen | A–C und B–D | Die Gruppierung folgt der Laufzeit. |
+| z-Werte | alle zwischen -0.94 und 0.94 | Beide Merkmale liegen jetzt in derselben Grössenordnung. |
+| kleinste standardisierte Distanz | **C–D mit 1.57**, dann A–C mit 1.73 | Die Rangfolge hat sich verschoben; die Temperatur trägt jetzt gleich viel bei wie die Laufzeit. |
+
+::: {.note-box}
+**Beide Matrizen sind korrekt gerechnet.** Es gibt keinen Rechenfehler, den man
+finden könnte — nur eine Entscheidung, die getroffen werden muss. Ohne
+Standardisierung lautet die implizite Aussage: "Eine Stunde Laufzeit und ein Grad
+Temperatur sind gleich viel wert." Das ist selten gemeint, und noch seltener
+begründet.
+:::
+
+#### Interpretation
+
+Welche Skalierung verwendet wurde, gehört in jeden Methodenteil, und zwar
+zusammen mit der Begründung. Der Standardfall ist die z-Standardisierung; sie
+sagt "alle Merkmale sind gleich wichtig". Wer bewusst anders gewichten will, tut
+das ausdrücklich und nicht über die Wahl der Masseinheit.
+
+### Beispiel 2: Euklidisch oder Manhattan
+
+#### Frage und Datenlage
+
+Ein Referenzpunkt im Ursprung, fünf Dimensionen. Zwei andere Punkte weichen
+davon ab — der eine in allen fünf Dimensionen um je eine Einheit, der andere in
+einer einzigen um fünf Einheiten. Die Gesamtabweichung ist beide Male fünf
+Einheiten. Sind sie gleich weit weg?
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: ausreisser-r
+#| label: b2-dist-r
 punkte <- rbind(
   normal = c(0, 0, 0, 0, 0),
   klein  = c(1, 1, 1, 1, 1),          # fuenf kleine Abweichungen
   gross  = c(0, 0, 0, 0, 5)           # eine grosse Abweichung
 )
 
-round(c(euklidisch_klein = dist(punkte[c("normal", "klein"), ]),
-        euklidisch_gross = dist(punkte[c("normal", "gross"), ])), 2)
-round(c(manhattan_klein = dist(punkte[c("normal", "klein"), ], method = "manhattan"),
-        manhattan_gross = dist(punkte[c("normal", "gross"), ], method = "manhattan")), 2)
+for (methode in c("euclidean", "manhattan", "maximum")) {
+  d <- dist(punkte, method = methode)
+  cat(sprintf("%-10s | klein: %.3f | gross: %.3f\n", methode,
+              as.matrix(d)["normal", "klein"],
+              as.matrix(d)["normal", "gross"]))
+}
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: ausreisser-py
-normal = np.zeros(5)
-klein = np.ones(5)
-gross = np.array([0, 0, 0, 0, 5.0])
+#| label: b2-dist-py
+punkte = pd.DataFrame(
+    [[0, 0, 0, 0, 0], [1, 1, 1, 1, 1], [0, 0, 0, 0, 5]],
+    index=["normal", "klein", "gross"], dtype=float)
 
-print({"euklidisch_klein": round(float(np.linalg.norm(klein - normal)), 2),
-       "euklidisch_gross": round(float(np.linalg.norm(gross - normal)), 2)})
-print({"manhattan_klein": round(float(np.abs(klein - normal).sum()), 2),
-       "manhattan_gross": round(float(np.abs(gross - normal).sum()), 2)})
+for methode in ["euclidean", "cityblock", "chebyshev"]:
+    d = pd.DataFrame(squareform(pdist(punkte, metric=methode)),
+                     index=punkte.index, columns=punkte.index)
+    print(f"{methode:10s} | klein: {d.loc['normal', 'klein']:.3f} "
+          f"| gross: {d.loc['normal', 'gross']:.3f}")
 ```
 
 :::
 
-Nach Manhattan sind beide Punkte gleich weit entfernt, beide summieren fünf
-Einheiten Abweichung. Nach euklidisch liegt der Punkt mit der einen grossen
-Abweichung mehr als doppelt so weit weg. Welches Verhalten gewünscht ist, hängt
-von der Sache ab: Soll eine einzelne starke Abweichung entscheidend sein, ist
-euklidisch richtig; sollen viele kleine Abweichungen gleich zählen, Manhattan.
+#### Output Zeile für Zeile
 
-### Gemischte Datentypen
+| Mass | fünf kleine Abweichungen | eine grosse Abweichung | Verhältnis |
+|---|---|---|---|
+| Euklidisch | $\sqrt{5} = $ **2.236** | $\sqrt{25} = $ **5.000** | 1 zu 2.24 |
+| Manhattan (`cityblock`) | 5.000 | 5.000 | **1 zu 1** |
+| Maximum (`chebyshev`) | 1.000 | 5.000 | 1 zu 5 |
 
-Sobald nominale und metrische Merkmale zusammenkommen, ist euklidisch nicht mehr
-definiert. Der übliche Behelf, nominale Merkmale in Indikatorvariablen zu
-verwandeln und trotzdem euklidisch zu rechnen, führt zu willkürlichen
-Gewichtungen: Ein Merkmal mit fünf Kategorien bekommt dann fünf Spalten und damit
-mehr Gewicht als ein metrisches.
+| Beobachtung | Deutung |
+|---|---|
+| Euklidisch stuft die eine grosse Abweichung als **mehr als doppelt so weit** ein | Das Quadrieren gewichtet grosse Abweichungen überproportional. Ein Ausreisser in einer einzigen Dimension kann eine Beobachtung aus jeder Gruppe herausdrängen. |
+| Manhattan sieht **keinen Unterschied** | Es summiert nur; fünf mal eins ist dasselbe wie einmal fünf. Deshalb gilt es als robuster. |
+| Maximum sieht **den grössten Unterschied** | Nur die stärkste einzelne Abweichung zählt, alle anderen Dimensionen sind irrelevant. |
 
-Gower behandelt jede Variable typgerecht und bildet den gewichteten Mittelwert
-der Einzeldistanzen.
+::: {.note-box}
+Keines der drei Verhalten ist richtiger als die anderen — sie beantworten
+verschiedene Fragen:
+
+- "Ist irgendetwas stark aus dem Ruder gelaufen?" → euklidisch oder Maximum
+- "Wie viel Abweichung insgesamt?" → Manhattan
+
+Ein praktischer Nebenaspekt: In sehr vielen Dimensionen werden alle euklidischen
+Abstände einander ähnlich (das Phänomen der leeren Räume), und Manhattan hält die
+Unterschiede etwas länger auseinander.
+:::
+
+#### Interpretation
+
+Der Standardfall bleibt euklidisch, weil er der geometrischen Anschauung
+entspricht und weil Verfahren wie [k-Means](k-means.qmd) und Ward direkt darauf
+aufbauen. Manhattan ist die Wahl, wenn Ausreisser erwartet werden und nicht
+dominieren sollen — dann meist zusammen mit einem hierarchischen Verfahren oder
+k-Medoids, denn k-Means selbst setzt quadrierte euklidische Distanzen voraus.
+
+### Beispiel 3: Gemischte Datentypen mit Gower
+
+#### Frage und Datenlage
+
+Vier Kunden, beschrieben durch zwei metrische, ein nominales und ein ordinales
+Merkmal:
+
+| Kunde | Umsatz | Besuche | Segment | Zufriedenheit |
+|---|---|---|---|---|
+| 1 | 1200 | 12 | Privat | hoch |
+| 2 | 1500 | 15 | Privat | mittel |
+| 3 | 900 | 9 | Gewerbe | mittel |
+| 4 | 2400 | 4 | Gewerbe | niedrig |
+
+Euklidisch ist hier nicht definiert. Der übliche Behelf — nominale Merkmale in
+Indikatorspalten verwandeln und trotzdem euklidisch rechnen — führt zu
+willkürlichen Gewichten: Ein Merkmal mit fünf Kategorien bekommt fünf Spalten und
+damit mehr Gewicht als ein metrisches.
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: gower-r
+#| label: b3-dist-r
 kunden <- data.frame(
   umsatz = c(1200, 1500, 900, 2400),
   besuche = c(12, 15, 9, 4),
@@ -197,11 +331,11 @@ kunden <- data.frame(
 round(daisy(kunden, metric = "gower"), 3)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: gower-py
-# In Python gehoert Gower nicht zum Standard; von Hand fuer gemischte Typen:
+#| label: b3-dist-py
+# Python bringt Gower nicht mit; hier von Hand fuer gemischte Typen.
 kunden = pd.DataFrame({
     "umsatz": [1200, 1500, 900, 2400],
     "besuche": [12, 15, 9, 4],
@@ -209,44 +343,257 @@ kunden = pd.DataFrame({
     "zufriedenheit": [2, 1, 1, 0],          # ordinal als Rang kodiert
 })
 
-def gower(df):
-    spalten = []
+
+def gower_teile(df, ordinal=()):
+    """Je Merkmal eine Distanzmatrix mit Werten zwischen 0 und 1."""
+    teile = {}
     for name in df.columns:
         s = df[name]
-        if s.dtype.kind in "if":                       # metrisch oder ordinal
-            spanne = s.max() - s.min()
-            d = np.abs(s.values[:, None] - s.values[None, :]) / spanne
-        else:                                          # nominal
-            d = (s.values[:, None] != s.values[None, :]).astype(float)
-        spalten.append(d)
-    return np.mean(spalten, axis=0)
+        if name in ordinal or s.dtype.kind in "if":
+            w = s.to_numpy(dtype=float)
+            teile[name] = np.abs(w[:, None] - w[None, :]) / (w.max() - w.min())
+        else:
+            w = np.asarray(s, dtype=object)
+            teile[name] = (w[:, None] != w[None, :]).astype(float)
+    return teile
 
-print(pd.DataFrame(gower(kunden).round(3)))
+
+teile = gower_teile(kunden)
+for name, d in teile.items():
+    print(f"{name:14s} Paar 1-2: {d[0, 1]:.3f}  Paar 1-4: {d[0, 3]:.3f}")
+
+gower = np.mean(list(teile.values()), axis=0)
+print(pd.DataFrame(gower).round(3))
 ```
 
 :::
 
-Jede Variable trägt gleich viel bei, unabhängig von ihrem Typ und ihrer Einheit:
-metrische Variablen über die auf die Spannweite normierte Differenz, nominale
-über Übereinstimmung oder nicht, ordinale über Ränge. Dass Python das nicht
-mitbringt, ist ein häufiger Grund, für gemischte Daten in R zu wechseln.
+#### Output Zeile für Zeile
 
-### Korrelierte Variablen zählen mehrfach
+Die Einzelbeiträge für zwei Paare, jeweils zwischen 0 und 1:
 
-Wenn drei Variablen dasselbe messen, geht dieses Merkmal dreifach in die Distanz
-ein. Das Ergebnis ist eine Gruppierung, die vor allem dieses eine Merkmal
-abbildet, ohne dass es jemand entschieden hätte.
+| Merkmal | Typ | Rechnung | Paar 1–2 | Paar 1–4 |
+|---|---|---|---|---|
+| umsatz | metrisch | $\lvert x_i - x_j \rvert$ geteilt durch die Spannweite 1500 | 300/1500 = **0.200** | 1200/1500 = **0.800** |
+| besuche | metrisch | geteilt durch die Spannweite 11 | 3/11 = **0.273** | 8/11 = **0.727** |
+| segment | nominal | 0 bei Gleichheit, sonst 1 | beide Privat → **0.000** | Privat gegen Gewerbe → **1.000** |
+| zufriedenheit | ordinal | Rangdifferenz, geteilt durch die Spannweite der Ränge | hoch gegen mittel → **0.500** | hoch gegen niedrig → **1.000** |
+| **Gower** | | Mittelwert der vier Beiträge | **0.243** | **0.882** |
 
-Drei Auswege: inhaltlich auswählen und Doppelungen entfernen; die Variablen zu
-einer zusammenfassen; oder vorab eine
-[Hauptkomponentenanalyse](hauptkomponentenanalyse.qmd) rechnen und auf den
-Komponenten clustern, die unkorreliert sind.
+Die vollständige Matrix:
+
+| | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| 1 | 0.000 | **0.243** | 0.493 | 0.882 |
+| 2 | 0.243 | 0.000 | 0.486 | 0.775 |
+| 3 | 0.493 | 0.486 | 0.000 | 0.489 |
+| 4 | 0.882 | 0.775 | 0.489 | 0.000 |
+
+| Eigenschaft | Was sie bedeutet |
+|---|---|
+| Alle Werte liegen zwischen 0 und 1 | Eine Gower-Distanz von 0.5 heisst: im Mittel über alle Merkmale halb so verschieden wie überhaupt möglich. Das ist über Datensätze hinweg vergleichbar, anders als eine euklidische Distanz. |
+| Kunden 1 und 2 sind am ähnlichsten (0.243) | Sie stimmen im Segment überein und liegen in den metrischen Merkmalen nah beieinander. |
+| Kunden 1 und 4 sind am unähnlichsten (0.882) | Sie unterscheiden sich in **jedem** Merkmal, in zweien maximal. |
+| Jedes Merkmal trägt genau ein Viertel bei | Das ist die zentrale Eigenschaft — und zugleich die Falle des Verfahrens. |
+
+::: {.note-box}
+**Gower gewichtet alle Merkmale gleich, und das ist eine Entscheidung.** Wer zehn
+metrische und ein kategoriales Merkmal in die Matrix gibt, lässt das kategoriale
+mit einem Elftel praktisch wirkungslos — und umgekehrt. Die Zusammenstellung der
+Merkmalsliste ist bei Gower also eine Gewichtungsentscheidung, auch wenn sie
+nicht so aussieht.
+
+Zweiter Hinweis: `cluster::daisy()` behandelt geordnete Faktoren nach der
+Vorschrift von Podani über Ränge und Bindungen. Bei Merkmalen mit vielen
+Bindungen kann das von einer schlichten Rangdifferenz abweichen; welcher Weg
+verwendet wurde, gehört deshalb in den Methodenteil.
+:::
+
+#### Interpretation
+
+Weil nur eine Distanzmatrix nötig ist, lässt sich mit Gower dort clustern, wo
+k-Means gar nicht anwendbar wäre — allerdings nur mit
+[hierarchischen Verfahren](hierarchisches-clustering.qmd) oder k-Medoids, nicht
+mit k-Means, das Mittelwerte als Zentren braucht.
+
+### Beispiel 4: Binäre Merkmale und gemeinsame Nullen
+
+#### Frage und Datenlage
+
+Ein Sortiment aus 1000 Artikeln, zwei Warenkörbe mit je fünf Artikeln, zwei davon
+gemeinsam. Wie ähnlich sind sich die beiden Kunden?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-dist-r
+korb_a <- numeric(1000); korb_a[c(1, 2, 3, 4, 5)] <- 1
+korb_b <- numeric(1000); korb_b[c(4, 5, 6, 7, 8)] <- 1
+koerbe <- rbind(a = korb_a, b = korb_b)
+
+round(c(euklidisch = dist(koerbe),
+        jaccard = dist(koerbe, method = "binary")), 3)
+
+# Woraus sich Jaccard zusammensetzt
+c(beide_eins = sum(korb_a == 1 & korb_b == 1),
+  nur_einer  = sum(korb_a != korb_b),
+  beide_null = sum(korb_a == 0 & korb_b == 0))
+```
+
+##### Python
+
+```{python}
+#| label: b4-dist-py
+korb_a = np.zeros(1000); korb_a[[0, 1, 2, 3, 4]] = 1
+korb_b = np.zeros(1000); korb_b[[3, 4, 5, 6, 7]] = 1
+koerbe = np.vstack([korb_a, korb_b])
+
+print("euklidisch:", round(float(pdist(koerbe, metric="euclidean")[0]), 3))
+print("jaccard:   ", round(float(pdist(koerbe, metric="jaccard")[0]), 3))
+
+print({"beide_eins": int(((korb_a == 1) & (korb_b == 1)).sum()),
+       "nur_einer": int((korb_a != korb_b).sum()),
+       "beide_null": int(((korb_a == 0) & (korb_b == 0)).sum())})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zählung | Wert |
+|---|---|
+| Artikel in beiden Körben | 2 |
+| Artikel in genau einem Korb | 6 |
+| Artikel in keinem der beiden | 992 |
+
+| Mass | Wert hier | Rechnung | Was es zählt |
+|---|---|---|---|
+| Euklidisch | **2.449** | $\sqrt{6}$, denn in sechs Positionen unterscheiden sich die Vektoren um je eins | Die 992 gemeinsamen Nullen tragen null bei — was hier zufällig richtig aussieht, aber aus dem falschen Grund. |
+| Jaccard | **0.750** | $1 - \frac{2}{2 + 6} = 1 - 0.25$ | Anteil der Nichtübereinstimmung an allen Positionen, an denen **mindestens einer** eine Eins hat. Gemeinsame Nullen sind ausdrücklich ausgeschlossen. |
+
+Der Unterschied wird sichtbar, sobald das Sortiment wächst: Bei 100 000 Artikeln
+statt 1000 bleibt die euklidische Distanz bei 2.449 und die Jaccard-Distanz bei
+0.750 — aber ein Ähnlichkeitsmass, das gemeinsame Nullen mitzählt (etwa der
+einfache Übereinstimmungskoeffizient), würde alle Kunden fast identisch finden,
+weil sie 99.99 Prozent des Sortiments gemeinsam nicht kaufen.
+
+::: {.note-box}
+Die Frage lautet immer: **Ist eine gemeinsame Null Information?** Bei "beide haben
+diesen Artikel nicht gekauft" oder "beide Patienten haben dieses seltene Symptom
+nicht" lautet die Antwort nein — dann Jaccard. Bei "beide Schalter stehen auf
+aus" kann sie ja lauten — dann ein Mass, das Nullen mitzählt.
+:::
+
+#### Interpretation
+
+Binäre Merkmale sind der Fall, in dem die Wahl des Masses am deutlichsten über
+das Ergebnis entscheidet, und zugleich der, in dem sie am häufigsten
+unreflektiert bleibt.
+
+### Beispiel 5: Wenn nur die Form zählt
+
+#### Frage und Datenlage
+
+Drei Sensoren liefern je einen Verlauf über fünf Zeitpunkte. Sensor 2 hat
+denselben Verlauf wie Sensor 1, aber einen Offset von 50 Einheiten. Sensor 3
+liegt auf demselben Niveau wie Sensor 1, hat aber einen ganz anderen Verlauf.
+
+| Sensor | t1 | t2 | t3 | t4 | t5 |
+|---|---|---|---|---|---|
+| 1 | 10 | 12 | 15 | 13 | 11 |
+| 2 | 60 | 62 | 65 | 63 | 61 |
+| 3 | 13 | 11 | 10 | 12 | 15 |
+
+Welche zwei Sensoren gehören zusammen? Die Antwort hängt davon ab, ob das Niveau
+zählt oder die Form.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-dist-r
+verlaeufe <- rbind(
+  s1 = c(10, 12, 15, 13, 11),
+  s2 = c(60, 62, 65, 63, 61),
+  s3 = c(13, 11, 10, 12, 15)
+)
+
+round(dist(verlaeufe), 2)                        # euklidisch: Niveau zaehlt
+round(as.dist(1 - cor(t(verlaeufe))), 4)         # Korrelationsdistanz: Form
+```
+
+##### Python
+
+```{python}
+#| label: b5-dist-py
+verlaeufe = pd.DataFrame(
+    [[10, 12, 15, 13, 11], [60, 62, 65, 63, 61], [13, 11, 10, 12, 15]],
+    index=["s1", "s2", "s3"], dtype=float)
+
+
+def zeige(daten, metrik, stellen):
+    d = pd.DataFrame(squareform(pdist(daten, metric=metrik)),
+                     index=daten.index, columns=daten.index)
+    print(d.round(stellen))
+
+
+zeige(verlaeufe, "euclidean", 2)
+zeige(verlaeufe, "correlation", 4)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Paar | euklidisch | Korrelationsdistanz | Korrelation |
+|---|---|---|---|
+| s1 – s2 | **111.80** | **0.0000** | 1.000 |
+| s1 – s3 | **7.21** | **1.7568** | -0.757 |
+
+| Beobachtung | Deutung |
+|---|---|
+| Euklidisch: s1 und s3 sind **nah** (7.21), s1 und s2 **weit** (111.80) | Das Niveau dominiert vollständig. Der Offset von 50 Einheiten in jedem der fünf Zeitpunkte ergibt $\sqrt{5 \cdot 2500} = 111.8$. |
+| Korrelationsdistanz: s1 und s2 sind **identisch** (0.0000) | Ein konstanter Offset ändert die Korrelation nicht. Die Distanz misst allein, ob die Verläufe gleich **verlaufen**. |
+| s1 und s3 haben eine Distanz **über eins** (1.757) | Die Korrelationsdistanz $1 - r$ liegt zwischen 0 und 2. Werte über eins bedeuten negative Korrelation: Die Verläufe sind gegenläufig. |
+
+::: {.note-box}
+Zwei Punkte, die regelmässig übersehen werden:
+
+- Die Korrelationsdistanz ist **keine echte Metrik** — die Dreiecksungleichung
+  gilt nicht. Verfahren, die darauf bauen (etwa Ward), können damit unerwartete
+  Ergebnisse liefern; hierarchisches Clustering mit Average-Linkage ist die
+  übliche Wahl.
+- Sie wird **je Objekt über die Zeitpunkte** gerechnet, nicht wie die
+  Standardisierung über alle Objekte je Variable. Das sind zwei verschiedene
+  Operationen, und die zweite löst das Niveauproblem nicht.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Ähnlichkeit der Sensorverläufe wurde über die Korrelationsdistanz
+> ($1 - r$ der Verläufe) bestimmt, weil das absolute Niveau der Sensoren von der
+> Kalibrierung abhängt und nicht vom Betriebszustand. Sensor 1 und 2 sind nach
+> diesem Mass identisch (Distanz 0.00), Sensor 3 verläuft gegenläufig (1.76).
+
+Mit euklidischer Distanz wäre das Ergebnis genau umgekehrt ausgefallen — und
+beide Rechnungen wären korrekt.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Zwei Variablen liegen vor: Jahresumsatz in Franken und Anzahl Besuche. Ein
 k-Means ohne Standardisierung gruppiert praktisch nur nach Umsatz. Warum?
 
-- [x] Die Spannweite des Umsatzes ist um Grössenordnungen grösser ~ Richtig. Die
+- [x] Die Streuung des Umsatzes ist um Grössenordnungen grösser ~ Richtig. Die
       euklidische Distanz summiert quadrierte Differenzen; die Variable mit der
       grösseren Streuung dominiert. Nach der Standardisierung tragen beide gleich
       viel bei.
@@ -254,6 +601,18 @@ k-Means ohne Standardisierung gruppiert praktisch nur nach Umsatz. Warum?
       sie aber nach ihrer Streuung.
 - [ ] Die Anzahl Besuche ist ordinal ~ Sie ist eine Zählung und damit metrisch;
       das ist nicht das Problem.
+:::
+
+::: {.quiz}
+Ein Punkt weicht in fünf Dimensionen um je eine Einheit ab, ein anderer in einer
+einzigen um fünf. Welches Mass sieht die beiden als gleich weit entfernt?
+
+- [x] Manhattan ~ Richtig. Es summiert die absoluten Differenzen: fünf mal eins
+      ist dasselbe wie einmal fünf. Euklidisch ergibt 2.24 gegen 5.00, weil das
+      Quadrieren grosse Abweichungen überproportional gewichtet.
+- [ ] Euklidisch ~ Es sieht den zweiten Punkt als mehr als doppelt so weit
+      entfernt.
+- [ ] Maximum ~ Es sieht den Unterschied am deutlichsten: 1 gegen 5.
 :::
 
 ::: {.quiz}
@@ -266,8 +625,22 @@ fünf. Welches Distanzmass passt?
 - [x] Gower, weil er jeden Typ eigenständig behandelt ~ Richtig. Metrische
       Merkmale werden auf ihre Spannweite normiert, nominale über
       Übereinstimmung verglichen, ordinale über Ränge. Alle Variablen tragen
-      danach vergleichbar bei.
+      danach vergleichbar bei — was zugleich heisst, dass die Merkmalsliste zur
+      Gewichtungsentscheidung wird.
 - [ ] Jaccard ~ Der ist für binäre Merkmale gedacht.
+:::
+
+::: {.quiz}
+Warum zählt die Jaccard-Distanz gemeinsame Nullen nicht mit?
+
+- [x] Weil zwei Objekte durch das gemeinsame Fehlen eines Merkmals nicht
+      ähnlicher werden ~ Richtig. Bei 1000 Artikeln und je fünf gekauften wären
+      sonst alle Kunden fast identisch, weil sie 99 Prozent des Sortiments
+      gemeinsam nicht kaufen.
+- [ ] Weil Nullen keine gültigen Werte sind ~ Sie sind gültig, nur meist nicht
+      informativ.
+- [ ] Weil das Mass sonst grösser als eins würde ~ Es liegt in beiden Varianten
+      zwischen null und eins.
 :::
 
 ::: {.quiz}
@@ -275,12 +648,14 @@ Zwei Zeitverläufe haben dieselbe Form, liegen aber auf verschiedenem Niveau. Si
 sollen als ähnlich gelten. Welches Mass?
 
 - [x] Korrelationsdistanz, weil sie das Niveau ignoriert ~ Richtig. Sie
-      vergleicht die Form des Verlaufs. Euklidisch würde die beiden wegen des
-      Niveauunterschieds als weit entfernt einordnen.
+      vergleicht die Form des Verlaufs; ein konstanter Offset ändert sie nicht.
+      Euklidisch würde die beiden wegen des Niveauunterschieds als weit entfernt
+      einordnen.
 - [ ] Manhattan, weil es robuster ist ~ Robustheit betrifft Ausreisser, nicht
       Niveauunterschiede.
 - [ ] Euklidisch nach Standardisierung der Variablen ~ Standardisiert wird über
-      alle Objekte hinweg, nicht je Verlauf; das löst das Problem nicht.
+      alle Objekte hinweg je Variable, nicht je Verlauf über die Zeitpunkte; das
+      löst das Problem nicht.
 :::
 
 ## Verlinkte Ressourcen
