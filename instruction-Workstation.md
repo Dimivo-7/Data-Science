@@ -1,0 +1,595 @@
+# Anleitung: Kursunterlagen für diese Notizseite aufbereiten
+
+Diese Datei beschreibt, in welcher Form Inhalte vorliegen müssen, damit sie ohne
+Nacharbeit in die Website übernommen werden können. Sie richtet sich an mich
+selbst **und** an eine KI, die aus Slides, Skripten oder Mitschriften fertige
+`.qmd`-Seiten erzeugen soll.
+
+Abschnitt 9 enthält einen fertigen Prompt zum Kopieren.
+
+---
+
+## 1. Was das hier technisch ist
+
+| | |
+|---|---|
+| Generator | [Quarto](https://quarto.org) (Website-Projekt) |
+| Quellformat | `.qmd` — Markdown mit YAML-Front-Matter |
+| Theme | Bootstrap 5, `cosmo` (hell) / `darkly` (dunkel), plus `styles.scss` |
+| Hosting | GitHub Pages, Branch `gh-pages` |
+| Build | GitHub Actions (`.github/workflows/publish.yml`) bei jedem Push auf `main` |
+| Rechenumgebung | Die Action richtet R und Python samt Paketen ein und führt die Chunks aus |
+| Zeitstempel | „Letztes Update“ steht in der Navigationsleiste und kommt aus `lastupdate.lua`. Abschalten: die Zeile `- lastupdate.lua` unter `format.html.filters` in `_quarto.yml` löschen — keine Seite ist davon betroffen. |
+
+**Wichtig:** Quarto ist auf meinem Rechner nicht installiert. Ich schreibe nur
+`.qmd`-Dateien und pushe sie; das Rendern übernimmt die GitHub Action. Der
+Ordner `docs/` ist generiert und liegt in `.gitignore` — dort **niemals** von
+Hand etwas ändern.
+
+---
+
+## 2. Verzeichnisstruktur
+
+```
+mas-data-science-notizen/
+├── index.qmd                       Startseite mit Modulkarten
+├── tags.qmd                        Tag-Übersicht (automatisch befüllt)
+├── instruction.md                  diese Datei
+├── glossary.yml                    das Glossar - eine Datei fuer alle Themen
+├── glossary.lua                    markiert Begriffe, baut die Glossarseite
+├── glossar.qmd                     Glossaruebersicht mit Fundstellen
+├── _quarto.yml                     Navigation, Rendern, Theme
+├── styles.scss                     gesamtes Design
+├── lastupdate.lua                  Zeitstempel in der Navigationsleiste
+├── cas-grundlagen/
+│   ├── index.qmd                   Modulübersicht
+│   ├── pyfr/
+│   │   ├── index.qmd               Teilbereichsübersicht
+│   │   └── lesson1.qmd … lesson12.qmd
+│   └── esds/
+│       ├── index.qmd
+│       └── lesson1.qmd … lesson14.qmd
+└── cas-statda-davi/
+    ├── index.qmd                   Modulübersicht
+    ├── statda/
+    │   ├── index.qmd               Teilbereichsübersicht
+    │   └── lesson1.qmd … lesson5.qmd
+    └── davi/
+        ├── index.qmd
+        └── lesson1.qmd … lesson5.qmd
+```
+
+**Namensregeln**
+
+- Ordner und Dateien: klein, ohne Umlaute, ohne Leerzeichen (`cas-statda-davi`)
+- Lektionen fortlaufend: `lesson1.qmd`, `lesson2.qmd`, …
+- Jede Übersichtsseite heißt `index.qmd`
+- Kodierung UTF-8, Zeilenenden LF
+
+---
+
+## 3. Front Matter — Pflichtfelder
+
+Jede Lektionsseite beginnt exakt so:
+
+```yaml
+---
+title: "L3 – PCA & EFA"
+description: "Hauptkomponentenanalyse und explorative Faktorenanalyse inklusive Rotationsmethoden."
+categories: ["Dimensionsreduktion", "Faktorenanalyse", "R", "Python"]
+---
+```
+
+| Feld | Regel |
+|---|---|
+| `title` | `L<Nr> – <Thema>`. Gedankenstrich `–` (en dash), keine Klammern, max. ~45 Zeichen. Der Titel erscheint in der Sidebar — zu lange Titel brechen dort um. |
+| `description` | **Ein** vollständiger Satz, max. ~120 Zeichen. Erscheint in der Tag-Übersicht. Beschreibt den Inhalt, nicht die Lernziele. |
+| `categories` | Die Tags. Regeln siehe Abschnitt 5. |
+
+Übersichtsseiten (`index.qmd`) bekommen **keine** `categories`.
+
+---
+
+## 4. Aufbau einer Lektionsseite
+
+Alle Lektionsseiten haben **dieselben drei Abschnitte in dieser Reihenfolge**.
+Keine weggelassenen, keine zusätzlichen `##`-Abschnitte. Innerhalb von
+„Erklärung" gliedern `###`-Zwischentitel den Text; sie erscheinen im
+Inhaltsverzeichnis rechts und machen lange Seiten navigierbar.
+
+| Abschnitt | Inhalt |
+|---|---|
+| `## Kernideen aus dem Kurs` | 4 bis 6 Stichpunkte, Begriffe statt Sätze — das Inhaltsverzeichnis der Lektion |
+| `## Erklärung` | Das Herzstück: das Thema ausführlich erklärt, mit Formeln, gerechneten Beispielen und Abbildungen im Fluss |
+
+Die Seiten sollen auch für jemanden funktionieren, der bei null anfängt.
+Konkret heisst das: vor jedem Konzept steht, welches Problem es löst, bevor
+Formel oder Befehl kommen; Beispiele werden hergeleitet statt nur im Ergebnis
+gezeigt; je inhaltlichem Block folgen zwei bis drei Verständnisfragen mit
+zugeklappter Lösung. Ganz oben in der Erklärung steht in einer `.note-box`,
+welches Vorwissen die Seite voraussetzt, mit Link auf die betreffende Lektion.
+| `## Verlinkte Ressourcen` | Links zum Nachschlagen |
+
+Der Abschnitt heisst **Erklärung**, nicht „Meine Zusammenfassung": erklärt wird
+das Thema, nicht eine Vorlesung nacherzählt. Die Seite soll auch dann tragen,
+wenn ich den Kurs längst hinter mir habe.
+
+````markdown
+---
+title: "L3 – PCA & EFA"
+description: "…"
+categories: ["…"]
+---
+
+## Kernideen aus dem Kurs
+
+- 4 bis 6 Stichpunkte
+- jeweils ein Begriff oder Konzept, keine ganzen Sätze
+
+## Erklärung
+
+Einleitender Fliesstext, der das Thema aufspannt.
+
+### Ein Zwischentitel je Gedanke
+
+Erklärung, dazu die Formel:
+
+$$s^2 = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2$$
+
+Und das Beispiel — immer in beiden Sprachen, R zuerst:
+
+::: panel-tabset
+## R
+
+```{r}
+#| label: fig-verteilung-r
+#| fig-cap: "Was die Abbildung zeigt, in einem Satz."
+ggplot(data.frame(x = rnorm(100)), aes(x)) + geom_histogram(bins = 20)
+```
+
+## Python
+
+```{python}
+#| label: fig-verteilung-py
+#| fig-cap: "Dieselbe Aussage mit matplotlib."
+plt.hist(rng.normal(size=100), bins=20)
+plt.show()
+```
+:::
+
+## Verlinkte Ressourcen
+
+- [Titel der Quelle](https://…)
+````
+
+### Beide Sprachen, im Text
+
+Jedes Beispiel steht in R **und** in Python, direkt dort, wo es erklärt wird,
+in einem `::: panel-tabset`. Einen eigenen Sammelabschnitt für Code gibt es
+nicht mehr — er stand am Seitenende und wiederholte nur, was im Text schon
+erklärt war.
+
+Gibt es für eine Seite in einer Sprache nichts Sinnvolles zu zeigen — bei Git,
+Linux oder Docker etwa —, dann steht dort das, was der Sprache am nächsten
+kommt (`renv` gegenüber `venv`, `DBI` gegenüber `sqlite3`), oder der Tab
+benennt kurz, warum er leer bleibt.
+
+### Ausführbare Chunks und reine Listings
+
+Es gibt zwei Sorten Codeblöcke, und die Unterscheidung ist wichtig:
+
+| Schreibweise | Verhalten | wofür |
+|---|---|---|
+| ```` ```{r} ```` bzw. ```` ```{python} ```` | wird beim Build **ausgeführt**, Ausgabe und Grafik landen auf der Seite | Abbildungen, gerechnete Beispiele im Erklärtext |
+| ```` ```r ```` bzw. ```` ```python ```` | wird nur **angezeigt** | Listings im Tabset, Fragmente, Shell-Befehle |
+
+Für ausführbare Chunks gilt:
+
+- **Sie müssen ohne Vorbedingung laufen.** Ein Chunk, der ein `df` erwartet,
+  das es nicht gibt, bricht den ganzen Build ab. Daten im Chunk selbst
+  erzeugen (`rnorm`, `data.frame`) oder einen eingebauten Datensatz nehmen.
+- **`set.seed()` in den Setup-Chunk**, sonst ändern sich Zahlen und Grafiken
+  bei jedem Build und die Seite erzählt jedes Mal etwas anderes.
+- **Jeder Chunk bekommt ein `#| label:`**, Abbildungen zusätzlich
+  `#| fig-cap:`. Labels von Abbildungen beginnen mit `fig-`.
+- Der Setup-Chunk oben auf der Seite trägt `#| include: false` und lädt die
+  Pakete.
+- **Zur Breite ist nichts einzustellen.** Abbildungen füllen automatisch die
+  Content-Spalte und lassen sich per Klick vergrössert anzeigen; beides steht
+  zentral in `_quarto.yml` (`knitr: opts_chunk: out.width` und
+  `lightbox: auto`). Kein `out-width` pro Chunk und kein `width=` pro Bild.
+  Soll ein Bild ausnahmsweise klein bleiben: `![](datei.png){.img-natural}`.
+- Verwendet werden dürfen nur Pakete, die in
+  `.github/workflows/publish.yml` installiert sind. Neues Paket gebraucht?
+  Erst dort eintragen.
+
+**Der Build ist die einzige Probe.** Quarto, R und Python laufen nicht auf
+meinem Rechner — ein Fehler im Chunk zeigt sich erst in der GitHub Action.
+Deshalb: einfache, offensichtliche Idiome, keine exotischen Konstruktionen.
+
+### Zwingend: R vor Python
+
+In **jedem** `panel-tabset` steht `## R` zuerst, `## Python` als zweites.
+
+Das ist keine Stilfrage. Die Tab-Einfärbung in `styles.scss` erkennt die Sprache
+an der Position (`:nth-child(1)` = R-Blau `#276DC3`, `:nth-child(2)` =
+Python-Blau), weil Quarto den Tab-Buttons keine Sprachinformation mitgibt. Wird
+die Reihenfolge in einer Datei gedreht, sind dort die Farben vertauscht.
+
+Das gilt für jedes einzelne Tabset auf der Seite, nicht nur für das erste.
+
+---
+
+## 5. Tags
+
+### Prinzip
+
+Tags beantworten: **„Wo habe ich das schon mal gehabt?"** Sie sind ein
+Suchwerkzeug über Modulgrenzen hinweg, keine Zusammenfassung. Deshalb:
+
+- **3 bis 5 Tags pro Seite.** Weniger trägt nicht, mehr verwässert.
+- **Nur aus dem Vokabular unten.** Ein Tag, den es nur einmal gibt, ist nutzlos —
+  er findet nichts, was man nicht schon gefunden hat.
+- **Kein Tag, der das Modul wiederholt.** `STATDA` oder `CAS` sind keine Tags,
+  das steht schon in der Navigation.
+- Schreibweise exakt übernehmen, inklusive Groß-/Kleinschreibung. `Python` und
+  `python` wären zwei verschiedene Tags.
+
+### Aktuelles Vokabular
+
+| Gruppe | Tags |
+|---|---|
+| Sprache | `R`, `Python` |
+| Bibliotheken | `ggplot2`, `tidyverse`, `matplotlib`, `seaborn`, `plotly`, `pandas`, `NumPy` |
+| Programmierung | `Programmiergrundlagen`, `Tooling`, `Reproduzierbarkeit` |
+| Daten & Infrastruktur | `SQL`, `Datenbanken`, `Linux` |
+| Beschreibende Statistik | `Deskriptive Statistik`, `EDA`, `Korrelation` |
+| Wahrscheinlichkeit | `Wahrscheinlichkeit`, `Verteilungen`, `Bayes` |
+| Statistische Verfahren | `Schätzen`, `Regression`, `Hypothesentests`, `Versuchsplanung`, `A/B-Testing`, `Dimensionsreduktion`, `Faktorenanalyse`, `Clustering`, `Distanzmasse`, `Zeitreihen`, `Prognose`, `Survival-Analyse` |
+| Modellgüte | `Modelldiagnostik`, `Modellvalidierung` |
+| Visualisierung | `Visualisierung`, `Wahrnehmung`, `Farbe`, `Dashboards`, `Interaktivität`, `Storytelling`, `Kommunikation`, `Visualisierungsethik` |
+| Betrieb | `Deployment` |
+
+### Neuen Tag einführen
+
+Erlaubt, wenn das Thema **auf mindestens zwei Seiten** vorkommt oder absehbar
+vorkommen wird. Dann:
+
+1. Tag in die Tabelle oben eintragen (diese Datei ist die Referenzliste),
+2. auf allen betroffenen Seiten ergänzen.
+
+Ein Tag, der dauerhaft allein bleibt, gehört gelöscht.
+
+### Wo Tags erscheinen
+
+- Als Pills unter dem Titel jeder Seite
+- Auf `tags.qmd` als Wolke zum Filtern und an jedem Eintrag als Chip
+- Beides entsteht automatisch aus `categories:`. Es gibt **keine** Liste, die
+  zusätzlich gepflegt werden müsste.
+
+---
+
+## 6. Formatierungsbausteine
+
+Nur diese verwenden — sie sind in `styles.scss` gestaltet und funktionieren in
+hell und dunkel:
+
+| Baustein | Wofür |
+|---|---|
+| `::: {.note-box}` | Hinweis, Merksatz, Einordnung |
+| `::: {.open-question}` | Offene Frage, Unklarheit (gelb markiert) — kein fester Abschnitt mehr, nur noch dort, wo eine Frage wirklich offen ist |
+| `::: {.placeholder-notice}` | Platzhalter: Inhalt existiert noch nicht |
+| `::: {.lesson-card}` in `:::: {.card-grid}` | Kartenraster auf Übersichtsseiten |
+| `::: panel-tabset` | R/Python nebeneinander |
+| `::: {.callout-note collapse="true" title="Lösung"}` | Lösung zu einer Mini-Übung, zugeklappt |
+| `::: {.quiz}` | Quizfrage mit anklickbaren Antworten, siehe unten |
+
+### Quizfragen
+
+Erzeugt von `quiz.lua`. Autorenformat in reinem Markdown, eine Zeile je
+Antwort:
+
+```markdown
+::: {.quiz}
+Der Median liegt bei 15, das Mittel bei 68. Was folgt daraus?
+
+- [ ] Ein Rechenfehler ~ Beide Masse dürfen weit auseinanderliegen.
+- [x] Die Verteilung ist rechtsschief ~ Genau, der lange rechte Rand
+      zieht das Mittel nach oben.
+- [ ] Die Stichprobe ist zu klein ~ Der Umfang sagt über die Schiefe nichts.
+:::
+```
+
+Regeln:
+
+- Alles vor der Aufzählung ist die Frage und darf Markdown enthalten,
+  auch Formeln, Inline-Code und Verweise wie `@fig-name`.
+- `[x]` markiert die richtige Antwort, `[ ]` eine falsche. Mehrere richtige
+  sind erlaubt.
+- Nach der Tilde folgt die Erklärung, die beim Anklicken erscheint. Sie
+  gehört an **jede** Antwort, auch an die richtige.
+- Fragen sollen Interpretation prüfen, nicht Definitionen abfragen. Eine
+  gute Frage nennt Zahlen oder eine Situation und fragt, was daraus folgt.
+- Fehlt die Markierung `[x]`, erscheint auf der Seite ein sichtbarer Hinweis
+  statt einer stillschweigend unlösbaren Frage.
+
+**Zwei Ebenen.** Auf Lektionsseiten stehen zwei bis drei Fragen je
+inhaltlichem Abschnitt, direkt dort, wo der Stoff behandelt wird. Dazu kommt
+je Teilbereich eine eigene Seite `quiz.qmd` mit lektionsübergreifenden
+Fragen. Sie wiederholt die Abschnittsfragen nicht, sondern prüft
+Verbindungen zwischen den Lektionen und typische Verwechslungen.
+
+**Karten immer im Raster.** Eine `.lesson-card` ohne umschließendes
+`.card-grid` läuft über die volle Breite und sieht anders aus als überall sonst.
+Das äußere Div braucht mehr Doppelpunkte als das innere:
+
+```markdown
+:::: {.card-grid}
+
+::: {.lesson-card}
+### [Titel](ziel.qmd)
+
+Ein Satz Beschreibung.
+:::
+
+::::
+```
+
+### Querverweise zwischen Seiten
+
+Taucht ein Fachbegriff auf, für den es eine eigene Lektionsseite gibt, wird er
+verlinkt — wie in einem Wiki. Ein normaler Markdown-Link auf die `.qmd`-Datei,
+Quarto macht daraus beim Rendern den richtigen Pfad:
+
+```markdown
+Die Standardabweichung hat gegenüber der [Varianz](lesson4.qmd) den Vorteil …
+Der Vergleich zu [Matplotlib](../pyfr/lesson8.qmd) fällt deutlich aus …
+```
+
+Damit die Seiten lesbar bleiben, gelten vier Regeln:
+
+- **Nur das erste Vorkommen** eines Begriffs pro Seite verlinken, nicht jedes.
+- **Höchstens ein Link je Zielseite** und Seite.
+- **Nie auf die eigene Seite** verlinken — auf der Seite über die Varianz wird
+  das Wort Varianz nicht verlinkt.
+- **Nur im Fliesstext und in den Kernideen.** Nicht in Überschriften, nicht in
+  Codeblöcken, nicht in Inline-Code.
+
+Vorsicht bei mehrdeutigen Wörtern: „Klassen" sind in ESDS die Klassen eines
+Histogramms und in PYFR Python-Klassen, „Container" meint einmal Liste und
+Dictionary, einmal Docker. Solche Begriffe nur verlinken, wenn die Bedeutung
+im Satz eindeutig ist.
+
+**Codeblöcke** immer mit Sprachangabe (```` ```r ````, ```` ```python ````) —
+davon hängen Syntaxhervorhebung und die farbige Kante links ab.
+
+Nicht verwenden: eigene HTML-`<div>`s mit Inline-Styles, eigene Farbangaben,
+zusätzliche CSS-Klassen. Alles Gestalterische gehört in `styles.scss`.
+
+---
+
+## 6b. Glossar
+
+Fachbegriffe stehen zentral in `glossary.yml`. Jeder Eintrag dort wird
+site-weit automatisch im Fliesstext markiert und bekommt einen Tooltip — in
+den `.qmd`-Dateien ist **nichts** einzutragen.
+
+```yaml
+- term: Median
+  topic: Statistik
+  aliases: [Medians]
+  def: Der Wert in der Mitte der sortierten Datenreihe. Er reagiert kaum auf Ausreisser.
+```
+
+| Feld | Regel |
+|---|---|
+| `term` | Der Begriff, exakt wie im Text geschrieben. Mehrwortbegriffe sind erlaubt. |
+| `def` | Ein bis zwei Sätze, reiner Text. Keine Anführungszeichen, kein Markdown, keine Zeilenumbrüche — der Text landet in einem HTML-Attribut. |
+| `topic` | Themenbereich für die Gruppierung auf der Glossarseite. |
+| `aliases` | Optional, für Plural- und Beugungsformen. |
+
+**Mehrdeutige Begriffe.** Bedeutet ein Wort je Themenbereich etwas anderes, wie
+`Faktor` in R gegenüber der Faktorenanalyse, treten an die Stelle von `topic`
+und `def` mehrere `bedeutungen`:
+
+```yaml
+- term: Faktor
+  aliases: [Faktoren]
+  bedeutungen:
+    - topic: Programmierung
+      tags: [Programmiergrundlagen, tidyverse, Tooling]
+      def: Datentyp in R für kategoriale Merkmale …
+    - topic: Statistik
+      tags: [Faktorenanalyse, Dimensionsreduktion]
+      def: Nicht direkt beobachtete Grösse …
+```
+
+Die `tags` werden gegen die `categories` der Seite geprüft. Passt genau eine
+Bedeutung, wird nur sie gezeigt; passt keine oder mehrere, werden alle gezeigt,
+jede mit ihrem Themenlabel. Ausgeblendet wird nie: Ein fehlender Tooltip fällt
+niemandem auf, ein etwas längerer schon.
+
+Als `tags` taugen nur Merkmale, die den Themenbereich wirklich unterscheiden.
+`R` und `Python` stehen auf fast jeder Seite und trennen deshalb nichts.
+
+**Was der Filter tut und was nicht**
+
+- Ganze Wörter, keine Treffer in anderen Wörtern: `Median` trifft nicht in
+  `Medianwert`. Wer den will, ergänzt ein Alias.
+- Gross-/Kleinschreibung egal, Umlaute eingeschlossen.
+- **Jedes** Vorkommen wird markiert, nicht nur das erste der Seite.
+- Unberührt bleiben Überschriften, Links, Code, Fussnoten, Tabellen und
+  Bildunterschriften.
+- Eine Seite nimmt sich mit `glossary-skip: true` im Front Matter aus.
+
+**Verhältnis zu den Querverweisen aus Abschnitt 6:** beide Mechanismen
+ergänzen sich. Der Querverweis führt zur Lektion, die den Begriff *behandelt*;
+das Glossar erklärt ihn *an Ort und Stelle*. Ein Begriff kann beides haben.
+
+**Die Glossarseite** (`glossar.qmd`) listet alle Einträge nach Thema und zeigt
+unter jedem, auf welchen Seiten er vorkommt. Diese Fundstellen entstehen im
+Browser aus `search.json`, dem Suchindex, den Quarto ohnehin baut — es gibt
+also keine zweite Liste, die veralten könnte.
+
+---
+
+## 7. Umgang mit den Original-Kursunterlagen
+
+Das hier ist eine private Lernseite, aber sie liegt öffentlich auf GitHub Pages.
+Deshalb gilt:
+
+- **Slides, Skripte und Aufgabenblätter nicht abschreiben.** Nicht als Zitat,
+  nicht leicht umformuliert, nicht als Screenshot.
+- Erlaubt und erwünscht: **eigene Zusammenfassung in eigenen Worten**, eigener
+  Beispielcode, eigene Grafiken.
+- Auf Originale wird **verlinkt**, unter „Verlinkte Ressourcen".
+- Formeln, Definitionen und Fachbegriffe sind Allgemeingut und dürfen
+  selbstverständlich verwendet werden.
+
+Wenn eine KI die Aufbereitung macht, ist das die wichtigste Anweisung an sie:
+**umformulieren, nicht übernehmen.**
+
+---
+
+## 8. Was die KI liefern soll
+
+Pro Lektion **eine vollständige `.qmd`-Datei**, fertig zum Speichern:
+
+- vollständiges Front Matter nach Abschnitt 3
+- die sechs Abschnitte aus Abschnitt 4, in dieser Reihenfolge
+- Codebeispiele lauffähig und minimal — die Idee zeigen, kein Komplettskript
+- keine erfundenen Quellenangaben; ist die Original-URL unbekannt, wird sie
+  schlicht weggelassen — kein Platzhalter, der auf Moodle verweist
+- keine erfundenen Inhalte: was nicht in den Unterlagen steht, wird nicht
+  ergänzt. Lücken werden als offene Frage markiert, nicht gefüllt.
+
+---
+
+## 9. Prompt zum Kopieren
+
+```text
+Du bereitest meine Kursunterlagen für eine Quarto-Website auf.
+
+KONTEXT
+Modul: <z. B. CAS Statistische Datenanalyse, Teilbereich STATDA>
+Lektion: <Nummer und Thema>
+Meine Unterlagen hänge ich an / füge ich unten ein.
+
+AUFGABE
+Erzeuge genau eine vollständige .qmd-Datei, fertig zum Speichern.
+
+FRONT MATTER
+---
+title: "L<Nr> – <Thema>"          (Gedankenstrich –, max. ~45 Zeichen)
+description: "<ein Satz, max. ~120 Zeichen, beschreibt den Inhalt>"
+categories: [<3 bis 5 Tags>]
+---
+
+TAGS
+Verwende ausschliesslich Tags aus dieser Liste, Schreibweise exakt:
+R, Python, ggplot2, tidyverse, matplotlib, seaborn, plotly, pandas,
+NumPy, Programmiergrundlagen, Tooling, Reproduzierbarkeit, SQL,
+Datenbanken, Linux, Deskriptive Statistik, EDA, Korrelation,
+Wahrscheinlichkeit, Verteilungen, Bayes, Schätzen, Regression,
+Hypothesentests, Versuchsplanung, A/B-Testing, Dimensionsreduktion,
+Faktorenanalyse, Clustering, Distanzmasse, Zeitreihen, Prognose,
+Survival-Analyse, Modelldiagnostik, Modellvalidierung, Visualisierung,
+Wahrnehmung, Farbe, Dashboards, Interaktivität, Storytelling,
+Kommunikation, Visualisierungsethik, Deployment
+Passt nichts, schlage am Ende einen neuen Tag vor und begründe ihn –
+setze ihn aber nicht selbst ein.
+
+AUFBAU – genau diese drei Abschnitte, genau in dieser Reihenfolge:
+## Kernideen aus dem Kurs      4-6 Stichpunkte, Begriffe statt Sätze
+## Erklärung                   das Thema ausführlich erklärt, mit ###-Zwischen-
+                               titeln gegliedert, Formeln, gerechnete Beispiele
+                               und Abbildungen direkt im Text
+## Verlinkte Ressourcen        Links, sonst weglassen
+
+BEISPIELE
+Jedes Beispiel in R UND Python, direkt an der erklärten Stelle, in einem
+::: panel-tabset mit ## R zuerst und ## Python als zweitem. Keinen eigenen
+Sammelabschnitt für Code am Seitenende anlegen.
+
+AUSFÜHRBARE CHUNKS
+Abbildungen und gerechnete Beispiele als ```{r} bzw. ```{python} – sie laufen
+beim Build. Jeder Chunk muss ohne Vorbedingung laufen: Daten im Chunk selbst
+erzeugen, nie ein df voraussetzen. Jeder Chunk mit #| label:, Abbildungen
+zusätzlich mit #| fig-cap: und dem Präfix fig- im Label; Labels sind
+seitenweit eindeutig, deshalb -r und -py als Endung. set.seed() bzw.
+default_rng() in Setup-Chunks mit #| include: false. Nur Pakete aus
+publish.yml verwenden.
+
+HARTE REGELN
+- Im panel-tabset steht IMMER R zuerst, Python als zweites.
+- Codeblöcke immer mit Sprachangabe (```r bzw. ```python).
+- Nur diese Divs: .note-box, .open-question, .placeholder-notice.
+  Kein eigenes HTML, keine Inline-Styles, keine Farben.
+- Formuliere alles in eigenen Worten um. Übernimm keine Formulierungen
+  aus den Unterlagen, auch nicht leicht abgewandelt.
+- Erfinde nichts und erfinde keine URLs. Ist die Originalquelle unbekannt,
+  wird sie weggelassen - kein Platzhalter, der auf Moodle verweist.
+- Sprache: Deutsch. Fachbegriffe dürfen englisch bleiben.
+
+AUSGABE
+Nur der Dateiinhalt, keine Erklärung davor oder danach.
+Dazu am Schluss eine Zeile: der vorgeschlagene Dateiname.
+```
+
+---
+
+## 10. Neue Datei einbauen
+
+1. Datei am richtigen Ort speichern (Abschnitt 2).
+2. In `_quarto.yml` unter `website.sidebar.contents` eintragen.
+   **Abschnitte brauchen ein eigenes `href`**, sonst erscheint der Eintrag
+   doppelt — einmal als Aufklapper ohne Funktion, einmal als Seite:
+   ```yaml
+   - section: "STATDA"
+     href: cas-statda-davi/statda/index.qmd
+     contents:
+       - cas-statda-davi/statda/lesson1.qmd
+   ```
+3. Ist das ein **neues Modul**, zusätzlich in `_quarto.yml` unter
+   `project.render` eintragen — sonst wird es nicht gebaut und taucht auch in
+   der Suche nicht auf. Für die derzeit ausgeblendeten Module stehen die
+   passenden Zeilen dort auskommentiert bereit.
+4. Bei neuem Modul: Karte in `index.qmd` ergänzen.
+5. Committen und pushen. Die GitHub Action rendert und veröffentlicht.
+
+---
+
+## 11. Checkliste vor dem Push
+
+- [ ] Front Matter vollständig: `title`, `description`, `categories`
+- [ ] 3–5 Tags, alle aus dem Vokabular in Abschnitt 5
+- [ ] Die drei Abschnitte vollständig und in der richtigen Reihenfolge
+- [ ] In jedem Tabset: R zuerst, Python zweitens
+- [ ] Jedes Beispiel liegt in beiden Sprachen vor
+- [ ] Alle Codeblöcke mit Sprachangabe
+- [ ] Ausführbare Chunks laufen ohne Vorbedingung, mit Label und `fig-cap`
+- [ ] Nur Pakete verwendet, die in `publish.yml` installiert werden
+- [ ] Karten liegen in einem `.card-grid`
+- [ ] Nichts wörtlich aus den Kursunterlagen übernommen
+- [ ] Keine erfundenen Links
+- [ ] Fachbegriffe mit eigener Seite verlinkt (erstes Vorkommen, nicht auf sich selbst)
+- [ ] Seite in `_quarto.yml` eingetragen (Sidebar, ggf. `project.render`)
+- [ ] Nichts in `docs/` von Hand geändert
+
+---
+
+## 12. Häufige Fehler
+
+| Fehler | Folge |
+|---|---|
+| `.lesson-card` ohne `.card-grid` | Karte über volle Breite, Seite sieht anders aus als der Rest |
+| Python-Tab vor R-Tab | Tab-Farben vertauscht |
+| Codeblock ohne Sprachangabe | keine Syntaxfarben, keine farbige Kante |
+| Tag mit abweichender Schreibweise | zweiter Tag im System, Filter findet nicht alles |
+| `section:` ohne `href` | Menüeintrag erscheint doppelt |
+| Neues Modul nicht in `project.render` | Seite wird nicht gebaut, 404 im Menü |
+| Änderung direkt in `docs/` | beim nächsten Build überschrieben |
+| Chunk setzt ein `df` voraus, das es nicht gibt | Build bricht ab, ganze Seite fehlt |
+| Paket im Chunk, das nicht in `publish.yml` steht | Build bricht ab |
+| `set.seed()` vergessen | Zahlen und Grafiken ändern sich bei jedem Build |
+| Ausführbarer Chunk im Tabset statt Listing | Tabset wird unnötig langsam und fehleranfällig |

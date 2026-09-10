@@ -1051,6 +1051,15 @@ Diese Regeln gelten weiter und werden hier nur benannt, nicht wiederholt:
 
 ---
 
+## 13a. Wo der Stand steht
+
+Der aktuelle Arbeitsstand und die naechsten Schritte stehen in
+`naechste-schritte.md`. Dort steht auch die Schablone fuer Methodenseiten in
+Kurzform und der Ablauf mit den beiden Pruefskripten. Die Datei wird nach jeder
+Arbeitssitzung nachgefuehrt, damit der Stand auf jedem Rechner verfuegbar ist.
+
+---
+
 ## 14. Checkliste vor dem Push
 
 - [ ] Neutralitätsprüfung (Abschnitt 2) ohne Treffer ausser `quelle:`
