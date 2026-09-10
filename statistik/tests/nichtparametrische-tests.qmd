@@ -2,31 +2,636 @@
 title: "Nichtparametrische Tests"
 description: "Wilcoxon, Mann-Whitney und Kruskal-Wallis als Ausweichverfahren."
 categories: ["Hypothesentests", "Interpretation", "R", "Python"]
-quelle: ["STATDA"]
+quelle: ["ESDS", "STATDA"]
 seitentyp: methode
-stand: geruest
+stand: entwurf
 order: 70
 ---
+
+```{r}
+#| label: setup-r
+#| include: false
+set.seed(2026)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pingouin as pg
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+```
+
+Alle Beispiele rechnen mit fest eingetragenen Zahlen, damit R und Python
+dieselben Daten sehen und jeder Wert im Text nachprüfbar ist. Wo sich die
+Ausgaben trotzdem unterscheiden, liegt es an der Behandlung von Bindungen; das
+wird bei Beispiel 2 ausführlich erklärt.
+
 ## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Unterscheiden sich Gruppen, ohne dass Mittelwerte und Normalverteilung vorausgesetzt werden? |
+| Zielvariable | metrisch oder ordinal |
+| Was die Methoden liefern | Teststatistik, p-Wert, Effektmasse auf Rangbasis; in R zusätzlich eine geschätzte Verschiebung mit Konfidenzintervall |
+| R-Funktionen | `wilcox.test()` für eine und zwei Stichproben sowie gepaart, `kruskal.test()` für mehr als zwei Gruppen |
+| Python-Funktionen | `pg.mwu()`, `pg.wilcoxon()`, `pg.kruskal()`, alternativ `stats.mannwhitneyu()`, `stats.wilcoxon()`, `stats.kruskal()` |
+| Verwandte Methoden | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd), [gepaarter t-Test](t-test-gepaart.qmd), [Varianzanalyse](anova.qmd) |
+
+Die drei Verfahren gehören zusammen, weil sie derselben Idee folgen. Welches
+davon zutrifft, hängt allein am Design:
+
+| Design | Rangtest | Parametrisches Gegenstück |
+|---|---|---|
+| Eine Gruppe gegen einen Sollwert | Wilcoxon-Vorzeichen-Rangtest | [t-Test für eine Stichprobe](t-test-eine-stichprobe.qmd) |
+| Zwei unabhängige Gruppen | Mann-Whitney-U-Test (in R als `wilcox.test` ohne `paired`) | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) |
+| Zwei gepaarte Messungen | Wilcoxon-Vorzeichen-Rangtest auf den Differenzen | [gepaarter t-Test](t-test-gepaart.qmd) |
+| Mehr als zwei unabhängige Gruppen | Kruskal-Wallis-Test | [Varianzanalyse](anova.qmd) |
+
+::: {.note-box}
+Die Namensgebung ist eine häufige Fehlerquelle. Mann-Whitney-U und
+Wilcoxon-Rangsummentest sind **dasselbe** Verfahren für zwei unabhängige
+Gruppen; U und W lassen sich ineinander umrechnen. Der
+Wilcoxon-Vorzeichen-Rangtest dagegen ist ein **anderes** Verfahren, für eine
+Stichprobe oder gepaarte Daten. In R heissen beide `wilcox.test()`, und nur das
+Argument `paired` unterscheidet sie. In Python sind es zwei Funktionen: `mwu()`
+und `wilcoxon()`.
+:::
 
 ## Wann diese Methode, wann nicht
 
+Typische Anlässe: eine ordinale Zielgrösse wie eine Bewertungsskala, eine kleine
+und deutlich schiefe Stichprobe, oder einzelne Extremwerte, an denen ein
+Mittelwertvergleich scheitert.
+
+Ein Rangtest ersetzt die Rohwerte durch ihre Reihenfolge. Damit verliert er die
+Abstände zwischen den Werten und gewinnt Unempfindlichkeit gegenüber
+Ausreissern und Verteilungsform. Beides gehört zusammen: Was ihn robust macht,
+ist genau das, was ihm die Aussage über Grössen nimmt.
+
+| Situation | Stattdessen |
+|---|---|
+| Voraussetzungen des t-Tests erfüllt | [t-Test](t-test-zwei-stichproben.qmd); der Rangtest kostet dann etwas Schärfe |
+| Es geht um Mittelwerte in ihrer Einheit | t-Test, oder [Bootstrap](../inferenz/bootstrap-resampling.qmd) für ein Intervall ohne Verteilungsannahme |
+| Nur der Umfang ist klein, die Form aber unauffällig | t-Test; er verträgt kleine Stichproben, solange die Verteilung nicht schief ist |
+| Zielgrösse ist kategorial | [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) |
+| Mehrere Einflussgrössen sollen berücksichtigt werden | [Regression](../regression/index.qmd), gegebenenfalls mit transformierter Zielgrösse |
+| Gruppen unterscheiden sich vor allem in der Streuung | kein Rangtest; die Frage ist eine andere, siehe Interpretationsfallen |
+
 ## Grundidee und Modell
+
+Alle Werte werden gemeinsam sortiert und durch ihren Rang ersetzt. Getestet
+wird dann, ob sich die Ränge zwischen den Gruppen anders verteilen, als es der
+Zufall erwarten liesse.
+
+Beim Mann-Whitney-U-Test zählt man dazu, wie oft ein Wert der einen Gruppe einen
+Wert der anderen übertrifft:
+
+$$U = \#\{(i,j) : x_i > y_j\} + \tfrac{1}{2}\,\#\{(i,j) : x_i = y_j\}$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $x_i, y_j$ | Werte der beiden Gruppen |
+| $U$ | Anzahl der Paarvergleiche, die die erste Gruppe gewinnt, Gleichstände zählen halb |
+| $n_1 n_2$ | Anzahl aller Paarvergleiche |
+| $U / (n_1 n_2)$ | Anteil gewonnener Vergleiche; bei Gleichheit der Gruppen liegt er bei 0.5 |
+
+Daraus folgt die korrekte Nullhypothese: **Ein zufällig gezogener Wert der einen
+Gruppe ist genauso oft grösser wie kleiner als ein zufällig gezogener Wert der
+anderen.** Das ist nicht dasselbe wie "die Mediane sind gleich", auch wenn es
+oft so verkürzt wird; die beiden Aussagen fallen nur zusammen, wenn die
+Verteilungen dieselbe Form haben.
+
+Der Vorzeichen-Rangtest arbeitet auf den Differenzen zum Sollwert oder zwischen
+den beiden Messungen. Er rangiert deren Beträge und summiert die Ränge der
+positiven Differenzen zu $V$ beziehungsweise $W$. Nur wenn positive und negative
+Abweichungen gleich häufig und gleich gross sind, liegt diese Summe in der Mitte.
+
+Kruskal-Wallis verallgemeinert den Mann-Whitney-Test auf mehr als zwei Gruppen
+und ist die Rangvariante der [Varianzanalyse](anova.qmd).
 
 ## Voraussetzungen und ihre Prüfung
 
-## Durchführung in R und Python
+Rangtests sind nicht voraussetzungsfrei. Sie brauchen weniger, nicht nichts.
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung |
+|---|---|---|---|
+| Unabhängigkeit | Beobachtungen beeinflussen sich nicht, Gruppen sind getrennt erhoben | Erhebungsdesign | p-Wert wertlos; bei gepaarten Daten den Vorzeichen-Rangtest verwenden |
+| Mindestens ordinale Skala | Die Werte lassen sich sinnvoll in eine Reihenfolge bringen | [Skalenniveau](../grundlagen/skalenniveaus.qmd) | Ränge sind nicht definiert |
+| Stetige oder wenigstens fein abgestufte Werte | Bindungen sind die Ausnahme, nicht die Regel | Werte zählen, Anteil doppelter Werte ansehen | Exakte Verteilung nicht mehr gültig, die Programme weichen auf Näherungen aus |
+| Für die Aussage über Mediane: gleiche Verteilungsform | Nur dann ist der Test ein Medianvergleich | Verteilungen nebeneinander zeichnen | Der Test bleibt gültig, aber die Deutung als Medianvergleich nicht |
+
+Die letzte Zeile ist die, die am häufigsten übersehen wird. Sie betrifft nicht
+die Gültigkeit des Tests, sondern die Formulierung des Ergebnisses.
 
 ## Output lesen
 
-## Ergebnisse interpretieren
+R, `wilcox.test()` und `kruskal.test()`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `W` bei zwei unabhängigen Gruppen | die U-Statistik der ersten Gruppe | trotz des Buchstabens W dasselbe wie Mann-Whitneys U |
+| `V` bei einer Stichprobe oder gepaart | Rangsumme der positiven Differenzen | nicht mit W verwechseln; die beiden Verfahren sind verschieden |
+| `Kruskal-Wallis chi-squared` | Teststatistik | folgt näherungsweise einer Chi-Quadrat-Verteilung |
+| `df` | Freiheitsgrade bei Kruskal-Wallis | Anzahl Gruppen minus eins |
+| `p-value` | Wahrscheinlichkeit einer mindestens so ungleichen Rangverteilung | keine Aussage über die Grösse des Unterschieds |
+| Warnung `cannot compute exact p-value with ties` | Bindungen vorhanden | R weicht auf die Normalapproximation aus, siehe Beispiel 2 |
+| Warnung `with zeroes` | Differenzen von genau null | diese Paare werden entfernt, das wirksame n sinkt |
+| `conf.int = TRUE` | geschätzte Verschiebung mit Intervall | die einzige Grössenangabe, die das Verfahren liefert, siehe Beispiel 4 |
+
+Python, `pingouin`:
+
+| Spalte | Was sie sagt | Unterschied zu R |
+|---|---|---|
+| `U_val` bzw. `W_val` | Teststatistik | dieselbe Grösse wie in R, andere Bezeichnung |
+| `p_val` | p-Wert | Bindungen werden anders behandelt, siehe Beispiel 2 |
+| `RBC` | rangbiseriale Korrelation | in R nicht enthalten; Effektmass zwischen -1 und 1 |
+| `CLES` | Common Language Effect Size | in R nicht enthalten; Wahrscheinlichkeit, dass ein zufälliger Wert der ersten Gruppe grösser ist |
+| keine Verschiebungsschätzung | fehlt | in R über `conf.int = TRUE` |
 
 ## Interpretationsfallen
 
+- **Ein Rangtest vergleicht nicht automatisch Mediane.** Er vergleicht, wie oft
+  ein Wert der einen Gruppe grösser ist. Nur bei gleicher Verteilungsform ist
+  das gleichbedeutend mit einem Medianvergleich.
+- **Nichtparametrisch heisst nicht voraussetzungsfrei.** Unabhängigkeit bleibt
+  zwingend, und die Skala muss mindestens ordinal sein.
+- **Ein signifikanter Rangtest sagt nichts über die Grösse.** Die Rangsumme ist
+  nicht in der Einheit der Messung deutbar. Dafür gibt es die Verschiebung mit
+  Intervall, RBC oder CLES.
+- **Bindungen sind kein Randproblem.** Bei einer Skala von 1 bis 7 ist fast
+  jeder Wert mehrfach vorhanden; damit fällt die exakte Verteilung weg, und die
+  Programme rechnen unterschiedlich weiter.
+- **Der Rangtest ist keine Reparatur für schlechte Daten.** Er hilft gegen
+  Schiefe und Ausreisser, nicht gegen fehlende Werte, falsche Zuordnung oder
+  ein ungeeignetes Design.
+- **Nach Kruskal-Wallis braucht es Post-hoc-Vergleiche mit Korrektur**, genau wie
+  nach einer [Varianzanalyse](anova.qmd); der Gesamttest sagt nur, dass sich
+  irgendwo etwas unterscheidet.
+- **Bei erfüllten Voraussetzungen ist der t-Test schärfer.** Der Verzicht kostet
+  rund fünf Prozent Effizienz; wer grundsätzlich rangbasiert testet, verschenkt
+  sie ohne Not.
+
 ## Ergebnis berichten
+
+Vorlage für den Ergebnissatz:
+
+> [Zielgrösse] unterscheidet sich zwischen [Gruppe 1] (Median [Wert],
+> n = [n1]) und [Gruppe 2] (Median [Wert], n = [n2]): [Testname], [Statistik],
+> p = [p]. Die geschätzte Verschiebung beträgt [Wert] [Einheit]
+> (95-Prozent-Konfidenzintervall [unten] bis [oben]).
+
+Genannt werden: das Verfahren mit seinem vollen Namen, die Teststatistik, der
+p-Wert, die Gruppengrössen, ein Lagemass je Gruppe (Median statt Mittelwert),
+ein Effektmass und der **Grund**, warum rangbasiert getestet wurde. Der letzte
+Punkt fehlt am häufigsten und ist der wichtigste: Ohne ihn steht der Verdacht im
+Raum, dass erst der t-Test gerechnet und dann gewechselt wurde.
 
 ## Abgrenzung zu verwandten Methoden
 
+| Methode | Wann diese statt eines Rangtests |
+|---|---|
+| [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) | Voraussetzungen erfüllt und eine Aussage über Mittelwerte gewünscht |
+| [Gepaarter t-Test](t-test-gepaart.qmd) | dasselbe bei verbundenen Messungen |
+| [Varianzanalyse](anova.qmd) | mehr als zwei Gruppen, Voraussetzungen erfüllt |
+| [Bootstrap](../inferenz/bootstrap-resampling.qmd) | ein Intervall für den Mittelwert ohne Verteilungsannahme |
+| [Chi-Quadrat-Tests](chi-quadrat-tests.qmd) | Zielgrösse kategorial statt ordinal |
+| [Korrelationstests](korrelationstests.qmd) | Frage nach Zusammenhang statt nach Unterschied; Spearman ist der Rangansatz dort |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Zwei Gruppen auf einer Bewertungsskala
+
+#### Frage und Datenlage
+
+Zwei Betreuungsvarianten werden von Kundinnen und Kunden auf einer Skala von 1
+bis 7 bewertet, 14 Personen für Variante A und 15 für Variante B. Die Frage
+lautet: Wird A besser bewertet als B?
+
+Die Zielgrösse ist ordinal. Der Abstand zwischen 5 und 6 muss nicht derselbe
+sein wie zwischen 6 und 7, und ein Mittelwert von 5.5 beschreibt keine
+tatsächlich vergebene Note. Damit ist der Rangtest nicht Ausweichverfahren,
+sondern erste Wahl.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-np-voraussetzungen-r
+#| fig-cap: "Beispiel 1: Verteilung der Bewertungen je Variante."
+#| fig-height: 3.2
+variante_a <- c(5, 6, 4, 6, 5, 7, 5, 6, 4, 6, 5, 7, 6, 5)
+variante_b <- c(3, 4, 5, 3, 4, 2, 4, 3, 5, 4, 3, 4, 2, 5, 4)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(table(factor(variante_a, levels = 1:7)), main = "Variante A",
+        xlab = "Bewertung", ylab = "Anzahl")
+barplot(table(factor(variante_b, levels = 1:7)), main = "Variante B",
+        xlab = "Bewertung", ylab = "Anzahl")
+par(mfrow = c(1, 1))
+
+data.frame(
+  variante = c("A", "B"),
+  n = c(length(variante_a), length(variante_b)),
+  median = c(median(variante_a), median(variante_b)),
+  min = c(min(variante_a), min(variante_b)),
+  max = c(max(variante_a), max(variante_b))
+)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-np-voraussetzungen-py
+#| fig-cap: "Beispiel 1: dieselbe Darstellung in Python."
+#| fig-height: 3.2
+variante_a = np.array([5, 6, 4, 6, 5, 7, 5, 6, 4, 6, 5, 7, 6, 5])
+variante_b = np.array([3, 4, 5, 3, 4, 2, 4, 3, 5, 4, 3, 4, 2, 5, 4])
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+for achse, werte, titel in zip(achsen, [variante_a, variante_b], "AB"):
+    anzahl = [np.sum(werte == k) for k in range(1, 8)]
+    achse.bar(range(1, 8), anzahl, color="0.4")
+    achse.set_title(f"Variante {titel}")
+    achse.set_xlabel("Bewertung")
+    achse.set_ylabel("Anzahl")
+plt.tight_layout()
+plt.show()
+
+print(pd.DataFrame({
+    "variante": ["A", "B"],
+    "n": [len(variante_a), len(variante_b)],
+    "median": [np.median(variante_a), np.median(variante_b)],
+    "min": [variante_a.min(), variante_b.min()],
+    "max": [variante_a.max(), variante_b.max()],
+}))
+```
+
+:::
+
+Variante A liegt bei einem Median von 5.5 mit Werten von 4 bis 7, Variante B bei
+4.0 mit Werten von 2 bis 5. Die beiden Verteilungen haben eine ähnliche Form,
+sie sind gegeneinander verschoben. Das ist der Fall, in dem die Deutung als
+Medianvergleich zulässig ist.
+
+Bindungen gibt es reichlich: Bei 29 Personen und sieben möglichen Werten kommt
+jede Note mehrfach vor. Darauf reagieren die Programme, wie Beispiel 2 zeigt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-np-rechnung-r
+#| warning: true
+wilcox.test(variante_a, variante_b)
+```
+
+##### Python
+
+```{python}
+#| label: b1-np-rechnung-py
+print(pg.mwu(variante_a, variante_b).round(4).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Testname | `Wilcoxon rank sum test with continuity correction` | Mann-Whitney-U für zwei unabhängige Gruppen | R nennt das Verfahren nach Wilcoxon, gemeint ist derselbe Test wie Mann-Whitneys U. |
+| `W` bzw. `U_val` | 190.5 | Anzahl der gewonnenen Paarvergleiche | Von 14 mal 15 = 210 Vergleichen gewinnt A 190.5, wobei Gleichstände halb zählen. Bei Gleichheit der Varianten läge der Wert bei 105. |
+| `p-value` | 0.00014 | Wahrscheinlichkeit einer mindestens so ungleichen Rangverteilung bei gleichen Varianten | Deutlich unter 0.05. |
+| Warnung | `cannot compute exact p-value with ties` | Bindungen vorhanden | Erwartbar bei einer Skala mit sieben Stufen; R rechnet mit der Normalapproximation weiter. |
+| `RBC` (nur Python) | 0.814 | rangbiseriale Korrelation | Sie ergibt sich direkt aus U: 190.5 von 210 Vergleichen gewonnen entspricht 0.814 auf einer Skala von -1 bis 1. |
+| `CLES` (nur Python) | 0.907 | Common Language Effect Size | Die anschaulichste Zahl der ganzen Ausgabe: Greift man zufällig je eine Person aus beiden Gruppen heraus, bewertet die aus Gruppe A in rund 91 Prozent der Fälle besser. |
+
+#### Interpretation und Ergebnissatz
+
+Der p-Wert beantwortet nur, ob der Unterschied vom Zufall unterscheidbar ist.
+Die Grösse steht in CLES und, falls verlangt, in der Verschiebungsschätzung aus
+Beispiel 4.
+
+Berichtet werden Mediane, nicht Mittelwerte. Ein Mittelwert von 5.5 auf einer
+Skala mit sieben Stufen unterstellt, dass die Abstände zwischen den Stufen
+gleich gross sind, und genau das ist bei einer Bewertungsskala nicht gesichert.
+
+> Variante A wird besser bewertet als Variante B (Mann-Whitney-U-Test,
+> U = 190.5, p < 0.001; Mediane 5.5 gegenüber 4.0, n = 14 und 15). Die
+> Common Language Effect Size beträgt 0.91: Eine zufällig gewählte Person aus
+> Gruppe A bewertet in rund neun von zehn Fällen besser als eine zufällig
+> gewählte aus Gruppe B. Rangbasiert getestet wurde wegen der ordinalen Skala.
+
+### Beispiel 2: Gepaart, und warum R und Python verschiedene p-Werte zeigen
+
+#### Frage und Datenlage
+
+Zwölf Personen bewerten ihre Beschwerden vor und nach einer Massnahme auf einer
+Skala von 0 bis 10. Dieselben Personen, zwei Messungen: Das ist der
+Vorzeichen-Rangtest auf den Differenzen, nicht der Mann-Whitney-Test.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-np-rechnung-r
+#| warning: true
+vorher <- c(7, 6, 8, 5, 7, 6, 8, 7, 6, 5, 7, 8)
+nachher <- c(5, 5, 6, 5, 4, 4, 7, 5, 6, 3, 5, 6)
+
+data.frame(vorher, nachher, differenz = nachher - vorher)
+
+wilcox.test(nachher, vorher, paired = TRUE)
+```
+
+##### Python
+
+```{python}
+#| label: b2-np-rechnung-py
+vorher = np.array([7, 6, 8, 5, 7, 6, 8, 7, 6, 5, 7, 8])
+nachher = np.array([5, 5, 6, 5, 4, 4, 7, 5, 6, 3, 5, 6])
+
+print("Differenzen:", (nachher - vorher).tolist())
+print(pg.wilcoxon(nachher, vorher).round(4).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Differenzen | zehnmal negativ, zweimal null | Veränderung je Person | Keine einzige Person hat sich verschlechtert. Das ist der ganze Befund; der Test quantifiziert nur noch, wie unwahrscheinlich das bei Wirkungslosigkeit wäre. |
+| `V` bzw. `W_val` | 0 | Rangsumme der **positiven** Differenzen | Null, weil es keine positiven Differenzen gibt. Der kleinstmögliche Wert. |
+| `p-value` in R | 0.0042 | | Normalapproximation mit Stetigkeitskorrektur. |
+| `p_val` in Python | 0.0020 | | Exakte Verteilung. |
+| Warnungen in R | `cannot compute exact p-value with ties`, `with zeroes` | Bindungen und Nulldifferenzen | Beide treffen hier zu: Die Differenz -2 kommt siebenmal vor, und zwei Personen zeigen keine Veränderung. |
+| `RBC` (nur Python) | -1.0 | rangbiseriale Korrelation | Der Extremwert. Alle von null verschiedenen Differenzen zeigen in dieselbe Richtung. |
+
+::: {.note-box}
+**Warum die p-Werte auseinandergehen.** Der exakte Test zählt alle möglichen
+Vorzeichenverteilungen ab. Diese Abzählung setzt voraus, dass es keine
+Bindungen und keine Nulldifferenzen gibt, denn beide sind bei stetigen Daten
+unmöglich. Hier gibt es beides.
+
+R erkennt das, warnt und weicht auf die Normalapproximation aus: p = 0.0042.
+scipy und pingouin rechnen die exakte Verteilung trotzdem, nachdem sie die
+beiden Nulldifferenzen entfernt haben: p = 0.0020.
+
+Keines von beiden ist falsch, aber sie beantworten die Frage unterschiedlich
+genau. **Praktisch heisst das:** Wer Ergebnisse zwischen den Sprachen
+vergleicht, prüft bei Rangtests zuerst auf Bindungen. Und wer berichtet,
+schreibt dazu, welches Verfahren gerechnet wurde. An der Entscheidung ändert
+sich hier nichts, beide liegen deutlich unter 0.05; bei einem Ergebnis nahe der
+Schwelle könnte der Unterschied den Ausschlag geben.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die zwei Personen ohne Veränderung verschwinden im Test vollständig. Das
+wirksame n sinkt damit von 12 auf 10, und die Information "keine Veränderung"
+wird gar nicht verwertet. Bei vielen Nulldifferenzen ist das ein ernstes
+Problem, und dann gehört ein anderes Verfahren gewählt, etwa ein Vorzeichentest
+oder eine Auswertung der Veränderungsrichtung als kategoriale Grösse.
+
+> Die Beschwerden gehen nach der Massnahme zurück (Wilcoxon-Vorzeichen-Rangtest
+> für verbundene Stichproben, V = 0, p = 0.004; Mediane 7.0 vor und 5.0 nach
+> der Massnahme, n = 12). Zehn Personen verbesserten sich, zwei blieben
+> unverändert, keine verschlechterte sich; die beiden unveränderten Fälle gehen
+> nicht in den Test ein. Rangbasiert ausgewertet wurde wegen der ordinalen
+> Skala.
+
+### Beispiel 3: Mehr als zwei Gruppen
+
+#### Frage und Datenlage
+
+Drei Schulungsvarianten werden von je zehn Personen auf einer Skala von 1 bis 10
+bewertet. Die Frage lautet: Unterscheiden sich die Varianten?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-np-rechnung-r
+#| warning: true
+schulung <- data.frame(
+  bewertung = c(6, 7, 5, 6, 7, 6, 5, 7, 6, 6,
+                8, 9, 7, 8, 9, 8, 7, 9, 8, 8,
+                6, 5, 7, 6, 6, 5, 7, 6, 5, 6),
+  variante = factor(rep(c("A", "B", "C"), each = 10))
+)
+
+kruskal.test(bewertung ~ variante, data = schulung)
+
+aggregate(bewertung ~ variante, data = schulung, median)
+
+pairwise.wilcox.test(schulung$bewertung, schulung$variante,
+                     p.adjust.method = "holm")
+```
+
+##### Python
+
+```{python}
+#| label: b3-np-rechnung-py
+schulung = pd.DataFrame({
+    "bewertung": [6, 7, 5, 6, 7, 6, 5, 7, 6, 6,
+                  8, 9, 7, 8, 9, 8, 7, 9, 8, 8,
+                  6, 5, 7, 6, 6, 5, 7, 6, 5, 6],
+    "variante": ["A"] * 10 + ["B"] * 10 + ["C"] * 10,
+})
+
+print(pg.kruskal(data=schulung, dv="bewertung", between="variante").round(6))
+print(schulung.groupby("variante")["bewertung"].median())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `Kruskal-Wallis chi-squared` bzw. `H` | 18.738 | Teststatistik | Sie misst, wie ungleich sich die Ränge auf die drei Gruppen verteilen. |
+| `df` | 2 | Freiheitsgrade | Anzahl Gruppen minus eins. |
+| `p-value` | 0.000085 | | Irgendwo unterscheiden sich die Varianten. |
+| Mediane | 6.0 / 8.0 / 6.0 | Lagemass je Gruppe | Hier deutet sich bereits an, wo der Unterschied sitzt: B liegt höher, A und C liegen gleich. |
+| Paarweise p-Werte (nur R) | siehe Ausgabe | Post-hoc nach Holm | Erst diese Zeilen beantworten, welche Varianten sich unterscheiden. |
+
+Der Aufbau ist derselbe wie bei der [Varianzanalyse](anova.qmd): Der Gesamttest
+sagt nur, dass es irgendwo einen Unterschied gibt. Ohne Post-hoc-Vergleiche
+bleibt das Ergebnis inhaltlich leer, und ohne Korrektur für
+[multiples Testen](../inferenz/multiples-testen.qmd) wären die paarweisen
+p-Werte zu optimistisch.
+
+Die Holm-Korrektur ist dabei der Bonferroni-Korrektur vorzuziehen: Sie hält
+dasselbe Niveau ein, verwirft aber häufiger. pingouin liefert für Kruskal-Wallis
+keine Post-hoc-Vergleiche mit; in Python ist dafür `scikit-posthocs` mit dem
+Dunn-Test üblich.
+
+#### Interpretation und Ergebnissatz
+
+> Die Bewertungen unterscheiden sich zwischen den drei Varianten
+> (Kruskal-Wallis, H(2) = 18.74, p < 0.001, n = 10 je Variante). Variante B
+> wird höher bewertet (Median 8.0) als A und C (je Median 6.0), die sich
+> untereinander nicht unterscheiden; paarweise Vergleiche nach Holm korrigiert.
+
+### Beispiel 4: Was der Rangtest über die Grösse sagt
+
+#### Frage und Datenlage
+
+Die Daten aus Beispiel 1. Der Test hat gezeigt, **dass** sich die Varianten
+unterscheiden. Dieses Beispiel beantwortet die zweite Frage: um wie viel?
+
+Das ist der Punkt, an dem Rangtests oft aufhören und deshalb den Ruf haben, nur
+p-Werte zu liefern. Das stimmt nicht: R schätzt die Verschiebung zwischen den
+beiden Verteilungen samt Konfidenzintervall, wenn man es verlangt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-np-rechnung-r
+#| warning: true
+wilcox.test(variante_a, variante_b, conf.int = TRUE)
+```
+
+##### Python
+
+```{python}
+#| label: b4-np-rechnung-py
+# pingouin und scipy liefern keine Verschiebungsschaetzung. Sie ist der Median
+# aller paarweisen Differenzen, der Hodges-Lehmann-Schaetzer, und laesst sich
+# in einer Zeile nachbauen.
+paardifferenzen = np.subtract.outer(variante_a, variante_b).ravel()
+print("Hodges-Lehmann-Schätzer:", np.median(paardifferenzen))
+
+ergebnis = pg.mwu(variante_a, variante_b)
+print("RBC  =", round(float(ergebnis["RBC"].iloc[0]), 4))
+print("CLES =", round(float(ergebnis["CLES"].iloc[0]), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `difference in location` | 2.0 | geschätzte Verschiebung zwischen den Verteilungen | Der Hodges-Lehmann-Schätzer, also der Median aller 210 paarweisen Differenzen. Nicht die Differenz der Mediane, auch wenn beide hier zufällig übereinstimmen. |
+| `95 percent confidence interval` | 1 bis 3 | Intervall für diese Verschiebung | Die Verschiebung liegt plausibel zwischen einem und drei Skalenpunkten. Auf einer Skala von 1 bis 7 ist das viel. |
+| `CLES` | 0.907 | Wahrscheinlichkeit, dass A besser bewertet | Braucht keine Einheit und ist deshalb auch Laien erklärbar. |
+| `RBC` | 0.814 | rangbiseriale Korrelation | Anhaltspunkte wie bei einer Korrelation: 0.1 klein, 0.3 mittel, 0.5 gross. |
+
+::: {.note-box}
+Der Hodges-Lehmann-Schätzer ist nicht die Differenz der Mediane. Er ist der
+Median **aller** paarweisen Differenzen zwischen den beiden Gruppen. Bei
+gleicher Verteilungsform liegen beide nah beieinander, bei verschiedener können
+sie deutlich auseinanderfallen. Berichtet wird der Wert, den das Verfahren
+liefert, und zwar unter seinem Namen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Mit diesen drei Zahlen ist der Bericht vollständig: Der p-Wert sagt, dass der
+Unterschied vom Zufall unterscheidbar ist. Die Verschiebung mit Intervall sagt,
+wie gross er in Skalenpunkten ist. CLES übersetzt ihn in eine Aussage, die ohne
+Statistikkenntnisse verständlich ist.
+
+Genau diese Kombination sollte auch beim [t-Test](t-test-zwei-stichproben.qmd)
+stehen: Teststatistik, Effektgrösse in der Einheit der Sache, standardisiertes
+Effektmass. Rangtests sind darin nicht schlechter, sie werden nur seltener so
+berichtet.
+
+> Variante A wird um geschätzte 2 Skalenpunkte besser bewertet als Variante B
+> (Hodges-Lehmann-Schätzer, 95-Prozent-Konfidenzintervall 1 bis 3;
+> Mann-Whitney-U-Test, U = 190.5, p < 0.001, n = 14 und 15). Die Common
+> Language Effect Size beträgt 0.91.
+
+::::
+
 ## Verständnisfragen
 
+::: {.quiz}
+R meldet `cannot compute exact p-value with ties`. Was ist zu tun?
+
+- [x] Nichts, ausser den Umstand im Bericht zu erwähnen ~ Richtig. Die Meldung
+      ist ein Hinweis, kein Fehler: R weicht auf die Normalapproximation aus.
+      Bei ordinalen Skalen sind Bindungen unvermeidlich. Wichtig ist nur, dass
+      man weiss, welches Verfahren gerechnet wurde, denn Python entscheidet hier
+      anders.
+- [ ] Die Bindungen durch kleine Zufallswerte auflösen ~ Das erfindet
+      Information, die nicht erhoben wurde, und macht das Ergebnis vom
+      Zufallsgenerator abhängig.
+- [ ] Auf den t-Test wechseln ~ Der Wechsel des Verfahrens aufgrund einer
+      Warnung ist keine inhaltliche Begründung.
+:::
+
+::: {.quiz}
+Zwei Gruppen haben denselben Median, der Mann-Whitney-Test ist trotzdem
+signifikant. Widerspruch?
+
+- [x] Nein, der Test vergleicht nicht Mediane, sondern wie oft ein Wert grösser
+      ist ~ Richtig. Seine Nullhypothese lautet, dass ein zufällig gezogener
+      Wert der einen Gruppe genauso oft grösser wie kleiner ist als einer der
+      anderen. Bei verschieden geformten Verteilungen kann das verletzt sein,
+      obwohl die Mediane übereinstimmen.
+- [ ] Ja, dann muss ein Rechenfehler vorliegen ~ Der Fall tritt regelmässig auf,
+      sobald die Verteilungen verschiedene Formen haben.
+- [ ] Ja, der Test ist dann ungültig ~ Er ist gültig; nur die verkürzte Deutung
+      als Medianvergleich ist es nicht.
+:::
+
+::: {.quiz}
+Warum ist CLES = 0.91 für einen Bericht oft nützlicher als U = 190.5?
+
+- [x] Weil CLES ohne Statistikkenntnisse verständlich ist ~ Richtig. "Eine
+      zufällig gewählte Person aus A bewertet in neun von zehn Fällen besser"
+      ist eine Aussage, die jeder versteht. U = 190.5 ist ohne die
+      Gruppengrössen nicht einmal einzuordnen.
+- [ ] Weil CLES genauer ist ~ Beide beruhen auf denselben Paarvergleichen; CLES
+      ist U geteilt durch die Anzahl aller Vergleiche.
+- [ ] Weil U von der Stichprobengrösse unabhängig ist ~ Genau umgekehrt: U
+      wächst mit den Gruppengrössen, CLES nicht.
+:::
+
+::: {.quiz}
+Die Voraussetzungen des t-Tests sind erfüllt. Spricht etwas dagegen, trotzdem
+rangbasiert zu testen?
+
+- [x] Ja, der Rangtest ist dann etwas weniger scharf ~ Richtig. Bei
+      normalverteilten Daten liegt die Effizienz des Rangtests bei rund 95
+      Prozent des t-Tests. Man verschenkt also einen kleinen Teil der
+      Aussagekraft, und man verliert die Aussage über Mittelwerte in ihrer
+      Einheit.
+- [ ] Nein, Rangtests sind immer die sichere Wahl ~ Sicherer gegen verletzte
+      Voraussetzungen, ja; kostenlos ist das aber nicht.
+- [ ] Ja, Rangtests sind bei grossem n nicht anwendbar ~ Sie sind es, und die
+      Normalapproximation wird mit wachsendem n sogar besser.
+:::
+
 ## Verlinkte Ressourcen
+
+- [R-Dokumentation zu `wilcox.test`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/wilcox.test.html)
+- [R-Dokumentation zu `kruskal.test`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/kruskal.test.html)
+- [pingouin: mwu](https://pingouin-stats.org/build/html/generated/pingouin.mwu.html)
+- [pingouin: wilcoxon](https://pingouin-stats.org/build/html/generated/pingouin.wilcoxon.html)
