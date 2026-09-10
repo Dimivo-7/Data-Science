@@ -11,21 +11,24 @@ order: 20
 ```{r}
 #| label: setup-r
 #| include: false
-set.seed(2026)
-
-# Sensordaten einer Fertigungslinie: drei Groessen haengen am Zustand des
-# Werkzeugs, zwei am Materialdurchsatz, eine ist reines Rauschen.
+# Sensordaten einer Fertigungslinie, deterministisch konstruiert, damit R und
+# Python exakt dieselben Zahlen sehen: Grundlage sind die Quantile der
+# Normalverteilung, die je Groesse nach einer festen Regel umsortiert werden.
 n <- 300
-werkzeug <- rnorm(n)
-durchsatz <- rnorm(n)
+lauf <- 0:(n - 1)
+
+richtung <- function(faktor) qnorm(((lauf * faktor) %% n + 0.5) / n)
+
+werkzeug <- richtung(1)
+durchsatz <- richtung(37)
 
 linie <- data.frame(
-  vibration    = round(50 + 8 * werkzeug + rnorm(n, 0, 2), 2),
-  temperatur   = round(70 + 5 * werkzeug + rnorm(n, 0, 1.5), 2),
-  stromaufnahme = round(12 + 1.5 * werkzeug + rnorm(n, 0, 0.4), 2),
-  taktzeit     = round(30 - 4 * durchsatz + rnorm(n, 0, 1), 2),
-  ausstoss     = round(500 + 60 * durchsatz + rnorm(n, 0, 15), 2),
-  luftfeuchte  = round(45 + rnorm(n, 0, 6), 2)
+  vibration     = round(50 + 8 * werkzeug + 2 * richtung(61), 2),
+  temperatur    = round(70 + 5 * werkzeug + 1.5 * richtung(91), 2),
+  stromaufnahme = round(12 + 1.5 * werkzeug + 0.4 * richtung(127), 2),
+  taktzeit      = round(30 - 4 * durchsatz + 1.0 * richtung(173), 2),
+  ausstoss      = round(500 + 60 * durchsatz + 15 * richtung(211), 2),
+  luftfeuchte   = round(45 + 6 * richtung(251), 2)
 )
 ```
 
@@ -35,29 +38,45 @@ linie <- data.frame(
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import norm
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
 
-rng = np.random.default_rng(2026)
-
 n = 300
-werkzeug = rng.normal(size=n)
-durchsatz = rng.normal(size=n)
+lauf = np.arange(n)
+
+
+def richtung(faktor):
+    return norm.ppf(((lauf * faktor) % n + 0.5) / n)
+
+
+werkzeug = richtung(1)
+durchsatz = richtung(37)
 
 linie = pd.DataFrame({
-    "vibration": 50 + 8 * werkzeug + rng.normal(0, 2, n),
-    "temperatur": 70 + 5 * werkzeug + rng.normal(0, 1.5, n),
-    "stromaufnahme": 12 + 1.5 * werkzeug + rng.normal(0, 0.4, n),
-    "taktzeit": 30 - 4 * durchsatz + rng.normal(0, 1, n),
-    "ausstoss": 500 + 60 * durchsatz + rng.normal(0, 15, n),
-    "luftfeuchte": 45 + rng.normal(0, 6, n),
+    "vibration": 50 + 8 * werkzeug + 2 * richtung(61),
+    "temperatur": 70 + 5 * werkzeug + 1.5 * richtung(91),
+    "stromaufnahme": 12 + 1.5 * werkzeug + 0.4 * richtung(127),
+    "taktzeit": 30 - 4 * durchsatz + 1.0 * richtung(173),
+    "ausstoss": 500 + 60 * durchsatz + 15 * richtung(211),
+    "luftfeuchte": 45 + 6 * richtung(251),
 }).round(2)
 ```
 
-## Kurzsteckbrief
+Die Beispieldaten werden nicht zufällig gezogen, sondern deterministisch aus
+Normalverteilungsquantilen konstruiert. R und Python rechnen deshalb mit exakt
+denselben 300 Zeilen und liefern dieselben Eigenwerte und Ladungen. Nur die
+Vorzeichen der Ladungen können sich zwischen den beiden Ausgaben unterscheiden,
+und das ist bei diesem Verfahren bedeutungslos.
+
+:::: {.panel-tabset}
+
+## Theorie
+
+### Kurzsteckbrief
 
 | | |
 |---|---|
@@ -69,7 +88,7 @@ linie = pd.DataFrame({
 | Python-Funktion | `PCA().fit(StandardScaler().fit_transform(daten))` |
 | Verwandte Methoden | [Faktorenanalyse](faktorenanalyse.qmd), [k-Means](k-means.qmd), [Distanzmasse](distanzmasse.qmd) |
 
-## Wann diese Methode, wann nicht
+### Wann diese Methode, wann nicht
 
 Typische Fragestellungen: Zwanzig Sensorwerte auf zwei bis drei Kennzahlen
 verdichten, korrelierte Prädiktoren vor einem Modell entflechten, einen
@@ -90,7 +109,7 @@ Variablen.
 | Der Zusammenhang ist deutlich nichtlinear | nichtlineare Verfahren, etwa UMAP oder Kernel-PCA |
 | Die Variablen sind praktisch unkorreliert | nichts zu verdichten; die Analyse liefert nur eine Drehung |
 
-## Grundidee und Modell
+### Grundidee und Modell
 
 Gesucht ist die Richtung im Variablenraum, entlang der die Daten am stärksten
 streuen. Das ist die erste Hauptkomponente. Die zweite ist die Richtung mit der
@@ -117,7 +136,7 @@ Variablen. Ein Eigenwert von 1 entspricht damit genau dem Informationsgehalt
 einer einzelnen Variablen, und das ist der Grund für die Faustregel, Komponenten
 mit Eigenwert über 1 zu behalten.
 
-## Voraussetzungen und ihre Prüfung
+### Voraussetzungen und ihre Prüfung
 
 | Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
 |---|---|---|---|---|
@@ -127,78 +146,7 @@ mit Eigenwert über 1 zu behalten.
 | Vergleichbare Skalen oder Standardisierung | Keine Variable dominiert wegen ihrer Einheit | Varianzen vergleichen | Erste Komponente ist praktisch die grösste Variable | `scale. = TRUE` beziehungsweise `StandardScaler` |
 | Keine extremen Ausreisser | Varianz ist nicht von wenigen Punkten getrieben | Streudiagramme, Ausreisserdiagnostik | Komponenten zeigen auf die Ausreisser | robuste Varianten, Ursachen prüfen |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: voraussetzungen-pca-r
-round(cor(linie), 2)
-
-round(apply(linie, 2, var), 1)      # sehr verschiedene Varianzen
-```
-
-## Python
-
-```{python}
-#| label: voraussetzungen-pca-py
-print(linie.corr().round(2))
-print(linie.var().round(1))
-```
-
-:::
-
-Die Korrelationsmatrix zeigt zwei Blöcke: Vibration, Temperatur und
-Stromaufnahme hängen zusammen, ebenso Taktzeit und Ausstoss, wobei deren
-Korrelation negativ ist. Die Luftfeuchte korreliert mit nichts. Genau diese
-Struktur soll die Analyse aufdecken.
-
-Die Varianzen unterscheiden sich um Grössenordnungen, weil `ausstoss` in Stück
-und `stromaufnahme` in Ampere gemessen wird. Ohne Standardisierung wäre die
-erste Komponente praktisch identisch mit dem Ausstoss.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-pca-r
-pca <- prcomp(linie, scale. = TRUE)
-
-summary(pca)
-round(pca$rotation[, 1:3], 3)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-pca-py
-standardisiert = StandardScaler().fit_transform(linie)
-pca = PCA().fit(standardisiert)
-
-varianz = pd.DataFrame({
-    "Eigenwert": (pca.explained_variance_ * (len(linie) - 1) / len(linie)).round(3),
-    "Anteil": pca.explained_variance_ratio_.round(3),
-    "kumuliert": pca.explained_variance_ratio_.cumsum().round(3),
-}, index=[f"PC{i+1}" for i in range(pca.n_components_)])
-print(varianz)
-
-ladungen = pd.DataFrame(pca.components_[:3].T, index=linie.columns,
-                        columns=["PC1", "PC2", "PC3"])
-print(ladungen.round(3))
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 300
-Beobachtungen, drei Variablen hängen an einem Werkzeugzustand, zwei am
-Materialdurchsatz, eine ist reines Rauschen. Erwartet werden also zwei
-aussagekräftige Komponenten und eine dritte, die kaum mehr erklärt als eine
-einzelne Variable.
-
-## Output lesen
+### Output lesen
 
 R, `summary(prcomp(...))`:
 
@@ -207,7 +155,7 @@ R, `summary(prcomp(...))`:
 | `Standard deviation` | Wurzel des Eigenwerts je Komponente | quadriert ergibt den Eigenwert |
 | `Proportion of Variance` | Anteil der Gesamtvarianz, den die Komponente erklärt | summiert sich über alle Komponenten zu eins |
 | `Cumulative Proportion` | kumulierter Anteil | die Zahl, an der man die Anzahl Komponenten festlegt |
-| `$rotation` | Ladungen: Gewicht jeder Variablen in jeder Komponente | Vorzeichen sind beliebig, siehe unten |
+| `$rotation` | Ladungen: Gewicht jeder Variablen in jeder Komponente | Vorzeichen sind beliebig |
 | `$x` | Komponentenwerte je Beobachtung | die neuen Variablen für weitere Analysen |
 | `$sdev` | Standardabweichungen, für den Screeplot | Eigenwert ist `$sdev^2` |
 | `$center`, `$scale` | verwendete Mittelwerte und Streuungen | nötig, um neue Daten identisch zu transformieren |
@@ -217,7 +165,7 @@ Python, `PCA`:
 | Zugriff | Was er liefert | Unterschied zu R |
 |---|---|---|
 | `explained_variance_ratio_` | Varianzanteile | wie `Proportion of Variance` |
-| `explained_variance_` | Eigenwerte, mit n minus 1 normiert | R normiert gleich; kleine Abweichung in der letzten Stelle möglich |
+| `explained_variance_` | Eigenwerte, mit n minus 1 normiert | R normiert gleich, die Werte stimmen überein |
 | `components_` | Ladungen, aber **zeilenweise** je Komponente | in R spaltenweise; deshalb transponieren |
 | `transform(X)` | Komponentenwerte | wie `$x` |
 | `n_components_` | Anzahl Komponenten | |
@@ -225,209 +173,24 @@ Python, `PCA`:
 
 Zwei Stolpersteine gelten in beiden Sprachen. **Die Vorzeichen der Ladungen sind
 beliebig:** Eine Komponente und ihr Negativ beschreiben dieselbe Richtung, und
-die Programme wählen willkürlich. Ein Vorzeichenwechsel zwischen zwei Läufen ist
-kein Fehler. **Standardisierung geschieht nicht automatisch:** In R braucht es
-`scale. = TRUE`, in Python einen eigenen Schritt davor.
+die Programme wählen willkürlich. Ein Vorzeichenwechsel zwischen zwei Läufen
+oder zwischen R und Python ist kein Fehler. **Standardisierung geschieht nicht
+automatisch:** In R braucht es `scale. = TRUE`, in Python einen eigenen Schritt
+davor.
 
-## Ergebnisse interpretieren
+### Wie viele Komponenten behalten?
 
-### Szenario A: klare Struktur, zwei Komponenten genügen
+| Kriterium | Regel | Grenzen |
+|---|---|---|
+| Kaiser | Eigenwert grösser als 1 | Mechanisch. Ein Eigenwert von 1.02 und einer von 0.98 unterscheiden sich in nichts Inhaltlichem. |
+| Screeplot | bis zum Knick | Der Knick ist Auslegungssache und manchmal nicht vorhanden. |
+| Kumulierte Varianz | so viele, bis ein gesetzter Anteil erreicht ist, oft 80 Prozent | Der Anteil wird vorher festgelegt, nicht nachträglich passend gewählt. |
+| Deutbarkeit | nur Komponenten behalten, die sich benennen lassen | Das wichtigste Kriterium und das einzige, das inhaltlich argumentiert. |
 
-::: {.panel-tabset}
+Die Kriterien widersprechen sich regelmässig. Dann wird die Entscheidung
+begründet und nicht die Regel gewechselt, bis das Ergebnis gefällt.
 
-## R
-
-```{r}
-#| label: fig-szenario-a-pca-r
-#| fig-cap: "Links der Screeplot mit den Eigenwerten, rechts die Beobachtungen in der Ebene der ersten zwei Komponenten."
-#| fig-height: 3.4
-eigenwerte <- pca$sdev^2
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-plot(eigenwerte, type = "b", pch = 16, xlab = "Komponente", ylab = "Eigenwert",
-     main = "Screeplot")
-abline(h = 1, lty = 2)
-plot(pca$x[, 1], pca$x[, 2], pch = 16, cex = 0.6, col = "grey40",
-     xlab = "PC1", ylab = "PC2", main = "Beobachtungen")
-abline(h = 0, v = 0, col = "grey80")
-par(mfrow = c(1, 1))
-
-round(cbind(eigenwert = eigenwerte,
-            anteil = eigenwerte / sum(eigenwerte),
-            kumuliert = cumsum(eigenwerte / sum(eigenwerte))), 3)
-```
-
-## Python
-
-```{python}
-#| label: fig-szenario-a-pca-py
-#| fig-cap: "Dieselbe Darstellung in Python."
-#| fig-height: 3.4
-werte = pca.transform(standardisiert)
-eigenwerte = pca.explained_variance_
-
-fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
-achsen[0].plot(range(1, len(eigenwerte) + 1), eigenwerte, "o-", color="#2166ac")
-achsen[0].axhline(1, linestyle="--", color="black", linewidth=0.8)
-achsen[0].set_xlabel("Komponente")
-achsen[0].set_ylabel("Eigenwert")
-achsen[0].set_title("Screeplot")
-achsen[1].scatter(werte[:, 0], werte[:, 1], s=8, color="0.4")
-achsen[1].axhline(0, color="0.85")
-achsen[1].axvline(0, color="0.85")
-achsen[1].set_xlabel("PC1")
-achsen[1].set_ylabel("PC2")
-achsen[1].set_title("Beobachtungen")
-plt.tight_layout()
-plt.show()
-```
-
-:::
-
-Der Screeplot zeigt zwei Eigenwerte deutlich über eins, danach einen Knick und
-Werte um eins oder darunter. Zusammen mit der kumulierten erklärten Varianz ergibt
-das die Entscheidung für zwei Komponenten.
-
-Die Ladungen sagen, was die Komponenten inhaltlich sind: Die erste lädt hoch auf
-Vibration, Temperatur und Stromaufnahme, also auf den Werkzeugzustand. Die zweite
-lädt auf Taktzeit und Ausstoss mit entgegengesetztem Vorzeichen, also auf den
-Durchsatz; das Vorzeichen ist erwartbar, weil kürzere Taktzeit mehr Ausstoss
-bedeutet. Die Luftfeuchte lädt auf keine der beiden nennenswert, was zu ihrer
-Rolle als Rauschen passt.
-
-Ergebnissatz: Zwei Hauptkomponenten erklären den ausgegebenen Anteil der Varianz
-der sechs Sensorgrössen (n = 300, standardisiert). Die erste Komponente fasst
-Vibration, Temperatur und Stromaufnahme zusammen und lässt sich als
-Werkzeugzustand deuten, die zweite Taktzeit und Ausstoss als Durchsatz.
-
-### Szenario B: nichts zu verdichten
-
-Wenn die Variablen unkorreliert sind, verteilt sich die Varianz gleichmässig, und
-die Analyse liefert nur eine Drehung ohne Gewinn.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-pca-r
-set.seed(11)
-unabhaengig <- as.data.frame(matrix(rnorm(300 * 6), ncol = 6))
-names(unabhaengig) <- paste0("v", 1:6)
-
-pca_b <- prcomp(unabhaengig, scale. = TRUE)
-round(summary(pca_b)$importance[, 1:4], 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-pca-py
-rng_b = np.random.default_rng(11)
-unabhaengig = pd.DataFrame(rng_b.normal(size=(300, 6)),
-                           columns=[f"v{i}" for i in range(1, 7)])
-
-pca_b = PCA().fit(StandardScaler().fit_transform(unabhaengig))
-print(pd.DataFrame({
-    "Anteil": pca_b.explained_variance_ratio_.round(3),
-    "kumuliert": pca_b.explained_variance_ratio_.cumsum().round(3),
-}, index=[f"PC{i+1}" for i in range(6)]))
-```
-
-:::
-
-Die Anteile liegen alle nahe an einem Sechstel, die Eigenwerte nahe eins, und die
-kumulierte Kurve steigt fast geradlinig. Aussage: Es gibt keine gemeinsame
-Struktur, also nichts zu reduzieren. Wer hier trotzdem zwei Komponenten behält,
-verwirft rund zwei Drittel der Information und behält dafür zwei uninterpretierbare
-Mischungen.
-
-Das ist der Fall, in dem man die Analyse abbricht statt sie zu berichten. Ein
-Hinweis darauf steht schon in der Korrelationsmatrix, weshalb die immer vor der
-Analyse angesehen wird.
-
-Ergebnissatz: Die sechs Variablen sind praktisch unkorreliert; jede Komponente
-erklärt rund ein Sechstel der Varianz. Eine Dimensionsreduktion ist hier nicht
-sinnvoll.
-
-### Szenario C: Fallstrick fehlende Standardisierung
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-c-pca-r
-pca_ohne <- prcomp(linie, scale. = FALSE)
-
-round(summary(pca_ohne)$importance[, 1:3], 3)
-round(pca_ohne$rotation[, 1:2], 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-pca-py
-pca_ohne = PCA().fit(linie.values)          # ohne Standardisierung
-
-print(pd.DataFrame({
-    "Anteil": pca_ohne.explained_variance_ratio_[:3].round(3),
-}, index=["PC1", "PC2", "PC3"]))
-print(pd.DataFrame(pca_ohne.components_[:2].T, index=linie.columns,
-                   columns=["PC1", "PC2"]).round(3))
-```
-
-:::
-
-Die erste Komponente erklärt fast die gesamte Varianz, und ihre Ladung liegt
-praktisch vollständig auf `ausstoss`. Das ist kein Befund über die Fertigung,
-sondern über die Einheiten: Der Ausstoss wird in Stück gemessen und hat deshalb
-die grösste Varianz. Alle übrigen Variablen verschwinden.
-
-Erkennbar ist der Fall an zwei Zeichen: Eine einzelne Komponente erklärt
-unplausibel viel, und ihre Ladungen konzentrieren sich auf eine Variable. Das
-Vorgehen: standardisieren, es sei denn, alle Variablen haben dieselbe Einheit und
-die Unterschiede in der Streuung sind inhaltlich gewollt.
-
-Ergebnissatz: Ohne Standardisierung beschreibt die erste Komponente im
-Wesentlichen den Ausstoss; berichtet wird die Analyse auf standardisierten Daten.
-
-### Weiteres Szenario: Komponenten als Eingang für weitere Verfahren
-
-Weil die Komponenten unkorreliert sind, eignen sie sich als Eingang für
-Verfahren, die unter korrelierten Variablen leiden: Clustering, das sonst ein
-mehrfach gemessenes Merkmal übergewichtet, oder Regression mit
-Multikollinearität.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-d-pca-r
-komponenten <- pca$x[, 1:2]
-round(cor(komponenten), 10)          # exakt unkorreliert
-round(head(komponenten, 3), 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-d-pca-py
-komponenten = pca.transform(standardisiert)[:, :2]
-print(np.corrcoef(komponenten.T).round(10))
-print(komponenten[:3].round(3))
-```
-
-:::
-
-Die Korrelation zwischen den Komponenten ist null, und zwar konstruktionsbedingt.
-Der Preis ist die Deutbarkeit: Ein Clustering auf Komponenten liefert Gruppen im
-gedrehten Raum, und um sie zu beschreiben, muss man über die Ladungen
-zurückrechnen. Wer Deutbarkeit braucht, verzichtet lieber auf einzelne Variablen,
-als auf Komponenten zu clustern.
-
-## Interpretationsfallen
+### Interpretationsfallen
 
 - **Die erste Komponente ist nicht die wichtigste Variable.** Sie ist die
   Richtung der grössten Streuung, und Streuung ist nicht Bedeutung.
@@ -439,14 +202,14 @@ als auf Komponenten zu clustern.
   dahinterliegenden Grössen sucht, nimmt die
   [Faktorenanalyse](faktorenanalyse.qmd).
 - **Ohne Standardisierung entscheidet die Einheit.** Das ist der häufigste
-  stille Fehler.
+  stille Fehler, siehe Beispiel 2.
 - **Ausreisser bestimmen Richtungen.** Ein einzelner extremer Punkt kann eine
   Komponente vollständig auf sich ausrichten.
 - **Zwei Dimensionen sind eine Wahl, keine Wahrheit.** Wenn zwei Komponenten nur
   40 Prozent erklären, ist die Punktwolke in der Ebene eine grobe Projektion, und
   Abstände darin sind mit Vorsicht zu deuten.
 
-## Ergebnis berichten
+### Ergebnis berichten
 
 Vorlage für den Ergebnissatz:
 
@@ -460,19 +223,7 @@ Eigenwerte und kumulierte erklärte Varianz, die Ladungen der behaltenen
 Komponenten, das Kriterium für die Anzahl und die inhaltliche Deutung. Ohne
 Deutung ist eine Komponentenanalyse nur eine Zahlenumformung.
 
-Beispiel für eine Ergebnistabelle:
-
-| Variable | PC1 | PC2 |
-|---|---|---|
-| Vibration | | |
-| Temperatur | | |
-| Stromaufnahme | | |
-| Taktzeit | | |
-| Ausstoss | | |
-| Luftfeuchte | | |
-| erklärte Varianz | | |
-
-## Abgrenzung zu verwandten Methoden
+### Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt der Hauptkomponentenanalyse |
 |---|---|
@@ -482,19 +233,464 @@ Beispiel für eine Ergebnistabelle:
 | Korrespondenzanalyse | die Variablen sind kategorial |
 | Nichtlineare Verfahren, etwa UMAP | die Struktur ist deutlich nichtlinear und nur die Darstellung zählt |
 
+## Beispiel 1: Sechs Sensoren einer Fertigungslinie
+
+### Frage und Datenlage
+
+An einer Fertigungslinie werden sechs Grössen aufgezeichnet: Vibration in
+Millimetern je Sekunde, Temperatur in Grad Celsius, Stromaufnahme in Ampere,
+Taktzeit in Sekunden, Ausstoss in Stück und Luftfeuchte in Prozent. Für 300
+Schichten liegen die Werte vor. Gefragt ist, ob sich die sechs Kennzahlen auf
+wenige zusammenfassen lassen und was diese wenigen inhaltlich bedeuten.
+
+### Voraussetzungen prüfen
+
+Vor jeder Komponentenanalyse steht die Korrelationsmatrix. Sie beantwortet die
+Frage, ob es überhaupt etwas zu verdichten gibt, und die Varianzen beantworten
+die Frage, ob standardisiert werden muss.
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b1-voraussetzungen-r
+round(cor(linie), 2)
+
+round(sapply(linie, var), 1)
+```
+
+#### Python
+
+```{python}
+#| label: b1-voraussetzungen-py
+print(linie.corr().round(2))
+print(linie.var().round(1))
+```
+
+:::
+
+Die Korrelationsmatrix zeigt zwei Blöcke. Vibration, Temperatur und
+Stromaufnahme korrelieren untereinander mit 0.93 bis 0.95. Taktzeit und Ausstoss
+korrelieren mit -0.94; das negative Vorzeichen ist inhaltlich richtig, weil eine
+kürzere Taktzeit mehr Stück je Schicht bedeutet. Die Luftfeuchte korreliert mit
+allem unter 0.07, also mit nichts.
+
+Die Varianzen reichen von 2.4 bei der Stromaufnahme bis 3971 beim Ausstoss, ein
+Verhältnis von rund 1 zu 1650. Der Grund sind die Einheiten: Ampere und Stück
+sind schlicht verschieden grosse Zahlen. Ohne Standardisierung würde die erste
+Komponente deshalb den Ausstoss abbilden und sonst nichts, wie Beispiel 2 zeigt.
+
+### Analyse rechnen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b1-pca-r
+pca <- prcomp(linie, scale. = TRUE)
+
+summary(pca)
+round(pca$rotation[, 1:3], 3)
+```
+
+#### Python
+
+```{python}
+#| label: b1-pca-py
+standardisiert = StandardScaler().fit_transform(linie)
+pca = PCA().fit(standardisiert)
+
+namen = [f"PC{i + 1}" for i in range(pca.n_components_)]
+uebersicht = pd.DataFrame({
+    "Standardabweichung": np.sqrt(pca.explained_variance_).round(4),
+    "Eigenwert": pca.explained_variance_.round(4),
+    "Anteil": pca.explained_variance_ratio_.round(4),
+    "kumuliert": pca.explained_variance_ratio_.cumsum().round(4),
+}, index=namen)
+print(uebersicht)
+
+ladungen = pd.DataFrame(pca.components_[:3].T, index=linie.columns,
+                        columns=namen[:3])
+print(ladungen.round(3))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+Zuerst die Varianztabelle:
+
+| Komponente | Standardabweichung | Eigenwert | Anteil | kumuliert | Was das heisst |
+|---|---|---|---|---|---|
+| PC1 | 1.707 | 2.912 | 48.4 % | 48.4 % | Zieht so viel Varianz auf sich wie knapp drei einzelne Variablen. Das ist der Werkzeugblock. |
+| PC2 | 1.388 | 1.925 | 32.0 % | 80.4 % | Knapp zwei Variablen wert. Das ist der Durchsatzblock. |
+| PC3 | 1.000 | 0.999 | 16.6 % | 97.0 % | Genau eine Variable wert, und das ist wörtlich zu nehmen: Diese Komponente **ist** die Luftfeuchte. |
+| PC4 bis PC6 | 0.316 / 0.255 / 0.136 | 0.100 / 0.065 / 0.019 | zusammen 3.0 % | 100 % | Das Messrauschen der einzelnen Sensoren. |
+
+Der Eigenwert ist die entscheidende Zahl, weil er eine feste Bezugsgrösse hat:
+Bei standardisierten Daten trägt jede Ausgangsvariable genau 1 bei, und die
+Eigenwerte summieren sich auf die Anzahl Variablen, hier 6. Ein Eigenwert von
+2.912 heisst also wörtlich "so viel Information wie 2.9 der ursprünglichen
+Variablen".
+
+Dann die Ladungen:
+
+| Variable | PC1 | PC2 | PC3 | Wie das zu lesen ist |
+|---|---|---|---|---|
+| vibration | 0.570 | 0.108 | -0.019 | Hohe Ladung auf PC1, sonst nichts. |
+| temperatur | 0.568 | 0.073 | -0.030 | Ebenso. |
+| stromaufnahme | 0.570 | 0.091 | -0.031 | Ebenso. Drei praktisch gleiche Ladungen bedeuten: PC1 ist der ungewichtete Durchschnitt dieser drei Grössen. |
+| taktzeit | -0.112 | 0.698 | -0.005 | Trägt PC2, mit umgekehrtem Vorzeichen zum Ausstoss. |
+| ausstoss | 0.112 | -0.698 | 0.018 | Ebenso. Die beiden Ladungen von 0.698 und -0.698 sind betragsgleich: PC2 ist im Wesentlichen die Differenz der beiden standardisierten Grössen. |
+| luftfeuchte | 0.043 | 0.023 | 0.999 | Lädt auf nichts ausser der eigenen Komponente. Eine Variable, die mit keiner anderen zusammenhängt, bekommt ihre eigene Komponente mit Eigenwert 1. |
+
+Zur Grössenordnung der Ladungen: Bei sechs Variablen hat jede Ladungsspalte die
+Länge 1, eine Gleichverteilung auf alle sechs entspräche also je 0.41. Werte um
+0.57 sind demnach hoch, Werte unter etwa 0.15 sind Rauschen. Die Schwelle hängt
+an der Anzahl Variablen und ist keine feste Zahl.
+
+### Auswahl und Darstellung
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: fig-b1-scree-r
+#| fig-cap: "Beispiel 1: Screeplot der Eigenwerte und die Schichten in der Ebene der ersten beiden Komponenten."
+#| fig-height: 3.4
+eigenwerte <- pca$sdev^2
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(eigenwerte, type = "b", pch = 16, xlab = "Komponente", ylab = "Eigenwert",
+     main = "Screeplot")
+abline(h = 1, lty = 2, col = "firebrick")
+plot(pca$x[, 1], pca$x[, 2], pch = 16, cex = 0.6, col = "grey40",
+     xlab = "PC1 (Werkzeugzustand)", ylab = "PC2 (Durchsatz)",
+     main = "Schichten")
+abline(h = 0, v = 0, col = "grey80")
+par(mfrow = c(1, 1))
+```
+
+#### Python
+
+```{python}
+#| label: fig-b1-scree-py
+#| fig-cap: "Beispiel 1: dieselbe Darstellung in Python."
+#| fig-height: 3.4
+werte = pca.transform(standardisiert)
+eigenwerte = pca.explained_variance_
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+achsen[0].plot(range(1, len(eigenwerte) + 1), eigenwerte, "o-", color="#2166ac")
+achsen[0].axhline(1, linestyle="--", color="firebrick", linewidth=0.8)
+achsen[0].set_xlabel("Komponente")
+achsen[0].set_ylabel("Eigenwert")
+achsen[0].set_title("Screeplot")
+achsen[1].scatter(werte[:, 0], werte[:, 1], s=8, color="0.4")
+achsen[1].axhline(0, color="0.85")
+achsen[1].axvline(0, color="0.85")
+achsen[1].set_xlabel("PC1 (Werkzeugzustand)")
+achsen[1].set_ylabel("PC2 (Durchsatz)")
+achsen[1].set_title("Schichten")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+Der Screeplot fällt von 2.91 auf 1.93 auf 1.00 und knickt dann scharf auf 0.10
+ab. Nach dem Knick ist die Sache eindeutig, davor nicht: Das Kaiser-Kriterium
+(Eigenwert grösser 1) liefert zwei Komponenten, weil PC3 mit 0.999 knapp
+darunter liegt. Ein Hundertstel mehr, und dieselbe Regel hätte drei geliefert.
+Genau das ist gemeint, wenn vor mechanischen Schwellen gewarnt wird.
+
+Inhaltlich ist die Entscheidung trotzdem klar, und zwar nicht wegen der Zahl,
+sondern wegen der Ladungen: PC3 ist nichts anderes als die Luftfeuchte, die mit
+keiner anderen Grösse zusammenhängt. Sie zu behalten hiesse, eine
+Ausgangsvariable unter neuem Namen mitzuschleppen. Wer sie braucht, nimmt sie
+direkt und nennt sie Luftfeuchte.
+
+### Interpretation und Ergebnissatz
+
+Die Sensordaten enthalten zwei gemeinsame Bewegungen und eine eigenständige
+Grösse. Die erste Bewegung erfasst Vibration, Temperatur und Stromaufnahme; alle
+drei steigen zusammen, was zum Bild eines zunehmend abgenutzten Werkzeugs passt.
+Die zweite erfasst den Gegensatz von Taktzeit und Ausstoss, also die
+Durchsatzeinstellung der Linie. Die Luftfeuchte bleibt für sich.
+
+Praktisch heisst das: Statt sechs Sensorwerte zu überwachen, genügen zwei
+Kennzahlen plus die Luftfeuchte, und man behält 97 Prozent der Streuung. Der
+Preis ist, dass die beiden Kennzahlen erst über die Ladungen erklärt werden
+müssen.
+
+> Eine Hauptkomponentenanalyse auf sechs standardisierten Sensorgrössen
+> (n = 300) ergibt zwei Komponenten mit Eigenwert über eins, die zusammen
+> 80.4 Prozent der Varianz erklären. Komponente 1 (Eigenwert 2.91, 48.4 Prozent)
+> lädt gleichmässig auf Vibration, Temperatur und Stromaufnahme (Ladungen 0.57)
+> und wird als Werkzeugzustand gelesen. Komponente 2 (Eigenwert 1.93,
+> 32.0 Prozent) stellt Taktzeit und Ausstoss gegenüber (Ladungen 0.70 und -0.70)
+> und wird als Durchsatz gelesen. Die dritte Komponente (Eigenwert 1.00)
+> entspricht der Luftfeuchte, die mit keiner anderen Grösse zusammenhängt; sie
+> wird als eigene Variable weitergeführt statt als Komponente.
+
+## Beispiel 2: Fehlende Standardisierung
+
+### Frage und Datenlage
+
+Dieselben 300 Schichten und dieselben sechs Sensoren, nur wird diesmal nicht
+standardisiert. In R heisst das `scale. = FALSE` (die Voreinstellung), in Python
+schlicht, den `StandardScaler` wegzulassen. Das ist der häufigste stille Fehler
+dieses Verfahrens, weil das Programm nicht warnt.
+
+### Analyse rechnen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b2-pca-r
+pca_ohne <- prcomp(linie, scale. = FALSE)
+
+round(summary(pca_ohne)$importance[, 1:3], 4)
+round(pca_ohne$rotation[, 1:2], 3)
+```
+
+#### Python
+
+```{python}
+#| label: b2-pca-py
+pca_ohne = PCA().fit(linie.values)
+
+print(pd.DataFrame({
+    "Anteil": pca_ohne.explained_variance_ratio_[:3].round(4),
+    "kumuliert": pca_ohne.explained_variance_ratio_.cumsum()[:3].round(4),
+}, index=["PC1", "PC2", "PC3"]))
+print(pd.DataFrame(pca_ohne.components_[:2].T, index=linie.columns,
+                   columns=["PC1", "PC2"]).round(3))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Anteil PC1 | 96.66 % | Sieht nach einem hervorragenden Ergebnis aus: eine Komponente genügt. Genau dieser scheinbare Erfolg ist das Warnsignal. |
+| Anteil PC2 | 2.36 % | |
+| Anteil PC3 | 0.87 % | |
+| Ladung `ausstoss` auf PC1 | 0.998 | Die Auflösung. PC1 besteht praktisch vollständig aus dem Ausstoss. |
+| Ladung `taktzeit` auf PC1 | -0.061 | |
+| Ladung `vibration` auf PC1 | 0.007 | Vibration, Temperatur und Stromaufnahme kommen in der ersten Komponente überhaupt nicht vor. |
+| Ladung `vibration` auf PC2 | 0.844 | Der Werkzeugblock taucht erst in der zweiten Komponente auf, die aber nur 2.4 Prozent trägt. |
+
+Der Vergleich mit Beispiel 1 zeigt den Schaden. Standardisiert erklärt PC1
+48.4 Prozent und fasst drei Sensoren zusammen; unstandardisiert erklärt PC1
+96.7 Prozent und ist eine einzige Variable unter anderem Namen. Der Ausstoss
+gewinnt nicht, weil er wichtiger wäre, sondern weil er in Stück gezählt wird und
+seine Varianz mit 3971 rund 1650 Mal so gross ist wie die der Stromaufnahme in
+Ampere. Wäre der Ausstoss in Tausend Stück erfasst worden, sähe das Ergebnis
+völlig anders aus.
+
+### Interpretation und Ergebnissatz
+
+Zwei Zeichen verraten den Fehler zuverlässig: Eine einzelne Komponente erklärt
+unplausibel viel, und ihre Ladungen konzentrieren sich auf eine Variable. Beides
+lässt sich in einem Blick auf die Ladungstabelle prüfen.
+
+Nicht standardisiert wird nur dann, wenn alle Variablen dieselbe Einheit haben
+**und** die Unterschiede in der Streuung inhaltlich gewollt sind, etwa bei
+mehreren Messungen derselben Grösse an verschiedenen Stellen. In allen anderen
+Fällen ist die Standardisierung Pflicht.
+
+> Ohne Standardisierung beschreibt die erste Komponente mit 96.7 Prozent
+> erklärter Varianz im Wesentlichen den Ausstoss (Ladung 0.998), weil dessen
+> Varianz durch die Einheit um Grössenordnungen über den übrigen liegt.
+> Berichtet wird die Analyse auf standardisierten Daten.
+
+## Beispiel 3: Nichts zu verdichten
+
+### Frage und Datenlage
+
+Sechs Kennzahlen aus verschiedenen Bereichen eines Betriebs, die inhaltlich
+nichts miteinander zu tun haben. Das Beispiel zeigt, wie das Ergebnis aussieht,
+wenn es nichts zu reduzieren gibt, und warum man die Analyse dann abbricht statt
+sie zu berichten.
+
+### Analyse rechnen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b3-pca-r
+unabhaengig <- data.frame(
+  v1 = richtung(7),   v2 = richtung(53),  v3 = richtung(101),
+  v4 = richtung(149), v5 = richtung(197), v6 = richtung(241)
+)
+
+round(cor(unabhaengig), 3)
+
+pca_b3 <- prcomp(unabhaengig, scale. = TRUE)
+round(summary(pca_b3)$importance, 3)
+```
+
+#### Python
+
+```{python}
+#| label: b3-pca-py
+unabhaengig = pd.DataFrame({
+    "v1": richtung(7),   "v2": richtung(53),  "v3": richtung(101),
+    "v4": richtung(149), "v5": richtung(197), "v6": richtung(241),
+})
+
+print(unabhaengig.corr().round(3))
+
+pca_b3 = PCA().fit(StandardScaler().fit_transform(unabhaengig))
+print(pd.DataFrame({
+    "Eigenwert": pca_b3.explained_variance_.round(3),
+    "Anteil": pca_b3.explained_variance_ratio_.round(3),
+    "kumuliert": pca_b3.explained_variance_ratio_.cumsum().round(3),
+}, index=[f"PC{i + 1}" for i in range(6)]))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Korrelationen | alle zwischen -0.03 und 0.12 | Schon hier ist die Sache entschieden. Es gibt keine gemeinsamen Bewegungen. |
+| Eigenwerte | 1.147, 1.046, 1.022, 0.986, 0.968, 0.851 | Alle nahe 1, also trägt jede Komponente etwa so viel wie eine einzelne Variable. Genau das ist die Definition von "nichts gewonnen". |
+| Anteile | 19.1 %, 17.4 %, 17.0 %, 16.4 %, 16.1 %, 14.1 % | Alle nahe an einem Sechstel, also 16.7 Prozent. |
+| kumuliert nach zwei Komponenten | 36.4 % | Wer hier zwei Komponenten behält, wirft rund zwei Drittel der Information weg und bekommt dafür zwei Mischungen, die sich nicht benennen lassen. |
+
+Das Kaiser-Kriterium liefert hier scheinbar drei Komponenten mit Eigenwert über
+1. Das ist reine Stichprobenschwankung: Bei sechs unabhängigen Variablen liegen
+die Eigenwerte per Konstruktion um 1 herum, und etwa die Hälfte davon landet
+darüber. Ein Kriterium, das ausgerechnet bei strukturlosen Daten ein Ergebnis
+liefert, taugt nicht als alleinige Entscheidungsgrundlage.
+
+### Interpretation und Ergebnissatz
+
+Der Abbruch ist hier das richtige Ergebnis und kein Misserfolg. Er lässt sich
+zudem vorwegnehmen: Die Korrelationsmatrix zeigt das Fehlen von Struktur, bevor
+eine einzige Komponente gerechnet ist. Deshalb steht sie am Anfang jeder
+Analyse.
+
+Wer es formal prüfen will, kann den Bartlett-Test auf Sphärizität oder das
+KMO-Mass heranziehen; beide beantworten die Frage "gibt es genug Korrelation für
+eine Reduktion". Der Blick auf die Matrix genügt in den meisten Fällen.
+
+> Die sechs Kennzahlen sind praktisch unkorreliert (alle Korrelationen unter
+> 0.12); die Eigenwerte liegen zwischen 0.85 und 1.15, jede Komponente erklärt
+> rund ein Sechstel der Varianz. Eine Dimensionsreduktion ist hier nicht
+> sinnvoll; die Variablen werden einzeln weiterverwendet.
+
+## Beispiel 4: Komponenten weiterverwenden
+
+### Frage und Datenlage
+
+Zurück zu den Sensordaten aus Beispiel 1. Die beiden Komponenten sollen nun als
+Eingang für ein anschliessendes Verfahren dienen, etwa ein
+[Clustering der Schichten](k-means.qmd) oder eine Regression. Der Grund dafür ist
+technisch: Vibration, Temperatur und Stromaufnahme messen fast dasselbe, und in
+einer Distanz oder einem Regressionsmodell zählt dieses eine Merkmal dann
+dreifach.
+
+### Komponenten prüfen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b4-komponenten-r
+komponenten <- pca$x[, 1:2]
+
+round(cor(komponenten), 12)
+round(apply(komponenten, 2, var), 4)
+round(head(komponenten, 3), 3)
+```
+
+#### Python
+
+```{python}
+#| label: b4-komponenten-py
+komponenten = pca.transform(standardisiert)[:, :2]
+
+print(np.corrcoef(komponenten.T).round(12))
+print(komponenten.var(axis=0, ddof=1).round(4))
+print(komponenten[:3].round(3))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Korrelation der beiden Komponenten | 0 (bis auf Rundungsfehler in der zwölften Stelle) | Nicht ungefähr null, sondern konstruktionsbedingt exakt null. Die Komponenten stehen senkrecht aufeinander. |
+| Varianz von PC1 | 2.912 | Identisch mit dem Eigenwert. Das ist keine Zufälligkeit, sondern die Definition: Der Eigenwert **ist** die Varianz der Komponentenwerte. |
+| Varianz von PC2 | 1.925 | Ebenso. |
+| erste Komponentenwerte | Beträge von 0 bis rund 7 | Sie sind zentriert; der Nullpunkt ist die durchschnittliche Schicht. Ein Betrag von rund 7 auf PC1 bedeutet eine Schicht weit am Rand des Werkzeugblocks, ein Betrag nahe 0 eine unauffällige. Ob dieser Rand das positive oder das negative Ende ist, hängt an der willkürlichen Orientierung der Komponente und kann sich zwischen R und Python unterscheiden. |
+
+### Interpretation und Ergebnissatz
+
+Der Gewinn ist die Unkorreliertheit, der Preis die Deutbarkeit. Ein Clustering
+auf PC1 und PC2 liefert Gruppen im gedrehten Raum; um sie zu beschreiben, muss
+man über die Ladungen zurückrechnen und sagen, dass "Gruppe 2 hohe Werte auf der
+Werkzeugkomponente hat, also hohe Vibration, Temperatur und Stromaufnahme".
+
+Drei Regeln für die Weiterverwendung:
+
+| Regel | Grund |
+|---|---|
+| Standardisierung und Komponenten aus den Trainingsdaten lernen, dann auf neue Daten anwenden | Sonst fliesst Information aus den Testdaten in die Transformation ein. In R über `predict(pca, neue_daten)`, in Python über `pca.transform()` mit demselben `StandardScaler`. |
+| Nicht nach der Zielvariable auswählen | Die Komponentenanalyse kennt die Zielvariable nicht. Die erste Komponente muss für eine Vorhersage nicht die nützlichste sein; unter Umständen ist es die vierte. |
+| Wenn Deutbarkeit zählt, lieber Variablen weglassen als Komponenten bilden | Eine weggelassene Variable erklärt sich von selbst, eine Komponente nicht. |
+
+> Für die weitere Auswertung wurden die ersten beiden Komponenten verwendet
+> (zusammen 80.4 Prozent der Varianz, konstruktionsbedingt unkorreliert). Die
+> Standardisierung und die Komponentengewichte wurden auf den Trainingsdaten
+> bestimmt und unverändert auf die übrigen Daten angewendet.
+
+::::
+
 ## Verständnisfragen
 
 ::: {.quiz}
-Die erste Komponente erklärt 92 Prozent der Varianz und lädt fast ausschliesslich
-auf einer Variablen. Was ist die naheliegendste Erklärung?
+Die erste Komponente erklärt 96.7 Prozent der Varianz und lädt mit 0.998 auf
+einer einzigen Variablen. Was ist die naheliegendste Erklärung?
 
 - [x] Es wurde nicht standardisiert, und diese Variable hat die grösste Varianz ~
       Richtig. Ohne Standardisierung entscheidet die Einheit. Ein Blick auf die
-      Varianzen der Ausgangsvariablen bestätigt das sofort.
+      Varianzen der Ausgangsvariablen bestätigt das sofort, siehe Beispiel 2.
 - [ ] Die Variable ist die wichtigste im Datensatz ~ Wichtigkeit lässt sich aus
       Streuung nicht ableiten.
 - [ ] Die übrigen Variablen sind fehlerhaft ~ Sie sind nur im Vergleich
       kleinskaliert.
+:::
+
+::: {.quiz}
+In Beispiel 1 hat die dritte Komponente einen Eigenwert von 0.999 und lädt mit
+0.999 auf der Luftfeuchte. Was bedeutet das?
+
+- [x] Die Luftfeuchte hängt mit keiner anderen Variablen zusammen und bildet
+      ihre eigene Komponente ~ Richtig. Bei standardisierten Daten trägt jede
+      Variable genau 1 bei. Eine Variable ohne Zusammenhang zu den übrigen
+      behält ihren Beitrag vollständig und erscheint als eigene Komponente mit
+      Eigenwert 1. Sie zu behalten hiesse, dieselbe Variable unter neuem Namen
+      mitzuführen.
+- [ ] Die Komponente ist besonders wichtig, weil ihr Eigenwert genau 1 beträgt ~
+      Eigenwert 1 ist keine Auszeichnung, sondern genau der Beitrag einer
+      einzelnen Variablen.
+- [ ] Die Luftfeuchte wurde falsch skaliert ~ Sie ist standardisiert wie alle
+      anderen; das Ergebnis liegt an ihrer fehlenden Korrelation.
 :::
 
 ::: {.quiz}
@@ -511,15 +707,33 @@ Vorzeichen. Was folgt daraus?
 :::
 
 ::: {.quiz}
-Alle sechs Eigenwerte liegen zwischen 0.9 und 1.1. Was ist zu tun?
+Alle sechs Eigenwerte liegen zwischen 0.85 und 1.15, drei davon über 1. Das
+Kaiser-Kriterium empfiehlt also drei Komponenten. Was ist zu tun?
 
-- [ ] Zwei Komponenten behalten, das ist üblich ~ Damit würde man zwei Drittel
-      der Information verwerfen, ohne etwas zu gewinnen.
+- [ ] Drei Komponenten behalten, das Kriterium ist eindeutig ~ Es ist eindeutig
+      und trotzdem falsch. Bei unkorrelierten Variablen streuen die Eigenwerte um
+      1, und etwa die Hälfte landet darüber.
 - [x] Keine Reduktion vornehmen, es gibt keine gemeinsame Struktur ~ Richtig.
       Gleichverteilte Eigenwerte bedeuten unkorrelierte Variablen. Die Analyse
       liefert dann nur eine Drehung, und die Komponenten sind nicht deutbar.
+      Sichtbar ist das schon in der Korrelationsmatrix.
 - [ ] Auf Kovarianzen statt Korrelationen umstellen ~ Das verschiebt nur das
       Gewicht zur Variablen mit der grössten Varianz.
+:::
+
+::: {.quiz}
+Die Varianz der ersten Komponentenwerte beträgt 2.912, und der Eigenwert der
+ersten Komponente beträgt ebenfalls 2.912. Zufall?
+
+- [x] Nein, der Eigenwert ist definiert als die Varianz der Komponentenwerte ~
+      Richtig. Beide Zahlen sind dieselbe Grösse, einmal aus der
+      Eigenwertzerlegung und einmal direkt aus den transformierten Daten
+      berechnet.
+- [ ] Ja, bei anderen Daten fallen die Werte auseinander ~ Die Gleichheit gilt
+      immer.
+- [ ] Nein, weil standardisiert wurde ~ Die Standardisierung sorgt dafür, dass
+      sich die Eigenwerte auf die Anzahl Variablen summieren, nicht für diese
+      Gleichheit.
 :::
 
 ::: {.quiz}

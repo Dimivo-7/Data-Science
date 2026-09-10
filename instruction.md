@@ -1074,4 +1074,9 @@ Diese Regeln gelten weiter und werden hier nur benannt, nicht wiederholt:
 - [ ] Nichts wörtlich aus Kursunterlagen, keine erfundenen Links
 - [ ] Keine Gedankenstriche im Fliesstext
 - [ ] Nichts in `docs/` oder `_freeze/` von Hand geändert
+- [ ] Beispieldaten fest eingetragen oder deterministisch konstruiert, nicht
+      gezogen; jede Zahl im Fliesstext lokal nachgerechnet
+- [ ] Aeusseres Tabset mit `::::`, inneres mit `:::`; Ebenen `##` Theorie und
+      Beispiele, `###` Abschnitte, `####` R und Python
 - [ ] Action-Log nach dem Push gelesen, Build grün
+- [ ] Bei rotem Build: Eintrag in `build-fehler.md`, bevor neu gepusht wird

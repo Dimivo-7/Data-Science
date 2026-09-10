@@ -57,19 +57,32 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Quantil der Normalverteilung | `scipy.stats.norm.ppf(p, loc, scale)` | entspricht `qnorm()` in R |
+| Gleichmässige Quantilstellen | `(np.arange(1, n + 1) - 0.5) / n` | entspricht `ppoints(n)` für `n > 10` |
+| Zufallszahlen | `rng = np.random.default_rng(seed)`, dann `rng.normal(mu, sd, n)` | der moderne Weg statt `np.random.seed()` |
+| QQ-Plot gegen die Normalverteilung | `statsmodels.api.qqplot(x, line="s", ax=ax)` | `line="s"` zeichnet die Referenzgerade |
 
 ## Hypothesentests
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| t-Test, zwei unabhängige Gruppen | `pingouin.ttest(a, b, correction=True)` | `correction=True` ist die Welch-Variante |
+| Ausgabespalten von pingouin | `T`, `dof`, `p_val`, `CI95`, `cohen_d`, `power`, `BF10` | ab pingouin 0.6 mit Unterstrich statt `p-val`, `CI95%`, `cohen-d` |
+| Rangtest zweier Gruppen | `pingouin.mwu(a, b)` | Normalapproximation; R rechnet ohne Bindungen exakt |
+| Varianzanalyse | `pingouin.anova(data=df, dv="wert", between="gruppe")` | |
 
 ## Regression und Modelle
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Lineares Modell schätzen | `smf.ols("y ~ x", data=df).fit()` | Formelsyntax wie in R |
+| Modell lesen | `modell.summary()` | Konfidenzintervalle stehen bereits in der Tabelle |
+| Quadratischer Term | `smf.ols("y ~ x + I(x**2)", data=df).fit()` | |
+| Residuen und Vorhersagen | `modell.resid`, `modell.fittedvalues` | |
+| Residualstreuung | `np.sqrt(modell.mse_resid)` | steht nicht in `summary()`, anders als in R |
+| Einflussreiche Fälle | `modell.get_influence().cooks_distance[0]`, `.hat_matrix_diag` | |
+| Test auf ungleiche Streuung | `sm.stats.diagnostic.het_breuschpagan(modell.resid, modell.model.exog)` | gibt vier Werte zurück: LM, p, F, p |
+| Vorhersage für neue Daten | `modell.predict(df_neu)` | |
 
 ## Überlebenszeitanalyse
 
@@ -81,7 +94,12 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Standardisieren | `StandardScaler().fit_transform(daten)` | eigener Schritt, geschieht nicht automatisch |
+| Hauptkomponentenanalyse | `PCA().fit(standardisiert)` | aus `sklearn.decomposition` |
+| Varianzanteile | `pca.explained_variance_ratio_` | kumuliert mit `.cumsum()` |
+| Eigenwerte | `pca.explained_variance_` | mit n minus 1 normiert, wie `prcomp` in R |
+| Ladungen | `pca.components_.T` | **zeilenweise** gespeichert, deshalb transponieren |
+| Komponentenwerte | `pca.transform(standardisiert)` | |
 
 ## Zeitreihen
 
@@ -93,7 +111,12 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Mehrere Grafiken nebeneinander | `fig, achsen = plt.subplots(1, 3, figsize=(7, 3.4))` | |
+| Streudiagramm | `ax.scatter(x, y, s=12)` | |
+| Waagrechte oder senkrechte Linie | `ax.axhline(0)`, `ax.axvline(0)` | |
+| Glättungskurve | `sm.nonparametric.lowess(y, x)` | gibt ein nach x sortiertes Array mit zwei Spalten zurück |
+| Boxplot nach Gruppen | `ax.boxplot([a, b])` | Beschriftung über `ax.set_xticks([1, 2], ["A", "B"])` |
+| Layout und Ausgabe | `plt.tight_layout()`, `plt.show()` | |
 
 ## Datenbanken und SQL
 

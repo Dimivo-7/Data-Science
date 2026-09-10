@@ -2,7 +2,7 @@
 title: "Einfache lineare Regression"
 description: "Ein Prädiktor, Steigung und Achsenabschnitt, Bestimmtheitsmass und Residuen."
 categories: ["Regression", "Modelldiagnostik", "Interpretation", "R", "Python"]
-quelle: ["ESDS"]
+quelle: ["ESDS", "STATDA"]
 seitentyp: methode
 stand: entwurf
 order: 10
@@ -31,7 +31,15 @@ plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
 ```
 
-## Kurzsteckbrief
+Alle Beispiele rechnen mit fest eingetragenen Zahlen. R und Python schätzen
+dasselbe Modell auf denselben Daten und müssen deshalb dieselben Koeffizienten
+ausgeben; die Ausgaben unterscheiden sich nur in Anordnung und Benennung.
+
+:::: {.panel-tabset}
+
+## Theorie
+
+### Kurzsteckbrief
 
 | | |
 |---|---|
@@ -43,7 +51,7 @@ plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
 | Python-Funktion | `smf.ols("y ~ x", data=df).fit()`, gelesen mit `.summary()` |
 | Verwandte Methoden | [Korrelation](../grundlagen/korrelation.qmd), [multiple lineare Regression](multiple-lineare-regression.qmd), [Korrelationstests](../tests/korrelationstests.qmd) |
 
-## Wann diese Methode, wann nicht
+### Wann diese Methode, wann nicht
 
 Typische Fragestellungen: Verbrauch aus Laufzeit, Miete aus Fläche, Ertrag aus
 Düngermenge. Gemeinsam ist ihnen eine metrische Zielgrösse, eine einzige
@@ -65,7 +73,7 @@ Sie passt nicht in diesen Fällen:
 | Erkennbar krummer Zusammenhang | Transformation, Polynomterm oder ein anderes Modell |
 | Zielvariable ist eine Zeit bis zu einem Ereignis mit zensierten Fällen | [Kaplan-Meier](../ueberlebenszeit/kaplan-meier.qmd) und [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) |
 
-## Grundidee und Modell
+### Grundidee und Modell
 
 Gesucht ist die Gerade, die möglichst nah an allen Punkten liegt. Nah heisst:
 die Summe der quadrierten senkrechten Abstände zwischen beobachteten und
@@ -91,7 +99,7 @@ Quadrat der Korrelation zwischen $x$ und $y$, und der p-Wert der Steigung ist
 derselbe wie der des Pearson-Korrelationstests. Beide Verfahren beantworten
 dieselbe Frage in verschiedener Sprache.
 
-## Voraussetzungen und ihre Prüfung
+### Voraussetzungen und ihre Prüfung
 
 | Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
 |---|---|---|---|---|
@@ -101,92 +109,11 @@ dieselbe Frage in verschiedener Sprache.
 | Normalverteilte Residuen | Residuen streuen annähernd normal | QQ-Plot | betrifft Tests und Intervalle bei kleinem n | Transformation, Bootstrap |
 | Keine einflussreichen Einzelfälle | Kein einzelner Punkt bestimmt die Gerade | Cook-Distanz, Hebelwerte, Streudiagramm | Steigung hängt an einer Beobachtung | Fall prüfen, Modell mit und ohne ihn berichten |
 
-::: {.panel-tabset}
+Die Voraussetzungen betreffen die Residuen, nicht die Rohdaten. Weder $x$ noch
+$y$ müssen normalverteilt sein; eine rechtsschiefe Zielgrösse ist kein Grund zur
+Sorge, solange die Residuen es nicht sind.
 
-## R
-
-```{r}
-#| label: fig-diagnostik-elr-r
-#| fig-cap: "Residuen gegen Vorhersage und QQ-Plot der Residuen."
-n <- 120
-anlagen <- data.frame(laufzeit = round(runif(n, 3, 20), 1))
-anlagen$verbrauch <- round(14 + 2.8 * anlagen$laufzeit + rnorm(n, 0, 6), 1)
-
-modell <- lm(verbrauch ~ laufzeit, data = anlagen)
-
-par(mfrow = c(1, 2))
-plot(modell, which = 1)
-plot(modell, which = 2)
-par(mfrow = c(1, 1))
-
-bptest(modell)
-```
-
-## Python
-
-```{python}
-#| label: fig-diagnostik-elr-py
-#| fig-cap: "Dieselbe Diagnostik in Python."
-rng = np.random.default_rng(2026)
-
-n = 120
-anlagen = pd.DataFrame({"laufzeit": rng.uniform(3, 20, n).round(1)})
-anlagen["verbrauch"] = (14 + 2.8 * anlagen["laufzeit"]
-                        + rng.normal(0, 6, n)).round(1)
-
-modell = smf.ols("verbrauch ~ laufzeit", data=anlagen).fit()
-
-fig, axes = plt.subplots(1, 2)
-axes[0].scatter(modell.fittedvalues, modell.resid, s=12, alpha=0.7)
-axes[0].axhline(0, linestyle="--", color="black")
-axes[0].set_xlabel("Vorhersage")
-axes[0].set_ylabel("Residuum")
-sm.qqplot(modell.resid, line="s", ax=axes[1])
-axes[1].set_title("QQ-Plot der Residuen")
-plt.tight_layout()
-plt.show()
-
-print(sm.stats.diagnostic.het_breuschpagan(modell.resid, modell.model.exog))
-```
-
-:::
-
-Erwartet wird links eine strukturlose Wolke um die Nulllinie. Ein Bogen zeigt
-eine übersehene Krümmung, ein Trichter ungleiche Streuung, einzelne weit
-entfernte Punkte mögliche Ausreisser. Rechts sollen die Punkte nah an der
-Geraden liegen, wobei Abweichungen an den Enden üblich sind. Ein grosser p-Wert
-im Breusch-Pagan-Test bedeutet keinen Hinweis auf ungleiche Streuung.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-elr-r
-summary(modell)
-confint(modell)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-elr-py
-print(modell.summary())
-print(modell.conf_int())
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 120
-Anlagen, Laufzeit gleichverteilt zwischen 3 und 20 Stunden, Verbrauch gleich
-14 plus 2.8 mal Laufzeit plus normalverteiltes Rauschen mit Standardabweichung
-6. Die wahren Werte sind damit bekannt, und der Output lässt sich daran prüfen.
-Weil die Zufallszahlen der beiden Sprachen verschieden erzeugt werden,
-unterscheiden sich die Zahlen leicht.
-
-## Output lesen
+### Output lesen
 
 R, `summary(modell)`:
 
@@ -194,15 +121,15 @@ R, `summary(modell)`:
 |---|---|---|
 | `Call` | die geschätzte Formel | prüfen, ob Ziel- und Einflussgrösse nicht vertauscht sind |
 | `Residuals` | Minimum, Quartile, Median der Residuen | Median deutlich neben null deutet auf Schieflage |
-| `(Intercept)` Estimate | erwarteter Verbrauch bei Laufzeit null | nur deutbar, wenn null im Datenbereich sinnvoll ist |
-| `laufzeit` Estimate | Steigung, erwartete Änderung je Stunde | in den Einheiten der Variablen, hier Liter je Stunde |
+| `(Intercept)` Estimate | erwarteter Wert von y bei x gleich null | nur deutbar, wenn null im Datenbereich sinnvoll ist |
+| Estimate des Prädiktors | Steigung, erwartete Änderung je Einheit | in den Einheiten der Variablen |
 | `Std. Error` | Unsicherheit der Schätzung | wächst mit der Streuung, sinkt mit n und mit der Spannweite von x |
 | `t value` | Estimate durch Std. Error | Betrag über etwa 2 heisst bei üblichem n signifikant |
 | `Pr(>|t|)` | p-Wert für die Nullhypothese, dass der Koeffizient null ist | für die Steigung identisch mit dem Pearson-Korrelationstest |
 | `Residual standard error` | typische Abweichung einer Vorhersage in der Einheit von y | die praktisch nützlichste Gütezahl |
 | Freiheitsgrade | n minus 2 | zwei geschätzte Parameter |
 | `Multiple R-squared` | Anteil der erklärten Streuung | bei einem Prädiktor exakt das Quadrat der Korrelation |
-| `Adjusted R-squared` | um die Parameterzahl korrigiert | bei einem Prädiktor kaum verschieden |
+| `Adjusted R-squared` | um die Parameterzahl korrigiert | kann negativ werden, wenn der Prädiktor nichts erklärt |
 | `F-statistic` mit p-Wert | Gesamttest des Modells | bei einem Prädiktor gleichwertig zum t-Test der Steigung |
 | `confint()` | Konfidenzintervall je Koeffizient | schliesst es null ein, ist der Koeffizient nicht signifikant |
 
@@ -211,7 +138,7 @@ Python, `modell.summary()`, mit den Unterschieden zu R:
 | Grösse | Was sie sagt | Unterschied zu R |
 |---|---|---|
 | `coef`, `std err`, `t`, `P>|t|` | wie in R | nur andere Bezeichnung |
-| `[0.025 0.975]` | Konfidenzintervall | steht direkt in der Tabelle |
+| `[0.025 0.975]` | Konfidenzintervall | steht direkt in der Tabelle, in R braucht es `confint()` |
 | `R-squared`, `Adj. R-squared` | wie in R | identisch berechnet |
 | `Df Residuals`, `Df Model` | Freiheitsgrade | in eigenen Zeilen statt im Fliesstext |
 | `AIC`, `BIC`, `Log-Likelihood` | Kennzahlen für Modellvergleiche | in R über `AIC(modell)` |
@@ -219,245 +146,12 @@ Python, `modell.summary()`, mit den Unterschieden zu R:
 | `Durbin-Watson` | Autokorrelation der Residuen | Werte um 2 sind unauffällig |
 | kein `Residual standard error` | fehlt in der Tabelle | über `np.sqrt(modell.mse_resid)` |
 
-Dass das Bestimmtheitsmass bei einem Prädiktor genau das Quadrat der
-Korrelation ist, lässt sich direkt nachrechnen:
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: r2-korrelation-r
-round(c(r_quadrat = summary(modell)$r.squared,
-        korrelation_quadriert = cor(anlagen$laufzeit, anlagen$verbrauch)^2), 4)
-```
-
-## Python
-
-```{python}
-#| label: r2-korrelation-py
-r = anlagen["laufzeit"].corr(anlagen["verbrauch"])
-print(round(modell.rsquared, 4), round(r**2, 4))
-```
-
-:::
-
-## Ergebnisse interpretieren
-
-### Szenario A: klarer Zusammenhang
-
-Der Fall aus der Durchführung, mit Gerade und Konfidenzband.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-a-elr-r
-#| fig-cap: "Beobachtungen, geschätzte Gerade und Konfidenzband des Mittelwerts."
-round(cbind(Schaetzwert = coef(modell), confint(modell)), 3)
-
-ggplot(anlagen, aes(laufzeit, verbrauch)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", formula = y ~ x) +
-  labs(x = "Laufzeit (Stunden)", y = "Verbrauch (Liter)")
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-elr-py
-ergebnis = pd.concat([modell.params, modell.conf_int()], axis=1)
-ergebnis.columns = ["Schaetzwert", "unten", "oben"]
-print(ergebnis.round(3))
-print(round(modell.rsquared, 3))
-```
-
-:::
-
-Die Steigung ist deutlich positiv, ihr Konfidenzintervall liegt vollständig
-oberhalb der Null und enthält den simulierten Wert 2.8: pro zusätzlicher
-Betriebsstunde steigt der erwartete Verbrauch um rund 2.8 Liter. Der
-Achsenabschnitt liegt in der Nähe von 14, ist hier aber nur eingeschränkt
-deutbar, weil eine Laufzeit von null im Datenbereich nicht vorkommt. Das
-Bestimmtheitsmass sagt, welcher Anteil der Verbrauchsstreuung auf die Laufzeit
-zurückgeht; der Rest ist das eingebaute Rauschen.
-
-Ergebnissatz: Die Laufzeit erklärt den Verbrauch deutlich (n = 120,
-R² wie ausgegeben). Je Betriebsstunde steigt der Verbrauch im Mittel um den
-geschätzten Betrag (95-Prozent-Intervall wie ausgegeben, p < 0.001).
-
-### Szenario B: kein erkennbarer Zusammenhang
-
-Dieselbe Zielgrösse, aber ein Prädiktor ohne Einfluss und eine kleine
-Stichprobe.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-elr-r
-set.seed(23)
-n_b <- 40
-ohne <- data.frame(hallentemperatur = runif(n_b, 15, 25))
-ohne$verbrauch <- 60 + rnorm(n_b, 0, 12)
-
-modell_b <- lm(verbrauch ~ hallentemperatur, data = ohne)
-summary(modell_b)
-confint(modell_b)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-elr-py
-rng_b = np.random.default_rng(23)
-n_b = 40
-ohne = pd.DataFrame({"hallentemperatur": rng_b.uniform(15, 25, n_b)})
-ohne["verbrauch"] = 60 + rng_b.normal(0, 12, n_b)
-
-modell_b = smf.ols("verbrauch ~ hallentemperatur", data=ohne).fit()
-print(modell_b.summary())
-print(modell_b.conf_int())
-```
-
-:::
-
-Die Steigung ist klein gegenüber ihrem Standardfehler, der p-Wert liegt über
-0.05, und das Konfidenzintervall reicht von einem negativen zu einem positiven
-Wert. Das Bestimmtheitsmass ist nahe null. Daraus folgt: In diesen Daten ist
-kein Zusammenhang erkennbar. Es folgt nicht, dass keiner existiert. Bei n = 40
-ist das Intervall breit, und welche Effektgrössen es noch zulässt, steht
-ausdrücklich in der Ausgabe.
-
-Ergebnissatz: Für die Hallentemperatur ergibt sich kein Zusammenhang mit dem
-Verbrauch (Schätzwert und 95-Prozent-Intervall wie ausgegeben, p wie
-ausgegeben, n = 40). Ein Einfluss ist damit nicht ausgeschlossen, nur nicht
-belegt.
-
-### Szenario C: übersehene Krümmung als Fallstrick
-
-Der Zusammenhang ist in Wahrheit gekrümmt. Das Bestimmtheitsmass fällt trotzdem
-hoch aus, und genau das macht den Fall gefährlich.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-c-elr-r
-#| fig-cap: "Links die angepasste Gerade auf gekrümmten Daten, rechts das Residuenmuster."
-#| fig-height: 3.2
-set.seed(5)
-n_c <- 120
-krumm <- data.frame(laufzeit = runif(n_c, 3, 20))
-krumm$verbrauch <- 0.6 * krumm$laufzeit^2 + rnorm(n_c, 0, 8)
-
-modell_c <- lm(verbrauch ~ laufzeit, data = krumm)
-summary(modell_c)$r.squared
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-plot(krumm$laufzeit, krumm$verbrauch, pch = 16, cex = 0.6, col = "grey30",
-     xlab = "Laufzeit", ylab = "Verbrauch", main = "Gerade auf krummen Daten")
-abline(modell_c, col = "steelblue", lwd = 2)
-plot(fitted(modell_c), resid(modell_c), pch = 16, cex = 0.6, col = "grey30",
-     xlab = "Vorhersage", ylab = "Residuum", main = "Residuen mit Bogen")
-abline(h = 0, lty = 2)
-par(mfrow = c(1, 1))
-```
-
-## Python
-
-```{python}
-#| label: fig-szenario-c-elr-py
-#| fig-cap: "Dieselbe Gegenüberstellung in Python."
-#| fig-height: 3.2
-rng_c = np.random.default_rng(5)
-n_c = 120
-krumm = pd.DataFrame({"laufzeit": rng_c.uniform(3, 20, n_c)})
-krumm["verbrauch"] = 0.6 * krumm["laufzeit"]**2 + rng_c.normal(0, 8, n_c)
-
-modell_c = smf.ols("verbrauch ~ laufzeit", data=krumm).fit()
-print(round(modell_c.rsquared, 3))
-
-fig, (a, b) = plt.subplots(1, 2, figsize=(7, 3.2))
-a.scatter(krumm["laufzeit"], krumm["verbrauch"], s=10, color="0.3")
-gerade = np.linspace(3, 20, 50)
-a.plot(gerade, modell_c.params.iloc[0] + modell_c.params.iloc[1] * gerade,
-       color="steelblue", linewidth=2)
-a.set_xlabel("Laufzeit")
-a.set_ylabel("Verbrauch")
-a.set_title("Gerade auf krummen Daten")
-b.scatter(modell_c.fittedvalues, modell_c.resid, s=10, color="0.3")
-b.axhline(0, linestyle="--", color="black")
-b.set_xlabel("Vorhersage")
-b.set_title("Residuen mit Bogen")
-fig.tight_layout()
-plt.show()
-```
-
-:::
-
-Das Bestimmtheitsmass ist hoch, die Steigung hochsignifikant, und trotzdem ist
-das Modell falsch. Erkennbar ist das nicht an den Kennzahlen, sondern am
-Residuenplot: die Residuen bilden einen deutlichen Bogen, sie sind erst
-positiv, dann negativ, dann wieder positiv. Die Folge ist, dass die Steigung
-ein Kompromiss über den ganzen Bereich ist und in keinem Teilbereich stimmt;
-Vorhersagen an den Rändern liegen systematisch daneben. Das Vorgehen: den Term
-quadratisch ergänzen, die Variablen transformieren oder ein anderes Modell
-wählen, und danach die Residuen erneut ansehen.
-
-Ergebnissatz: Ein lineares Modell beschreibt den Zusammenhang nicht angemessen;
-die Residuen zeigen eine deutliche Krümmung (R² wie ausgegeben, n = 120).
-Berichtet wird das Modell mit quadratischem Term.
-
-### Weiteres Szenario: einflussreicher Einzelfall
-
-Ein einzelner Punkt weit rechts kann die Gerade allein bestimmen. Er fällt im
-Streudiagramm sofort auf und in den Kennzahlen gar nicht.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-d-elr-r
-mit_ausreisser <- rbind(anlagen, data.frame(laufzeit = 45, verbrauch = 20))
-
-modell_d <- lm(verbrauch ~ laufzeit, data = mit_ausreisser)
-round(c(ohne = coef(modell)[2], mit = coef(modell_d)[2]), 3)
-round(max(cooks.distance(modell_d)), 2)
-```
-
-## Python
-
-```{python}
-#| label: szenario-d-elr-py
-mit_ausreisser = pd.concat(
-    [anlagen, pd.DataFrame({"laufzeit": [45.0], "verbrauch": [20.0]})],
-    ignore_index=True)
-
-modell_d = smf.ols("verbrauch ~ laufzeit", data=mit_ausreisser).fit()
-print(round(modell.params.iloc[1], 3), round(modell_d.params.iloc[1], 3))
-print(round(modell_d.get_influence().cooks_distance[0].max(), 2))
-```
-
-:::
-
-Die Steigung ändert sich durch eine einzige zusätzliche Beobachtung deutlich.
-Die grösste Cook-Distanz zeigt an, welchen Einfluss dieser Punkt hat; Werte in
-der Grössenordnung von eins gelten als auffällig. Ein solcher Fall wird nicht
-stillschweigend entfernt, sondern geprüft: Messfehler, Sonderbetrieb oder
-schlicht ein seltener, aber gültiger Wert. Berichtet wird das Ergebnis mit und
-ohne ihn.
-
-## Interpretationsfallen
+### Interpretationsfallen
 
 - **Der Achsenabschnitt ist meist keine Aussage.** Er beschreibt den Fall
   $x = 0$, und der liegt oft ausserhalb der Daten. Wer ihn deuten will,
   zentriert den Prädiktor.
-- **Ein hohes R² heisst nicht, dass das Modell stimmt.** Szenario C zeigt das
+- **Ein hohes R² heisst nicht, dass das Modell stimmt.** Beispiel 3 zeigt das
   Gegenteil. Angemessenheit beantworten die Residuen, nicht das
   Bestimmtheitsmass.
 - **Ein niedriges R² heisst nicht, dass das Modell falsch ist.** Bei stark
@@ -475,7 +169,7 @@ ohne ihn.
   dem Mittelwert bei gegebenem $x$, das breite einer einzelnen künftigen
   Beobachtung.
 
-## Ergebnis berichten
+### Ergebnis berichten
 
 Vorlage für den Ergebnissatz:
 
@@ -489,14 +183,7 @@ Immer genannt werden Steigung in ihrer Einheit, Konfidenzintervall,
 Teststatistik mit Freiheitsgraden, p-Wert, R², Residualstreuung und n, dazu
 welche Voraussetzungen geprüft wurden und mit welchem Ergebnis.
 
-Beispiel für eine Ergebnistabelle:
-
-| Koeffizient | Schätzwert | Standardfehler | 95-Prozent-Intervall | p |
-|---|---|---|---|---|
-| Achsenabschnitt | | | | |
-| Laufzeit (h) | | | | |
-
-## Abgrenzung zu verwandten Methoden
+### Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt der einfachen linearen Regression |
 |---|---|
@@ -505,16 +192,605 @@ Beispiel für eine Ergebnistabelle:
 | [Multiple lineare Regression](multiple-lineare-regression.qmd) | mehrere Einflussgrössen, oder eine soll konstant gehalten werden |
 | [Logistische Regression](logistische-regression.qmd) | Zielvariable binär |
 | [Regressionsdiagnostik](regressionsdiagnostik.qmd) | Vertiefung zu Residuen, Hebelwerten und Ausreissern |
-| t-Test für zwei Stichproben | der Prädiktor ist zweistufig kategorial; rechnerisch derselbe Fall, andere Darstellung |
+| [t-Test für zwei Stichproben](../tests/t-test-zwei-stichproben.qmd) | der Prädiktor ist zweistufig kategorial; rechnerisch derselbe Fall, andere Darstellung |
+
+## Beispiel 1: Verbrauch aus Laufzeit
+
+### Frage und Datenlage
+
+Von 24 Anlagen liegen die Betriebsstunden einer Woche und der Verbrauch in
+Litern vor. Gefragt ist, um wie viele Liter der Verbrauch je zusätzlicher
+Betriebsstunde steigt, und wie genau sich der Verbrauch aus der Laufzeit
+vorhersagen lässt.
+
+Beide Grössen sind metrisch, es gibt genau einen Prädiktor, und die Richtung
+steht fest: Die Laufzeit erklärt den Verbrauch, nicht umgekehrt. Das ist die
+Standardsituation der einfachen linearen Regression.
+
+### Modell schätzen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b1-modell-r
+anlagen <- data.frame(
+  laufzeit = c(3.2, 6.0, 6.0, 6.8, 7.7, 8.1, 8.8, 9.0, 9.3, 10.3, 10.6, 10.9,
+               11.8, 11.9, 13.8, 13.9, 14.1, 14.3, 15.8, 16.4, 17.0, 18.4,
+               18.6, 19.4),
+  verbrauch = c(26.8, 41.7, 26.5, 41.1, 28.2, 37.7, 31.6, 47.3, 45.0, 49.7,
+                38.4, 48.6, 43.9, 44.6, 55.7, 58.2, 54.7, 50.3, 53.3, 68.6,
+                65.2, 69.8, 79.2, 63.4)
+)
+
+modell <- lm(verbrauch ~ laufzeit, data = anlagen)
+summary(modell)
+confint(modell)
+```
+
+#### Python
+
+```{python}
+#| label: b1-modell-py
+anlagen = pd.DataFrame({
+    "laufzeit": [3.2, 6.0, 6.0, 6.8, 7.7, 8.1, 8.8, 9.0, 9.3, 10.3, 10.6, 10.9,
+                 11.8, 11.9, 13.8, 13.9, 14.1, 14.3, 15.8, 16.4, 17.0, 18.4,
+                 18.6, 19.4],
+    "verbrauch": [26.8, 41.7, 26.5, 41.1, 28.2, 37.7, 31.6, 47.3, 45.0, 49.7,
+                  38.4, 48.6, 43.9, 44.6, 55.7, 58.2, 54.7, 50.3, 53.3, 68.6,
+                  65.2, 69.8, 79.2, 63.4],
+})
+
+modell = smf.ols("verbrauch ~ laufzeit", data=anlagen).fit()
+print(modell.summary())
+print("Residualstreuung:", round(np.sqrt(modell.mse_resid), 4))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `(Intercept)` Estimate | 15.184 | erwarteter Verbrauch bei Laufzeit null | Rechnerisch nötig, inhaltlich hier ohne Aussage: Die kleinste beobachtete Laufzeit beträgt 3.2 Stunden, für den Stillstand liegen keine Daten vor. |
+| `laufzeit` Estimate | 2.854 | Steigung in Litern je Betriebsstunde | Die zentrale Zahl. Eine Stunde mehr Laufzeit geht im Mittel mit 2.85 Litern mehr Verbrauch einher. |
+| `Std. Error` der Steigung | 0.286 | Unsicherheit dieser Schätzung | Rund ein Zehntel der Steigung. Sie sinkt mit mehr Beobachtungen und mit einer breiteren Spanne der Laufzeiten. |
+| `t value` der Steigung | 9.980 | Schätzwert geteilt durch Standardfehler | Die Steigung ist knapp zehn Standardfehler von null entfernt. |
+| `Pr(>|t|)` der Steigung | 1.25e-09 | p-Wert für "die wahre Steigung ist null" | Praktisch ausgeschlossen. Der Wert des Achsenabschnitts (p = 0.00034) wird meistens gar nicht getestet, weil die Hypothese "y ist null bei x gleich null" selten interessiert. |
+| `confint()` bzw. `[0.025 0.975]` | 2.261 bis 3.447 | plausibler Bereich für die Steigung | Die aussagekräftigste Zeile: Der wahre Effekt liegt vermutlich zwischen 2.3 und 3.4 Litern je Stunde. Diese Spanne, nicht der p-Wert, entscheidet über die praktische Nutzbarkeit. |
+| `Residual standard error` | 6.106 auf 22 Freiheitsgraden | typische Abweichung einer Vorhersage in Litern | Wer den Verbrauch aus der Laufzeit vorhersagt, liegt typischerweise um rund 6 Liter daneben. Die praktisch nützlichste Gütezahl, weil sie in der Einheit der Messung steht. |
+| Freiheitsgrade | 22 | n minus 2 | 24 Beobachtungen, zwei geschätzte Parameter. |
+| `Multiple R-squared` | 0.8191 | Anteil erklärter Streuung | Rund 82 Prozent der Verbrauchsunterschiede gehen auf die Laufzeit zurück. |
+| `Adjusted R-squared` | 0.8109 | um die Parameterzahl korrigiert | Bei einem Prädiktor kaum verschieden. Der Abstand wächst mit der Zahl der Prädiktoren. |
+| `F-statistic` | 99.60 auf 1 und 22 df, p = 1.25e-09 | Gesamttest des Modells | Bei genau einem Prädiktor redundant: F ist exakt das Quadrat des t-Werts (9.98² = 99.6), und die p-Werte sind identisch. |
+
+### Bestimmtheitsmass und Korrelation
+
+Bei einem Prädiktor ist R² exakt das Quadrat der Korrelation. Das lässt sich
+direkt nachrechnen und ist der beste Merksatz gegen die Verwechslung der beiden
+Zahlen.
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b1-r2-r
+round(c(r = cor(anlagen$laufzeit, anlagen$verbrauch),
+        r_quadrat = cor(anlagen$laufzeit, anlagen$verbrauch)^2,
+        aus_dem_modell = summary(modell)$r.squared), 4)
+```
+
+#### Python
+
+```{python}
+#| label: b1-r2-py
+r = anlagen["laufzeit"].corr(anlagen["verbrauch"])
+print("r =", round(r, 4), " r^2 =", round(r**2, 4),
+      " R^2 =", round(modell.rsquared, 4))
+```
+
+:::
+
+Die Korrelation beträgt 0.905, ihr Quadrat 0.8191, und genau das steht als R²
+im Modell. Wichtig ist der Unterschied in der Bedeutung: r = 0.905 ist ein Mass
+für die Enge des Zusammenhangs ohne Einheit, R² = 0.82 ein Anteil an der
+Streuung. Die Steigung von 2.854 Litern je Stunde sagt dagegen etwas über die
+Grösse des Effekts, und die drei Zahlen sind nicht ineinander überführbar, ohne
+die Streuungen zu kennen.
+
+### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: fig-b1-diagnostik-r
+#| fig-cap: "Beispiel 1: Streudiagramm mit Gerade, Residuen gegen Vorhersage, QQ-Plot der Residuen."
+#| fig-height: 3.0
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+plot(anlagen$laufzeit, anlagen$verbrauch, pch = 16, col = "grey30",
+     xlab = "Laufzeit (h)", ylab = "Verbrauch (l)", main = "Daten und Gerade")
+abline(modell, col = "steelblue", lwd = 2)
+plot(modell, which = 1)
+plot(modell, which = 2)
+par(mfrow = c(1, 1))
+
+bptest(modell)
+```
+
+#### Python
+
+```{python}
+#| label: fig-b1-diagnostik-py
+#| fig-cap: "Beispiel 1: dieselbe Diagnostik in Python."
+#| fig-height: 3.0
+fig, axes = plt.subplots(1, 3, figsize=(7, 3.0))
+axes[0].scatter(anlagen["laufzeit"], anlagen["verbrauch"], s=14, color="0.3")
+gerade = np.linspace(3, 20, 50)
+axes[0].plot(gerade, modell.params.iloc[0] + modell.params.iloc[1] * gerade,
+             color="steelblue", linewidth=2)
+axes[0].set_xlabel("Laufzeit (h)")
+axes[0].set_ylabel("Verbrauch (l)")
+axes[0].set_title("Daten und Gerade")
+axes[1].scatter(modell.fittedvalues, modell.resid, s=14, color="0.3")
+axes[1].axhline(0, linestyle="--", color="black")
+axes[1].set_xlabel("Vorhersage")
+axes[1].set_title("Residuen")
+sm.qqplot(modell.resid, line="s", ax=axes[2])
+axes[2].set_title("QQ-Plot")
+plt.tight_layout()
+plt.show()
+
+lm_stat, lm_p, f_stat, f_p = sm.stats.diagnostic.het_breuschpagan(
+    modell.resid, modell.model.exog)
+print("Breusch-Pagan LM =", round(lm_stat, 4), " p =", round(lm_p, 4))
+```
+
+:::
+
+Links steigen die Punkte gleichmässig an, ohne Bogen. In der Mitte streuen die
+Residuen strukturlos um die Nulllinie, und der Streubereich bleibt von links
+nach rechts etwa gleich breit. Rechts liegen die Punkte nah an der Geraden. Der
+Breusch-Pagan-Test bestätigt das mit einem p-Wert von 0.988: kein Hinweis auf
+ungleiche Streuung. Ein grosser p-Wert ist hier die gute Nachricht, weil die
+Nullhypothese die konstante Streuung ist.
+
+### Interpretation und Ergebnissatz
+
+Drei Zahlen tragen die Aussage, und sie beantworten drei verschiedene Fragen.
+Die Steigung von 2.854 Litern je Stunde beantwortet "wie stark". Das Intervall
+von 2.26 bis 3.45 beantwortet "wie sicher". Die Residualstreuung von 6.1 Litern
+beantwortet "wie brauchbar für eine einzelne Vorhersage". Ein Modell kann bei
+allen drei Fragen unterschiedlich gut abschneiden, und der p-Wert beantwortet
+keine davon.
+
+> Der Verbrauch steigt mit der Betriebszeit: Je zusätzlicher Betriebsstunde
+> nimmt er im Mittel um 2.85 Liter zu (95-Prozent-Konfidenzintervall 2.26 bis
+> 3.45, t(22) = 9.98, p < 0.001). Das Modell erklärt 82 Prozent der Streuung,
+> die typische Abweichung einer Vorhersage beträgt 6.1 Liter (n = 24). Residuen
+> und Streudiagramm zeigen keine Auffälligkeiten.
+
+## Beispiel 2: Kein erkennbarer Zusammenhang
+
+### Frage und Datenlage
+
+Aus derselben Halle liegen für 20 Tage die Hallentemperatur in Grad Celsius und
+der Tagesverbrauch vor. Die Vermutung lautet, dass wärmere Tage den Verbrauch
+treiben. Das Beispiel zeigt, wie ein Nullbefund aussieht und was er nicht
+bedeutet.
+
+### Modell schätzen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b2-modell-r
+halle <- data.frame(
+  temperatur = c(15.6, 16.1, 16.3, 17.0, 17.2, 18.0, 18.5, 18.9, 19.2, 19.5,
+                 19.7, 20.4, 21.2, 21.4, 21.5, 21.8, 21.9, 22.2, 22.4, 23.5),
+  verbrauch = c(56.3, 63.1, 56.5, 55.7, 52.6, 61.1, 43.9, 60.6, 75.7, 50.8,
+                59.5, 93.8, 48.1, 40.5, 54.9, 81.7, 84.4, 45.4, 66.8, 60.1)
+)
+
+modell_b2 <- lm(verbrauch ~ temperatur, data = halle)
+summary(modell_b2)
+confint(modell_b2)
+```
+
+#### Python
+
+```{python}
+#| label: b2-modell-py
+halle = pd.DataFrame({
+    "temperatur": [15.6, 16.1, 16.3, 17.0, 17.2, 18.0, 18.5, 18.9, 19.2, 19.5,
+                   19.7, 20.4, 21.2, 21.4, 21.5, 21.8, 21.9, 22.2, 22.4, 23.5],
+    "verbrauch": [56.3, 63.1, 56.5, 55.7, 52.6, 61.1, 43.9, 60.6, 75.7, 50.8,
+                  59.5, 93.8, 48.1, 40.5, 54.9, 81.7, 84.4, 45.4, 66.8, 60.1],
+})
+
+modell_b2 = smf.ols("verbrauch ~ temperatur", data=halle).fit()
+print(modell_b2.summary())
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Steigung | 0.970 | Rechnerisch steigt der Verbrauch um knapp einen Liter je Grad. Der Wert allein sagt nichts, solange die Unsicherheit fehlt. |
+| `Std. Error` | 1.375 | Grösser als die Steigung selbst. Damit ist die Schätzung von reinem Rauschen nicht zu unterscheiden. |
+| `t value` | 0.706 | Weniger als ein Standardfehler Abstand zur Null. |
+| `Pr(>|t|)` | 0.489 | Ein Wert dieser Grösse entsteht bei fehlendem Zusammenhang in rund der Hälfte aller Stichproben. |
+| Konfidenzintervall | -1.919 bis 3.859 | Die wichtigste Zeile. Das Intervall enthält die Null, ist aber fast sechs Liter je Grad breit: Ein deutlicher Effekt in beide Richtungen bleibt mit diesen Daten vereinbar. |
+| `Multiple R-squared` | 0.0269 | Nicht einmal drei Prozent der Streuung sind erklärt. |
+| `Adjusted R-squared` | -0.0271 | Negativ, und das ist kein Fehler. Das korrigierte Mass zieht für jeden Parameter etwas ab; erklärt der Prädiktor weniger, als ein zufälliger Prädiktor im Mittel erklären würde, rutscht es unter null. Ein sicheres Zeichen dafür, dass der Prädiktor nichts beiträgt. |
+| `Residual standard error` | 14.163 auf 18 Freiheitsgraden | Die Vorhersage aus der Temperatur ist kaum besser als der blosse Mittelwert des Verbrauchs. |
+| `F-statistic` | 0.498, p = 0.489 | Wie erwartet identisch mit dem t-Test der Steigung. |
+
+### Interpretation und Ergebnissatz
+
+Der Nullbefund erlaubt genau eine Aussage: In diesen Daten ist kein Zusammenhang
+erkennbar. Er erlaubt nicht die Aussage, dass keiner existiert. Der Unterschied
+steht im Konfidenzintervall, das Effekte bis zu 3.9 Litern je Grad weiterhin
+zulässt. Bei 20 Beobachtungen und einer Temperaturspanne von nur acht Grad ist
+das kein Wunder: Die Genauigkeit der Steigung hängt nicht nur an n, sondern auch
+an der Spannweite des Prädiktors.
+
+Wer diesen Zusammenhang ernsthaft prüfen will, erhebt mehr Tage und vor allem
+Tage mit stärker unterschiedlichen Temperaturen.
+
+> Für die Hallentemperatur ergibt sich kein nachweisbarer Zusammenhang mit dem
+> Tagesverbrauch (Steigung 0.97 Liter je Grad, 95-Prozent-Konfidenzintervall
+> -1.92 bis 3.86, t(18) = 0.71, p = 0.49, R² = 0.03, n = 20). Das Intervall
+> lässt Effekte in beide Richtungen zu; ein Einfluss ist damit nicht
+> ausgeschlossen, sondern unbelegt.
+
+## Beispiel 3: Übersehene Krümmung
+
+### Frage und Datenlage
+
+An 24 Werkzeugen wurde die Laufzeit in tausend Stunden und der Verschleiss in
+Mikrometern gemessen. Verschleiss wächst bei vielen Prozessen überproportional,
+weil eine bereits abgenutzte Schneide schneller weiter abnutzt. Genau dieser
+Fall ist gefährlich, weil er sich in den Kennzahlen gut versteckt.
+
+### Modell schätzen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b3-modell-r
+werkzeug <- data.frame(
+  laufzeit = c(3.8, 3.8, 3.9, 4.0, 4.1, 7.0, 7.6, 7.9, 9.5, 9.7, 9.9, 10.4,
+               11.4, 11.8, 12.4, 14.1, 14.5, 16.7, 16.7, 17.4, 18.0, 18.3,
+               19.6, 20.0),
+  verschleiss = c(31.9, 35.3, 16.0, 27.5, 22.2, 48.0, 44.3, 57.6, 73.8, 74.0,
+                  70.4, 81.7, 89.2, 92.7, 114.1, 130.4, 155.5, 193.1, 171.4,
+                  203.8, 205.6, 221.2, 250.8, 244.1)
+)
+
+modell_b3 <- lm(verschleiss ~ laufzeit, data = werkzeug)
+summary(modell_b3)
+```
+
+#### Python
+
+```{python}
+#| label: b3-modell-py
+werkzeug = pd.DataFrame({
+    "laufzeit": [3.8, 3.8, 3.9, 4.0, 4.1, 7.0, 7.6, 7.9, 9.5, 9.7, 9.9, 10.4,
+                 11.4, 11.8, 12.4, 14.1, 14.5, 16.7, 16.7, 17.4, 18.0, 18.3,
+                 19.6, 20.0],
+    "verschleiss": [31.9, 35.3, 16.0, 27.5, 22.2, 48.0, 44.3, 57.6, 73.8, 74.0,
+                    70.4, 81.7, 89.2, 92.7, 114.1, 130.4, 155.5, 193.1, 171.4,
+                    203.8, 205.6, 221.2, 250.8, 244.1],
+})
+
+modell_b3 = smf.ols("verschleiss ~ laufzeit", data=werkzeug).fit()
+print(modell_b3.summary().tables[1])
+print("R^2 =", round(modell_b3.rsquared, 4),
+      " Residualstreuung =", round(np.sqrt(modell_b3.mse_resid), 3))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Steigung | 13.669 | Sieht überzeugend aus. |
+| `Std. Error` | 0.645 | Sehr klein gegenüber der Steigung. |
+| `t value` | 21.178 | Enorm. |
+| `Pr(>|t|)` | 4.0e-16 | Hochsignifikant. |
+| `Multiple R-squared` | 0.9532 | 95 Prozent erklärte Streuung. Nach den Kennzahlen ein Musterbeispiel. |
+| `(Intercept)` | -44.590 | Hier steckt der erste Hinweis: Das Modell sagt für ein neues Werkzeug einen negativen Verschleiss voraus, was physikalisch unmöglich ist. |
+| `Residual standard error` | 16.808 | Und der zweite Hinweis: Bei Messwerten zwischen 16 und 251 Mikrometern ist das viel, gerade für ein Modell mit R² = 0.95. |
+
+Alle klassischen Gütezahlen sind gut, und das Modell ist trotzdem falsch. Warum,
+zeigen erst die Residuen.
+
+### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: fig-b3-diagnostik-r
+#| fig-cap: "Beispiel 3: Gerade auf gekrümmten Daten und der Bogen im Residuenplot."
+#| fig-height: 3.2
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(werkzeug$laufzeit, werkzeug$verschleiss, pch = 16, col = "grey30",
+     xlab = "Laufzeit (1000 h)", ylab = "Verschleiss (Mikrometer)",
+     main = "Gerade auf krummen Daten")
+abline(modell_b3, col = "steelblue", lwd = 2)
+plot(fitted(modell_b3), resid(modell_b3), pch = 16, col = "grey30",
+     xlab = "Vorhersage", ylab = "Residuum", main = "Residuen mit Bogen")
+abline(h = 0, lty = 2)
+lines(lowess(fitted(modell_b3), resid(modell_b3)), col = "firebrick", lwd = 2)
+par(mfrow = c(1, 1))
+```
+
+#### Python
+
+```{python}
+#| label: fig-b3-diagnostik-py
+#| fig-cap: "Beispiel 3: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+fig, (links, rechts) = plt.subplots(1, 2, figsize=(7, 3.2))
+links.scatter(werkzeug["laufzeit"], werkzeug["verschleiss"], s=14, color="0.3")
+x_gitter = np.linspace(3.5, 20.5, 50)
+links.plot(x_gitter,
+           modell_b3.params.iloc[0] + modell_b3.params.iloc[1] * x_gitter,
+           color="steelblue", linewidth=2)
+links.set_xlabel("Laufzeit (1000 h)")
+links.set_ylabel("Verschleiss (Mikrometer)")
+links.set_title("Gerade auf krummen Daten")
+rechts.scatter(modell_b3.fittedvalues, modell_b3.resid, s=14, color="0.3")
+rechts.axhline(0, linestyle="--", color="black")
+glatt = sm.nonparametric.lowess(modell_b3.resid, modell_b3.fittedvalues)
+rechts.plot(glatt[:, 0], glatt[:, 1], color="firebrick", linewidth=2)
+rechts.set_xlabel("Vorhersage")
+rechts.set_title("Residuen mit Bogen")
+fig.tight_layout()
+plt.show()
+```
+
+:::
+
+Der Residuenplot zeigt das Muster, das eine übersehene Krümmung immer erzeugt:
+Die Residuen sind an beiden Rändern positiv und in der Mitte negativ, die
+Glättungslinie bildet einen deutlichen Bogen. Im linken Bild ist zu sehen,
+warum: Die Gerade liegt bei kleinen und grossen Laufzeiten über den Punkten und
+im mittleren Bereich darunter.
+
+### Modell korrigieren
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b3-quadratisch-r
+modell_b3q <- lm(verschleiss ~ laufzeit + I(laufzeit^2), data = werkzeug)
+summary(modell_b3q)
+```
+
+#### Python
+
+```{python}
+#| label: b3-quadratisch-py
+modell_b3q = smf.ols("verschleiss ~ laufzeit + I(laufzeit**2)",
+                     data=werkzeug).fit()
+print(modell_b3q.summary().tables[1])
+print("R^2 =", round(modell_b3q.rsquared, 4),
+      " Residualstreuung =", round(np.sqrt(modell_b3q.mse_resid), 3))
+```
+
+:::
+
+| Vergleich | Gerade | Mit quadratischem Term |
+|---|---|---|
+| R² | 0.9532 | 0.9914 |
+| Residualstreuung | 16.808 µm | 7.368 µm |
+| Achsenabschnitt | -44.590 (unmöglich) | 16.774 (plausibel) |
+
+Die Residualstreuung sinkt auf weniger als die Hälfte, und der Achsenabschnitt
+wird physikalisch sinnvoll. Am R² wäre der Unterschied kaum aufgefallen: 0.95 gegen
+0.99 sieht nach Feinschliff aus, ist aber der Unterschied zwischen falschem und
+passendem Modell.
+
+Bemerkenswert im korrigierten Modell: Der lineare Term ist mit p = 0.97 völlig
+unbedeutend, der quadratische mit p < 0.001 hochsignifikant. Der lineare Term
+bleibt trotzdem im Modell. Polynomterme werden von unten aufgebaut und nicht
+einzeln nach p-Werten entfernt, sonst hängt das Ergebnis am willkürlich
+gewählten Nullpunkt der x-Achse.
+
+### Interpretation und Ergebnissatz
+
+Die Lehre aus diesem Beispiel: Kennzahlen erkennen das Problem nicht. R² war
+hoch, der p-Wert winzig, und beides blieb auch dann so, als das Modell
+nachweislich falsch war. Erkannt wird die Fehlspezifikation am Residuenplot und
+an der Plausibilitätsprüfung des Achsenabschnitts. Deshalb wird der Residuenplot
+angesehen, bevor irgendeine Zahl berichtet wird.
+
+> Ein rein lineares Modell beschreibt den Zusammenhang nicht angemessen; die
+> Residuen zeigen eine deutliche Krümmung und der Achsenabschnitt ist negativ.
+> Berichtet wird das Modell mit quadratischem Term (R² = 0.99, Residualstreuung
+> 7.4 Mikrometer, n = 24); der quadratische Koeffizient beträgt 0.593 Mikrometer je
+> (1000 h)² (p < 0.001).
+
+## Beispiel 4: Ein einziger Punkt kippt das Modell
+
+### Frage und Datenlage
+
+Zu den 24 Anlagen aus Beispiel 1 kommt eine weitere hinzu: 45 Betriebsstunden
+bei nur 20 Litern Verbrauch. Der Wert stammt aus einer Anlage, deren Zähler in
+der Woche ausgefallen war. Er liegt weit rechts ausserhalb der übrigen
+Laufzeiten und weit unter der Geraden.
+
+### Modell schätzen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b4-modell-r
+mit_fall <- rbind(anlagen, data.frame(laufzeit = 45.0, verbrauch = 20.0))
+
+modell_b4 <- lm(verbrauch ~ laufzeit, data = mit_fall)
+summary(modell_b4)
+
+einfluss <- data.frame(
+  cook = cooks.distance(modell_b4),
+  hebel = hatvalues(modell_b4)
+)
+round(tail(einfluss, 3), 3)
+```
+
+#### Python
+
+```{python}
+#| label: b4-modell-py
+mit_fall = pd.concat(
+    [anlagen, pd.DataFrame({"laufzeit": [45.0], "verbrauch": [20.0]})],
+    ignore_index=True)
+
+modell_b4 = smf.ols("verbrauch ~ laufzeit", data=mit_fall).fit()
+print(modell_b4.summary().tables[1])
+print("R^2 =", round(modell_b4.rsquared, 4))
+
+einfluss = modell_b4.get_influence()
+print("Cook-Distanz des letzten Falls:",
+      round(einfluss.cooks_distance[0][-1], 3))
+print("Hebelwert des letzten Falls:  ",
+      round(einfluss.hat_matrix_diag[-1], 3))
+print("mittlerer Hebelwert:          ",
+      round(einfluss.hat_matrix_diag.mean(), 3))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Ohne den Fall | Mit dem Fall | Wie das zu lesen ist |
+|---|---|---|---|
+| Steigung | 2.854 | 0.253 | Der Effekt verschwindet fast vollständig. Eine einzige von 25 Beobachtungen dreht die inhaltliche Aussage um. |
+| `Std. Error` | 0.286 | 0.387 | Auch die Unsicherheit steigt. |
+| `Pr(>|t|)` | < 0.001 | 0.519 | Aus einem hochsignifikanten Befund wird ein Nullbefund. |
+| Konfidenzintervall | 2.26 bis 3.45 | -0.55 bis 1.05 | Die beiden Intervalle überschneiden sich nicht einmal. |
+| `Multiple R-squared` | 0.8191 | 0.0183 | Von 82 Prozent auf unter 2 Prozent. |
+| Cook-Distanz des Falls | | 23.906 | Sie misst, wie stark sich alle Vorhersagen ändern, wenn genau dieser Punkt weggelassen wird. Werte über 1 gelten als auffällig; 23.9 ist eine Grössenordnung darüber. |
+| Hebelwert des Falls | | 0.711 | Der Hebel misst, wie extrem der x-Wert liegt. Der Durchschnitt beträgt hier 0.08 (zwei Parameter geteilt durch 25 Beobachtungen); dieser Punkt hat fast den neunfachen Wert. |
+
+Hebel und Cook-Distanz sind nicht dasselbe. Ein Punkt mit hohem Hebel liegt weit
+aussen auf der x-Achse, richtet aber keinen Schaden an, solange er auf der Linie
+der übrigen liegt. Gefährlich wird die Kombination: extremer x-Wert **und**
+Abweichung nach oben oder unten. Genau die misst die Cook-Distanz.
+
+### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: fig-b4-einfluss-r
+#| fig-cap: "Beispiel 4: dieselben Daten mit und ohne den einen Fall."
+#| fig-height: 3.2
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(mit_fall$laufzeit, mit_fall$verbrauch, pch = 16, col = "grey30",
+     xlab = "Laufzeit (h)", ylab = "Verbrauch (l)", main = "Alle 25 Fälle")
+points(45, 20, pch = 16, col = "firebrick", cex = 1.4)
+abline(modell_b4, col = "firebrick", lwd = 2)
+abline(modell, col = "steelblue", lwd = 2, lty = 2)
+legend("topright", c("mit", "ohne"), col = c("firebrick", "steelblue"),
+       lty = c(1, 2), lwd = 2, bty = "n", cex = 0.8)
+plot(cooks.distance(modell_b4), type = "h", lwd = 2,
+     xlab = "Beobachtung", ylab = "Cook-Distanz", main = "Cook-Distanzen")
+abline(h = 1, lty = 2, col = "firebrick")
+par(mfrow = c(1, 1))
+```
+
+#### Python
+
+```{python}
+#| label: fig-b4-einfluss-py
+#| fig-cap: "Beispiel 4: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+fig, (links, rechts) = plt.subplots(1, 2, figsize=(7, 3.2))
+links.scatter(mit_fall["laufzeit"], mit_fall["verbrauch"], s=14, color="0.3")
+links.scatter([45], [20], s=45, color="firebrick")
+x_gitter = np.linspace(3, 46, 50)
+links.plot(x_gitter,
+           modell_b4.params.iloc[0] + modell_b4.params.iloc[1] * x_gitter,
+           color="firebrick", linewidth=2, label="mit")
+links.plot(x_gitter,
+           modell.params.iloc[0] + modell.params.iloc[1] * x_gitter,
+           color="steelblue", linewidth=2, linestyle="--", label="ohne")
+links.set_xlabel("Laufzeit (h)")
+links.set_ylabel("Verbrauch (l)")
+links.set_title("Alle 25 Fälle")
+links.legend(frameon=False, fontsize=8)
+cook = modell_b4.get_influence().cooks_distance[0]
+rechts.vlines(range(len(cook)), 0, cook, linewidth=2)
+rechts.axhline(1, linestyle="--", color="firebrick")
+rechts.set_xlabel("Beobachtung")
+rechts.set_ylabel("Cook-Distanz")
+rechts.set_title("Cook-Distanzen")
+fig.tight_layout()
+plt.show()
+```
+
+:::
+
+Im linken Bild ist zu sehen, wie der eine Punkt die Gerade zu sich
+herunterzieht. Rechts ragt seine Cook-Distanz so weit über die Schwelle von 1
+hinaus, dass die übrigen 24 Werte optisch auf der Nulllinie verschwinden.
+
+### Interpretation und Ergebnissatz
+
+Entscheidend ist, was jetzt **nicht** passiert: Der Punkt wird nicht kommentarlos
+gelöscht, weil er stört. Die Reihenfolge lautet erstens Ursache klären,
+zweitens entscheiden, drittens beides berichten.
+
+| Befund zur Ursache | Vorgehen |
+|---|---|
+| Nachweislicher Messfehler, hier der ausgefallene Zähler | Fall ausschliessen, Ausschluss und Begründung im Bericht nennen |
+| Gültiger, aber andersartiger Betriebszustand | getrennt modellieren oder als zusätzliche Variable aufnehmen |
+| Gültiger Wert, Ursache unklar | Modell mit und ohne den Fall berichten und die Abhängigkeit offenlegen |
+
+Im Beispiel ist die Ursache bekannt, der Fall fliegt heraus, und der Bericht
+sagt das ausdrücklich. Wäre die Ursache unbekannt geblieben, müsste im Bericht
+stehen, dass die gesamte Aussage an einer einzigen Beobachtung hängt.
+
+> Von 25 Anlagen wurde eine ausgeschlossen, deren Verbrauchszähler nachweislich
+> ausgefallen war (45 Betriebsstunden bei 20 Litern; Cook-Distanz 23.9,
+> Hebelwert 0.71). Ohne sie steigt der Verbrauch je Betriebsstunde um 2.85 Liter
+> (95-Prozent-Konfidenzintervall 2.26 bis 3.45, p < 0.001, R² = 0.82, n = 24);
+> unter Einschluss des Falls wäre die Steigung auf 0.25 Liter gefallen und nicht
+> mehr nachweisbar gewesen (p = 0.52).
+
+::::
 
 ## Verständnisfragen
 
 ::: {.quiz}
-Ein Modell liefert R² = 0.86, der Residuenplot zeigt einen deutlichen Bogen.
+Ein Modell liefert R² = 0.95, der Residuenplot zeigt einen deutlichen Bogen.
 Was folgt?
 
 - [ ] Das Modell ist gut, R² ist hoch ~ R² misst erklärte Streuung, nicht
-      Angemessenheit. Ein falsches Modell kann viel Streuung erklären.
+      Angemessenheit. Ein falsches Modell kann viel Streuung erklären, siehe
+      Beispiel 3.
 - [x] Das Modell ist falsch spezifiziert, trotz hohem R² ~ Richtig. Der Bogen
       zeigt eine übersehene Krümmung. Die Steigung ist ein Kompromiss und
       stimmt in keinem Bereich; Vorhersagen an den Rändern liegen daneben.
@@ -523,39 +799,74 @@ Was folgt?
 :::
 
 ::: {.quiz}
-Die Steigung beträgt 2.8 mit einem Standardfehler von 0.25, n = 120. Wie liest
-man das?
+In Beispiel 2 gibt R ein `Adjusted R-squared` von -0.0271 aus. Ist das ein
+Rechenfehler?
 
-- [x] Der Effekt ist deutlich von null verschieden, das Intervall reicht etwa
-      von 2.3 bis 3.3 ~ Richtig, rund Schätzwert plus minus zwei
-      Standardfehler. Die Einheit ist dabei mitzudenken: Liter je Stunde.
-- [ ] 2.8 Prozent der Streuung sind erklärt ~ Das wäre eine Aussage über R²
-      und hat mit der Steigung nichts zu tun.
-- [ ] Ohne p-Wert lässt sich nichts sagen ~ Schätzwert und Standardfehler
-      genügen; der p-Wert enthält keine zusätzliche Information darüber.
+- [x] Nein, das korrigierte Mass kann negativ werden ~ Richtig. Es zieht für
+      jeden geschätzten Parameter etwas ab. Erklärt der Prädiktor weniger, als
+      ein beliebiger Prädiktor im Mittel erklären würde, rutscht der Wert unter
+      null. Das ist ein deutliches Zeichen dafür, dass er nichts beiträgt.
+- [ ] Ja, ein Anteil kann nicht negativ sein ~ Das gewöhnliche R² ist ein Anteil
+      und liegt zwischen 0 und 1. Das korrigierte ist ein Schätzer und nicht auf
+      diesen Bereich beschränkt.
+- [ ] Ja, die Daten müssen fehlerhaft sein ~ Die Daten sind in Ordnung, nur der
+      Prädiktor ist es nicht.
 :::
 
 ::: {.quiz}
-Der Achsenabschnitt beträgt 14 Liter, die kleinste beobachtete Laufzeit
-3 Stunden. Was darf berichtet werden?
+Die Cook-Distanz einer Beobachtung beträgt 23.9, ihr Hebelwert 0.71. Was ist
+der Unterschied zwischen beiden Zahlen?
 
-- [ ] Bei stillstehender Anlage werden 14 Liter verbraucht ~ Der Wert null
+- [x] Der Hebel misst, wie extrem der x-Wert liegt, die Cook-Distanz, wie stark
+      der Punkt das Ergebnis verändert ~ Richtig. Ein Punkt mit hohem Hebel ist
+      harmlos, solange er auf der Linie der übrigen liegt. Gefährlich ist die
+      Kombination aus extremem x-Wert und Abweichung von der Geraden, und genau
+      die misst die Cook-Distanz.
+- [ ] Beide messen dasselbe in verschiedener Skalierung ~ Dann könnte es keinen
+      Punkt mit hohem Hebel und kleiner Cook-Distanz geben, den gibt es aber.
+- [ ] Der Hebel bezieht sich auf y, die Cook-Distanz auf x ~ Genau umgekehrt
+      gedacht: Der Hebel hängt allein an den x-Werten.
+:::
+
+::: {.quiz}
+In Beispiel 1 beträgt R² 0.82 und die Residualstreuung 6.1 Liter. Welche der
+beiden Zahlen sagt mehr über die Nutzbarkeit einer einzelnen Vorhersage?
+
+- [x] Die Residualstreuung, weil sie in Litern angegeben ist ~ Richtig. Sie sagt
+      unmittelbar, um wie viel eine Vorhersage typischerweise danebenliegt. Ob
+      6 Liter viel oder wenig sind, entscheidet der Anwendungsfall.
+- [ ] R², weil es die Modellgüte misst ~ R² ist relativ zur Gesamtstreuung. Bei
+      sehr unterschiedlichen Laufzeiten wird es hoch, ohne dass die einzelne
+      Vorhersage genauer würde.
+- [ ] Beide gleichermassen ~ Sie hängen zusammen, beantworten aber verschiedene
+      Fragen: R² den Anteil erklärter Streuung, die Residualstreuung den
+      typischen Fehler.
+:::
+
+::: {.quiz}
+Der Achsenabschnitt beträgt 15.2 Liter, die kleinste beobachtete Laufzeit
+3.2 Stunden. Was darf berichtet werden?
+
+- [ ] Bei stillstehender Anlage werden 15.2 Liter verbraucht ~ Der Wert null
       liegt ausserhalb des beobachteten Bereichs; für ihn ist das Modell nicht
       geprüft.
 - [x] Der Achsenabschnitt ist ein Rechenwert und hier nicht inhaltlich deutbar ~
       Richtig. Wer eine deutbare Zahl braucht, zentriert die Laufzeit, dann
       beschreibt der Achsenabschnitt den Verbrauch bei mittlerer Laufzeit.
 - [ ] Der Wert ist ein Hinweis auf einen Modellfehler ~ Er ist weder falsch noch
-      auffällig, nur ausserhalb des Bereichs, für den Daten vorliegen.
+      auffällig, nur ausserhalb des Bereichs, für den Daten vorliegen. Auffällig
+      wäre er erst, wenn er unmöglich ist, wie der negative Verschleiss in
+      Beispiel 3.
 :::
 
 ::: {.quiz}
-Der p-Wert der Steigung beträgt 0.004, der p-Wert des Pearson-Korrelationstests
-für dieselben Daten ebenfalls 0.004. Zufall?
+Der p-Wert der Steigung beträgt 1.25e-09, der p-Wert des
+Pearson-Korrelationstests für dieselben Daten ebenfalls. Zufall?
 
 - [x] Nein, bei einem Prädiktor sind die beiden Tests identisch ~ Richtig. Der
       t-Test der Steigung und der Pearson-Korrelationstest prüfen dieselbe
-      Nullhypothese und liefern dieselbe Teststatistik.
+      Nullhypothese und liefern dieselbe Teststatistik. Gleiches gilt für den
+      F-Test des Gesamtmodells, dessen Wert genau das Quadrat des t-Werts ist.
 - [ ] Ja, das ist eine zufällige Übereinstimmung ~ Sie tritt bei jedem Datensatz
       mit einem Prädiktor auf.
 - [ ] Nein, weil beide Verfahren Normalverteilung voraussetzen ~ Die gemeinsame

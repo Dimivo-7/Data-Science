@@ -2,7 +2,7 @@
 title: "t-Test für zwei Stichproben"
 description: "Zwei unabhängige Gruppen vergleichen, Welch als Standardfall."
 categories: ["Hypothesentests", "Effektstärke", "Interpretation", "R", "Python"]
-quelle: ["ESDS"]
+quelle: ["ESDS", "STATDA"]
 seitentyp: methode
 stand: entwurf
 order: 20
@@ -44,7 +44,15 @@ def pg_wert(tabelle, anfang):
 
 ```
 
-## Kurzsteckbrief
+Alle Beispiele auf dieser Seite rechnen mit fest eingetragenen Zahlen. R und
+Python sehen also dieselben Daten und müssen dieselben Werte ausgeben; wo sie es
+nicht tun, liegt es an der Konvention der Funktion und nicht an der Stichprobe.
+
+:::: {.panel-tabset}
+
+## Theorie
+
+### Kurzsteckbrief
 
 | | |
 |---|---|
@@ -56,7 +64,7 @@ def pg_wert(tabelle, anfang):
 | Python-Funktion | `pg.ttest(a, b, correction=True)` |
 | Verwandte Methoden | [gepaarter t-Test](t-test-gepaart.qmd), [Varianzanalyse](anova.qmd), [nichtparametrische Tests](nichtparametrische-tests.qmd) |
 
-## Wann diese Methode, wann nicht
+### Wann diese Methode, wann nicht
 
 Typische Fragestellungen: Unterscheiden sich zwei Maschinen in der gefertigten
 Dicke, zwei Standorte im Durchsatz, zwei Varianten einer Seite in der
@@ -79,7 +87,7 @@ nicht nötig und verschlechtert die Fehlerkontrolle.
 | Zielvariable kategorial | [Chi-Quadrat-Test](chi-quadrat-tests.qmd) |
 | Weitere Einflussgrössen sollen kontrolliert werden | [multiple lineare Regression](../regression/multiple-lineare-regression.qmd) |
 
-## Grundidee und Modell
+### Grundidee und Modell
 
 Verglichen wird die beobachtete Differenz der beiden Mittelwerte mit der
 Streuung, die man allein durch Zufall erwarten würde. Ist die Differenz gross
@@ -101,7 +109,7 @@ ihr folgt $t$ näherungsweise einer t-Verteilung. Bei der Welch-Variante werden
 die Freiheitsgrade aus den beiden Varianzen und Gruppengrössen berechnet und
 sind deshalb meist keine ganze Zahl.
 
-## Voraussetzungen und ihre Prüfung
+### Voraussetzungen und ihre Prüfung
 
 | Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
 |---|---|---|---|---|
@@ -111,100 +119,12 @@ sind deshalb meist keine ganze Zahl.
 | Keine extremen Ausreisser | Einzelne Werte bestimmen Mittelwert und Varianz nicht | Boxplot, Streudiagramm | Ergebnis hängt an wenigen Punkten | Ursache prüfen, robustes Verfahren, mit und ohne berichten |
 | Gleiche Varianzen | Nur für die Student-Variante nötig | Boxplot, Varianzen vergleichen | Bei ungleichen Varianzen und ungleichen Gruppengrössen wird das Niveau verfehlt | Welch-Variante, also der Standardfall hier |
 
-::: {.panel-tabset}
+Geprüft wird vor dem Test und mit den Augen, nicht mit einem zweiten Test. Ein
+[Normalitätstest](normalitaetstests.qmd) beantwortet die falsche Frage: bei
+kleinem n findet er auch grobe Abweichungen nicht, bei grossem n stört ihn jede
+belanglose Abweichung, obwohl gerade dort der zentrale Grenzwertsatz greift.
 
-## R
-
-```{r}
-#| label: fig-voraussetzungen-tt2-r
-#| fig-cap: "Verteilung je Gruppe und QQ-Plots der beiden Gruppen."
-#| fig-height: 3.4
-n1 <- 25; n2 <- 25
-maschine_a <- rnorm(n1, mean = 12.1, sd = 0.40)
-maschine_b <- rnorm(n2, mean = 12.5, sd = 0.55)
-
-dicke <- data.frame(
-  wert = c(maschine_a, maschine_b),
-  maschine = rep(c("A", "B"), c(n1, n2))
-)
-
-par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
-boxplot(wert ~ maschine, data = dicke, main = "Verteilung je Gruppe",
-        xlab = "Maschine", ylab = "Dicke (mm)")
-qqnorm(maschine_a, main = "QQ-Plot A"); qqline(maschine_a)
-qqnorm(maschine_b, main = "QQ-Plot B"); qqline(maschine_b)
-par(mfrow = c(1, 1))
-
-round(c(sd_a = sd(maschine_a), sd_b = sd(maschine_b)), 3)
-```
-
-## Python
-
-```{python}
-#| label: fig-voraussetzungen-tt2-py
-#| fig-cap: "Dieselbe Prüfung in Python."
-#| fig-height: 3.4
-rng = np.random.default_rng(2026)
-
-maschine_a = rng.normal(12.1, 0.40, 25)
-maschine_b = rng.normal(12.5, 0.55, 25)
-
-dicke = pd.DataFrame({
-    "wert": np.concatenate([maschine_a, maschine_b]),
-    "maschine": ["A"] * 25 + ["B"] * 25,
-})
-
-import statsmodels.api as sm
-fig, axes = plt.subplots(1, 3, figsize=(7, 3.4))
-axes[0].boxplot([maschine_a, maschine_b])
-axes[0].set_xticks([1, 2], ["A", "B"])
-axes[0].set_title("Verteilung je Gruppe")
-axes[0].set_ylabel("Dicke (mm)")
-sm.qqplot(maschine_a, line="s", ax=axes[1])
-axes[1].set_title("QQ-Plot A")
-sm.qqplot(maschine_b, line="s", ax=axes[2])
-axes[2].set_title("QQ-Plot B")
-plt.tight_layout()
-plt.show()
-
-print(round(maschine_a.std(ddof=1), 3), round(maschine_b.std(ddof=1), 3))
-```
-
-:::
-
-Im Boxplot interessieren Lage, Streuung und einzelne weit entfernte Punkte. In
-den QQ-Plots sollen die Punkte nah an der Geraden liegen. Unterscheiden sich die
-Standardabweichungen deutlich, ist das kein Problem, sondern genau der Grund für
-die Welch-Variante.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-tt2-r
-t.test(wert ~ maschine, data = dicke)
-
-effectsize::cohens_d(wert ~ maschine, data = dicke)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-tt2-py
-print(pg.ttest(maschine_a, maschine_b, correction=True).round(4).T)
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: je
-25 Werkstücke, Maschine A mit Erwartungswert 12.1 und Standardabweichung 0.40,
-Maschine B mit 12.5 und 0.55. Der wahre Unterschied beträgt also 0.4 mm bei
-ungleichen Varianzen, genau der Fall, für den Welch gebaut ist.
-
-## Output lesen
+### Output lesen
 
 R, `t.test()`:
 
@@ -226,209 +146,25 @@ Python, `pg.ttest()` liefert eine Tabelle mit einer Zeile:
 | `T` | t-Statistik | wie `t` |
 | `dof` | Freiheitsgrade | wie `df` |
 | `alternative` | Richtung der Alternativhypothese | wie in R |
-| `p_val` | p-Wert | wie `p-value`; die Schreibweise hat sich zwischen den pingouin-Versionen geändert |
-| `CI95` | Konfidenzintervall der Differenz | in R eine eigene Zeile |
-| `cohen_d` | Effektstärke | in R nur über ein Zusatzpaket, dort mit Vorzeichen und gepoolter Streuung |
-| `BF10` | Bayes-Faktor | in R nicht enthalten; Werte über 3 gelten als Hinweis auf einen Unterschied |
+| `p_val` | p-Wert | wie `p-value` |
+| `CI95` | Konfidenzintervall der Differenz | in R eine eigene Zeile, hier ein Array in einer Zelle |
+| `cohen_d` | Effektstärke | ohne Vorzeichen, R gibt sie vorzeichenbehaftet aus |
 | `power` | erreichte Power für den beobachteten Effekt | in R nicht enthalten, und im Nachhinein nur eingeschränkt aussagekräftig |
+| `BF10` | Bayes-Faktor | in R nicht enthalten; Werte über 3 gelten als Hinweis auf einen Unterschied |
+
+::: {.note-box}
+Die Schreibweise der Spalten hat sich mit pingouin 0.6 geändert: aus `p-val`,
+`CI95%` und `cohen-d` wurden `p_val`, `CI95` und `cohen_d`. Code, der die alten
+Namen fest verdrahtet, bricht still oder mit `KeyError`. Auf dieser Seite fängt
+die Hilfsfunktion `pg_wert()` beide Schreibweisen ab.
+:::
 
 Die Vorzeichen von t und Intervall hängen an der Reihenfolge der Gruppen. In R
 bestimmt die Faktorstufe die Reihenfolge, in Python die Reihenfolge der
 Argumente. Wer die Richtung berichtet, prüft sie am Vorzeichen und an den
 Gruppenmittelwerten.
 
-## Ergebnisse interpretieren
-
-### Szenario A: klarer Unterschied
-
-Der Fall aus der Durchführung: ein wahrer Unterschied von 0.4 mm bei je 25
-Werkstücken.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-a-tt2-r
-ergebnis <- t.test(wert ~ maschine, data = dicke)
-round(c(differenz = diff(rev(ergebnis$estimate)),
-        unten = ergebnis$conf.int[1],
-        oben = ergebnis$conf.int[2],
-        p = ergebnis$p.value), 4)
-```
-
-## Python
-
-```{python}
-#| label: szenario-a-tt2-py
-a = pg.ttest(maschine_a, maschine_b, correction=True)
-print(pg_auswahl(a, "T", "dof", "p-val", "CI95%", "cohen-d").round(4).to_string(index=False))
-```
-
-:::
-
-Das Konfidenzintervall der Differenz liegt vollständig auf einer Seite der Null,
-der p-Wert ist klein, und die Effektstärke liegt im mittleren bis grossen
-Bereich. Berichtet wird nicht der p-Wert allein, sondern die Differenz in
-Millimetern mit ihrem Intervall: das ist die Zahl, an der sich entscheidet, ob
-der Unterschied auch praktisch zählt.
-
-Ergebnissatz: Die Dicke unterscheidet sich zwischen den Maschinen (Welch-Test,
-t wie ausgegeben, df wie ausgegeben, p wie ausgegeben). Maschine B fertigt im
-Mittel um den geschätzten Betrag dicker (95-Prozent-Intervall wie ausgegeben,
-Cohens d wie ausgegeben, n = 25 je Gruppe).
-
-### Szenario B: kein Nachweis, aber auch kein Ausschluss
-
-Zehn Werkstücke je Gruppe, und die Mittelwerte liegen nur sechs Hundertstel
-Millimeter auseinander. Die Daten sind fest vorgegeben, damit beide Sprachen
-denselben Fall rechnen und die Aussage nicht von der gezogenen Stichprobe
-abhängt.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-b-tt2-r
-# feste Beispieldaten: je zehn Werkstuecke, Mittelwerte 12.04 und 12.10
-klein_a <- c(12.05, 11.92, 12.18, 11.87, 12.10, 12.25, 11.95, 12.02, 12.15, 11.90)
-klein_b <- c(12.20, 11.85, 12.35, 12.00, 11.95, 12.40, 12.10, 11.80, 12.30, 12.05)
-
-t.test(klein_a, klein_b)
-```
-
-## Python
-
-```{python}
-#| label: szenario-b-tt2-py
-klein_a = np.array([12.05, 11.92, 12.18, 11.87, 12.10,
-                    12.25, 11.95, 12.02, 12.15, 11.90])
-klein_b = np.array([12.20, 11.85, 12.35, 12.00, 11.95,
-                    12.40, 12.10, 11.80, 12.30, 12.05])
-
-print(pg.ttest(klein_a, klein_b, correction=True).round(4).T)
-```
-
-:::
-
-Die Differenz ist klein gegenüber ihrem Standardfehler, der p-Wert liegt weit
-über 0.05, und das Konfidenzintervall reicht von einem negativen zu einem
-positiven Wert. Ein nicht signifikantes Ergebnis heisst hier: die Daten reichen
-nicht aus, um einen Unterschied nachzuweisen. Sie zeigen nicht, dass keiner
-besteht, und das Intervall macht das sichtbar, weil es Abweichungen bis in die
-Grössenordnung von zwei Zehnteln Millimeter weiterhin zulässt. Die ausgegebene
-Power beziffert, wie gering die Aussicht bei diesem Umfang und dieser
-Effektgrösse war; geplant wird sie vorab, siehe
-[Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd).
-
-Ergebnissatz: Ein Unterschied zwischen den Maschinen lässt sich nicht nachweisen
-(Welch-Test, Werte wie ausgegeben, n = 10 je Gruppe). Das Konfidenzintervall
-lässt Unterschiede in beide Richtungen zu.
-
-### Szenario C: Fallstrick schiefe Verteilung und Ausreisser
-
-Zwei stark schiefe Gruppen mit kleinem Umfang, wieder mit festen Daten. Der
-t-Test vergleicht Mittelwerte, und die reagieren empfindlich auf einzelne grosse
-Werte.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-c-tt2-r
-#| fig-cap: "Zwei schiefe Verteilungen: der Mittelwert liegt weit rechts vom Median."
-#| fig-height: 3.2
-# feste Wartezeiten in Minuten, beide Gruppen rechtsschief, Gruppe B mit einem
-# einzelnen sehr grossen Wert
-schief_a <- c(0.2, 0.4, 0.5, 0.7, 0.9, 1.1, 1.4, 1.8, 2.3, 3.1, 4.2, 5.0)
-schief_b <- c(0.6, 0.9, 1.3, 1.7, 2.2, 2.8, 3.6, 4.6, 6.0, 8.0, 11.0, 30.0)
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-boxplot(list(A = schief_a, B = schief_b), main = "Verteilungen",
-        ylab = "Wartezeit")
-qqnorm(c(schief_a, schief_b), main = "QQ-Plot beider Gruppen")
-qqline(c(schief_a, schief_b))
-par(mfrow = c(1, 1))
-
-signif(t.test(schief_a, schief_b)$p.value, 3)
-signif(wilcox.test(schief_a, schief_b)$p.value, 3)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-tt2-py
-schief_a = np.array([0.2, 0.4, 0.5, 0.7, 0.9, 1.1, 1.4, 1.8, 2.3, 3.1, 4.2, 5.0])
-schief_b = np.array([0.6, 0.9, 1.3, 1.7, 2.2, 2.8, 3.6, 4.6, 6.0, 8.0, 11.0, 30.0])
-
-print(round(pg_wert(pg.ttest(schief_a, schief_b, correction=True), "p-val"), 4))
-print(round(pg_wert(pg.mwu(schief_a, schief_b), "p-val"), 4))
-```
-
-:::
-
-Erkennbar ist das Problem an drei Stellen: der Boxplot zeigt eine deutliche
-Schiefe mit langem oberem Ausläufer, der QQ-Plot biegt an den Enden von der
-Geraden weg, und die beiden Verfahren kommen zu verschiedenen Schlüssen. Der
-Grund steht in Gruppe B: der einzelne Wert von 30 Minuten zieht den Mittelwert
-nach oben und die Standardabweichung noch stärker, und der Nenner der
-Teststatistik wächst dadurch schneller als der Zähler. Der Rangtest sieht nur die
-Reihenfolge und stört sich daran nicht. Bei zwölf Beobachtungen je Gruppe rettet
-der zentrale Grenzwertsatz nichts mehr. Verzerrt ist dabei nicht nur der p-Wert:
-der Mittelwert selbst beschreibt eine schiefe Verteilung schlecht, weil er weit
-rechts vom typischen Wert liegt.
-
-Das Vorgehen: entweder rangbasiert vergleichen und dann über die zentrale
-Tendenz statt über den Mittelwert sprechen, oder die Werte transformieren, oder
-mit Bootstrap ein Intervall für die Differenz bilden. Die Wahl gehört in den
-Bericht, und sie wird vor dem Blick auf die p-Werte getroffen, nicht danach.
-
-Ergebnissatz: Wegen deutlich schiefer Verteilungen bei kleinem Umfang wird
-rangbasiert verglichen (Mann-Whitney, p wie ausgegeben, n = 12 je Gruppe).
-
-### Weiteres Szenario: gleicher p-Wert, verschiedene Bedeutung
-
-Ein sehr kleiner Unterschied bei sehr grosser Stichprobe wird signifikant, ohne
-praktisch zu zählen.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: szenario-d-tt2-r
-set.seed(77)
-gross_a <- rnorm(5000, mean = 12.10, sd = 0.4)
-gross_b <- rnorm(5000, mean = 12.12, sd = 0.4)
-
-gross <- t.test(gross_a, gross_b)
-round(c(differenz = unname(diff(rev(gross$estimate))),
-        unten = gross$conf.int[1], oben = gross$conf.int[2],
-        p = gross$p.value), 5)
-```
-
-## Python
-
-```{python}
-#| label: szenario-d-tt2-py
-rng_d = np.random.default_rng(77)
-gross_a = rng_d.normal(12.10, 0.4, 5000)
-gross_b = rng_d.normal(12.12, 0.4, 5000)
-
-print(pg_auswahl(pg.ttest(gross_a, gross_b, correction=True),
-                 "p-val", "cohen-d").round(5).to_string(index=False))
-```
-
-:::
-
-Der p-Wert kann hier klein ausfallen, während die Differenz bei zwei
-Hundertstel Millimetern liegt und Cohens d nahe null. Für die Fertigung ist das
-belanglos. Genau deshalb steht die Effektstärke neben dem p-Wert, und genau
-deshalb wird die Relevanzschwelle vor der Auswertung festgelegt.
-
-## Interpretationsfallen
+### Interpretationsfallen
 
 - **Signifikanz ist keine Relevanz.** Bei grossem n wird jeder noch so kleine
   Unterschied signifikant. Die Entscheidung fällt an der Differenz in ihrer
@@ -448,7 +184,7 @@ deshalb wird die Relevanzschwelle vor der Auswertung festgelegt.
   siehe [Varianzanalyse](anova.qmd) und
   [multiples Testen](../inferenz/multiples-testen.qmd).
 
-## Ergebnis berichten
+### Ergebnis berichten
 
 Vorlage für den Ergebnissatz:
 
@@ -462,18 +198,7 @@ Differenz mit Konfidenzintervall, Teststatistik mit Freiheitsgraden, p-Wert und
 Effektstärke, dazu die verwendete Variante (Welch oder Student) und die
 geprüften Voraussetzungen.
 
-Beispiel für eine Ergebnistabelle:
-
-| Gruppe | n | Mittelwert | Standardabweichung |
-|---|---|---|---|
-| A | | | |
-| B | | | |
-
-| Differenz | 95-Prozent-Intervall | t | df | p | d |
-|---|---|---|---|---|---|
-| | | | | | |
-
-## Abgrenzung zu verwandten Methoden
+### Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt des t-Tests für zwei Stichproben |
 |---|---|
@@ -484,10 +209,442 @@ Beispiel für eine Ergebnistabelle:
 | [Einfache lineare Regression](../regression/einfache-lineare-regression.qmd) | derselbe Vergleich als Modell, mit metrischem statt zweistufigem Prädiktor |
 | [Multiple lineare Regression](../regression/multiple-lineare-regression.qmd) | weitere Einflussgrössen sollen konstant gehalten werden |
 
+## Beispiel 1: Zwei Maschinen
+
+### Frage und Datenlage
+
+Eine Fertigung hat zwei Maschinen, die dasselbe Blechteil schneiden. Von jeder
+werden fünfzehn Teile vermessen, erfasst wird die Dicke in Millimetern. Die
+Frage lautet: Fertigen die beiden Maschinen im Mittel gleich dick, und falls
+nicht, wie gross ist der Unterschied?
+
+Die Zielgrösse ist metrisch, es gibt genau zwei Gruppen, und die Teile stammen
+aus getrennten Läufen. Damit ist der t-Test für zwei unabhängige Stichproben das
+passende Verfahren.
+
+### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: fig-b1-voraussetzungen-r
+#| fig-cap: "Beispiel 1: Verteilung je Maschine und QQ-Plot je Gruppe."
+#| fig-height: 3.4
+maschine_a <- c(11.86, 12.24, 12.02, 11.95, 12.31, 12.10, 11.78, 12.18,
+                12.05, 11.90, 12.27, 11.99, 12.14, 11.83, 12.08)
+maschine_b <- c(12.34, 11.97, 12.51, 12.20, 11.88, 12.42, 12.09, 12.67,
+                12.26, 11.94, 12.45, 12.13, 12.30, 12.01, 12.58)
+
+dicke <- data.frame(
+  wert = c(maschine_a, maschine_b),
+  maschine = rep(c("A", "B"), c(length(maschine_a), length(maschine_b)))
+)
+
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+boxplot(wert ~ maschine, data = dicke, main = "Verteilung je Maschine",
+        xlab = "Maschine", ylab = "Dicke (mm)")
+qqnorm(maschine_a, main = "QQ-Plot A"); qqline(maschine_a)
+qqnorm(maschine_b, main = "QQ-Plot B"); qqline(maschine_b)
+par(mfrow = c(1, 1))
+
+round(c(mittel_a = mean(maschine_a), mittel_b = mean(maschine_b),
+        sd_a = sd(maschine_a), sd_b = sd(maschine_b)), 4)
+```
+
+#### Python
+
+```{python}
+#| label: fig-b1-voraussetzungen-py
+#| fig-cap: "Beispiel 1: dieselbe Prüfung in Python."
+#| fig-height: 3.4
+import statsmodels.api as sm
+
+maschine_a = np.array([11.86, 12.24, 12.02, 11.95, 12.31, 12.10, 11.78, 12.18,
+                       12.05, 11.90, 12.27, 11.99, 12.14, 11.83, 12.08])
+maschine_b = np.array([12.34, 11.97, 12.51, 12.20, 11.88, 12.42, 12.09, 12.67,
+                       12.26, 11.94, 12.45, 12.13, 12.30, 12.01, 12.58])
+
+fig, axes = plt.subplots(1, 3, figsize=(7, 3.4))
+axes[0].boxplot([maschine_a, maschine_b])
+axes[0].set_xticks([1, 2], ["A", "B"])
+axes[0].set_title("Verteilung je Maschine")
+axes[0].set_ylabel("Dicke (mm)")
+sm.qqplot(maschine_a, line="s", ax=axes[1])
+axes[1].set_title("QQ-Plot A")
+sm.qqplot(maschine_b, line="s", ax=axes[2])
+axes[2].set_title("QQ-Plot B")
+plt.tight_layout()
+plt.show()
+
+print("Mittelwerte:", round(maschine_a.mean(), 4), round(maschine_b.mean(), 4))
+print("Streuungen: ", round(maschine_a.std(ddof=1), 4),
+      round(maschine_b.std(ddof=1), 4))
+```
+
+:::
+
+Die Mittelwerte liegen bei 12.047 mm und 12.250 mm, die Standardabweichungen bei
+0.164 mm und 0.246 mm. Maschine B streut also rund anderthalb Mal so stark, die
+Varianzen verhalten sich wie 1 zu 2.25. Genau dafür ist die Welch-Variante da:
+Der Unterschied in der Streuung wird nicht weggemittelt, sondern in den
+Freiheitsgraden berücksichtigt.
+
+Die Boxplots zeigen zwei symmetrische Verteilungen ohne einzelne weit entfernte
+Punkte, und in beiden QQ-Plots liegen die Punkte nah an der Geraden. Die
+Voraussetzungen sind erfüllt.
+
+### Rechnung
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b1-rechnung-r
+t.test(wert ~ maschine, data = dicke)
+
+effectsize::cohens_d(wert ~ maschine, data = dicke)
+```
+
+#### Python
+
+```{python}
+#| label: b1-rechnung-py
+b1 = pg.ttest(maschine_a, maschine_b, correction=True)
+print(b1.round(4).T)
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Variante | `Welch Two Sample t-test` | ungleiche Varianzen zugelassen | Stünde dort `Two Sample t-test`, wäre versehentlich `var.equal = TRUE` gesetzt. |
+| `t` | -2.669 | Die Differenz ist 2.67 Standardfehler von null entfernt. | Das Vorzeichen ist negativ, weil A minus B gerechnet wird und A dünner fertigt. Es sagt nichts über die Stärke aus. |
+| `df` | 24.385 | Freiheitsgrade nach Welch | Keine ganze Zahl, und das ist richtig so. Bei 15 und 15 Werten läge die Student-Variante bei glatten 28; Welch zieht wegen der ungleichen Varianzen etwas ab. |
+| `p-value` | 0.0133 | Wahrscheinlichkeit, eine mindestens so grosse Differenz zu sehen, wenn beide Maschinen im Mittel gleich dick fertigen | Unter 0.05, also spricht das Ergebnis gegen die Nullhypothese. Es ist **nicht** die Wahrscheinlichkeit, dass die Maschinen gleich sind. |
+| `95 percent confidence interval` | -0.360 bis -0.046 | Bereich plausibler Werte für die Mittelwertdifferenz in Millimetern | Die interessanteste Zeile. Das Intervall enthält die Null nicht, und es sagt zugleich, dass der Unterschied irgendwo zwischen 0.05 mm und 0.36 mm liegt. Genauer wissen wir es bei fünfzehn Teilen je Maschine nicht. |
+| `mean in group A` | 12.047 | Mittelwert Maschine A | |
+| `mean in group B` | 12.250 | Mittelwert Maschine B | Differenz 0.203 mm, das ist der Punktschätzer und die Mitte des Intervalls. |
+| `alternative hypothesis` | `not equal to 0` | zweiseitig getestet | Beide Richtungen waren zugelassen, die Richtung wurde nicht nachträglich gewählt. |
+| `Cohen's d` | -0.97 | Differenz in Einheiten der gemeinsamen Streuung | Nach den üblichen Anhaltspunkten (0.2 klein, 0.5 mittel, 0.8 gross) ein grosser Effekt. Ein knapper p-Wert und ein grosser Effekt schliessen sich nicht aus: Der p-Wert hängt zusätzlich am Stichprobenumfang, die Effektstärke nicht. |
+| `power` (nur Python) | 0.731 | Wahrscheinlichkeit, einen Effekt dieser Grösse bei diesem Umfang zu finden | Im Nachhinein berechnet und deshalb nur ein grober Hinweis. Geplant wird die Power vorab, siehe [Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd). |
+| `BF10` (nur Python) | 4.30 | Bayes-Faktor zugunsten eines Unterschieds | Die Daten sind rund viermal wahrscheinlicher unter der Annahme eines Unterschieds als unter der Annahme der Gleichheit. Ein moderater Hinweis, kein Beweis. |
+
+Der Vorzeichenvergleich zwischen den Sprachen: R gibt `t = -2.669` und
+`d = -0.97` aus, Python `T = -2.669`, aber `cohen_d = 0.97` ohne Vorzeichen.
+pingouin berichtet den Betrag der Effektstärke. Die Richtung liest man an den
+Mittelwerten ab, nie am Vorzeichen von d allein.
+
+### Interpretation und Ergebnissatz
+
+Praktisch bedeutsam ist nicht der p-Wert, sondern das Intervall. Läge die
+Toleranz der Fertigung bei 0.10 mm, dann wäre die Frage nicht beantwortet,
+sondern verschärft: Das Intervall reicht von 0.046 mm bis 0.360 mm und lässt
+Werte weit über der Toleranz zu. Läge die Toleranz bei 0.50 mm, wäre der
+Unterschied statistisch nachgewiesen und praktisch belanglos. Dieselbe Zahl,
+zwei gegenteilige Konsequenzen: Deshalb wird die Relevanzschwelle vor der
+Auswertung festgelegt.
+
+> Die gefertigte Dicke unterscheidet sich zwischen Maschine A (M = 12.047 mm,
+> SD = 0.164, n = 15) und Maschine B (M = 12.250 mm, SD = 0.246, n = 15):
+> Maschine A fertigt im Mittel 0.203 mm dünner, 95-Prozent-Konfidenzintervall
+> 0.046 bis 0.360 mm, t(24.4) = -2.67, p = 0.013, Cohens d = -0.97
+> (Welch-Test, zweiseitig).
+
+## Beispiel 2: Zu wenig Daten
+
+### Frage und Datenlage
+
+Dieselbe Fragestellung, aber nur zehn Teile je Maschine, und die Mittelwerte
+liegen diesmal nur sechs Hundertstel Millimeter auseinander. Das Beispiel zeigt,
+was ein nicht signifikantes Ergebnis aussagt und vor allem, was es nicht
+aussagt.
+
+### Rechnung
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b2-rechnung-r
+klein_a <- c(12.05, 11.92, 12.18, 11.87, 12.10, 12.25, 11.95, 12.02, 12.15, 11.90)
+klein_b <- c(12.20, 11.85, 12.35, 12.00, 11.95, 12.40, 12.10, 11.80, 12.30, 12.05)
+
+t.test(klein_a, klein_b)
+```
+
+#### Python
+
+```{python}
+#| label: b2-rechnung-py
+klein_a = np.array([12.05, 11.92, 12.18, 11.87, 12.10,
+                    12.25, 11.95, 12.02, 12.15, 11.90])
+klein_b = np.array([12.20, 11.85, 12.35, 12.00, 11.95,
+                    12.40, 12.10, 11.80, 12.30, 12.05])
+
+print(pg.ttest(klein_a, klein_b, correction=True).round(4).T)
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Mittelwerte | 12.039 und 12.100 | Die Differenz beträgt 0.061 mm. |
+| `t` | -0.787 | Die Differenz ist weniger als einen Standardfehler von null entfernt. Solche Abweichungen entstehen laufend rein zufällig. |
+| `df` | 15.057 | Welch zieht hier von 18 möglichen Freiheitsgraden knapp drei ab, weil B rund anderthalb Mal so stark streut. |
+| `p-value` | 0.444 | Weit über jedem üblichen Niveau. Die Daten sind mit gleichen Erwartungswerten gut vereinbar. |
+| `95 percent confidence interval` | -0.226 bis 0.104 | Die entscheidende Zeile. Das Intervall enthält die Null, reicht aber auf beiden Seiten weit über eine Toleranz von 0.10 mm hinaus. |
+| `cohen_d` | 0.35 | Ein kleiner bis mittlerer Effekt wäre mit diesen Daten durchaus vereinbar. |
+| `power` (nur Python) | rund 0.12 | Bei diesem Umfang und diesem Effekt hätte der Test einen echten Unterschied nur in etwa einem von acht Fällen gefunden. |
+
+### Interpretation und Ergebnissatz
+
+Der häufigste Fehler an dieser Stelle ist der Satz "es gibt keinen Unterschied".
+Die Daten sagen etwas anderes: Sie reichen nicht aus, um einen Unterschied
+nachzuweisen. Das Konfidenzintervall macht das sichtbar. Es lässt Abweichungen
+bis 0.23 mm in die eine und 0.10 mm in die andere Richtung zu, also genau den
+Bereich, der für die Fertigung interessant wäre.
+
+Wer wirklich zeigen will, dass zwei Maschinen gleichwertig sind, braucht ein
+Äquivalenzverfahren mit vorab festgelegter Toleranz. Ein nicht signifikanter
+t-Test ist dafür kein Ersatz.
+
+::: {.note-box}
+Die im Nachhinein berechnete Power beantwortet die Frage "wie wahrscheinlich
+wäre ein Fund gewesen" nur scheinbar, denn sie wird aus genau dem Effekt
+berechnet, den man gerade beobachtet hat. Nützlich ist sie vor der Erhebung, um
+den nötigen Umfang zu bestimmen.
+:::
+
+> Ein Unterschied in der gefertigten Dicke lässt sich nicht nachweisen
+> (Welch-Test, t(15.1) = -0.79, p = 0.44, n = 10 je Maschine). Das
+> 95-Prozent-Konfidenzintervall der Differenz reicht von -0.226 bis 0.104 mm und
+> lässt Unterschiede in beide Richtungen zu; die Datenlage erlaubt keine Aussage
+> über Gleichwertigkeit.
+
+## Beispiel 3: Schiefe und Ausreisser
+
+### Frage und Datenlage
+
+Ein Support vergleicht die Wartezeit bis zur ersten Antwort zwischen zwei
+Kanälen, je zwölf Anfragen, gemessen in Minuten. Wartezeiten sind fast immer
+rechtsschief: Viele Anfragen werden schnell beantwortet, wenige liegen lange
+liegen. Im Kanal B gibt es zusätzlich einen einzelnen Fall mit 30 Minuten.
+
+### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: fig-b3-voraussetzungen-r
+#| fig-cap: "Beispiel 3: rechtsschiefe Wartezeiten, Kanal B mit einem einzelnen sehr grossen Wert."
+#| fig-height: 3.2
+kanal_a <- c(0.2, 0.4, 0.5, 0.7, 0.85, 1.1, 1.4, 1.8, 2.3, 3.1, 4.2, 5.0)
+kanal_b <- c(0.6, 0.9, 1.3, 1.7, 2.2, 2.8, 3.6, 4.6, 6.0, 8.0, 11.0, 30.0)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+boxplot(list(A = kanal_a, B = kanal_b), main = "Verteilungen",
+        ylab = "Wartezeit (Minuten)")
+qqnorm(kanal_b, main = "QQ-Plot Kanal B"); qqline(kanal_b)
+par(mfrow = c(1, 1))
+
+round(c(mittel_a = mean(kanal_a), median_a = median(kanal_a),
+        mittel_b = mean(kanal_b), median_b = median(kanal_b),
+        sd_b = sd(kanal_b)), 3)
+```
+
+#### Python
+
+```{python}
+#| label: fig-b3-voraussetzungen-py
+#| fig-cap: "Beispiel 3: dieselbe Prüfung in Python."
+#| fig-height: 3.2
+kanal_a = np.array([0.2, 0.4, 0.5, 0.7, 0.85, 1.1, 1.4, 1.8, 2.3, 3.1, 4.2, 5.0])
+kanal_b = np.array([0.6, 0.9, 1.3, 1.7, 2.2, 2.8, 3.6, 4.6, 6.0, 8.0, 11.0, 30.0])
+
+fig, axes = plt.subplots(1, 2, figsize=(7, 3.2))
+axes[0].boxplot([kanal_a, kanal_b])
+axes[0].set_xticks([1, 2], ["A", "B"])
+axes[0].set_title("Verteilungen")
+axes[0].set_ylabel("Wartezeit (Minuten)")
+sm.qqplot(kanal_b, line="s", ax=axes[1])
+axes[1].set_title("QQ-Plot Kanal B")
+plt.tight_layout()
+plt.show()
+
+print("A: Mittel", round(kanal_a.mean(), 3), "Median", round(np.median(kanal_a), 3))
+print("B: Mittel", round(kanal_b.mean(), 3), "Median", round(np.median(kanal_b), 3),
+      "SD", round(kanal_b.std(ddof=1), 3))
+```
+
+:::
+
+Drei Befunde sprechen gegen den t-Test. Erstens klafft in Kanal B eine Lücke
+zwischen Mittelwert (6.06 Minuten) und Median (3.20 Minuten); der Mittelwert
+beschreibt hier keinen typischen Fall. Zweitens biegt der QQ-Plot am oberen Ende
+deutlich von der Geraden weg. Drittens beträgt die Standardabweichung in Kanal B
+8.16 Minuten und damit mehr als der Mittelwert selbst, was fast immer auf einen
+dominierenden Einzelwert hindeutet. Bei zwölf Beobachtungen je Gruppe rettet der
+zentrale Grenzwertsatz das nicht mehr.
+
+### Rechnung
+
+Gerechnet werden beide Verfahren nebeneinander, damit sichtbar wird, was auf dem
+Spiel steht.
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b3-rechnung-r
+t.test(kanal_a, kanal_b)
+
+wilcox.test(kanal_a, kanal_b)
+```
+
+#### Python
+
+```{python}
+#| label: b3-rechnung-py
+print("t-Test  p =", round(pg_wert(pg.ttest(kanal_a, kanal_b, correction=True), "p-val"), 4))
+print("Mann-Whitney p =", round(pg_wert(pg.mwu(kanal_a, kanal_b), "p-val"), 4))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| t-Test `t` | -1.776 | Die Differenz der Mittelwerte beträgt 4.26 Minuten, ihr Standardfehler aber 2.40 Minuten. Der Ausreisser hat den Nenner stärker aufgebläht als den Zähler. |
+| t-Test `df` | 11.807 | Trotz 22 möglichen Freiheitsgraden bleiben knapp 12 übrig, weil B rund fünfmal so stark streut wie A. |
+| t-Test `p-value` | 0.101 | Nicht signifikant. |
+| t-Test Intervall | -9.50 bis 0.98 Minuten | So breit, dass es praktisch nichts ausschliesst. |
+| Mann-Whitney `W` bzw. `U_val` | 37 | Die Rangstatistik, nicht in Minuten interpretierbar. In R heisst sie `W`, in pingouin `U_val`; gezählt wird gleich. |
+| Mann-Whitney `p-value` | 0.045 in R, 0.046 in Python | Knapp unter 0.05, also gegenteilige Entscheidung als beim t-Test. Die kleine Abweichung zwischen den Sprachen ist kein Fehler: R rechnet bei zwölf Werten ohne Bindungen die exakte Verteilung aus, pingouin verwendet die Normalapproximation. |
+
+Beide Tests rechnen mit denselben Daten und kommen zu verschiedenen Schlüssen.
+Der Rangtest sieht nur die Reihenfolge der Werte, und in der Reihenfolge liegt
+Kanal B durchgehend hinten. Der t-Test sieht dagegen die absoluten Abstände, und
+der Wert von 30 Minuten schlägt in der Streuung so stark durch, dass die
+Teststatistik einbricht.
+
+### Interpretation und Ergebnissatz
+
+Entscheidend ist, dass die Wahl des Verfahrens vor dem Blick auf die p-Werte
+getroffen wird. Wer beide rechnet und nachträglich das passendere Ergebnis
+berichtet, hat kein Testniveau mehr, sondern eine Erzählung. Hier führen die
+Voraussetzungsprüfung und nichts anderes zum Rangtest.
+
+Drei gangbare Wege, alle vorab zu wählen:
+
+| Weg | Was dann berichtet wird |
+|---|---|
+| [Mann-Whitney](nichtparametrische-tests.qmd) | eine Aussage über die zentrale Tendenz, nicht über Mittelwerte |
+| Logarithmieren und dann t-Test | eine Aussage über das Verhältnis der Mediane, nicht über die Differenz |
+| [Bootstrap](../inferenz/bootstrap-resampling.qmd) | ein Intervall für die Mittelwertdifferenz ohne Verteilungsannahme |
+
+Und in jedem Fall gehört der Ausreisser untersucht statt still entfernt: Ein
+Wert von 30 Minuten kann ein Erfassungsfehler sein, ein Feiertag oder genau der
+Fall, um den es eigentlich geht.
+
+> Wegen deutlich rechtsschiefer Verteilungen und eines Extremwerts bei kleinem
+> Umfang wurde vorab rangbasiert verglichen. Die Wartezeit ist in Kanal B höher
+> (Mann-Whitney, exakt, p = 0.045, n = 12 je Kanal; Median 1.25 gegenüber 3.20
+> Minuten). Auf einen Mittelwertvergleich wurde bewusst verzichtet.
+
+## Beispiel 4: Signifikant und belanglos
+
+### Frage und Datenlage
+
+Jetzt liegen aus jeder Maschine 5000 vermessene Teile vor, und der wahre
+Unterschied beträgt 0.03 mm, also weit unterhalb jeder Fertigungstoleranz. Um
+den Fall in beiden Sprachen exakt gleich zu halten, werden die Daten nicht
+zufällig gezogen, sondern als Quantile der Normalverteilung konstruiert. Beide
+Gruppen haben damit exakt dieselbe Streuung und unterscheiden sich um exakt
+0.03 mm.
+
+### Rechnung
+
+::: {.panel-tabset}
+
+#### R
+
+```{r}
+#| label: b4-rechnung-r
+q <- qnorm(ppoints(5000))
+gross_a <- 12.10 + 0.40 * q
+gross_b <- 12.13 + 0.40 * q
+
+gross <- t.test(gross_a, gross_b)
+round(c(differenz = unname(diff(rev(gross$estimate))),
+        unten = gross$conf.int[1], oben = gross$conf.int[2],
+        t = unname(gross$statistic), p = gross$p.value), 5)
+```
+
+#### Python
+
+```{python}
+#| label: b4-rechnung-py
+from scipy import stats
+
+q = stats.norm.ppf((np.arange(1, 5001) - 0.5) / 5000)
+gross_a = 12.10 + 0.40 * q
+gross_b = 12.13 + 0.40 * q
+
+print(pg_auswahl(pg.ttest(gross_a, gross_b, correction=True),
+                 "T", "dof", "p_val", "p-val", "CI95", "CI95%",
+                 "cohen_d", "cohen-d").round(5).to_string(index=False))
+```
+
+:::
+
+### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Differenz | -0.030 mm | Der wahre Unterschied, hier exakt bekannt. |
+| `t` | -3.750 | Deutlich über der üblichen Schwelle von etwa 2. |
+| `df` | 9998 | Ganzzahlig, weil beide Gruppen konstruktionsbedingt exakt dieselbe Varianz haben. Welch und Student fallen hier zusammen. |
+| `p-value` | 0.00018 | Hochsignifikant. |
+| Intervall | -0.046 bis -0.014 mm | Sehr eng. Der Unterschied ist präzise geschätzt und trotzdem winzig. |
+| `cohen_d` | 0.075 | Weit unter dem Anhaltspunkt 0.2 für einen kleinen Effekt. |
+
+### Interpretation und Ergebnissatz
+
+Hier trennen sich statistische und praktische Bedeutung sauber. Der p-Wert misst,
+wie gut sich der Unterschied vom Zufall abheben lässt, und das hängt am
+Stichprobenumfang: Bei 5000 Teilen je Maschine wird auch ein Unterschied von
+drei Hundertstel Millimetern sichtbar. Cohens d und das Intervall in Millimetern
+messen dagegen, wie gross er ist, und diese Zahlen ändern sich mit dem Umfang
+nicht.
+
+Der p-Wert allein reicht deshalb nie. Berichtet werden Differenz und Intervall
+in der Einheit der Messung, und die Relevanzschwelle steht vor der Auswertung
+fest.
+
+> Die Maschinen unterscheiden sich statistisch nachweisbar (Welch-Test,
+> t(9998) = -3.75, p < 0.001, n = 5000 je Maschine). Der Unterschied beträgt
+> 0.030 mm (95-Prozent-Konfidenzintervall 0.014 bis 0.046 mm, Cohens d = 0.08)
+> und liegt damit weit unterhalb der Fertigungstoleranz; praktische
+> Konsequenzen ergeben sich daraus nicht.
+
+::::
+
 ## Verständnisfragen
 
 ::: {.quiz}
-Der Output zeigt `df = 43.87`. Ist das ein Fehler?
+Der Output zeigt `df = 24.385`. Ist das ein Fehler?
 
 - [x] Nein, das ist die Welch-Korrektur ~ Richtig. Bei ungleichen Varianzen
       werden die Freiheitsgrade aus beiden Varianzen und Gruppengrössen
@@ -496,6 +653,34 @@ Der Output zeigt `df = 43.87`. Ist das ein Fehler?
       bei Welch nicht.
 - [ ] Ja, es fehlen Beobachtungen ~ Fehlende Werte würden die Gruppengrössen
       verringern, nicht zu Nachkommastellen führen.
+:::
+
+::: {.quiz}
+In Beispiel 1 ist der p-Wert mit 0.013 knapp, Cohens d mit -0.97 aber gross.
+Wie passt das zusammen?
+
+- [x] Der p-Wert hängt zusätzlich am Stichprobenumfang, die Effektstärke nicht ~
+      Richtig. Bei nur fünfzehn Teilen je Maschine ist der Standardfehler gross,
+      also fällt der p-Wert knapp aus, obwohl der Unterschied gemessen an der
+      Streuung erheblich ist.
+- [ ] Einer der beiden Werte muss falsch sein ~ Beide sind korrekt; sie messen
+      Verschiedenes.
+- [ ] Ein grosses d erzwingt einen kleinen p-Wert ~ Nur bei festem Umfang. Mit
+      wachsendem n sinkt der p-Wert, d bleibt gleich.
+:::
+
+::: {.quiz}
+In Beispiel 3 liefert der t-Test p = 0.10 und der Rangtest p = 0.05. Wie wird
+entschieden?
+
+- [x] Anhand der vorab geprüften Voraussetzungen, hier also rangbasiert ~
+      Richtig. Die Voraussetzungsprüfung entscheidet über das Verfahren, und
+      zwar bevor irgendein p-Wert vorliegt.
+- [ ] Man berichtet den kleineren p-Wert ~ Das wäre eine Auswahl nach Ergebnis
+      und zerstört die Fehlerkontrolle.
+- [ ] Man berichtet beide und überlässt die Wahl dem Leser ~ Beide zu zeigen ist
+      als Sensitivitätsanalyse zulässig, aber das Hauptverfahren muss vorab
+      benannt sein.
 :::
 
 ::: {.quiz}

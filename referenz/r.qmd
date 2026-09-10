@@ -57,19 +57,34 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Quantil der Normalverteilung | `qnorm(p, mean, sd)` | Umkehrung von `pnorm()` |
+| Gleichmässige Quantilstellen | `ppoints(n)` | ergibt `(i - 0.5)/n` für `n > 10`; mit `qnorm()` kombiniert entstehen deterministische Beispieldaten |
+| Normalverteilte Zufallszahlen | `rnorm(n, mean, sd)` | vorher `set.seed()` |
+| QQ-Plot gegen die Normalverteilung | `qqnorm(x); qqline(x)` | zwei Aufrufe, der zweite zeichnet die Referenzgerade |
 
 ## Hypothesentests
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| t-Test, zwei unabhängige Gruppen | `t.test(wert ~ gruppe, data = df)` | Welch ist die Voreinstellung; `var.equal = TRUE` erzwingt Student |
+| t-Test, zwei Vektoren | `t.test(x, y)` | Vorzeichen folgt der Reihenfolge der Argumente |
+| Effektstärke Cohens d | `effectsize::cohens_d(wert ~ gruppe, data = df)` | vorzeichenbehaftet, mit Konfidenzintervall |
+| Rangtest zweier Gruppen | `wilcox.test(x, y)` | ohne Bindungen und bei kleinem n exakt, sonst Normalapproximation |
+| Varianzanalyse | `aov(wert ~ gruppe, data = df)` | mit `summary()` lesen |
 
 ## Regression und Modelle
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Lineares Modell schätzen | `lm(y ~ x, data = df)` | |
+| Modell lesen | `summary(modell)` | Koeffizienten, R², Residualstreuung, F-Test |
+| Konfidenzintervalle der Koeffizienten | `confint(modell)` | steht nicht in `summary()` |
+| Quadratischer Term | `lm(y ~ x + I(x^2), data = df)` | `I()` schützt das Hochzeichen vor der Formelsyntax |
+| Residuen und Vorhersagen | `resid(modell)`, `fitted(modell)` | |
+| Diagnoseplots | `plot(modell, which = 1)` bis `which = 6` | 1 Residuen gegen Vorhersage, 2 QQ-Plot |
+| Einflussreiche Fälle | `cooks.distance(modell)`, `hatvalues(modell)` | Cook-Distanz über 1 gilt als auffällig |
+| Test auf ungleiche Streuung | `lmtest::bptest(modell)` | grosser p-Wert heisst unauffällig |
+| Vorhersage für neue Daten | `predict(modell, newdata = df_neu)` | |
 
 ## Überlebenszeitanalyse
 
@@ -81,7 +96,12 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Hauptkomponentenanalyse | `prcomp(daten, scale. = TRUE)` | ohne `scale.` wird **nicht** standardisiert |
+| Varianzanteile | `summary(pca)$importance` | drei Zeilen: Streuung, Anteil, kumuliert |
+| Ladungen | `pca$rotation` | spaltenweise je Komponente, Vorzeichen beliebig |
+| Komponentenwerte | `pca$x` | Varianz je Spalte gleich dem Eigenwert |
+| Eigenwerte | `pca$sdev^2` | Summe gleich der Anzahl Variablen, wenn standardisiert |
+| Komponenten auf neue Daten anwenden | `predict(pca, neue_daten)` | verwendet `$center` und `$scale` des Trainings |
 
 ## Zeitreihen
 
@@ -93,7 +113,12 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Mehrere Grafiken nebeneinander | `par(mfrow = c(1, 3))` | danach mit `par(mfrow = c(1, 1))` zurücksetzen |
+| Streudiagramm | `plot(x, y, pch = 16)` | |
+| Gerade eines Modells einzeichnen | `abline(modell)` | auch `abline(h =)`, `abline(v =)` für Hilfslinien |
+| Glättungskurve | `lines(lowess(x, y))` | nützlich im Residuenplot, um Bögen sichtbar zu machen |
+| Boxplot nach Gruppen | `boxplot(wert ~ gruppe, data = df)` | |
+| ggplot2-Grundgerüst | `ggplot(df, aes(x, y)) + geom_point()` | |
 
 ## Datenbanken und SQL
 
