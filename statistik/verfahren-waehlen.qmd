@@ -40,37 +40,48 @@ Die Frage lautet: Unterscheiden sich zwei oder mehr Gruppen in einer Grösse?
 Das ist das Feld der [Hypothesentests](inferenz/hypothesentests-grundlagen.qmd).
 
 ```{mermaid}
-%%| label: fig-baum-unterschiede
-%%| fig-cap: "Vom Skalenniveau der Zielgrösse zum passenden Test."
-flowchart TD
-    S["Unterschied zwischen Gruppen"] --> N{"Skalenniveau der Zielgrösse?"}
+%%| label: fig-baum-unterschiede-metrisch
+%%| fig-cap: "Metrische Zielgrösse: von der Gruppenzahl zum Test."
+%%| echo: false
+flowchart LR
+    M{"Wie viele Gruppen?"}
 
-    N -->|"metrisch"| M{"Wie viele Gruppen?"}
-    N -->|"ordinal"| O["rangbasiert vergleichen"]
-    N -->|"nominal"| K{"Wie viele Merkmale?"}
+    M -->|"eine, gegen Sollwert"| M1{"Voraussetzungen<br>erfüllt?"}
+    M -->|"zwei, unabhängig"| M2{"Voraussetzungen<br>erfüllt?"}
+    M -->|"zwei, gepaart"| M3{"Voraussetzungen<br>erfüllt?"}
+    M -->|"mehr als zwei"| M4{"Voraussetzungen<br>erfüllt?"}
 
-    M -->|"eine, gegen Sollwert"| M1{"Voraussetzungen erfüllt?"}
-    M -->|"zwei, unabhängig"| M2{"Voraussetzungen erfüllt?"}
-    M -->|"zwei, gepaart"| M3{"Voraussetzungen erfüllt?"}
-    M -->|"mehr als zwei"| M4{"Voraussetzungen erfüllt?"}
-
-    M1 -->|"ja"| E1["t-Test für eine Stichprobe"]
-    M1 -->|"nein"| E2["Wilcoxon-Vorzeichen-Rangtest"]
-    M2 -->|"ja"| E3["t-Test für zwei Stichproben, Welch"]
+    M1 -->|"ja"| E1["t-Test für<br>eine Stichprobe"]
+    M1 -->|"nein"| E2["Wilcoxon-<br>Vorzeichen-Rangtest"]
+    M2 -->|"ja"| E3["t-Test für zwei<br>Stichproben, Welch"]
     M2 -->|"nein"| E4["Mann-Whitney-U-Test"]
     M3 -->|"ja"| E5["gepaarter t-Test"]
-    M3 -->|"nein"| E6["Wilcoxon-Vorzeichen-Rangtest"]
+    M3 -->|"nein"| E6["Wilcoxon-<br>Vorzeichen-Rangtest"]
     M4 -->|"ja"| E7["Varianzanalyse"]
     M4 -->|"nein"| E8["Kruskal-Wallis-Test"]
 
-    E7 --> P["Post-hoc-Vergleiche mit Korrektur"]
+    E7 --> P["Post-hoc-Vergleiche<br>mit Korrektur"]
     E8 --> P
+```
 
-    O --> E4
-    K -->|"eines, gegen erwartete Verteilung"| E9["Chi-Quadrat-Anpassungstest"]
-    K -->|"zwei, Unabhängigkeit"| K2{"Erwartete Häufigkeiten überall mindestens 5?"}
-    K2 -->|"ja"| E10["Chi-Quadrat-Unabhängigkeitstest"]
-    K2 -->|"nein"| E11["exakter Test nach Fisher"]
+Ist die Zielgrösse nicht metrisch, endet dieser Weg sofort. Ordinale und
+nominale Zielgrössen gehen den zweiten Weg:
+
+```{mermaid}
+%%| label: fig-baum-unterschiede-kategorial
+%%| fig-cap: "Ordinale und nominale Zielgrösse: Rangtests und Häufigkeitstests."
+%%| echo: false
+flowchart LR
+    N{"Skalenniveau?"}
+
+    N -->|"ordinal"| O["rangbasiert vergleichen:<br>Mann-Whitney, Wilcoxon,<br>Kruskal-Wallis"]
+    N -->|"nominal"| K{"Wie viele Merkmale?"}
+
+    K -->|"eines, gegen<br>erwartete Verteilung"| E9["Chi-Quadrat-<br>Anpassungstest"]
+    K -->|"zwei, Frage nach<br>Unabhängigkeit"| K2{"Erwartete Häufigkeiten<br>überall mindestens 5?"}
+
+    K2 -->|"ja"| E10["Chi-Quadrat-<br>Unabhängigkeitstest"]
+    K2 -->|"nein"| E11["exakter Test<br>nach Fisher"]
 ```
 
 | Datenlage | Verfahren | Wenn Voraussetzungen verletzt |
@@ -99,32 +110,30 @@ Ein Zusammenhang ist symmetrisch, eine Vorhersage nicht.
 ```{mermaid}
 %%| label: fig-baum-zusammenhang
 %%| fig-cap: "Von der Art der Zielgrösse zum passenden Modell."
-flowchart TD
-    S["Zusammenhang oder Vorhersage"] --> Z{"Gibt es eine Zielgrösse, die vorhergesagt werden soll?"}
+%%| echo: false
+flowchart LR
+    Z{"Gibt es eine Zielgrösse,<br>die vorhergesagt<br>werden soll?"}
 
-    Z -->|"nein, nur die Enge des Zusammenhangs"| C{"Zusammenhang linear und Ausreisser unauffällig?"}
-    C -->|"ja"| C1["Korrelation nach Pearson"]
-    C -->|"nein"| C2["Korrelation nach Spearman"]
+    Z -->|"nein, nur die Enge<br>des Zusammenhangs"| C{"Linear und ohne<br>starke Ausreisser?"}
+    C -->|"ja"| C1["Korrelation<br>nach Pearson"]
+    C -->|"nein"| C2["Korrelation<br>nach Spearman"]
     C1 --> C3["Korrelationstest"]
     C2 --> C3
 
-    Z -->|"ja"| Y{"Art der Zielgrösse?"}
-    Y -->|"metrisch"| Y1{"Wie viele Einflussgrössen?"}
-    Y -->|"binär"| Y2["logistische Regression"]
-    Y -->|"Zeit bis zu einem Ereignis, teils zensiert"| Y3{"Was wird gefragt?"}
-    Y -->|"metrisch, über die Zeit erhoben"| Y4{"Werte zeitlich abhängig?"}
+    Z -->|"ja"| Y{"Art der<br>Zielgrösse?"}
+    Y -->|"metrisch"| Y1{"Wie viele<br>Einflussgrössen?"}
+    Y -->|"binär"| Y2["logistische<br>Regression"] --> G["Klassifikationsgüte"]
+    Y -->|"Zeit bis zum Ereignis,<br>teils zensiert"| Y3{"Was wird<br>gefragt?"}
+    Y -->|"über die Zeit erhoben"| Y4{"Werte zeitlich<br>abhängig?"}
 
-    Y1 -->|"eine"| R1["einfache lineare Regression"]
-    Y1 -->|"mehrere"| R2["multiple lineare Regression"]
-    R1 --> D["Regressionsdiagnostik"]
-    R2 --> D
-    Y2 --> G["Klassifikationsgüte"]
+    Y1 -->|"eine"| R1["einfache lineare<br>Regression"] --> D["Regressions-<br>diagnostik"]
+    Y1 -->|"mehrere"| R2["multiple lineare<br>Regression"] --> D
 
-    Y3 -->|"Verlauf beschreiben"| U1["Kaplan-Meier"]
-    Y3 -->|"zwei Gruppen vergleichen"| U2["Log-Rank-Test"]
-    Y3 -->|"Einflussgrössen einbeziehen"| U3["Cox-Modell"]
+    Y3 -->|"Verlauf<br>beschreiben"| U1["Kaplan-Meier"]
+    Y3 -->|"zwei Gruppen<br>vergleichen"| U2["Log-Rank-Test"]
+    Y3 -->|"Einflussgrössen<br>einbeziehen"| U3["Cox-Modell"]
 
-    Y4 -->|"ja"| T1["Zeitreihenmodelle, ARIMA"]
+    Y4 -->|"ja"| T1["Zeitreihenmodelle,<br>ARIMA"]
     Y4 -->|"nein"| R2
 ```
 
@@ -153,23 +162,22 @@ eine mehr oder weniger brauchbare Beschreibung.
 ```{mermaid}
 %%| label: fig-baum-struktur
 %%| fig-cap: "Verdichten oder gruppieren: die beiden Wege ohne Zielgrösse."
-flowchart TD
-    S["Struktur ohne Zielgrösse"] --> W{"Was soll zusammengefasst werden?"}
+%%| echo: false
+flowchart LR
+    W{"Was soll zusammen-<br>gefasst werden?"}
 
-    W -->|"Variablen verdichten"| V{"Was ist das Ziel?"}
-    W -->|"Beobachtungen gruppieren"| B["Distanzmass und Standardisierung festlegen"]
+    W -->|"Variablen<br>verdichten"| V{"Was ist<br>das Ziel?"}
+    W -->|"Beobachtungen<br>gruppieren"| B["Distanzmass und<br>Standardisierung<br>festlegen"]
 
-    V -->|"Varianz verdichten, neue Kennzahlen bilden"| V1["Hauptkomponentenanalyse"]
-    V -->|"dahinterliegende Ursachen modellieren"| V2["Faktorenanalyse"]
-    V1 --> V3{"Alle Eigenwerte nahe 1?"}
-    V3 -->|"ja"| V4["nichts zu verdichten, Analyse abbrechen"]
-    V3 -->|"nein"| V5["Komponenten deuten und benennen"]
+    V -->|"Varianz verdichten,<br>neue Kennzahlen"| V1["Haupt-<br>komponentenanalyse"]
+    V -->|"dahinterliegende<br>Ursachen modellieren"| V2["Faktorenanalyse"]
+    V1 --> V3{"Alle Eigenwerte<br>nahe 1?"}
+    V3 -->|"ja"| V4["nichts zu verdichten,<br>Analyse abbrechen"]
+    V3 -->|"nein"| V5["Komponenten deuten<br>und benennen"]
 
-    B --> B1{"Anzahl Gruppen vorab bekannt?"}
-    B1 -->|"ja"| B2["k-Means"]
-    B1 -->|"nein"| B3["hierarchisches Clustering, Dendrogramm"]
-    B2 --> B4["Clustergüte prüfen"]
-    B3 --> B4
+    B --> B1{"Anzahl Gruppen<br>vorab bekannt?"}
+    B1 -->|"ja"| B2["k-Means"] --> B4["Clustergüte prüfen"]
+    B1 -->|"nein"| B3["hierarchisches<br>Clustering"] --> B4
 ```
 
 | Ziel | Verfahren | Worauf zu achten ist |
