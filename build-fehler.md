@@ -98,6 +98,30 @@ scikit-learn pingouin` genügt, um jede Zahl zu prüfen, die im Text steht.
 
 ---
 
+### 2026-09-10 — Tabsets leeren das Inhaltsverzeichnis
+
+**Symptom:** Kein Build-Fehler. Nach dem Umbau der Methodenseiten auf ein
+aeusseres Tabset "Theorie | Beispiel 1 | ..." enthielt das Inhaltsverzeichnis
+rechts nur noch zwei Eintraege: "Verstaendnisfragen" und "Verlinkte
+Ressourcen". Die gesamte Theorie und alle Beispielabschnitte fehlten.
+
+**Ursache:** Quarto nimmt **saemtliche** Ueberschriften innerhalb eines
+Tabsets aus dem Inhaltsverzeichnis, nicht nur die Tab-Titel selbst. Alles, was
+im Tabset steht, ist im TOC unsichtbar, und Ctrl+F findet es in geschlossenen
+Tabs ebenfalls nicht. Die eingebaute Suche der Seite findet es weiterhin.
+
+**Regel:** Auf einer Nachschlageseite gehoert nur in ein Tabset, was
+nebeneinander gestellt werden soll. Der Theorieteil bleibt deshalb aus dem
+Tabset heraus und steht als normale `##`-Abschnitte oben; darunter folgt
+`## Beispiele` mit dem Tabset. Ergebnis: Die Theorie steht vollstaendig im
+TOC, die Beispiele sind Reiter, und das TOC endet mit "Beispiele",
+"Verstaendnisfragen", "Verlinkte Ressourcen".
+
+**Wie es geprueft wird:** Nach dem Push die gerenderte Seite aufrufen und das
+Inhaltsverzeichnis ansehen. Ein gruener Build sagt darueber nichts.
+
+---
+
 ### 2026-09-10 — verschachtelte Tabsets
 
 **Symptom:** Noch keiner; die Regel ist vorbeugend notiert, weil die
@@ -109,6 +133,6 @@ Doppelpunkte als das äussere, endet das äussere zu früh, und die Beispiel-Tab
 verschwinden ohne Fehlermeldung.
 
 **Regel:** Das äussere Tabset öffnet mit `::::`, das innere mit `:::`. Die
-Überschriftenebenen entsprechend: `##` für die Tabs Theorie und Beispiele,
-`###` für die Abschnitte darin, `####` für R und Python. In jedem Tabset steht
-R zuerst.
+Überschriftenebenen auf einer Methodenseite: `##` für Theorieabschnitte und für
+`## Beispiele`, `###` für die Beispiel-Reiter, `####` für die Abschnitte im
+Beispiel, `#####` für R und Python. In jedem Tabset steht R zuerst.

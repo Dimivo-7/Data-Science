@@ -72,11 +72,9 @@ denselben 300 Zeilen und liefern dieselben Eigenwerte und Ladungen. Nur die
 Vorzeichen der Ladungen können sich zwischen den beiden Ausgaben unterscheiden,
 und das ist bei diesem Verfahren bedeutungslos.
 
-:::: {.panel-tabset}
 
-## Theorie
 
-### Kurzsteckbrief
+## Kurzsteckbrief
 
 | | |
 |---|---|
@@ -88,7 +86,7 @@ und das ist bei diesem Verfahren bedeutungslos.
 | Python-Funktion | `PCA().fit(StandardScaler().fit_transform(daten))` |
 | Verwandte Methoden | [Faktorenanalyse](faktorenanalyse.qmd), [k-Means](k-means.qmd), [Distanzmasse](distanzmasse.qmd) |
 
-### Wann diese Methode, wann nicht
+## Wann diese Methode, wann nicht
 
 Typische Fragestellungen: Zwanzig Sensorwerte auf zwei bis drei Kennzahlen
 verdichten, korrelierte Prädiktoren vor einem Modell entflechten, einen
@@ -109,7 +107,7 @@ Variablen.
 | Der Zusammenhang ist deutlich nichtlinear | nichtlineare Verfahren, etwa UMAP oder Kernel-PCA |
 | Die Variablen sind praktisch unkorreliert | nichts zu verdichten; die Analyse liefert nur eine Drehung |
 
-### Grundidee und Modell
+## Grundidee und Modell
 
 Gesucht ist die Richtung im Variablenraum, entlang der die Daten am stärksten
 streuen. Das ist die erste Hauptkomponente. Die zweite ist die Richtung mit der
@@ -136,7 +134,7 @@ Variablen. Ein Eigenwert von 1 entspricht damit genau dem Informationsgehalt
 einer einzelnen Variablen, und das ist der Grund für die Faustregel, Komponenten
 mit Eigenwert über 1 zu behalten.
 
-### Voraussetzungen und ihre Prüfung
+## Voraussetzungen und ihre Prüfung
 
 | Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
 |---|---|---|---|---|
@@ -146,7 +144,7 @@ mit Eigenwert über 1 zu behalten.
 | Vergleichbare Skalen oder Standardisierung | Keine Variable dominiert wegen ihrer Einheit | Varianzen vergleichen | Erste Komponente ist praktisch die grösste Variable | `scale. = TRUE` beziehungsweise `StandardScaler` |
 | Keine extremen Ausreisser | Varianz ist nicht von wenigen Punkten getrieben | Streudiagramme, Ausreisserdiagnostik | Komponenten zeigen auf die Ausreisser | robuste Varianten, Ursachen prüfen |
 
-### Output lesen
+## Output lesen
 
 R, `summary(prcomp(...))`:
 
@@ -178,7 +176,7 @@ oder zwischen R und Python ist kein Fehler. **Standardisierung geschieht nicht
 automatisch:** In R braucht es `scale. = TRUE`, in Python einen eigenen Schritt
 davor.
 
-### Wie viele Komponenten behalten?
+## Wie viele Komponenten behalten?
 
 | Kriterium | Regel | Grenzen |
 |---|---|---|
@@ -190,7 +188,7 @@ davor.
 Die Kriterien widersprechen sich regelmässig. Dann wird die Entscheidung
 begründet und nicht die Regel gewechselt, bis das Ergebnis gefällt.
 
-### Interpretationsfallen
+## Interpretationsfallen
 
 - **Die erste Komponente ist nicht die wichtigste Variable.** Sie ist die
   Richtung der grössten Streuung, und Streuung ist nicht Bedeutung.
@@ -209,7 +207,7 @@ begründet und nicht die Regel gewechselt, bis das Ergebnis gefällt.
   40 Prozent erklären, ist die Punktwolke in der Ebene eine grobe Projektion, und
   Abstände darin sind mit Vorsicht zu deuten.
 
-### Ergebnis berichten
+## Ergebnis berichten
 
 Vorlage für den Ergebnissatz:
 
@@ -223,7 +221,7 @@ Eigenwerte und kumulierte erklärte Varianz, die Ladungen der behaltenen
 Komponenten, das Kriterium für die Anzahl und die inhaltliche Deutung. Ohne
 Deutung ist eine Komponentenanalyse nur eine Zahlenumformung.
 
-### Abgrenzung zu verwandten Methoden
+## Abgrenzung zu verwandten Methoden
 
 | Methode | Wann diese statt der Hauptkomponentenanalyse |
 |---|---|
@@ -233,9 +231,15 @@ Deutung ist eine Komponentenanalyse nur eine Zahlenumformung.
 | Korrespondenzanalyse | die Variablen sind kategorial |
 | Nichtlineare Verfahren, etwa UMAP | die Struktur ist deutlich nichtlinear und nur die Darstellung zählt |
 
-## Beispiel 1: Sechs Sensoren einer Fertigungslinie
+## Beispiele
 
-### Frage und Datenlage
+Jedes Beispiel steht in einem eigenen Reiter.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Sechs Sensoren einer Fertigungslinie
+
+#### Frage und Datenlage
 
 An einer Fertigungslinie werden sechs Grössen aufgezeichnet: Vibration in
 Millimetern je Sekunde, Temperatur in Grad Celsius, Stromaufnahme in Ampere,
@@ -243,7 +247,7 @@ Taktzeit in Sekunden, Ausstoss in Stück und Luftfeuchte in Prozent. Für 300
 Schichten liegen die Werte vor. Gefragt ist, ob sich die sechs Kennzahlen auf
 wenige zusammenfassen lassen und was diese wenigen inhaltlich bedeuten.
 
-### Voraussetzungen prüfen
+#### Voraussetzungen prüfen
 
 Vor jeder Komponentenanalyse steht die Korrelationsmatrix. Sie beantwortet die
 Frage, ob es überhaupt etwas zu verdichten gibt, und die Varianzen beantworten
@@ -251,7 +255,7 @@ die Frage, ob standardisiert werden muss.
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b1-voraussetzungen-r
@@ -260,7 +264,7 @@ round(cor(linie), 2)
 round(sapply(linie, var), 1)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b1-voraussetzungen-py
@@ -281,11 +285,11 @@ Verhältnis von rund 1 zu 1650. Der Grund sind die Einheiten: Ampere und Stück
 sind schlicht verschieden grosse Zahlen. Ohne Standardisierung würde die erste
 Komponente deshalb den Ausstoss abbilden und sonst nichts, wie Beispiel 2 zeigt.
 
-### Analyse rechnen
+#### Analyse rechnen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b1-pca-r
@@ -295,7 +299,7 @@ summary(pca)
 round(pca$rotation[, 1:3], 3)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b1-pca-py
@@ -318,7 +322,7 @@ print(ladungen.round(3))
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 Zuerst die Varianztabelle:
 
@@ -351,11 +355,11 @@ Länge 1, eine Gleichverteilung auf alle sechs entspräche also je 0.41. Werte u
 0.57 sind demnach hoch, Werte unter etwa 0.15 sind Rauschen. Die Schwelle hängt
 an der Anzahl Variablen und ist keine feste Zahl.
 
-### Auswahl und Darstellung
+#### Auswahl und Darstellung
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: fig-b1-scree-r
@@ -374,7 +378,7 @@ abline(h = 0, v = 0, col = "grey80")
 par(mfrow = c(1, 1))
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: fig-b1-scree-py
@@ -413,7 +417,7 @@ keiner anderen Grösse zusammenhängt. Sie zu behalten hiesse, eine
 Ausgangsvariable unter neuem Namen mitzuschleppen. Wer sie braucht, nimmt sie
 direkt und nennt sie Luftfeuchte.
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Die Sensordaten enthalten zwei gemeinsame Bewegungen und eine eigenständige
 Grösse. Die erste Bewegung erfasst Vibration, Temperatur und Stromaufnahme; alle
@@ -436,20 +440,20 @@ müssen.
 > entspricht der Luftfeuchte, die mit keiner anderen Grösse zusammenhängt; sie
 > wird als eigene Variable weitergeführt statt als Komponente.
 
-## Beispiel 2: Fehlende Standardisierung
+### Beispiel 2: Fehlende Standardisierung
 
-### Frage und Datenlage
+#### Frage und Datenlage
 
 Dieselben 300 Schichten und dieselben sechs Sensoren, nur wird diesmal nicht
 standardisiert. In R heisst das `scale. = FALSE` (die Voreinstellung), in Python
 schlicht, den `StandardScaler` wegzulassen. Das ist der häufigste stille Fehler
 dieses Verfahrens, weil das Programm nicht warnt.
 
-### Analyse rechnen
+#### Analyse rechnen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b2-pca-r
@@ -459,7 +463,7 @@ round(summary(pca_ohne)$importance[, 1:3], 4)
 round(pca_ohne$rotation[, 1:2], 3)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b2-pca-py
@@ -475,7 +479,7 @@ print(pd.DataFrame(pca_ohne.components_[:2].T, index=linie.columns,
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -495,7 +499,7 @@ seine Varianz mit 3971 rund 1650 Mal so gross ist wie die der Stromaufnahme in
 Ampere. Wäre der Ausstoss in Tausend Stück erfasst worden, sähe das Ergebnis
 völlig anders aus.
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Zwei Zeichen verraten den Fehler zuverlässig: Eine einzelne Komponente erklärt
 unplausibel viel, und ihre Ladungen konzentrieren sich auf eine Variable. Beides
@@ -511,20 +515,20 @@ Fällen ist die Standardisierung Pflicht.
 > Varianz durch die Einheit um Grössenordnungen über den übrigen liegt.
 > Berichtet wird die Analyse auf standardisierten Daten.
 
-## Beispiel 3: Nichts zu verdichten
+### Beispiel 3: Nichts zu verdichten
 
-### Frage und Datenlage
+#### Frage und Datenlage
 
 Sechs Kennzahlen aus verschiedenen Bereichen eines Betriebs, die inhaltlich
 nichts miteinander zu tun haben. Das Beispiel zeigt, wie das Ergebnis aussieht,
 wenn es nichts zu reduzieren gibt, und warum man die Analyse dann abbricht statt
 sie zu berichten.
 
-### Analyse rechnen
+#### Analyse rechnen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b3-pca-r
@@ -539,7 +543,7 @@ pca_b3 <- prcomp(unabhaengig, scale. = TRUE)
 round(summary(pca_b3)$importance, 3)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b3-pca-py
@@ -560,7 +564,7 @@ print(pd.DataFrame({
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -575,7 +579,7 @@ die Eigenwerte per Konstruktion um 1 herum, und etwa die Hälfte davon landet
 darüber. Ein Kriterium, das ausgerechnet bei strukturlosen Daten ein Ergebnis
 liefert, taugt nicht als alleinige Entscheidungsgrundlage.
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Der Abbruch ist hier das richtige Ergebnis und kein Misserfolg. Er lässt sich
 zudem vorwegnehmen: Die Korrelationsmatrix zeigt das Fehlen von Struktur, bevor
@@ -591,9 +595,9 @@ eine Reduktion". Der Blick auf die Matrix genügt in den meisten Fällen.
 > rund ein Sechstel der Varianz. Eine Dimensionsreduktion ist hier nicht
 > sinnvoll; die Variablen werden einzeln weiterverwendet.
 
-## Beispiel 4: Komponenten weiterverwenden
+### Beispiel 4: Komponenten weiterverwenden
 
-### Frage und Datenlage
+#### Frage und Datenlage
 
 Zurück zu den Sensordaten aus Beispiel 1. Die beiden Komponenten sollen nun als
 Eingang für ein anschliessendes Verfahren dienen, etwa ein
@@ -602,11 +606,11 @@ technisch: Vibration, Temperatur und Stromaufnahme messen fast dasselbe, und in
 einer Distanz oder einem Regressionsmodell zählt dieses eine Merkmal dann
 dreifach.
 
-### Komponenten prüfen
+#### Komponenten prüfen
 
 ::: {.panel-tabset}
 
-#### R
+##### R
 
 ```{r}
 #| label: b4-komponenten-r
@@ -617,7 +621,7 @@ round(apply(komponenten, 2, var), 4)
 round(head(komponenten, 3), 3)
 ```
 
-#### Python
+##### Python
 
 ```{python}
 #| label: b4-komponenten-py
@@ -630,7 +634,7 @@ print(komponenten[:3].round(3))
 
 :::
 
-### Output Zeile für Zeile
+#### Output Zeile für Zeile
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
@@ -639,7 +643,7 @@ print(komponenten[:3].round(3))
 | Varianz von PC2 | 1.925 | Ebenso. |
 | erste Komponentenwerte | Beträge von 0 bis rund 7 | Sie sind zentriert; der Nullpunkt ist die durchschnittliche Schicht. Ein Betrag von rund 7 auf PC1 bedeutet eine Schicht weit am Rand des Werkzeugblocks, ein Betrag nahe 0 eine unauffällige. Ob dieser Rand das positive oder das negative Ende ist, hängt an der willkürlichen Orientierung der Komponente und kann sich zwischen R und Python unterscheiden. |
 
-### Interpretation und Ergebnissatz
+#### Interpretation und Ergebnissatz
 
 Der Gewinn ist die Unkorreliertheit, der Preis die Deutbarkeit. Ein Clustering
 auf PC1 und PC2 liefert Gruppen im gedrehten Raum; um sie zu beschreiben, muss
