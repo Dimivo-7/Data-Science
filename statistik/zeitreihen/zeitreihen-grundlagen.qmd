@@ -11,14 +11,28 @@ order: 10
 ```{r}
 #| label: setup-r
 #| include: false
-set.seed(2026)
+# Zufallszahlen aus einem einfachen Kongruenzgenerator, damit R und Python
+# exakt dieselben Reihen sehen.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1) {
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+}
 
 # Monatliche Absatzzahlen: Trend, Jahressaison, Rest
 monate <- 72
 t <- 1:monate
 trend <- 500 + 4 * t
 saison <- 60 * sin(2 * pi * t / 12) + 25 * cos(2 * pi * t / 12)
-rest <- rnorm(monate, 0, 20)
+rest <- normalwerte(1212, monate, 0, 20)
 
 absatz <- ts(round(trend + saison + rest), start = c(2020, 1), frequency = 12)
 ```
@@ -29,17 +43,31 @@ absatz <- ts(round(trend + saison + rest), start = c(2020, 1), frequency = 12)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy import stats
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
 
-rng = np.random.default_rng(2026)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0.0, streuung=1.0):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+
 
 monate = 72
 t = np.arange(1, monate + 1)
 trend = 500 + 4 * t
 saison = 60 * np.sin(2 * np.pi * t / 12) + 25 * np.cos(2 * np.pi * t / 12)
-rest = rng.normal(0, 20, monate)
+rest = normalwerte(1212, monate, 0, 20)
 
 absatz = pd.Series(np.round(trend + saison + rest),
                    index=pd.date_range("2020-01-01", periods=monate, freq="MS"),
@@ -48,12 +76,15 @@ absatz = pd.Series(np.round(trend + saison + rest),
 
 ## Kernideen
 
-- Die Reihenfolge der Beobachtungen ist Information, nicht Zufall
-- Die Annahme unabhängiger Beobachtungen fällt weg, und mit ihr viele Standardverfahren
-- Eine Zeitreihe zerfällt in Trend, Saison und Rest
-- Additiv oder multiplikativ ist eine Entscheidung, die man an der Grafik trifft
-- Der Rest soll strukturlos sein; ist er es nicht, fehlt dem Modell etwas
-- Aggregationsebene und Zeitraum bestimmen, was man überhaupt sehen kann
+- Die **Reihenfolge** der Beobachtungen ist Information, nicht Zufall.
+- Die Annahme unabhängiger Beobachtungen fällt weg, und mit ihr viele
+  Standardverfahren — insbesondere jede naive Korrelation zwischen zwei Reihen.
+- Eine Zeitreihe zerfällt in Trend, Saison und Rest.
+- Additiv oder multiplikativ ist eine Entscheidung, die man an der Grafik trifft.
+- Der Rest soll strukturlos sein; ist er es nicht, fehlt dem Modell etwas.
+- Aggregationsebene und Zeitraum bestimmen, was man überhaupt sehen kann.
+- Die Zerlegung ist **beschreibend**. Sie sagt, wie sich die Reihe aufteilen
+  lässt, nicht warum.
 
 ## Erklärung
 
@@ -68,18 +99,15 @@ Voraussetzung für Modelle.
 
 Bei einer Querschnittserhebung ist die Reihenfolge der Zeilen beliebig. Bei einer
 Zeitreihe trägt sie die Information: Der Wert von heute hängt mit dem von gestern
-zusammen. Damit fällt die Annahme unabhängiger Beobachtungen, auf der die meisten
-Verfahren beruhen, siehe
-[Hypothesentests](../inferenz/hypothesentests-grundlagen.qmd).
+zusammen. Damit fällt die Unabhängigkeitsannahme, auf der die meisten Verfahren
+dieser Sammlung beruhen.
 
-Praktische Folgen, die man kennen muss:
+Zwei praktische Folgen:
 
-- **Standardfehler werden zu klein**, wenn man Abhängigkeit ignoriert. Ein
-  t-Test auf autokorrelierten Daten liefert zu optimistische p-Werte.
-- **Zufällige Aufteilung in Trainings- und Testdaten ist falsch.** Getestet wird
-  auf der Zukunft, nicht auf herausgelosten Zeitpunkten.
-- **Zwei Reihen mit Trend korrelieren fast immer.** Das sagt nichts über einen
-  Zusammenhang, siehe [Korrelation](../grundlagen/korrelation.qmd).
+| Folge | Warum |
+|---|---|
+| Standardfehler sind zu klein | Aufeinanderfolgende Werte enthalten teilweise dieselbe Information; die effektive Stichprobengrösse ist kleiner als $n$. |
+| Korrelationen sind irreführend | Zwei Reihen mit Trend korrelieren fast immer hoch, ohne jeden inhaltlichen Zusammenhang. Beispiel 5 rechnet das durch. |
 
 ### Die drei Bestandteile
 
@@ -89,8 +117,10 @@ Praktische Folgen, die man kennen muss:
 | Saison | Muster mit fester Periode | dieselbe Form in jedem Jahr, Quartal, Wochentag |
 | Rest | was übrig bleibt | soll strukturlos um null schwanken |
 
-Manche Reihen haben zusätzlich einen Zyklus: Auf und Ab ohne feste Periode, etwa
-Konjunkturwellen. Der Unterschied zur Saison ist die Vorhersagbarkeit der Länge.
+Manche Reihen haben zusätzlich einen **Zyklus**: Auf und Ab ohne feste Periode,
+etwa Konjunkturwellen. Der Unterschied zur Saison ist die Vorhersagbarkeit der
+Länge — eine Saison kommt immer im Dezember, ein Zyklus irgendwann in den
+nächsten Jahren.
 
 ### Additiv oder multiplikativ
 
@@ -101,80 +131,29 @@ $$\text{additiv: } y_t = T_t + S_t + R_t \qquad \text{multiplikativ: } y_t = T_t
 
 Die Entscheidung fällt am Bild: Werden die Zacken mit steigendem Niveau höher, ist
 die Struktur multiplikativ. Eine Logarithmierung macht daraus eine additive, weil
-aus dem Produkt eine Summe wird. Das ist der übliche Weg, weil danach alle
-Verfahren für additive Reihen anwendbar sind.
+aus dem Produkt eine Summe wird:
 
-### Die Zerlegung
+$$\ln y_t = \ln T_t + \ln S_t + \ln R_t$$
 
-::: {.panel-tabset}
+Das ist der übliche Weg, weil danach alle Verfahren für additive Reihen anwendbar
+sind. Beispiel 4 zeigt es an Zahlen.
 
-## R
+### Die Zerlegung mit gleitenden Mitteln
 
-```{r}
-#| label: fig-zerlegung-r
-#| fig-cap: "Zerlegung der Absatzreihe in Trend, Saison und Rest über gleitende Mittel."
-#| fig-height: 4.4
-zerlegung <- decompose(absatz, type = "additive")
-plot(zerlegung)
-```
+Das klassische Verfahren (`decompose()` beziehungsweise `seasonal_decompose()`)
+arbeitet in drei Schritten:
 
-## Python
+1. **Trend** über ein zentriertes gleitendes Mittel der Periodenlänge. Bei
+   gerader Periode wird es zweimal geglättet, damit es zentriert bleibt — bei
+   zwölf Monaten also mit den Gewichten $\tfrac{1}{2}, 1, \dots, 1, \tfrac{1}{2}$
+   geteilt durch 12.
+2. **Saison** als Mittelwert der trendbereinigten Werte je Monat, anschliessend
+   so verschoben, dass die Figur im Mittel null ergibt.
+3. **Rest** als das, was nach Abzug von Trend und Saison bleibt.
 
-```{python}
-#| label: fig-zerlegung-py
-#| fig-cap: "Dieselbe Zerlegung mit statsmodels."
-#| fig-height: 4.4
-from statsmodels.tsa.seasonal import seasonal_decompose
-
-zerlegung = seasonal_decompose(absatz, model="additive", period=12)
-abb = zerlegung.plot()
-abb.set_size_inches(7, 4.4)
-plt.tight_layout()
-plt.show()
-```
-
-:::
-
-Vier Bilder, von oben nach unten: die Reihe selbst, der Trend als gleitendes
-Mittel, die geschätzte Saisonfigur und der Rest. Zu lesen ist es so:
-
-- **Trend:** Richtung und Tempo. Die ersten und letzten sechs Monate fehlen, weil
-  ein gleitendes Mittel über zwölf Monate am Rand nicht berechenbar ist.
-- **Saison:** die mittlere Abweichung je Monat, in jedem Jahr identisch
-  wiederholt. Genau diese Starrheit ist die Schwäche des Verfahrens.
-- **Rest:** soll strukturlos aussehen. Bleibt dort ein Muster, hat die Zerlegung
-  etwas nicht erfasst.
-
-Robustere Verfahren wie STL erlauben eine Saisonfigur, die sich langsam ändert,
-und sind gegen Ausreisser weniger empfindlich.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-stl-r
-#| fig-cap: "STL-Zerlegung: die Saisonfigur darf sich über die Jahre verändern."
-#| fig-height: 4.2
-plot(stl(absatz, s.window = "periodic"))
-```
-
-## Python
-
-```{python}
-#| label: fig-stl-py
-#| fig-cap: "STL in statsmodels."
-#| fig-height: 4.2
-from statsmodels.tsa.seasonal import STL
-
-stl = STL(absatz, period=12, robust=True).fit()
-abb = stl.plot()
-abb.set_size_inches(7, 4.2)
-plt.tight_layout()
-plt.show()
-```
-
-:::
+Daraus folgen zwei Eigenschaften, die man kennen muss: Am Rand fehlt der Trend
+für je eine halbe Periode, und die Saisonfigur ist in **jedem** Jahr identisch.
+Genau diese Starrheit behebt STL, siehe Beispiel 3.
 
 ### Was man aus der Zerlegung nicht ablesen darf
 
@@ -198,6 +177,589 @@ Umgekehrt kann eine zu feine Ebene Muster erzeugen, die inhaltlich nicht
 interessieren: Wer Tagesdaten auf Trend untersucht, kämpft mit Wochenenden und
 Feiertagen.
 
+## Beispiele
+
+Die Beispiele 1 bis 3 arbeiten mit einer konstruierten Absatzreihe: 72
+Monatswerte ab Januar 2020, ein linearer Trend von 500 mit 4 Einheiten Zuwachs je
+Monat, eine Jahressaison und ein Rest mit Streuung 20. Weil die Bestandteile
+bekannt sind, lässt sich prüfen, was die Zerlegung davon zurückgewinnt.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Die Reihe ansehen
+
+#### Frage und Datenlage
+
+Vor jeder Rechnung steht der Zeitplot. Er beantwortet vier Fragen auf einmal:
+Gibt es einen Trend, gibt es Saison, ist die Struktur additiv oder
+multiplikativ, und gibt es Ausreisser oder Brüche?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-zr-r
+#| fig-cap: "Beispiel 1: links die Reihe im Zeitverlauf, rechts jedes Jahr als eigene Linie über die Monate."
+#| fig-height: 3.6
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+
+plot(absatz, xlab = "Jahr", ylab = "Absatz", main = "Zeitplot", lwd = 1.5)
+
+# Saisonplot: jedes Jahr eine Linie
+matrix_jahre <- matrix(as.numeric(absatz), nrow = 12)
+matplot(1:12, matrix_jahre, type = "l", lty = 1, lwd = 1.5,
+        col = hcl.colors(6, "Blues 3"),
+        xlab = "Monat", ylab = "Absatz", main = "Saisonplot")
+legend("topright", legend = 2020:2025, col = hcl.colors(6, "Blues 3"),
+       lwd = 1.5, bty = "n", cex = 0.7)
+par(mfrow = c(1, 1))
+
+# Spannweite je Jahr: waechst sie mit dem Niveau?
+round(rbind(mittel = apply(matrix_jahre, 2, mean),
+            spannweite = apply(matrix_jahre, 2, function(x) diff(range(x)))), 1)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-zr-py
+#| fig-cap: "Beispiel 1: dieselben beiden Darstellungen in Python."
+#| fig-height: 3.6
+jahre = absatz.groupby(absatz.index.year)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.6))
+achsen[0].plot(absatz.index, absatz.values, lw=1.5, color="#2166ac")
+achsen[0].set_xlabel("Jahr")
+achsen[0].set_ylabel("Absatz")
+achsen[0].set_title("Zeitplot")
+
+farben = plt.cm.Blues(np.linspace(0.4, 0.95, 6))
+for (jahr, werte), farbe in zip(jahre, farben):
+    achsen[1].plot(range(1, 13), werte.values, lw=1.5, color=farbe, label=jahr)
+achsen[1].set_xlabel("Monat")
+achsen[1].set_title("Saisonplot")
+achsen[1].legend(frameon=False, fontsize=7)
+plt.tight_layout()
+plt.show()
+
+print(pd.DataFrame({
+    "mittel": jahre.mean().round(1),
+    "spannweite": jahre.apply(lambda g: g.max() - g.min()).round(1),
+}).T)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Jahr | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---|---|---|---|---|---|
+| Mittel | rund 526 | 574 | 622 | 670 | 718 | 766 |
+| Spannweite | rund 155 | 155 | 155 | 155 | 155 | 155 |
+
+| Frage | Antwort aus dem Bild | Woran |
+|---|---|---|
+| **Trend?** | Ja, steigend | Der Zeitplot steigt über sechs Jahre um rund 290 Einheiten; die Jahresmittel wachsen gleichmässig um etwa 48 je Jahr, also 4 je Monat. |
+| **Saison?** | Ja, mit Jahresperiode | Im Saisonplot liegen alle sechs Linien **parallel** übereinander: dieselbe Form, nur nach oben verschoben. Das ist die klarste Art, Saisonalität zu sehen — im Zeitplot verdeckt der Trend sie leicht. |
+| **Additiv oder multiplikativ?** | Additiv | Die Spannweite je Jahr bleibt konstant, während das Mittel um 45 Prozent steigt. Bei multiplikativer Struktur müsste sie mitwachsen (Beispiel 4). |
+| **Ausreisser oder Brüche?** | Keine | Kein einzelner Punkt fällt aus dem Muster, kein Niveausprung. |
+
+::: {.note-box}
+**Der Saisonplot ist die wichtigste Grafik dieses Beispiels.** Im Zeitplot sind
+Trend und Saison überlagert und schwer zu trennen; legt man die Jahre
+übereinander, wird die Saisonfigur unmittelbar sichtbar — und ebenso, ob sie sich
+über die Jahre verändert (Beispiel 3) oder ob ein einzelnes Jahr aus der Reihe
+fällt.
+:::
+
+#### Interpretation
+
+Alle Voraussetzungen für eine additive Zerlegung sind erfüllt: klarer Trend,
+stabile Saison, keine Brüche, sechs vollständige Perioden.
+
+### Beispiel 2: Die Zerlegung Schritt für Schritt
+
+#### Frage und Datenlage
+
+Was macht `decompose()` genau, und wie gut trifft es die eingebauten
+Bestandteile?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-zr-r
+#| fig-cap: "Beispiel 2: Zerlegung der Absatzreihe in Trend, Saison und Rest."
+#| fig-height: 4.4
+zerlegung <- decompose(absatz, type = "additive")
+plot(zerlegung)
+
+# Der Trendwert bei t = 13 von Hand: zentriertes gleitendes Mittel
+gewichte <- c(0.5, rep(1, 11), 0.5) / 12
+round(c(von_hand = sum(as.numeric(absatz)[7:19] * gewichte),
+        aus_decompose = zerlegung$trend[13]), 3)
+
+# Saisonfigur gegen die eingebauten Werte
+eingebaut <- 60 * sin(2 * pi * (1:12) / 12) + 25 * cos(2 * pi * (1:12) / 12)
+round(rbind(geschaetzt = zerlegung$figure,
+            eingebaut = eingebaut,
+            differenz = zerlegung$figure - eingebaut), 1)
+
+round(c(summe_figur = sum(zerlegung$figure),
+        fehlende_trendwerte = sum(is.na(zerlegung$trend)),
+        rest_sd = sd(zerlegung$random, na.rm = TRUE)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-zr-py
+#| fig-cap: "Beispiel 2: dieselbe Zerlegung mit statsmodels."
+#| fig-height: 4.4
+zerlegung = seasonal_decompose(absatz, model="additive", period=12)
+abb = zerlegung.plot()
+abb.set_size_inches(7, 4.4)
+plt.tight_layout()
+plt.show()
+
+gewichte = np.r_[0.5, np.ones(11), 0.5] / 12
+print("Trend bei t = 13 von Hand:  ",
+      round(float((absatz.values[6:19] * gewichte).sum()), 3))
+print("Trend bei t = 13 aus statsmodels:",
+      round(float(zerlegung.trend.iloc[12]), 3))
+
+figur = zerlegung.seasonal[:12].values
+eingebaut = (60 * np.sin(2 * np.pi * np.arange(1, 13) / 12)
+             + 25 * np.cos(2 * np.pi * np.arange(1, 13) / 12))
+print(pd.DataFrame({"geschaetzt": figur.round(1),
+                    "eingebaut": eingebaut.round(1),
+                    "differenz": (figur - eingebaut).round(1)},
+                   index=range(1, 13)).T)
+
+print("Summe der Figur:", round(float(figur.sum()), 3))
+print("fehlende Trendwerte:", int(zerlegung.trend.isna().sum()))
+print("Rest, Standardabweichung:", round(float(zerlegung.resid.std(ddof=1)), 2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die geschätzte Saisonfigur gegen die eingebauten Werte:
+
+| Monat | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| geschätzt | 46.5 | 75.5 | 66.1 | 42.2 | -1.2 | -24.7 | -59.3 | -72.9 | -57.7 | -37.9 | -0.8 | 24.2 |
+| eingebaut | 51.7 | 64.5 | 60.0 | 39.5 | 8.3 | -25.0 | -51.7 | -64.5 | -60.0 | -39.5 | -8.3 | 25.0 |
+| Differenz | -5.2 | **11.0** | 6.1 | 2.7 | **-9.5** | 0.3 | -7.6 | **-8.4** | 2.3 | 1.6 | 7.5 | -0.8 |
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Trend bei $t = 13$ | **559.62**, von Hand wie aus der Funktion | Das zentrierte gleitende Mittel über 13 Werte mit halbem Gewicht an den Enden. Die 13 Werte reichen von Juli 2020 bis Juli 2021 — der Trendwert für Januar 2021 nutzt also ein halbes Jahr Zukunft. |
+| fehlende Trendwerte | **12** | Sechs am Anfang, sechs am Ende. Bei einer Periode von 12 fehlt an jedem Rand eine halbe Periode. **Deshalb taugt `decompose()` nicht zur Vorhersage** — für den aktuellsten Monat gibt es keinen Trend. |
+| Summe der Saisonfigur | **0.000** | Per Konstruktion. Die Figur wird so verschoben, dass sie sich über ein Jahr aufhebt; das Niveau steckt vollständig im Trend. |
+| Abweichungen der Figur | bis zu **11 Einheiten** | Die geschätzte Figur trifft die eingebaute nicht genau — bei sechs Wiederholungen und einem Rest mit Streuung 20 ist der Standardfehler je Monat etwa $20/\sqrt{6} = 8.2$. Die Abweichungen liegen in dieser Grössenordnung. |
+| Rest, Standardabweichung | **20.69** | Sehr nahe an der eingebauten 20. Die Zerlegung hat also im Wesentlichen alles gefunden, was es zu finden gab. |
+
+::: {.note-box}
+**Die Abweichungen in der Saisonfigur sind kein Fehler des Verfahrens, sondern
+Stichprobenzufall.** Sie sind aber ein Grund, eine Saisonfigur nicht auf die
+Nachkommastelle zu deuten: Dass der Februar mit 75.5 statt 64.5 geschätzt wird,
+heisst nicht, dass der Februar besonders stark ist — es heisst, dass sechs
+Februare für eine genaue Schätzung wenig sind.
+
+Die Faustregel "mindestens drei, besser vier Perioden" ist eine **Untergrenze für
+Erkennbarkeit**, keine für Genauigkeit.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Eine additive Zerlegung der Monatsreihe (72 Werte, Periode 12) ergibt einen
+> gleichmässig steigenden Trend von rund 529 auf 773 und eine Saisonfigur mit
+> Maximum im Februar (+75.5) und Minimum im August (-72.9). Der Rest streut mit
+> einer Standardabweichung von 20.7 ohne erkennbares Muster.
+
+### Beispiel 3: Wenn sich die Saison ändert
+
+#### Frage und Datenlage
+
+`decompose()` erzwingt in jedem Jahr **dieselbe** Saisonfigur. Was passiert, wenn
+sich die Saison über die Jahre tatsächlich verändert?
+
+Konstruiert wird eine Reihe über acht Jahre, deren Saisonamplitude von rund 30
+auf 90 wächst und deren Hochpunkt sich langsam verschiebt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-zr-r
+#| fig-cap: "Beispiel 3: links die klassische Zerlegung mit starrer Saison, rechts STL mit sich änderndem Muster."
+#| fig-height: 4.2
+m2 <- 96
+t2 <- 1:m2
+amplitude <- 30 + 60 * (t2 - 1) / (m2 - 1)
+phase <- 2 * pi * t2 / 12 - 0.5 * (t2 - 1) / (m2 - 1) * pi
+wandel <- ts(round(600 + 2 * t2 + amplitude * sin(phase) +
+                     normalwerte(1414, m2, 0, 12)),
+             start = c(2018, 1), frequency = 12)
+
+zerl_klassisch <- decompose(wandel, type = "additive")
+zerl_stl <- stl(wandel, s.window = 7, robust = TRUE)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(zerl_klassisch$seasonal, ylab = "Saisonanteil", xlab = "Jahr",
+     main = "decompose: starr")
+plot(zerl_stl$time.series[, "seasonal"], ylab = "Saisonanteil", xlab = "Jahr",
+     main = "STL: veränderlich")
+par(mfrow = c(1, 1))
+
+# Saisonspanne je Jahr
+spanne <- function(x) tapply(as.numeric(x), rep(2018:2025, each = 12),
+                             function(v) round(diff(range(v)), 1))
+rbind(decompose = spanne(zerl_klassisch$seasonal),
+      stl = spanne(zerl_stl$time.series[, "seasonal"]))
+
+round(c(rest_sd_decompose = sd(zerl_klassisch$random, na.rm = TRUE),
+        rest_sd_stl = sd(zerl_stl$time.series[, "remainder"])), 2)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-zr-py
+#| fig-cap: "Beispiel 3: dieselbe Gegenüberstellung in Python."
+#| fig-height: 4.2
+m2 = 96
+t2 = np.arange(1, m2 + 1)
+amplitude = 30 + 60 * (t2 - 1) / (m2 - 1)
+phase = 2 * np.pi * t2 / 12 - 0.5 * (t2 - 1) / (m2 - 1) * np.pi
+wandel = pd.Series(
+    np.round(600 + 2 * t2 + amplitude * np.sin(phase)
+             + normalwerte(1414, m2, 0, 12)),
+    index=pd.date_range("2018-01-01", periods=m2, freq="MS"))
+
+zerl_klassisch = seasonal_decompose(wandel, model="additive", period=12)
+zerl_stl = STL(wandel, period=12, robust=True).fit()
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.6))
+achsen[0].plot(wandel.index, zerl_klassisch.seasonal, color="#b2182b")
+achsen[0].set_title("decompose: starr")
+achsen[1].plot(wandel.index, zerl_stl.seasonal, color="#2166ac")
+achsen[1].set_title("STL: veränderlich")
+for achse in achsen:
+    achse.set_xlabel("Jahr")
+    achse.set_ylabel("Saisonanteil")
+plt.tight_layout()
+plt.show()
+
+
+def spanne(reihe):
+    return reihe.groupby(reihe.index.year).apply(
+        lambda g: round(float(g.max() - g.min()), 1))
+
+
+print(pd.DataFrame({"decompose": spanne(zerl_klassisch.seasonal),
+                    "stl": spanne(zerl_stl.seasonal)}).T)
+
+print("Rest sd decompose:", round(float(zerl_klassisch.resid.std(ddof=1)), 2))
+print("Rest sd STL:      ", round(float(zerl_stl.resid.std(ddof=1)), 2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Die Spannweite der geschätzten Saisonfigur, Jahr für Jahr:
+
+| Jahr | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---|---|---|---|---|---|---|---|
+| `decompose` | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 | 111.3 |
+| **STL** | 96.6 | 92.9 | 105.6 | 115.4 | 120.8 | 133.9 | 164.0 | **193.8** |
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `decompose`: achtmal **111.3** | | Nicht ähnlich, sondern **identisch** — die Figur wird einmal geschätzt und in jedem Jahr wiederholt. Der Wert ist der Mittelwert über acht Jahre und beschreibt kein einziges davon richtig. |
+| STL: 96.6 wachsend auf 193.8 | fast eine Verdoppelung | Das Verfahren folgt der tatsächlichen Entwicklung. |
+| Rest sd `decompose` | **21.24** | |
+| Rest sd STL | **11.17** | Fast eine Halbierung. Was `decompose()` nicht in die Saison stecken kann, landet im Rest — dort steht also Struktur, die keine sein sollte. |
+
+Damit ist auch die Diagnose beschrieben: **Ein Rest, dessen Schwankungsbreite sich
+über die Jahre systematisch ändert, ist das Erkennungszeichen einer
+Saisonfigur, die nicht mehr passt.** Im Beispiel liegt der mittlere Betrag des
+Rests bei `decompose()` 2022 bei 8.9 und 2025 bei 27.2 — bei STL bleibt er
+durchgehend zwischen 3 und 12.
+
+::: {.note-box}
+**Was STL zusätzlich kann und was es kostet.** STL glättet Trend und Saison
+getrennt mit lokalen Regressionen; die Fensterbreite `s.window` beziehungsweise
+`seasonal` steuert, **wie schnell** sich die Saisonfigur ändern darf. Ein kleines
+Fenster folgt jedem Jahr, ein grosses nähert sich der starren Figur an;
+`s.window = "periodic"` in R erzwingt sie ganz.
+
+Der Preis ist eine Entscheidung mehr — und die Gefahr, mit einem zu kleinen
+Fenster Rauschen in die Saison zu ziehen. Mit `robust = TRUE` werden Ausreisser
+zudem heruntergewichtet, statt die Figur zu verbiegen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Saisonamplitude wächst über den Beobachtungszeitraum von rund 97 auf 194
+> Einheiten. Eine klassische Zerlegung mit starrer Saisonfigur bildet das nicht
+> ab und verschiebt die Differenz in den Rest (Standardabweichung 21.2 gegenüber
+> 11.2 bei STL); berichtet wird die STL-Zerlegung.
+
+### Beispiel 4: Multiplikativ und der Logarithmus
+
+#### Frage und Datenlage
+
+Eine Umsatzreihe, die um 1.2 Prozent je Monat wächst und deren Saisonschwankung
+**prozentual** konstant ist. Was tut eine additive Zerlegung damit, und was
+ändert der Logarithmus?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-zr-r
+#| fig-cap: "Beispiel 4: oben die Reihe mit wachsenden Zacken, unten dieselbe Reihe logarithmiert."
+#| fig-height: 4
+m3 <- 72
+t3 <- 1:m3
+umsatz <- ts(round(500 * 1.012^t3 *
+                     (1 + 0.12 * sin(2 * pi * t3 / 12) +
+                        0.05 * cos(2 * pi * t3 / 12)) *
+                     exp(normalwerte(1313, m3, 0, 0.03))),
+             start = c(2020, 1), frequency = 12)
+
+par(mfrow = c(2, 1), mar = c(3, 4, 2, 1))
+plot(umsatz, ylab = "Umsatz", main = "Rohdaten", lwd = 1.5)
+plot(log(umsatz), ylab = "log(Umsatz)", main = "logarithmiert", lwd = 1.5)
+par(mfrow = c(1, 1))
+
+# Spannweite je Jahr, roh und logarithmiert
+jahr <- rep(2020:2025, each = 12)
+round(rbind(
+  roh = tapply(as.numeric(umsatz), jahr, function(v) diff(range(v))),
+  logarithmiert = tapply(log(as.numeric(umsatz)), jahr,
+                         function(v) diff(range(v)))
+), 3)
+
+# Reste beider Zerlegungen
+round(c(rest_sd_additiv = sd(decompose(umsatz, "additive")$random, na.rm = TRUE),
+        rest_sd_multiplikativ = sd(decompose(umsatz, "multiplicative")$random,
+                                   na.rm = TRUE)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-zr-py
+#| fig-cap: "Beispiel 4: dieselbe Gegenüberstellung in Python."
+#| fig-height: 4
+m3 = 72
+t3 = np.arange(1, m3 + 1)
+umsatz = pd.Series(
+    np.round(500 * 1.012 ** t3
+             * (1 + 0.12 * np.sin(2 * np.pi * t3 / 12)
+                + 0.05 * np.cos(2 * np.pi * t3 / 12))
+             * np.exp(normalwerte(1313, m3, 0, 0.03))),
+    index=pd.date_range("2020-01-01", periods=m3, freq="MS"))
+
+fig, achsen = plt.subplots(2, 1, figsize=(7, 4))
+achsen[0].plot(umsatz.index, umsatz.values, lw=1.5, color="#2166ac")
+achsen[0].set_ylabel("Umsatz")
+achsen[0].set_title("Rohdaten")
+achsen[1].plot(umsatz.index, np.log(umsatz.values), lw=1.5, color="#b2182b")
+achsen[1].set_ylabel("log(Umsatz)")
+achsen[1].set_title("logarithmiert")
+plt.tight_layout()
+plt.show()
+
+nach_jahr = umsatz.groupby(umsatz.index.year)
+log_umsatz = np.log(umsatz)
+print(pd.DataFrame({
+    "roh": nach_jahr.apply(lambda g: g.max() - g.min()).round(1),
+    "logarithmiert": log_umsatz.groupby(log_umsatz.index.year)
+                     .apply(lambda g: g.max() - g.min()).round(3),
+}).T)
+
+print("Rest sd additiv:      ",
+      round(float(seasonal_decompose(umsatz, model="additive",
+                                     period=12).resid.std(ddof=1)), 4))
+print("Rest sd multiplikativ:",
+      round(float(seasonal_decompose(umsatz, model="multiplicative",
+                                     period=12).resid.std(ddof=1)), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Spannweite je Jahr:
+
+| Jahr | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 |
+|---|---|---|---|---|---|---|
+| roh | 179 | 159 | 218 | 225 | 218 | **284** |
+| logarithmiert | 0.3 | 0.3 | 0.3 | 0.3 | 0.2 | **0.3** |
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| Roh: 179 wächst auf 284 | Die Zacken werden mit dem Niveau höher — das Erkennungszeichen multiplikativer Struktur. Der Umsatz steigt im selben Zeitraum von rund 520 auf 1200, also um den Faktor 2.3; die Spannweite um den Faktor 1.6. |
+| Logarithmiert: durchgehend **0.3** | Nach dem Logarithmieren ist die Schwankungsbreite konstant. Genau das ist der Zweck: Aus einem konstanten **Verhältnis** wird eine konstante **Differenz**. |
+| Rest sd additiv: 23.01 | Auf der Skala der Rohdaten. |
+| Rest sd multiplikativ: 0.0227 | Ein Faktor, kein Betrag: Der Rest schwankt um 2.3 Prozent um den Wert 1. |
+
+Die beiden Reste sind nicht direkt vergleichbar — sie stehen auf verschiedenen
+Skalen. Vergleichbar wird es über die **Struktur** im Rest: Beim additiven Modell
+wächst der Betrag des Rests mit dem Niveau (Korrelation 0.20), beim
+multiplikativen nicht (-0.11).
+
+::: {.note-box}
+**Zwei Wege, dasselbe zu tun:**
+
+| Weg | Rechnung | Wann |
+|---|---|---|
+| multiplikatives Modell | $y_t = T_t \cdot S_t \cdot R_t$ | wenn die Software es anbietet und man auf der Originalskala bleiben will |
+| logarithmieren, dann additiv | $\ln y_t = \ln T_t + \ln S_t + \ln R_t$ | fast immer besser: Danach sind **alle** Verfahren für additive Reihen anwendbar, inklusive [ARIMA](arima-sarima.qmd) |
+
+Der Preis des Logarithmierens ist die Rücktransformation. $e^{\hat{y}}$ schätzt
+den **Median**, nicht den Mittelwert der Originalskala; für den Mittelwert braucht
+es eine Korrektur um $e^{\sigma^2/2}$. Und Nullwerte sind nicht logarithmierbar.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Saisonschwankung wächst mit dem Niveau (Spannweite je Jahr von 179 auf 284
+> bei einem Anstieg des Niveaus um den Faktor 2.3); nach Logarithmierung ist sie
+> mit rund 0.3 konstant. Modelliert wird deshalb die logarithmierte Reihe mit
+> additiver Zerlegung.
+
+### Beispiel 5: Zwei Reihen mit Trend
+
+#### Frage und Datenlage
+
+Zwei Reihen, die inhaltlich nichts miteinander zu tun haben. Beide steigen
+linear und enthalten unabhängiges Rauschen. Wie hoch ist ihre Korrelation?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-zr-r
+#| fig-cap: "Beispiel 5: links die beiden Reihen, rechts ihre Monatsdifferenzen gegeneinander."
+#| fig-height: 3.4
+reihe_a <- 100 + 2.0 * t + normalwerte(2121, monate, 0, 8)
+reihe_b <- 50 + 1.2 * t + normalwerte(3131, monate, 0, 6)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(t, reihe_a, type = "l", lwd = 1.5, col = "#2166ac", ylim = c(0, 260),
+     xlab = "Monat", ylab = "Wert", main = "beide Reihen")
+lines(t, reihe_b, lwd = 1.5, col = "#b2182b")
+legend("topleft", legend = c("A", "B"), col = c("#2166ac", "#b2182b"),
+       lwd = 1.5, bty = "n")
+
+plot(diff(reihe_a), diff(reihe_b), pch = 16, cex = 0.7, col = "grey30",
+     xlab = "Differenz A", ylab = "Differenz B", main = "nach Differenzenbildung")
+par(mfrow = c(1, 1))
+
+test_roh <- cor.test(reihe_a, reihe_b)
+test_diff <- cor.test(diff(reihe_a), diff(reihe_b))
+round(c(r_roh = test_roh$estimate, p_roh = test_roh$p.value,
+        r_differenzen = test_diff$estimate, p_differenzen = test_diff$p.value), 4)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-zr-py
+#| fig-cap: "Beispiel 5: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.4
+reihe_a = 100 + 2.0 * t + normalwerte(2121, monate, 0, 8)
+reihe_b = 50 + 1.2 * t + normalwerte(3131, monate, 0, 6)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+achsen[0].plot(t, reihe_a, lw=1.5, color="#2166ac", label="A")
+achsen[0].plot(t, reihe_b, lw=1.5, color="#b2182b", label="B")
+achsen[0].set_ylim(0, 260)
+achsen[0].set_xlabel("Monat")
+achsen[0].set_ylabel("Wert")
+achsen[0].set_title("beide Reihen")
+achsen[0].legend(frameon=False)
+achsen[1].scatter(np.diff(reihe_a), np.diff(reihe_b), s=10, color="0.3")
+achsen[1].set_xlabel("Differenz A")
+achsen[1].set_ylabel("Differenz B")
+achsen[1].set_title("nach Differenzenbildung")
+plt.tight_layout()
+plt.show()
+
+for name, x, y in [("roh", reihe_a, reihe_b),
+                   ("Differenzen", np.diff(reihe_a), np.diff(reihe_b))]:
+    r, p = stats.pearsonr(x, y)
+    print(f"{name:12s} r = {r: .4f}   p = {p:.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Rechnung | $r$ | p |
+|---|---|---|
+| auf den Rohreihen | **0.964** | **< .001** |
+| auf den Monatsdifferenzen | **0.031** | **0.798** |
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| $r = 0.964$ auf den Rohreihen | Ein Wert, der in jeder Querschnittsauswertung als sehr starker Zusammenhang gälte. Hier ist er **vollständig durch die Konstruktion erzeugt**: Beide Reihen steigen, also sind beide früh klein und spät gross. Die Korrelation misst nur das. |
+| $p < .001$ | Der Test macht es nicht besser, sondern schlimmer: Er verleiht dem Artefakt den Anschein von Verlässlichkeit. Seine Voraussetzung — unabhängige Beobachtungen — ist bei Zeitreihen verletzt, der p-Wert also ohnehin nicht gültig. |
+| $r = 0.031$ auf den Differenzen | Nach Entfernen des Trends bleibt nichts übrig. Das ist die richtige Antwort. |
+| $p = 0.798$ | Ebenfalls unauffällig. |
+| Das rechte Streudiagramm | zeigt eine strukturlose Punktwolke — im Gegensatz zu den beiden parallel steigenden Linien links. |
+
+::: {.note-box}
+**Warum die Differenzenbildung hilft:** $\Delta y_t = y_t - y_{t-1}$ entfernt
+einen linearen Trend vollständig, denn die konstante Steigung fällt beim
+Subtrahieren heraus. Was bleibt, sind die Abweichungen von Monat zu Monat — und
+genau dort sitzt der Zusammenhang, wenn es einen gibt.
+
+**Warum das nicht die ganze Lösung ist:** Auch differenzierte Reihen können
+gemeinsame Zyklen haben, und die Unabhängigkeitsannahme des Korrelationstests
+bleibt fraglich. Die saubere Behandlung von Zusammenhängen zwischen Zeitreihen
+läuft über Modelle, die die Autokorrelation ausdrücklich abbilden — siehe
+[Stationarität](stationaritaet-acf-pacf.qmd) und
+[ARIMA](arima-sarima.qmd).
+
+Und der Sonderfall, in dem gerade der gemeinsame Trend echt ist, heisst
+**Kointegration** — dann ist das Differenzieren zu viel des Guten. Erkennbar
+daran, dass die Differenz der beiden Reihen selbst stationär ist.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Zwischen den beiden Reihen besteht kein nachweisbarer Zusammenhang: Auf den
+> Monatsdifferenzen beträgt die Korrelation 0.03 (p = .80, n = 71). Die
+> Korrelation der Rohreihen von 0.96 geht vollständig auf den gemeinsamen
+> Aufwärtstrend zurück und ist inhaltlich nicht deutbar.
+
+::::
+
+## Verständnisfragen
+
 ::: {.quiz}
 Eine Monatsreihe zeigt Saisonzacken, die mit dem steigenden Niveau immer höher
 werden. Was folgt für die Zerlegung?
@@ -213,29 +775,57 @@ werden. Was folgt für die Zerlegung?
 :::
 
 ::: {.quiz}
-Im Rest der Zerlegung ist ein deutliches wellenförmiges Muster erkennbar. Was
-heisst das?
+Im Rest der Zerlegung schwankt der Betrag über die Jahre systematisch: erst
+klein, später gross. Was heisst das?
 
-- [x] Die Zerlegung hat eine Struktur nicht erfasst ~ Richtig. Der Rest soll
-      strukturlos sein. Eine Welle darin deutet auf einen Zyklus, eine falsche
-      Periodenlänge oder eine sich verändernde Saisonfigur, für die STL besser
-      geeignet ist.
+- [x] Die Saisonfigur passt nicht mehr, weil sie sich verändert hat ~ Richtig.
+      Was `decompose()` nicht in die starre Figur stecken kann, landet im Rest.
+      STL erlaubt eine Saisonfigur, die sich langsam ändert, und halbiert im
+      Beispiel die Reststreuung.
 - [ ] Das ist normal, der Rest enthält immer Muster ~ Er enthält Rauschen; ein
-      sichtbares Muster ist ein Befund.
-- [ ] Die Reihe ist zu kurz ~ Möglich, aber eine kurze Reihe erzeugt kein
-      wellenförmiges Restmuster.
+      systematisches Muster ist ein Befund.
+- [ ] Die Reihe ist zu kurz ~ Eine kurze Reihe erzeugt kein systematisch
+      wachsendes Restmuster.
 :::
 
 ::: {.quiz}
-Zwei Reihen mit deutlichem Aufwärtstrend korrelieren mit 0.95. Was folgt?
+Warum fehlt der Trend aus `decompose()` an beiden Rändern der Reihe?
+
+- [x] Weil ein zentriertes gleitendes Mittel eine halbe Periode Vergangenheit und
+      Zukunft braucht ~ Richtig. Bei Periode 12 fehlen je sechs Werte. Deshalb
+      liefert das Verfahren gerade für den aktuellsten Monat keinen Trend und
+      taugt nicht zur Vorhersage.
+- [ ] Weil dort zu wenige Beobachtungen vorliegen ~ Die Beobachtungen sind da;
+      es fehlen die Nachbarn, über die gemittelt wird.
+- [ ] Weil die Saison am Rand nicht bestimmbar ist ~ Die Saisonfigur wird über
+      alle Jahre geschätzt und gilt auch am Rand.
+:::
+
+::: {.quiz}
+Zwei Reihen mit deutlichem Aufwärtstrend korrelieren mit 0.96 bei p < .001. Was
+folgt?
 
 - [ ] Ein starker Zusammenhang zwischen den beiden Grössen ~ Der gemeinsame Trend
       genügt für eine hohe Korrelation, auch ohne jeden inhaltlichen Zusammenhang.
-- [x] Nichts, solange der Trend nicht entfernt ist ~ Richtig. Verglichen werden
-      die Reihen erst nach Entfernen des Trends, etwa über Differenzen, siehe
-      Stationarität.
+- [x] Nichts, solange der Trend nicht entfernt ist ~ Richtig. Auf den
+      Monatsdifferenzen bleibt im Beispiel r = 0.03 übrig. Der p-Wert ist
+      zusätzlich ungültig, weil er unabhängige Beobachtungen voraussetzt.
 - [ ] Die Korrelation ist falsch berechnet ~ Sie ist korrekt berechnet und
       trotzdem inhaltlich wertlos.
+:::
+
+::: {.quiz}
+Die geschätzte Saisonfigur weicht für den Februar um 11 Einheiten von der
+tatsächlichen ab. Ist das ein Problem?
+
+- [x] Nein, bei sechs Jahren ist das die normale Schätzunsicherheit ~ Richtig.
+      Der Standardfehler je Monat ist etwa die Reststreuung geteilt durch die
+      Wurzel aus der Anzahl Jahre, hier rund 8. Eine Saisonfigur ist deshalb
+      nicht auf die Nachkommastelle deutbar.
+- [ ] Ja, die Zerlegung ist fehlerhaft ~ Sie rechnet korrekt; die Unsicherheit
+      steckt in den Daten.
+- [ ] Ja, es hätte multiplikativ gerechnet werden müssen ~ Die
+      Schwankungsbreite ist konstant; additiv ist richtig.
 :::
 
 ## Verlinkte Ressourcen
