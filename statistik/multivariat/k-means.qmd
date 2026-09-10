@@ -312,8 +312,8 @@ print(pd.crosstab(ohne.labels_, gruppe_wahr))
 | Varianz `besuche` | **26.1** | in Besuchen zum Quadrat |
 | Varianz `umsatz` | **259 478** | in Franken zum Quadrat |
 | Verhältnis | rund 1 zu 10 000 | Die euklidische Distanz addiert beide Quadrate. Der Beitrag der Besuche verschwindet dabei vollständig — k-Means würde ohne Standardisierung praktisch nur nach Umsatz trennen. |
-| Zentren ohne Standardisierung | unterscheiden sich fast nur im Umsatz | Die Besuchszahlen der drei Zentren liegen eng beieinander. |
-| Kreuztabelle ohne Standardisierung | die eingebauten Gruppen werden vermischt | Insbesondere die beiden Gruppen mit ähnlichem Umsatz, aber sehr verschiedener Besuchszahl werden zusammengeworfen. |
+| Zentren ohne Standardisierung | 13.2 / 1426, 7.5 / 923, 3.1 / 2216 | Die Grenzen verlaufen praktisch senkrecht zur Umsatzachse. Dass die Besuchszahlen trotzdem verschieden sind, liegt nur daran, dass Umsatz und Besuche in diesen Daten zusammenhängen — nicht daran, dass die Besuche mitgerechnet hätten. |
+| Kreuztabelle ohne Standardisierung | **241 von 270** richtig zugeordnet | Mit Standardisierung sind es 263 (Beispiel 2). Vor allem die grösste eingebaute Gruppe zerfällt: 21 ihrer Mitglieder landen bei den Gelegenheitskunden, weil ihr Umsatz zufällig tiefer liegt. |
 | Linkes Bild | eine gestreckte Wolke | Die Achsen sind nicht vergleichbar, Abstände darin auch nicht. |
 | Rechtes Bild | drei erkennbare Punktwolken | Erst hier zählen beide Merkmale gleich viel. |
 
@@ -416,11 +416,26 @@ Die drei Zentren, zurückgerechnet in die ursprünglichen Einheiten:
 | Ausgabe | Wert hier | Bedeutung |
 |---|---|---|
 | Gruppengrössen | 115, 97, 58 | Die eingebauten Gruppen waren 120, 90 und 60 gross. Die Abweichung entsteht an den Rändern, wo sich die Wolken berühren. |
-| `within` | **88.594** | Summe der quadrierten Abstände jeder Beobachtung zu ihrem Zentrum. Die Einheit ist die standardisierte Skala, ein absoluter Vergleich mit anderen Datensätzen ist damit sinnlos. |
-| `between` | 451.406 | Streuung zwischen den Zentren. |
-| `totss` | 540 | Die Gesamtstreuung: bei 270 Beobachtungen und zwei standardisierten Variablen genau $2 \cdot 269 = 538$ nach der Stichprobenformel, hier 540, weil `scale()` mit $n-1$ teilt und die Summe über $n$ läuft. `within` und `between` addieren sich zu diesem Wert. |
-| Anteil `between/totss` | **0.836** | 83.6 Prozent der Streuung liegen zwischen den Gruppen. Eine Kennzahl, **kein Gütesiegel**: Sie steigt mit jedem zusätzlichen k. |
+| `within` | **88.594** in Python, **88.266** in R | Summe der quadrierten Abstände jeder Beobachtung zu ihrem Zentrum. Die Einheit ist die standardisierte Skala, ein absoluter Vergleich mit anderen Datensätzen ist damit sinnlos. Zur Differenz siehe den Kasten unten. |
+| `between` | 451.406 / 449.734 | Streuung zwischen den Zentren. |
+| `totss` | 540 / 538 | Die Gesamtstreuung. `within` und `between` addieren sich genau zu diesem Wert. |
+| Anteil `between/totss` | **0.836** in beiden Sprachen | 83.6 Prozent der Streuung liegen zwischen den Gruppen. Eine Kennzahl, **kein Gütesiegel**: Sie steigt mit jedem zusätzlichen k. |
 | Kreuztabelle | 263 von 270 richtig | Fünf Kunden der grössten Gruppe und zwei der kleinsten landen in der mittleren. Genau die Randfälle also, die im Bild zwischen zwei Wolken liegen. |
+
+::: {.note-box}
+**Warum R und Python hier um 0.4 Prozent auseinanderliegen:** `scale()` in R
+teilt durch die Stichproben-Standardabweichung mit dem Nenner $n-1$,
+`StandardScaler` in Python durch die mit dem Nenner $n$. Die standardisierten
+Daten unterscheiden sich damit um den Faktor $\sqrt{n/(n-1)}$, alle quadrierten
+Abstände um $n/(n-1) = 270/269 = 1.0037$ — genau das Verhältnis von 88.594 zu
+88.266.
+
+Die Aufteilung selbst ist identisch, denn eine gemeinsame Streckung aller
+Abstände ändert nichts daran, welches Zentrum das nächste ist. Alle Verhältnisse
+— Anteil, Silhouette, Zentren in Originaleinheiten — stimmen deshalb überein.
+Nur die absoluten Streuungswerte nicht, was ein weiteres Argument dafür ist, sie
+nie ohne ihren Bezugswert zu berichten.
+:::
 
 #### Interpretation und Ergebnissatz
 
@@ -492,6 +507,11 @@ for k in range(2, 7):
 | 4 | 71.5 | 0.868 | +0.032 | 49 | 0.506 |
 | 5 | 61.1 | 0.887 | +0.019 | 27 | 0.440 |
 | 6 | 52.1 | 0.903 | +0.016 | 24 | 0.441 |
+
+(Python-Ausgabe. R liefert dieselben Anteile, aber `within`-Werte, die um den im
+vorigen Beispiel erklärten Faktor 1.0037 tiefer liegen; ab k = 5 findet es
+ausserdem eine leicht andere Aufteilung, weil dort mehrere fast gleich gute
+Lösungen existieren — siehe Beispiel 4.)
 
 Drei Dinge stehen in dieser Tabelle:
 
@@ -571,13 +591,20 @@ for k in (3, 5):
 
 | k | bester Lauf | schlechtester Lauf | Abstand | verschiedene Lösungen |
 |---|---|---|---|---|
-| 3 | 88.594 | 88.615 | **0.0 %** | 2 |
-| 5 | 61.189 | 70.405 | **15.1 %** | 15 |
+| 3 (Python) | 88.594 | 88.615 | **0.0 %** | 2 |
+| 3 (R) | 88.266 | 88.266 | **0.0 %** | 1 |
+| 5 (Python) | 61.189 | 70.405 | **15.1 %** | 15 |
+| 5 (R) | 60.863 | 72.342 | **18.9 %** | 13 |
+
+Dass die beiden Sprachen bei k = 5 verschiedene Zahlen zeigen, ist hier kein
+Störgeräusch, sondern die Aussage selbst: Bei k = 5 hängt das Ergebnis so stark
+vom Startwert ab, dass schon eine andere Reihenfolge der Startpunkte eine andere
+Lösung liefert. Bei k = 3 stimmen beide auf die zweite Nachkommastelle überein.
 
 | Beobachtung | Was sie bedeutet |
 |---|---|
 | Bei k = 3 spielt der Startwert keine Rolle | Zwanzig Einzelläufe finden praktisch dieselbe Lösung. Wo die Struktur eindeutig ist, führt jeder Weg dorthin. |
-| Bei k = 5 landen zwanzig Läufe auf **15 verschiedenen** Lösungen | Der schlechteste hat 15 Prozent mehr Streuung innerhalb der Gruppen als der beste. Wer einmal rechnet und das Ergebnis berichtet, berichtet ein zufälliges Zwischenergebnis. |
+| Bei k = 5 landen zwanzig Läufe auf **13 bis 15 verschiedenen** Lösungen | Der schlechteste hat 15 bis 19 Prozent mehr Streuung innerhalb der Gruppen als der beste. Wer einmal rechnet und das Ergebnis berichtet, berichtet ein zufälliges Zwischenergebnis. |
 | Mit 25 Startwerten wird in beiden Fällen das Minimum gefunden | Die Software rechnet 25-mal und behält die beste Lösung. Der Aufwand ist bei dieser Datengrösse vernachlässigbar. |
 
 ::: {.note-box}
