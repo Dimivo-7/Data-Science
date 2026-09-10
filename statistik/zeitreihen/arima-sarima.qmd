@@ -161,82 +161,6 @@ Die Ordnung liest man aus den Korrelogrammen der stationär gemachten Reihe, sie
 | Kein Strukturbruch | Ein Modell für die ganze Reihe | Grafik | Modell mittelt über zwei Regime | Reihe teilen |
 | Sparsame Ordnung | Nicht mehr Parameter als nötig | Informationskriterien, Testfehler | Überanpassung, schlechte Prognose | Ordnung reduzieren |
 
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-voraussetzungen-arima-r
-#| fig-cap: "Korrelogramme nach gewöhnlichem und saisonalem Differenzieren."
-#| fig-height: 3.6
-stationaer <- diff(diff(training, lag = 12))
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-acf(stationaer, main = "ACF nach Differenzieren")
-pacf(stationaer, main = "PACF nach Differenzieren")
-par(mfrow = c(1, 1))
-
-round(c(d = forecast::ndiffs(training),
-        D = forecast::nsdiffs(training)), 0)
-```
-
-## Python
-
-```{python}
-#| label: fig-voraussetzungen-arima-py
-#| fig-cap: "Dieselben Korrelogramme in Python."
-#| fig-height: 3.6
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.tsa.stattools import adfuller
-
-stationaer = training.diff(12).diff().dropna()
-
-fig, achsen = plt.subplots(1, 2, figsize=(7, 3.6))
-plot_acf(stationaer, ax=achsen[0], lags=24, title="ACF nach Differenzieren")
-plot_pacf(stationaer, ax=achsen[1], lags=24, title="PACF nach Differenzieren",
-          method="ywm")
-plt.tight_layout()
-plt.show()
-
-print("ADF p nach Differenzieren:", round(adfuller(stationaer)[1], 4))
-```
-
-:::
-
-Nach gewöhnlichem und saisonalem Differenzieren ist die Reihe stationär, was der
-ADF-Test bestätigt. In R sagen `ndiffs` und `nsdiffs`, wie viele Differenzen nötig
-sind; in Python gibt es dafür keine eingebaute Entsprechung, dort entscheidet man
-über Tests und Grafik.
-
-## Durchführung in R und Python
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: durchfuehrung-arima-r
-modell <- Arima(training, order = c(1, 1, 1), seasonal = c(0, 1, 1))
-
-summary(modell)
-```
-
-## Python
-
-```{python}
-#| label: durchfuehrung-arima-py
-modell = SARIMAX(training, order=(1, 1, 1), seasonal_order=(0, 1, 1, 12),
-                 enforce_stationarity=False, enforce_invertibility=False).fit(disp=False)
-
-print(modell.summary())
-```
-
-:::
-
-Die Daten sind in beiden Sprachen nach derselben Vorschrift erzeugt: 96 Monate mit
-linearem Trend, Jahressaison und autokorreliertem Fehler mit Koeffizient 0.6. Die
-letzten zwölf Monate bleiben als Testteil ungesehen.
-
 ## Output lesen
 
 R, `summary(Arima(...))`:
@@ -271,113 +195,429 @@ schätzt standardmässig kein konstantes Glied, wenn differenziert wird, währen
 mit `include.drift` steuerbar ist; bei Reihen mit Trend nach einer Differenz ist
 das ein häufiger Grund für abweichende Prognosen.
 
-## Ergebnisse interpretieren
+## Beispiele
 
-### Szenario A: Modellwahl über Informationskriterien
+Alle Beispiele arbeiten mit derselben konstruierten Absatzreihe: 96 Monate ab
+Januar 2018 mit linearem Trend, Jahressaison und einem **autokorrelierten**
+Fehler (AR(1) mit Koeffizient 0.6). Die letzten zwölf Monate bleiben als
+Testteil ungesehen; geschätzt wird auf den ersten 84.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Wie viele Differenzen, welche Ordnung?
+
+#### Frage und Datenlage
+
+Vor jedem ARIMA-Modell stehen zwei Entscheidungen: wie oft differenziert wird
+($d$ und $D$) und welche Ordnungen ($p$, $q$, $P$, $Q$) daraus folgen. Beide
+werden aus den Korrelogrammen der stationär gemachten Reihe gelesen.
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: szenario-a-arima-r
+#| label: fig-b1-ar-r
+#| fig-cap: "Beispiel 1: ACF und PACF nach gewöhnlichem und saisonalem Differenzieren."
+#| fig-height: 3.6
+round(c(d = forecast::ndiffs(training),
+        D = forecast::nsdiffs(training)), 0)
+
+stationaer <- diff(diff(training, lag = 12))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+acf(stationaer, lag.max = 24, main = "ACF nach Differenzieren")
+pacf(stationaer, lag.max = 24, main = "PACF nach Differenzieren")
+par(mfrow = c(1, 1))
+
+round(c(n = length(stationaer),
+        grenze = 1.96 / sqrt(length(stationaer)),
+        sd_roh = sd(training),
+        sd_stationaer = sd(stationaer)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-ar-py
+#| fig-cap: "Beispiel 1: dieselben Korrelogramme in Python."
+#| fig-height: 3.6
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.stattools import adfuller, acf, pacf
+
+stationaer = training.diff(12).diff().dropna()
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.6))
+plot_acf(stationaer, ax=achsen[0], lags=24, title="ACF nach Differenzieren")
+plot_pacf(stationaer, ax=achsen[1], lags=24, title="PACF nach Differenzieren",
+          method="ywm")
+plt.tight_layout()
+plt.show()
+
+print("ADF p nach Differenzieren:", round(adfuller(stationaer)[1], 4))
+print("n =", len(stationaer),
+      "| Konfidenzgrenze:", round(1.96 / np.sqrt(len(stationaer)), 3))
+print("ACF ", np.round(acf(stationaer, nlags=14)[1:15], 3))
+print("PACF", np.round(pacf(stationaer, nlags=14, method="ywm")[1:15], 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Nach einer gewöhnlichen und einer saisonalen Differenz bleiben 71 Werte übrig;
+die Konfidenzgrenze liegt bei ±0.233. Der ADF-Test bestätigt Stationarität
+(p = 0.009).
+
+| Abstand | 1 | 2 | 3 | 4 | 5 | 6 | 11 | **12** | 13 |
+|---|---|---|---|---|---|---|---|---|---|
+| ACF | -0.022 | -0.120 | **-0.261** | -0.193 | -0.046 | -0.101 | 0.024 | **-0.401** | -0.149 |
+| PACF | -0.022 | -0.120 | **-0.271** | **-0.250** | -0.176 | **-0.322** | 0.217 | **-0.281** | -0.077 |
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| **ACF bei 12: -0.401** | Der grösste Einzelwert und weit ausserhalb der Grenze. Ein **negativer** Wert genau bei der Periode ist die Signatur des saisonalen Differenzierens: Es erzeugt eine saisonale MA-Struktur. Daraus folgt $Q = 1$. |
+| Keine weitere Spitze bei 24 | Ein saisonaler MA-Term reicht; $Q = 2$ wäre nicht begründet. |
+| **Auf der kurzen Skala ist das Bild unklar** | ACF und PACF haben beide einen Ausschlag bei 3 und danach kleinere Werte, ohne dass eine der beiden sauber abbricht. Genau der Fall aus der Theorie: **beide fallen allmählich ab, also gemischtes Modell** — die Ordnung ist nicht ablesbar. |
+| Streuung vor und nach dem Differenzieren | sinkt deutlich | Ein Hinweis, dass nicht überdifferenziert wurde. |
+| `ndiffs` und `nsdiffs` in R | schlagen $d$ und $D$ vor | Python hat dafür keine eingebaute Entsprechung; dort entscheidet man über Tests und Grafik. |
+
+::: {.note-box}
+**Was die Korrelogramme hier leisten und was nicht.** Sie liefern eindeutig
+$D = 1$ und $Q = 1$ — die saisonale Ebene ist klar. Für die gewöhnliche Ebene
+geben sie nur die Auskunft "es ist etwas da, aber weder reines AR noch reines
+MA". Die Wahl zwischen (1,1,1), (0,1,1), (1,1,0) und (2,1,2) fällt deshalb in
+Beispiel 2 über Informationskriterien und den Testfehler, nicht über das Bild.
+
+Das ist der Normalfall. Lehrbuchbeispiele mit klar abbrechender PACF sind
+konstruiert; echte Reihen sehen aus wie diese.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Reihe wird einmal gewöhnlich und einmal saisonal differenziert; danach ist
+> sie stationär (ADF p = 0.009). Die ACF zeigt bei Abstand 12 einen deutlich
+> negativen Wert (-0.40), was für einen saisonalen MA-Term spricht ($Q = 1$). Auf
+> der kurzen Zeitskala brechen weder ACF noch PACF ab; die gewöhnliche Ordnung
+> wird über Informationskriterien gewählt.
+
+### Beispiel 2: Vier Ordnungen im Vergleich
+
+#### Frage und Datenlage
+
+Vier Kandidaten für die gewöhnliche Ordnung, alle mit derselben saisonalen
+Struktur $(0,1,1)_{12}$. Welcher gewinnt, und woran misst man das?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-ar-r
 kandidaten <- list(
-  "(0,1,1)(0,1,1)" = c(0, 1, 1),
-  "(1,1,0)(0,1,1)" = c(1, 1, 0),
-  "(1,1,1)(0,1,1)" = c(1, 1, 1),
-  "(2,1,2)(0,1,1)" = c(2, 1, 2)
+  "(0,1,1)" = c(0, 1, 1),
+  "(1,1,0)" = c(1, 1, 0),
+  "(1,1,1)" = c(1, 1, 1),
+  "(2,1,2)" = c(2, 1, 2)
 )
 
 for (name in names(kandidaten)) {
   m <- Arima(training, order = kandidaten[[name]], seasonal = c(0, 1, 1))
-  cat(sprintf("%-16s AICc = %8.2f | BIC = %8.2f\n", name, m$aicc, m$bic))
+  cat(sprintf("%-9s AICc = %8.2f | BIC = %8.2f | logLik = %8.2f\n",
+              name, m$aicc, m$bic, m$loglik))
 }
 
 automatisch <- auto.arima(training, stepwise = FALSE, approximation = FALSE)
 automatisch
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: szenario-a-arima-py
+#| label: b2-ar-py
 for ordnung in [(0, 1, 1), (1, 1, 0), (1, 1, 1), (2, 1, 2)]:
     m = SARIMAX(training, order=ordnung, seasonal_order=(0, 1, 1, 12),
-                enforce_stationarity=False, enforce_invertibility=False).fit(disp=False)
-    print(f"{str(ordnung):<12} AIC = {m.aic:8.2f} | BIC = {m.bic:8.2f}")
+                enforce_stationarity=False,
+                enforce_invertibility=False).fit(disp=False)
+    print(f"{str(ordnung):<10} AIC = {m.aic:8.2f} | BIC = {m.bic:8.2f}"
+          f" | logLik = {m.llf:8.2f}")
 ```
 
 :::
 
-Die Informationskriterien wägen Anpassung gegen Anzahl Parameter ab: Ein Modell
-mit mehr Koeffizienten passt immer besser, wird aber bestraft. Kleiner ist besser,
-und Unterschiede unter etwa zwei gelten als unbedeutend.
+#### Output Zeile für Zeile
 
-Zwei Hinweise zur Handhabung. Erstens sind die Kriterien nur zwischen Modellen auf
-**identischen** Daten vergleichbar; wer die Anzahl Differenzen ändert, verändert
-die Daten und darf die Werte nicht mehr vergleichen. Zweitens ist die automatische
-Suche in R nützlich, aber kein Ersatz für den Blick auf die Korrelogramme: Sie
-findet ein Modell mit gutem Kriterium, nicht notwendigerweise ein sinnvolles.
+Python-Ausgabe:
 
-Drittens sind die Werte der beiden Tabs nicht untereinander vergleichbar, und ihre
-Rangfolge kann abweichen. `Arima()` und `SARIMAX` behandeln die Startwerte der
-differenzierten Reihe unterschiedlich, deshalb liegen die Zahlenniveaus weit
-auseinander; und weil hier `enforce_stationarity` und `enforce_invertibility`
-abgeschaltet sind, darf die grösste Ordnung in Python an den Rand des
-Parameterraums laufen und bekommt dort ein besseres Kriterium. Verglichen wird
-also innerhalb einer Umgebung, nie über die Tabs hinweg.
+| Ordnung | AIC | BIC | log-Likelihood | Parameter |
+|---|---|---|---|---|
+| (0,1,1) | 511.02 | 517.15 | -252.51 | 2 |
+| (1,1,0) | 519.90 | 526.08 | -256.95 | 2 |
+| (1,1,1) | 501.64 | 509.81 | -246.82 | 3 |
+| **(2,1,2)** | **483.41** | **495.56** | **-235.70** | 5 |
 
-Auch die automatische Suche in R landet nicht bei der von Hand gewählten Ordnung,
-sondern bei einer Variante mit Drift und saisonalen AR-Termen. Beide beschreiben
-dieselbe Struktur, Trend plus Jahressaison, nur über verschiedene Bauteile. Das
-ist der Normalfall und kein Widerspruch: Die Entscheidung fällt danach über
-Residuendiagnostik und Testfehler, nicht über das Kriterium allein.
+| Beobachtung | Deutung |
+|---|---|
+| Die log-Likelihood **steigt immer** mit mehr Parametern | -256.95 → -235.70. Das ist keine Information, sondern eine Selbstverständlichkeit; deshalb braucht es die Kriterien. |
+| AIC und BIC bestrafen Parameter verschieden | AIC mit 2 je Parameter, BIC mit $\ln n$, hier also 4.4. Bei sparsamen Modellen entscheiden sie oft gleich, bei grossen bevorzugt BIC das kleinere. |
+| Unterschiede unter etwa **zwei** gelten als unbedeutend | Hier liegen die Kandidaten 8 bis 36 Punkte auseinander — die Rangfolge ist also deutlich. |
+| (2,1,2) gewinnt beide Kriterien | Und trotzdem ist es nicht das zu berichtende Modell. Warum, zeigen Beispiel 3 und der Testfehler. |
+| **Die Werte in den beiden Tabs sind nicht vergleichbar** | `Arima()` und `SARIMAX` behandeln die Startwerte der differenzierten Reihe verschieden; die Zahlenniveaus liegen weit auseinander. Verglichen wird **innerhalb** einer Umgebung, nie über die Tabs hinweg. |
 
-Ergebnissatz: Unter den geprüften Ordnungen hat die ausgegebene das kleinste AICc;
-die automatische Suche wählt das ausgegebene Modell.
+::: {.note-box}
+**Zwei Regeln zu Informationskriterien, die oft verletzt werden:**
 
-### Szenario B: Prognose und Vergleich mit einfachen Verfahren
+1. Sie sind nur zwischen Modellen auf **identischen Daten** vergleichbar. Wer $d$
+   oder $D$ ändert, ändert die Daten, auf die das Modell passt — die Werte sind
+   dann nicht mehr vergleichbar. Nur $p$, $q$, $P$ und $Q$ dürfen variieren.
+2. Ein kleines Kriterium ist **keine gute Prognose**. Es misst die Anpassung an
+   die Trainingsdaten, bestraft um die Parameterzahl. Bewertet wird auf dem
+   Testteil.
+
+Die automatische Suche in R landet meist nicht bei der von Hand gewählten
+Ordnung, sondern bei einer Variante mit Drift und saisonalen AR-Termen. Beide
+beschreiben dieselbe Struktur — Trend plus Jahressaison — nur über verschiedene
+Bauteile. Das ist der Normalfall und kein Widerspruch.
+:::
+
+#### Interpretation
+
+Das Kriterium liefert eine Vorauswahl, keine Entscheidung. Die Entscheidung
+fällt über Residuendiagnostik (Beispiel 4) und Testfehler (Beispiel 3).
+
+### Beispiel 3: Das Modell lesen
+
+#### Frage und Datenlage
+
+Das Modell SARIMA(1,1,1)(0,1,1)$_{12}$ wird geschätzt und seine Ausgabe Zeile
+für Zeile gelesen. Dabei zeigt sich ein Problem, das die Informationskriterien
+nicht anzeigen.
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: fig-szenario-b-arima-r
-#| fig-cap: "Prognose des SARIMA-Modells mit Intervall, dazu die tatsächlichen Werte."
+#| label: b3-ar-r
+modell <- Arima(training, order = c(1, 1, 1), seasonal = c(0, 1, 1))
+summary(modell)
+
+# Zum Vergleich: ohne die gewoehnliche Differenz, dafuer mit Drift
+ohne_d <- Arima(training, order = c(1, 0, 0), seasonal = c(0, 1, 1),
+                include.drift = TRUE)
+round(coef(ohne_d), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b3-ar-py
+modell = SARIMAX(training, order=(1, 1, 1), seasonal_order=(0, 1, 1, 12),
+                 enforce_stationarity=False,
+                 enforce_invertibility=False).fit(disp=False)
+print(modell.summary())
+
+ohne_d = SARIMAX(training, order=(1, 0, 0), seasonal_order=(0, 1, 1, 12),
+                 trend="c", enforce_stationarity=False,
+                 enforce_invertibility=False).fit(disp=False)
+print(ohne_d.params.round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Koeffizient | Schätzung | Standardfehler | Was er sagt |
+|---|---|---|---|
+| `ar.L1` | **0.534** | 0.163 | Trägheit auf der gewöhnlichen Ebene: Gut die Hälfte der Abweichung überträgt sich auf den Folgemonat. Schätzung geteilt durch Standardfehler ergibt 3.3 — deutlich von null verschieden. |
+| `ma.L1` | **-1.000** | **1393** | **Hier stimmt etwas nicht.** |
+| `ma.S.L12` | **-1.000** | 3098 | Ebenfalls am Rand — hier aber der Normalfall. |
+| `sigma2` | 247.8 | | Streuung der Residuen, Grundlage der Prognoseintervalle. |
+
+| Befund | Erklärung |
+|---|---|
+| **`ma.L1 = -1.000` mit riesigem Standardfehler** | Der Koeffizient liegt exakt auf dem Rand des zulässigen Bereichs (Invertierbarkeit verlangt Betrag unter eins). Der Standardfehler von 1393 heisst: An dieser Stelle ist die Likelihood flach, der Wert ist praktisch unbestimmt. |
+| Was das inhaltlich bedeutet | Ein MA(1)-Koeffizient von -1 hebt eine Differenz genau wieder auf. Das Modell sagt also: **die gewöhnliche Differenz war unnötig.** Und das stimmt — die Reihe wurde mit einem *deterministischen* Trend erzeugt, der nicht wegdifferenziert gehört, siehe [Stationarität](stationaritaet-acf-pacf.qmd), Beispiel 3. |
+| `ma.S.L12 = -1.000` ist dagegen unauffällig | Bei saisonal differenzierten Reihen ist ein saisonaler MA-Koeffizient nahe -1 der Regelfall und kein Warnzeichen. |
+| Die Alternative ohne gewöhnliche Differenz | `(1,0,0)(0,1,1)` mit Drift schätzt `ar.L1 = 0.503` und einen Drift von rund 23 je Monat — beides gut bestimmt, kein Randwert. |
+
+::: {.note-box}
+**Warum die Informationskriterien das nicht zeigen:** Ein Modell, das eine
+überflüssige Differenz durch einen MA-Term von -1 wieder aufhebt, passt genauso
+gut wie das Modell ohne beides. Die Likelihood ist gleich, die Parameterzahl um
+eins höher — der AIC-Nachteil beträgt magere zwei Punkte und verschwindet im
+Vergleich mit anderen Ordnungen.
+
+**Woran man es erkennt**, ist deshalb immer der Blick auf die Koeffizienten:
+
+| Zeichen | Bedeutung |
+|---|---|
+| MA-Koeffizient nahe -1 auf der gewöhnlichen Ebene | $d$ ist um eins zu hoch |
+| AR-Koeffizient nahe +1 | $d$ ist um eins zu niedrig; die Reihe ist noch nicht stationär |
+| Standardfehler um Grössenordnungen zu gross | die Likelihood ist flach, das Modell überparametrisiert |
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Das Modell SARIMA(1,1,1)(0,1,1)$_{12}$ schätzt einen AR-Koeffizienten von 0.53
+> (SE 0.16); der gewöhnliche MA-Koeffizient läuft mit -1.00 auf den Rand des
+> Parameterraums und ist praktisch unbestimmt (SE 1393), was auf eine
+> überflüssige gewöhnliche Differenz hinweist. Eine Variante ohne diese Differenz
+> und mit Drift schätzt dieselbe Trägheit (0.50) ohne Randwert.
+
+### Beispiel 4: Residuen mit und ohne Struktur
+
+#### Frage und Datenlage
+
+Der entscheidende Prüfschritt. Ein Modell ohne saisonale Anteile passt scheinbar,
+lässt aber Struktur in den Residuen zurück. Verglichen werden ARIMA(1,1,0) ohne
+Saison und das vollständige Modell.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-ar-r
+#| fig-cap: "Beispiel 4: Residuendiagnostik ohne saisonale Anteile — die ACF zeigt Spitzen bei Vielfachen von zwölf."
+#| fig-height: 4
+zu_einfach <- Arima(training, order = c(1, 1, 0))
+
+checkresiduals(zu_einfach)
+checkresiduals(modell)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-ar-py
+#| fig-cap: "Beispiel 4: die ACF der Residuen beider Modelle."
+#| fig-height: 3.4
+zu_einfach = SARIMAX(training, order=(1, 1, 0),
+                     enforce_stationarity=False).fit(disp=False)
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+for achse, (name, m) in zip(achsen, [("ohne Saison", zu_einfach),
+                                     ("mit Saison", modell)]):
+    plot_acf(m.resid[13:], ax=achse, lags=24, title=f"Residuen {name}")
+plt.tight_layout()
+plt.show()
+
+for name, m in [("ohne Saison", zu_einfach), ("mit Saison", modell)]:
+    residuen = m.resid[13:]
+    lb = acorr_ljungbox(residuen, lags=[12, 24], return_df=True)
+    print(f"{name:12s} Ljung-Box p: {lb['lb_pvalue'].round(4).tolist()}"
+          f" | ACF(12) = {acf(residuen, nlags=24)[12]:+.3f}"
+          f" | ACF(24) = {acf(residuen, nlags=24)[24]:+.3f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Modell | Ljung-Box p (12) | Ljung-Box p (24) | ACF(12) | ACF(24) |
+|---|---|---|---|---|
+| **ohne Saison** | **0.0001** | **< 0.0001** | **+0.284** | **+0.193** |
+| mit Saison | 0.240 | 0.123 | -0.054 | -0.106 |
+
+| Befund | Erklärung |
+|---|---|
+| **ACF(12) = +0.284 ohne Saison** | Die Residuen von vor zwölf Monaten sagen etwas über die heutigen — genau die Saisonstruktur, die das Modell nicht kennt. Bei 24 noch +0.193. |
+| Ljung-Box p = 0.0001 | Der Test verwirft die Annahme unkorrelierter Residuen deutlich. Er prüft **alle** Abstände bis 12 gemeinsam. |
+| Mit Saison: ACF(12) = -0.054, p = 0.24 | Innerhalb der Konfidenzgrenzen, der Test unauffällig. Die Struktur ist erfasst. |
+| Die Punktprognosen sind dabei **nicht** das Hauptproblem | Verzerrt sind vor allem die **Intervalle**: Das Modell behandelt verbleibende Struktur als Rauschen und schätzt die Unsicherheit falsch ein. |
+
+::: {.note-box}
+**Die Diagnose ist zugleich das Rezept:**
+
+| Wo die Spitze liegt | Was fehlt |
+|---|---|
+| bei Vielfachen der Periode (12, 24) | saisonale Anteile — $P$, $Q$ oder $D$ |
+| beim ersten Abstand | ein gewöhnlicher AR- oder MA-Term |
+| langsam abfallend über viele Abstände | eine Differenz |
+| überall verstreut, einzelne knapp draussen | nichts; bei 24 Abständen ist ein Ausreisser zufällig zu erwarten |
+
+Und immer beides prüfen: **ACF und Test**, nicht eines allein. Der Test fasst
+zusammen und sagt nicht, **wo** das Problem sitzt; die Grafik sagt es, hat aber
+keine Schwelle.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Ohne saisonale Anteile bleiben die Residuen deutlich autokorreliert
+> (Ljung-Box p < .001, ACF bei Abstand 12 gleich +0.28). Das vollständige Modell
+> besteht die Prüfung (p = 0.24, ACF(12) = -0.05); berichtet wird dieses.
+
+### Beispiel 5: Prognose und der Vergleich, der zählt
+
+#### Frage und Datenlage
+
+Zwölf Monate Prognose gegen die tatsächlichen Werte — und gegen drei einfachere
+Modelle. Rechtfertigt der Aufwand sich?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-ar-r
+#| fig-cap: "Beispiel 5: Prognose des SARIMA-Modells mit Intervall, dazu die tatsächlichen Werte."
 prognose <- forecast(modell, h = 12)
 
-plot(prognose, ylab = "Absatz", xlab = "Jahr", main = "SARIMA(1,1,1)(0,1,1)[12]")
+par(mar = c(4, 4, 2, 1))
+plot(prognose, ylab = "Absatz", xlab = "Jahr",
+     main = "SARIMA(1,1,1)(0,1,1)[12]", include = 36)
 lines(test, col = "#b2182b", lwd = 2)
 
 naiv <- snaive(training, h = 12)
 hw <- hw(training, h = 12, seasonal = "additive")
+zu_einfach_p <- forecast(zu_einfach, h = 12)
 
+spalten <- c("RMSE", "MAE", "MAPE")
 round(rbind(
-  sarima = accuracy(prognose, test)["Test set", c("RMSE", "MAE", "MAPE")],
-  holt_winters = accuracy(hw, test)["Test set", c("RMSE", "MAE", "MAPE")],
-  naiv_saisonal = accuracy(naiv, test)["Test set", c("RMSE", "MAE", "MAPE")]
+  naiv_saisonal = accuracy(naiv, test)["Test set", spalten],
+  ohne_saison = accuracy(zu_einfach_p, test)["Test set", spalten],
+  holt_winters = accuracy(hw, test)["Test set", spalten],
+  sarima = accuracy(prognose, test)["Test set", spalten]
 ), 2)
+
+# Wie schnell wird das Intervall breiter?
+round(c(monat_1 = prognose$upper[1, "95%"] - prognose$lower[1, "95%"],
+        monat_12 = prognose$upper[12, "95%"] - prognose$lower[12, "95%"]), 1)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: fig-szenario-b-arima-py
-#| fig-cap: "Dieselbe Prognose in Python."
+#| label: fig-b5-ar-py
+#| fig-cap: "Beispiel 5: dieselbe Prognose in Python."
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
 vorhersage = modell.get_forecast(12)
 mittel = vorhersage.predicted_mean
 band = vorhersage.conf_int(alpha=0.05)
 
-fig, ax = plt.subplots()
-ax.plot(training.iloc[-36:], color="0.5", label="Training")
-ax.plot(test, color="#b2182b", lw=2, label="tatsächlich")
-ax.plot(mittel, color="#2166ac", lw=2, label="Prognose")
-ax.fill_between(test.index, band.iloc[:, 0], band.iloc[:, 1],
-                color="#2166ac", alpha=0.15)
-ax.set_ylabel("Absatz")
-ax.legend(frameon=False)
+fig, achse = plt.subplots()
+achse.plot(training.iloc[-36:], color="0.5", label="Training")
+achse.plot(test, color="#b2182b", lw=2, label="tatsächlich")
+achse.plot(mittel, color="#2166ac", lw=2, label="Prognose")
+achse.fill_between(test.index, band.iloc[:, 0], band.iloc[:, 1],
+                   color="#2166ac", alpha=0.15)
+achse.set_ylabel("Absatz")
+achse.legend(frameon=False)
+plt.tight_layout()
 plt.show()
+
 
 def masse(wahr, geschaetzt):
     fehler = np.asarray(wahr) - np.asarray(geschaetzt)
@@ -385,104 +625,91 @@ def masse(wahr, geschaetzt):
             "MAE": round(float(np.abs(fehler).mean()), 2),
             "MAPE": round(float(np.abs(fehler / np.asarray(wahr)).mean() * 100), 2)}
 
-print("sarima:       ", masse(test, mittel))
-print("naiv saisonal:", masse(test, training.iloc[-12:].values))
+
+hw = ExponentialSmoothing(training, trend="add", seasonal="add",
+                          seasonal_periods=12,
+                          initialization_method="estimated").fit()
+
+kandidaten = {
+    "naiv_saisonal": training.iloc[-12:].values,
+    "ohne_saison": zu_einfach.get_forecast(12).predicted_mean.values,
+    "holt_winters": hw.forecast(12).values,
+    "sarima": mittel.values,
+}
+print(pd.DataFrame({name: masse(test, werte)
+                    for name, werte in kandidaten.items()}).T)
+
+print("Bandbreite Monat 1: ", round(float(band.iloc[0, 1] - band.iloc[0, 0]), 1))
+print("Bandbreite Monat 12:", round(float(band.iloc[-1, 1] - band.iloc[-1, 0]), 1))
 ```
 
 :::
 
-Die Prognose folgt Trend und Saison, und die tatsächlichen Werte liegen im
-Intervall. Entscheidend ist der Vergleich in der Tabelle: Das Modell muss die
-naive saisonale Prognose deutlich schlagen, sonst rechtfertigt es seinen Aufwand
-nicht. Der Vergleich mit Holt-Winters zeigt zusätzlich, ob die explizite
-Modellierung der Abhängigkeit hier etwas bringt.
+#### Output Zeile für Zeile
 
-Wie schnell das Intervall breiter wird, gehört mitberichtet: Bei zwölf Monaten
-Horizont ist es am Ende deutlich breiter als am Anfang, und das ist die ehrliche
-Aussage über die Unsicherheit.
+| Modell | RMSE | MAE | MAPE |
+|---|---|---|---|
+| naiv saisonal | 50.29 | 47.08 | 5.62 % |
+| ARIMA ohne Saison | 72.63 | 60.13 | 7.35 % |
+| Holt-Winters | 18.17 | 15.49 | 1.84 % |
+| **SARIMA(1,1,1)(0,1,1)** | **17.07** | **14.15** | **1.68 %** |
 
-Ergebnissatz: Das Modell prognostiziert die folgenden zwölf Monate mit einem RMSE
-von dem ausgegebenen Wert, gegenüber dem ausgegebenen Wert bei der naiven
-saisonalen Prognose. Holt-Winters liegt nur knapp dahinter: Gegenüber der naiven
-Prognose ist der Gewinn gross, gegenüber dem einfacheren Modell klein, und dieser
-Abstand entscheidet, ob der Aufwand sich lohnt. Alle tatsächlichen Werte liegen im
-95-Prozent-Prognoseintervall.
+| Beobachtung | Deutung |
+|---|---|
+| SARIMA schlägt die naive Prognose um den **Faktor 3** | Das rechtfertigt den Aufwand gegenüber "gar kein Modell". |
+| Gegenüber **Holt-Winters** beträgt der Vorsprung 1.1 Punkte RMSE | Also rund 6 Prozent. Das ist der Vergleich, der wirklich zählt: gegen das einfachere Verfahren, das dieselbe Aufgabe löst. Ob 6 Prozent den zusätzlichen Aufwand aus Ordnungswahl und Diagnostik wert sind, ist eine Sachfrage, keine statistische. |
+| Das Modell **ohne Saison** ist schlechter als die naive Prognose | 72.6 gegen 50.3. Ein Modell kann alles andere unterbieten, wenn ihm der wichtigste Bestandteil fehlt. |
+| Bandbreite Monat 1 gegen Monat 12 | 67.7 gegen 83.4 | Das Intervall wächst um rund ein Viertel. Bei ARIMA-Modellen mit Differenzen wächst es mit dem Horizont unbegrenzt weiter — deshalb gehört der Horizont begrenzt und die Bandbreite mitberichtet. |
 
-### Szenario C: Fallstrick Residuen mit Struktur
+::: {.note-box}
+**Warum SARIMA hier nur knapp gewinnt**, obwohl die Reihe mit einem
+autokorrelierten Fehler konstruiert wurde: Der AR(1)-Anteil mit Koeffizient 0.6
+trägt zwar zur Prognose bei, aber nur für die ersten Monate. Danach ist sein
+Beitrag abgeklungen ($0.6^{6} = 0.05$), und übrig bleibt dasselbe, was
+Holt-Winters auch kann — Trend und Saison fortschreiben.
 
-Der entscheidende Prüfschritt. Ein Modell mit zu niedriger Ordnung passt scheinbar,
-lässt aber Struktur in den Residuen zurück, und dann sind die Prognoseintervalle
-zu schmal.
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: fig-szenario-c-arima-r
-#| fig-cap: "Residuendiagnostik eines Modells ohne saisonale Anteile: die ACF zeigt Spitzen bei Vielfachen von zwölf."
-#| fig-height: 4
-zu_einfach <- Arima(training, order = c(1, 1, 0))
-
-checkresiduals(zu_einfach)
-```
-
-## Python
-
-```{python}
-#| label: szenario-c-arima-py
-zu_einfach = SARIMAX(training, order=(1, 1, 0),
-                     enforce_stationarity=False).fit(disp=False)
-
-for name, m in [("ohne Saison", zu_einfach), ("mit Saison", modell)]:
-    lb = acorr_ljungbox(m.resid[13:], lags=[12, 24], return_df=True)
-    print(name, "| Ljung-Box p:", lb["lb_pvalue"].round(4).tolist())
-```
-
+Die allgemeine Lehre: **Der Vorsprung eines Modells über eine explizite
+Abhängigkeitsstruktur ist bei kurzen Horizonten gross und bei langen klein.**
 :::
 
-Erkennbar ist das Problem an drei Stellen. Die ACF der Residuen zeigt deutliche
-Spitzen bei den Abständen 12 und 24, also bei Vielfachen der Periode. Der
-Ljung-Box-Test liefert einen kleinen p-Wert, verwirft also die Annahme
-unkorrelierter Residuen. Und im Verlauf der Residuen ist ein wiederkehrendes
-Muster sichtbar.
+#### Interpretation und Ergebnissatz
 
-Verzerrt sind dabei nicht die Punktprognosen, sondern vor allem die Intervalle:
-Das Modell hält die Reihe für unsicherer oder sicherer, als sie ist, weil es die
-verbleibende Struktur als Rauschen behandelt.
+> Das Modell SARIMA(1,1,1)(0,1,1)$_{12}$ prognostiziert die folgenden zwölf
+> Monate mit einem RMSE von 17.1 (MAPE 1.7 Prozent), gegenüber 50.3 (5.6 Prozent)
+> bei der naiven saisonalen Prognose und 18.2 (1.8 Prozent) bei Holt-Winters.
+> Alle tatsächlichen Werte liegen im 95-Prozent-Prognoseintervall, dessen Breite
+> von 68 auf 83 Einheiten wächst. Der Gewinn gegenüber der naiven Prognose ist
+> gross, gegenüber dem einfacheren Verfahren gering.
 
-Das Vorgehen: die fehlende Struktur ergänzen. Spitzen bei Vielfachen der Periode
-heissen saisonale Anteile, ein einzelner Ausschlag im ersten Abstand heisst ein
-zusätzlicher AR- oder MA-Term. Danach die Residuen erneut prüfen, und zwar immer
-mit ACF **und** Test, nicht mit einem allein.
+### Beispiel 6: Rollierende Bewertung
 
-Ergebnissatz: Ohne saisonale Anteile bleiben die Residuen autokorreliert
-(Ljung-Box p wie ausgegeben, Spitzen bei 12 und 24). Berichtet wird das Modell mit
-saisonalen Anteilen, dessen Residuen den Test bestehen.
+#### Frage und Datenlage
 
-### Weiteres Szenario: rollierende Bewertung
+Ein einzelner Testzeitraum ist eine Stichprobe von eins. Was, wenn gerade dieses
+Jahr besonders gut oder schlecht prognostizierbar war? Die rollierende Bewertung
+verschiebt den Prognosezeitpunkt über die Reihe.
 
-Ein einzelner Testzeitraum ist eine Stichprobe von eins. Die aussagekräftigere
-Bewertung schiebt den Prognosezeitpunkt über die Reihe und mittelt die Fehler.
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: szenario-d-arima-r
+#| label: b6-ar-r
 fehler_rollierend <- tsCV(absatz, forecastfunction = function(x, h) {
   forecast(Arima(x, order = c(1, 1, 1), seasonal = c(0, 1, 1)), h = h)
 }, h = 6, initial = 60)
 
 round(c(RMSE_rollierend = sqrt(mean(fehler_rollierend^2, na.rm = TRUE)),
+        anzahl_fehler = sum(!is.na(fehler_rollierend)),
         RMSE_einmalig = accuracy(prognose, test)["Test set", "RMSE"]), 2)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: szenario-d-arima-py
+#| label: b6-ar-py
 fehler_liste = []
 for ende in range(72, len(absatz) - 6, 6):
     teil = absatz.iloc[:ende]
@@ -494,15 +721,45 @@ for ende in range(72, len(absatz) - 6, 6):
 
 alle = np.concatenate(fehler_liste)
 print({"RMSE_rollierend": round(float(np.sqrt((alle ** 2).mean())), 2),
-       "Anzahl Prognosen": len(alle)})
+       "Anzahl Prognosen": len(alle),
+       "Anzahl Fenster": len(fehler_liste)})
 ```
 
 :::
 
-Die rollierende Bewertung nutzt mehrere Prognosezeitpunkte und ist damit weniger
-vom gewählten Testabschnitt abhängig. Sie ist aufwendiger, weil das Modell
-mehrfach geschätzt wird, und sie ist die richtige Grundlage, wenn zwei Modelle
-knapp beieinander liegen.
+#### Output Zeile für Zeile
+
+| Bewertung | RMSE | Grundlage |
+|---|---|---|
+| einmaliger Testteil | 17.07 | 12 Prognosen von **einem** Zeitpunkt aus |
+| rollierend (Python) | **18.08** | 18 Prognosen aus 3 Fenstern, Horizont je 6 |
+
+| Beobachtung | Deutung |
+|---|---|
+| Die beiden Werte liegen nahe beieinander | 17.1 gegen 18.1. Der einmalige Testteil war also nicht ungewöhnlich günstig — ein beruhigender Befund. |
+| Die rollierende Zahl beruht auf **mehr** Prognosen | und ist damit weniger vom gewählten Abschnitt abhängig. Bei knapp beieinander liegenden Modellen ist sie die richtige Grundlage. |
+| Der Horizont unterscheidet sich | 6 statt 12 Monate. Kürzere Horizonte sind leichter, deshalb sind die Zahlen nicht direkt vergleichbar — nur die Grössenordnung. |
+| Der Preis | Das Modell wird für jedes Fenster neu geschätzt. Bei drei Fenstern ist das harmlos, bei einer langen Reihe mit Schrittweite eins nicht. |
+
+::: {.note-box}
+Die R-Funktion `tsCV()` macht es gründlicher: Sie schiebt den Zeitpunkt **um je
+einen Schritt** weiter und liefert daher viel mehr Fehler. Die Python-Schleife
+oben nimmt Schritte von sechs Monaten, um die Rechenzeit zu begrenzen. Beide
+Zahlen sind deshalb nicht direkt vergleichbar, wohl aber jede für sich mit dem
+einmaligen Testfehler.
+
+**Wann sich der Aufwand lohnt:** wenn zwei Modelle im einmaligen Testfehler
+weniger als etwa zehn Prozent auseinanderliegen — wie hier SARIMA und
+Holt-Winters. Dann entscheidet ein einzelner Testabschnitt zufällig.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> In einer rollierenden Bewertung über drei Fenster mit je sechs Monaten Horizont
+> erreicht das Modell einen RMSE von 18.1, gegenüber 17.1 auf dem einmaligen
+> Testteil. Die Prognosegüte hängt damit nicht am gewählten Testabschnitt.
+
+::::
 
 ## Interpretationsfallen
 
