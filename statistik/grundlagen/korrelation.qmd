@@ -15,10 +15,25 @@ library(ggplot2)
 library(dplyr)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(42)
 
-anlagen <- data.frame(laufzeit = round(runif(120, 3, 20), 1))
-anlagen$verbrauch <- round(14 + 2.8 * anlagen$laufzeit + rnorm(120, 0, 6), 1)
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1) {
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+}
+
+# 120 Anlagen: Laufzeit und Verbrauch
+anlagen <- data.frame(laufzeit = round(3 + 17 * lehmer(6611, 120), 1))
+anlagen$verbrauch <- round(14 + 2.8 * anlagen$laufzeit +
+                             normalwerte(6612, 120, 0, 6), 1)
 ```
 
 ```{python}
@@ -27,25 +42,44 @@ anlagen$verbrauch <- round(14 + 2.8 * anlagen$laufzeit + rnorm(120, 0, 6), 1)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
 from scipy import stats
-import statsmodels.formula.api as smf
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
 
-laufzeit = np.round(rng.uniform(3, 20, 120), 1)
-verbrauch = np.round(14 + 2.8 * laufzeit + rng.normal(0, 6, 120), 1)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0.0, streuung=1.0):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+
+
+laufzeit = np.round(3 + 17 * lehmer(6611, 120), 1)
+verbrauch = np.round(14 + 2.8 * laufzeit + normalwerte(6612, 120, 0, 6), 1)
 anlagen = pd.DataFrame({"laufzeit": laufzeit, "verbrauch": verbrauch})
 ```
 
 ## Kernideen
 
-- Das Streudiagramm kommt vor jeder Kennzahl
-- Kovarianz hängt an den Einheiten, die Korrelation nicht
-- Pearson misst linearen Zusammenhang, Spearman monotonen
-- Ein Wert nahe null schliesst einen starken, aber krummen Zusammenhang nicht aus
-- Korrelation ist keine Kausalität, und das ist keine Floskel
+- Das **Streudiagramm** kommt vor jeder Kennzahl, nicht danach.
+- Die Kovarianz hängt an den Einheiten, die Korrelation nicht.
+- **Pearson** misst linearen Zusammenhang, **Spearman** und **Kendall** messen
+  monotonen.
+- Ein Wert nahe null schliesst einen starken, aber krummen Zusammenhang **nicht**
+  aus.
+- Ein einzelner Ausreisser kann das Vorzeichen von Pearson umkehren.
+- $r^2$ ist der Anteil gemeinsamer Streuung — und schon deshalb ist $r = 0.5$
+  nicht "halb so stark" wie $r = 1$.
+- Korrelation ist keine Kausalität, und das ist keine Floskel, sondern ein
+  nachrechenbarer Sachverhalt.
 
 ## Erklärung
 
@@ -63,21 +97,11 @@ steht unter
 
 Bisher ging es um die Verteilung eines Merkmals. Die interessanteren Fragen
 betreffen zwei: Steigt der Verbrauch mit der Laufzeit? Hängt der Blutdruck vom
-Alter ab? Für solche Fragen braucht es ein Mass für den gemeinsamen Verlauf und
-ein Modell für die Vorhersage.
+Alter ab? Für solche Fragen braucht es ein Mass für den gemeinsamen Verlauf.
 
-Vor beidem steht die Grafik. Ein Zusammenhang lässt sich sehen, bevor er
+Vor der Kennzahl steht die Grafik. Ein Zusammenhang lässt sich sehen, bevor er
 gerechnet wird, und was man sieht, entscheidet darüber, welche Kennzahl
 überhaupt passt.
-
-```{r}
-#| label: fig-streu-r
-#| fig-cap: "Erster Blick auf zwei Merkmale. Die Punktwolke steigt und wirkt geradlinig."
-#| fig-height: 3.2
-ggplot(anlagen, aes(laufzeit, verbrauch)) +
-  geom_point(alpha = 0.6) +
-  labs(x = "Laufzeit (h)", y = "Verbrauch (l)")
-```
 
 ### Kovarianz und Korrelation
 
@@ -87,48 +111,85 @@ Beitrag positiv.
 
 $$\text{cov}(x,y) = \frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})$$
 
-Ihr Nachteil ist, dass sie an den Einheiten hängt. Werden Liter in Milliliter
-umgerechnet, wird die Kovarianz tausendmal so gross, ohne dass sich am
-Zusammenhang etwas geändert hätte:
-
-```{r}
-#| label: kovarianz-r
-cov(anlagen$laufzeit, anlagen$verbrauch)
-cov(anlagen$laufzeit, anlagen$verbrauch * 1000)   # Milliliter statt Liter
-```
-
-Die Korrelation nach Pearson behebt das, indem sie durch die beiden
-Standardabweichungen teilt. Das Ergebnis liegt immer zwischen minus eins und
-eins und ist einheitenfrei:
+Ihr Nachteil ist, dass sie an den Einheiten hängt. Die Korrelation nach Pearson
+behebt das, indem sie durch die beiden Standardabweichungen teilt. Das Ergebnis
+liegt immer zwischen minus eins und eins und ist einheitenfrei:
 
 $$r = \frac{\text{cov}(x,y)}{s_x \cdot s_y}$$
 
-```{r}
-#| label: korrelation-r
-cor(anlagen$laufzeit, anlagen$verbrauch)
-cor(anlagen$laufzeit, anlagen$verbrauch * 1000)   # unveraendert
+### Die drei gebräuchlichen Masse
 
-# von Hand, zur Kontrolle
-cov(anlagen$laufzeit, anlagen$verbrauch) /
-  (sd(anlagen$laufzeit) * sd(anlagen$verbrauch))
-```
+| Mass | Was es misst | Rechnet auf | Ab Skalenniveau | Robust |
+|---|---|---|---|---|
+| **Pearson** $r$ | linearer Zusammenhang | den Werten | metrisch | nein |
+| **Spearman** $\rho$ | monotoner Zusammenhang | den Rängen | ordinal | ja |
+| **Kendall** $\tau$ | monotoner Zusammenhang, über Paarvergleiche | den Rängen | ordinal | ja |
+
+Spearman ist nichts anderes als Pearson, angewendet auf die Ränge. Kendall geht
+anders vor: Er zählt für alle Paare von Beobachtungen, ob sie gleichgerichtet
+(konkordant) oder gegenläufig (diskordant) sind, und bildet daraus
+$\tau = \frac{\text{konkordant} - \text{diskordant}}{\text{Anzahl Paare}}$.
+
+Daraus folgen die praktischen Unterschiede:
+
+| | Spearman | Kendall |
+|---|---|---|
+| Werte bei mittleren Zusammenhängen | grösser | kleiner (typisch rund zwei Drittel des Spearman-Werts) |
+| Deutung | "wie gut passen die Ränge zueinander" | direkt als Wahrscheinlichkeitsdifferenz: $(\tau + 1)/2$ ist der Anteil gleichgerichteter Paare |
+| Bei vielen Bindungen | weniger zuverlässig | besser geeignet (Varianten $\tau_b$, $\tau_c$) |
+| Rechenaufwand | gering | quadratisch in $n$ |
+
+### Was $r$ bedeutet — und was nicht
+
+$r^2$ ist der Anteil der Streuung, den die beiden Merkmale teilen. Daraus folgt
+eine Skala, die dem ersten Eindruck widerspricht:
+
+| $r$ | $r^2$ | gemeinsame Streuung |
+|---|---|---|
+| 0.9 | 0.81 | 81 % |
+| 0.7 | 0.49 | 49 % |
+| **0.5** | **0.25** | **25 %** |
+| 0.3 | 0.09 | 9 % |
+
+Ein $r$ von 0.5 ist also nicht "halb so stark" wie ein $r$ von 1, sondern
+beschreibt einen Zusammenhang, bei dem drei Viertel der Streuung anderswo
+herkommen.
 
 ::: {.note-box}
-Die Korrelation nach Pearson misst ausschliesslich den **linearen** Anteil
-eines Zusammenhangs. Ein starker, aber gekrümmter Zusammenhang kann einen Wert
-nahe null ergeben. Deshalb steht das Streudiagramm vor der Kennzahl und nicht
-danach.
+**Faustregeln für die Stärke sind fachabhängig.** In der Physik gilt $r = 0.9$
+als schwach, in der Sozialforschung als aussergewöhnlich hoch. Wer Schwellen
+nennt, sollte die Quelle dazu nennen. Aussagekräftiger als jede Schwelle ist das
+Streudiagramm plus die Angabe von $n$.
 :::
 
-### Warum die Grafik zuerst kommt
+### Der wichtigste Vorbehalt
 
-Vier Datensätze mit praktisch identischen Kennzahlen, aber völlig verschiedener
-Struktur. Das Beispiel stammt von Anscombe und ist in R eingebaut:
+Ein statistischer Zusammenhang belegt keine Ursache. Drei Erklärungen sind
+immer möglich, und die Daten allein unterscheiden nicht zwischen ihnen: $x$
+wirkt auf $y$, $y$ wirkt auf $x$, oder eine dritte, nicht beobachtete Grösse
+treibt beide. Beispiel 5 rechnet den dritten Fall durch.
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Warum die Grafik zuerst kommt
+
+#### Frage und Datenlage
+
+Vier Datensätze zu je elf Punkten mit praktisch identischen Kennzahlen. Das
+Beispiel stammt von Anscombe und ist in R eingebaut.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: fig-anscombe-r
-#| fig-cap: "Vier Datensätze mit gleichem Mittelwert, gleicher Varianz und gleicher Korrelation."
-#| fig-height: 3.4
+#| label: fig-b1-kor-r
+#| fig-cap: "Beispiel 1: vier Datensätze mit gleichem Mittelwert, gleicher Varianz und gleicher Korrelation."
+#| fig-height: 2.8
 lang <- data.frame(
   satz = rep(1:4, each = 11),
   x = c(anscombe$x1, anscombe$x2, anscombe$x3, anscombe$x4),
@@ -141,37 +202,556 @@ ggplot(lang, aes(x, y)) +
               colour = "black", linewidth = 0.5) +
   facet_wrap(~ satz, nrow = 1) +
   labs(x = NULL, y = NULL)
-```
 
-```{r}
-#| label: anscombe-kennzahlen-r
 lang |>
   group_by(satz) |>
-  summarise(mittel_x = mean(x), mittel_y = round(mean(y), 2),
-            korrelation = round(cor(x, y), 3), .groups = "drop")
+  summarise(mittel_x = mean(x), sd_x = sd(x),
+            mittel_y = round(mean(y), 2), sd_y = round(sd(y), 2),
+            pearson = round(cor(x, y), 3),
+            spearman = round(cor(x, y, method = "spearman"), 3),
+            .groups = "drop")
 ```
 
-Die Kennzahlen stimmen bis auf Rundung überein, die Bilder nicht. Nur der erste
-Datensatz entspricht dem, was die Korrelation suggeriert.
+##### Python
 
-### Wenn Pearson nicht passt
+```{python}
+#| label: fig-b1-kor-py
+#| fig-cap: "Beispiel 1: dieselben vier Datensätze in Python."
+#| fig-height: 2.8
+x123 = np.array([10, 8, 13, 9, 11, 14, 6, 4, 12, 7, 5], dtype=float)
+saetze = {
+    1: (x123, np.array([8.04, 6.95, 7.58, 8.81, 8.33, 9.96, 7.24, 4.26,
+                        10.84, 4.82, 5.68])),
+    2: (x123, np.array([9.14, 8.14, 8.74, 8.77, 9.26, 8.10, 6.13, 3.10,
+                        9.13, 7.26, 4.74])),
+    3: (x123, np.array([7.46, 6.77, 12.74, 7.11, 7.81, 8.84, 6.08, 5.39,
+                        8.15, 6.42, 5.73])),
+    4: (np.array([8, 8, 8, 8, 8, 8, 8, 19, 8, 8, 8], dtype=float),
+        np.array([6.58, 5.76, 7.71, 8.84, 8.47, 7.04, 5.25, 12.50, 5.56,
+                  7.91, 6.89])),
+}
 
-Zwei Fälle sprechen gegen die Korrelation nach Pearson: ordinale Merkmale, bei
-denen Differenzen nicht definiert sind, und monotone, aber nicht lineare
-Zusammenhänge. Die Rangkorrelation nach Spearman rechnet stattdessen auf den
-Rängen und misst damit, ob der Zusammenhang gleichgerichtet verläuft.
+fig, achsen = plt.subplots(1, 4, figsize=(7, 2.8), sharey=True)
+zeilen = []
+for achse, (nummer, (x, y)) in zip(achsen, saetze.items()):
+    achse.scatter(x, y, s=14, color="black")
+    steigung, achsenabschnitt = np.polyfit(x, y, 1)
+    gitter = np.linspace(x.min(), x.max(), 2)
+    achse.plot(gitter, achsenabschnitt + steigung * gitter,
+               color="black", lw=0.6)
+    achse.set_title(f"Satz {nummer}", fontsize=9)
+    zeilen.append({"satz": nummer, "mittel_x": x.mean(), "sd_x": x.std(ddof=1),
+                   "mittel_y": y.mean(), "sd_y": y.std(ddof=1),
+                   "pearson": np.corrcoef(x, y)[0, 1],
+                   "spearman": stats.spearmanr(x, y).statistic})
+plt.tight_layout()
+plt.show()
+
+print(pd.DataFrame(zeilen).round(3).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Satz | Mittel x | SD x | Mittel y | SD y | Pearson | Spearman |
+|---|---|---|---|---|---|---|
+| 1 | 9.0 | 3.32 | 7.50 | 2.03 | **0.816** | 0.818 |
+| 2 | 9.0 | 3.32 | 7.50 | 2.03 | **0.816** | 0.691 |
+| 3 | 9.0 | 3.32 | 7.50 | 2.03 | **0.816** | 0.991 |
+| 4 | 9.0 | 3.32 | 7.50 | 2.03 | **0.817** | 0.500 |
+
+| Satz | Was das Bild zeigt | Was die Kennzahl verschweigt |
+|---|---|---|
+| 1 | eine gleichmässig streuende Punktwolke um eine Gerade | nichts — nur hier beschreibt $r$, was man sieht |
+| 2 | eine **exakte Parabel** | Der Zusammenhang ist perfekt und nicht linear. Pearson misst nur den geraden Anteil. |
+| 3 | eine **perfekte Gerade plus ein Ausreisser** | Ohne den einen Punkt wäre $r = 1$. Der Ausreisser drückt ihn auf 0.816. |
+| 4 | **zehn Punkte auf einer Senkrechten** plus einer weit rechts | Die Korrelation wird von einem einzigen Punkt erzeugt. Ohne ihn ist sie nicht definiert. |
+
+::: {.note-box}
+Die **Spearman-Spalte** ist die interessantere: Anders als Pearson unterscheidet
+sie die vier Sätze deutlich (0.82, 0.69, 0.99, 0.50). Das ist kein Zufall — die
+Ränge reagieren anders auf Krümmung und Ausreisser als die Werte selbst.
+
+Trotzdem ersetzt auch sie das Bild nicht: Bei Satz 4 liefert sie 0.50 und sagt
+damit nicht, dass zehn der elf Punkte denselben x-Wert haben.
+:::
+
+#### Interpretation
+
+Jede Kennzahl fasst zusammen und wirft dabei etwas weg. Das Streudiagramm zeigt,
+**was** weggeworfen wurde — und ist deshalb der erste Schritt, nicht der letzte.
+
+### Beispiel 2: Kovarianz, Korrelation und die Einheiten
+
+#### Frage und Datenlage
+
+120 Anlagen mit Laufzeit in Stunden und Verbrauch in Litern. Was passiert mit
+Kovarianz und Korrelation, wenn man Liter in Milliliter umrechnet?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: spearman-r
-x <- 1:50
-y <- exp(x / 10)          # streng monoton, aber stark gekruemmt
+#| label: fig-b2-kor-r
+#| fig-cap: "Beispiel 2: erster Blick auf zwei Merkmale. Die Punktwolke steigt und wirkt geradlinig."
+#| fig-height: 3.2
+ggplot(anlagen, aes(laufzeit, verbrauch)) +
+  geom_point(alpha = 0.6) +
+  labs(x = "Laufzeit (h)", y = "Verbrauch (l)")
 
-c(pearson  = round(cor(x, y), 3),
-  spearman = round(cor(x, y, method = "spearman"), 3))
+round(c(
+  cov_liter = cov(anlagen$laufzeit, anlagen$verbrauch),
+  cov_milliliter = cov(anlagen$laufzeit, anlagen$verbrauch * 1000),
+  r_liter = cor(anlagen$laufzeit, anlagen$verbrauch),
+  r_milliliter = cor(anlagen$laufzeit, anlagen$verbrauch * 1000)
+), 4)
+
+# Die Korrelation von Hand, zur Kontrolle
+round(cov(anlagen$laufzeit, anlagen$verbrauch) /
+        (sd(anlagen$laufzeit) * sd(anlagen$verbrauch)), 4)
+
+round(c(sd_laufzeit = sd(anlagen$laufzeit), sd_verbrauch = sd(anlagen$verbrauch),
+        r_quadrat = cor(anlagen$laufzeit, anlagen$verbrauch)^2), 4)
 ```
 
-Spearman liefert exakt eins, weil die Reihenfolge perfekt übereinstimmt.
-Pearson bleibt darunter, weil die Beziehung eben nicht geradlinig ist.
+##### Python
+
+```{python}
+#| label: fig-b2-kor-py
+#| fig-cap: "Beispiel 2: dasselbe Streudiagramm in Python."
+#| fig-height: 3.2
+fig, achse = plt.subplots(figsize=(7, 3.2))
+achse.scatter(anlagen["laufzeit"], anlagen["verbrauch"], s=14, alpha=0.6,
+              color="black")
+achse.set_xlabel("Laufzeit (h)")
+achse.set_ylabel("Verbrauch (l)")
+plt.tight_layout()
+plt.show()
+
+kov = np.cov(anlagen["laufzeit"], anlagen["verbrauch"])[0, 1]
+r = np.corrcoef(anlagen["laufzeit"], anlagen["verbrauch"])[0, 1]
+print({"cov_liter": round(float(kov), 4),
+       "cov_milliliter": round(float(np.cov(anlagen["laufzeit"],
+                                            anlagen["verbrauch"] * 1000)[0, 1]), 1),
+       "r_liter": round(float(r), 4),
+       "r_milliliter": round(float(np.corrcoef(anlagen["laufzeit"],
+                                               anlagen["verbrauch"] * 1000)[0, 1]), 4)})
+
+sx = anlagen["laufzeit"].std(ddof=1)
+sy = anlagen["verbrauch"].std(ddof=1)
+print("von Hand:", round(float(kov / (sx * sy)), 4))
+print({"sd_laufzeit": round(float(sx), 4), "sd_verbrauch": round(float(sy), 4),
+       "r_quadrat": round(float(r ** 2), 4)})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | in Litern | in Millilitern | Faktor |
+|---|---|---|---|
+| Kovarianz | **70.755** | **70 755** | **1000** |
+| Korrelation | **0.9333** | **0.9333** | **1** |
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Kovarianz 70.755 | Einheit: Stunden mal Liter | Die Zahl ist für sich genommen **nicht deutbar**. Ist 70 viel? Das hängt daran, in welchen Einheiten gemessen wurde. |
+| Kovarianz mal 1000 | genau der Umrechnungsfaktor | Am Zusammenhang hat sich nichts geändert, an der Zahl alles. |
+| Korrelation **unverändert** | 0.9333 in beiden Fällen | Im Nenner stehen die Standardabweichungen, und $s_y$ wächst um denselben Faktor 1000. Er kürzt sich heraus. Genau das ist der Zweck der Normierung. |
+| von Hand nachgerechnet | $70.755 / (4.927 \cdot 15.386) = 0.9333$ | Die Korrelation ist nichts anderes als eine auf die Streuungen bezogene Kovarianz. |
+| $r^2$ | **0.871** | 87 Prozent der Streuung im Verbrauch gehen mit der Laufzeit einher. |
+
+::: {.note-box}
+**Was die Normierung kostet:** Die Kovarianz enthält die Grössenordnung des
+Zusammenhangs, die Korrelation nicht. Ein $r$ von 0.93 sagt nichts darüber, **um
+wie viel** der Verbrauch je Stunde steigt — das sagt die Steigung einer
+[Regression](../regression/einfache-lineare-regression.qmd), hier rund 2.8 Liter
+je Stunde.
+
+Für die Frage "wie eng" ist die Korrelation richtig, für "wie viel" die
+Regression. Beide werden regelmässig verwechselt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Laufzeit und Verbrauch hängen stark linear zusammen (Pearson $r$ = 0.93,
+> $r^2$ = 0.87, n = 120). Die Korrelation ist einheitenfrei und ändert sich
+> nicht, wenn der Verbrauch in Millilitern statt Litern gemessen wird.
+
+### Beispiel 3: Pearson gegen Spearman gegen Kendall
+
+#### Frage und Datenlage
+
+Drei Situationen, in denen die drei Masse auseinanderlaufen:
+
+1. ein **monotoner, aber gekrümmter** Zusammenhang: $y = e^{x/10}$
+2. ein **U-förmiger** Zusammenhang: $y = x^2$ plus Rauschen
+3. eine saubere Gerade **plus einen einzigen Ausreisser**
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-kor-r
+#| fig-cap: "Beispiel 3: gekrümmt, U-förmig und mit Ausreisser."
+#| fig-height: 2.8
+x_exp <- 1:50
+y_exp <- exp(x_exp / 10)
+
+x_u <- seq(-3, 3, length.out = 80)
+y_u <- x_u^2 + normalwerte(6613, 80, 0, 0.5)
+
+x_rein <- 1:20
+y_rein <- x_rein + normalwerte(6614, 20, 0, 1)
+x_aus <- c(x_rein, 40)
+y_aus <- c(y_rein, -20)
+
+par(mfrow = c(1, 3), mar = c(4, 4, 2.5, 1))
+plot(x_exp, y_exp, pch = 16, cex = 0.7, main = "monoton, gekrümmt")
+plot(x_u, y_u, pch = 16, cex = 0.7, main = "U-förmig")
+plot(x_aus, y_aus, pch = 16, cex = 0.7, main = "mit Ausreisser")
+par(mfrow = c(1, 1))
+
+masse <- function(x, y) {
+  c(pearson = cor(x, y),
+    spearman = cor(x, y, method = "spearman"),
+    kendall = cor(x, y, method = "kendall"))
+}
+
+round(rbind(gekruemmt = masse(x_exp, y_exp),
+            u_foermig = masse(x_u, y_u),
+            ohne_ausreisser = masse(x_rein, y_rein),
+            mit_ausreisser = masse(x_aus, y_aus)), 3)
+
+# Beim U-Fall hilft die Transformation
+round(cor(abs(x_u), y_u), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-kor-py
+#| fig-cap: "Beispiel 3: dieselben drei Fälle in Python."
+#| fig-height: 2.8
+x_exp = np.arange(1, 51, dtype=float)
+y_exp = np.exp(x_exp / 10)
+
+x_u = np.linspace(-3, 3, 80)
+y_u = x_u ** 2 + normalwerte(6613, 80, 0, 0.5)
+
+x_rein = np.arange(1, 21, dtype=float)
+y_rein = x_rein + normalwerte(6614, 20, 0, 1)
+x_aus = np.append(x_rein, 40)
+y_aus = np.append(y_rein, -20)
+
+fig, achsen = plt.subplots(1, 3, figsize=(7, 2.8))
+for achse, (x, y, titel) in zip(achsen, [
+        (x_exp, y_exp, "monoton, gekrümmt"),
+        (x_u, y_u, "U-förmig"),
+        (x_aus, y_aus, "mit Ausreisser")]):
+    achse.scatter(x, y, s=12, color="black")
+    achse.set_title(titel, fontsize=9)
+plt.tight_layout()
+plt.show()
+
+
+def masse(x, y):
+    return {"pearson": np.corrcoef(x, y)[0, 1],
+            "spearman": stats.spearmanr(x, y).statistic,
+            "kendall": stats.kendalltau(x, y).statistic}
+
+
+print(pd.DataFrame({
+    "gekruemmt": masse(x_exp, y_exp),
+    "u_foermig": masse(x_u, y_u),
+    "ohne_ausreisser": masse(x_rein, y_rein),
+    "mit_ausreisser": masse(x_aus, y_aus),
+}).T.round(3))
+
+print("Nach Transformation |x| im U-Fall:",
+      round(float(np.corrcoef(np.abs(x_u), y_u)[0, 1]), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Situation | Pearson | Spearman | Kendall |
+|---|---|---|---|
+| monoton, gekrümmt | 0.858 | **1.000** | **1.000** |
+| U-förmig | **-0.015** | **-0.015** | rund -0.01 |
+| Gerade ohne Ausreisser | 0.976 | 0.977 | rund 0.90 |
+| **Gerade mit einem Ausreisser** | **-0.108** | **0.708** | **0.714** |
+
+| Fall | Was passiert |
+|---|---|
+| **Gekrümmt** | Spearman und Kendall liefern **exakt eins**, weil die Reihenfolge perfekt übereinstimmt — mehr misst eine Rangkorrelation nicht. Pearson bleibt bei 0.858, weil die Beziehung nicht geradlinig ist. Wer 0.858 als "etwas Streuung" liest, liegt falsch: Es gibt **keine** Streuung, nur Krümmung. |
+| **U-förmig** | Alle drei liefern praktisch null — und der Zusammenhang ist trotzdem perfekt deterministisch. Auch die Rangkorrelation versagt hier, denn der Zusammenhang ist nicht **monoton**: y fällt erst, dann steigt es. |
+| **Ausreisser** | Der spektakulärste Fall: Ein einziger von 21 Punkten dreht Pearson von **+0.976 auf -0.108** um. Spearman fällt nur auf 0.708, weil der Ausreisser rangmässig nur ein Punkt unter vielen ist. |
+
+::: {.note-box}
+**Was im U-Fall hilft:** Die Korrelation zwischen $\lvert x \rvert$ und $y$
+beträgt **0.94**. Der Zusammenhang war also die ganze Zeit da — nur nicht in der
+Form, die eine Korrelation messen kann.
+
+Das ist das allgemeine Rezept: **Wenn das Bild eine Struktur zeigt, die die
+Kennzahl nicht findet, transformiert man die Variablen, statt die Kennzahl zu
+verwerfen.** Übliche Kandidaten sind Logarithmus (bei multiplikativen
+Zusammenhängen), Wurzel und Betrag.
+
+Und der Grund, warum Kendall bei "mit Ausreisser" fast gleichauf mit Spearman
+liegt (0.714 gegen 0.708), obwohl es sonst kleinere Werte liefert: Beide zählen
+denselben einen Punkt als eine Beobachtung.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Zwischen den Merkmalen besteht ein monotoner Zusammenhang (Spearman
+> $\rho$ = 1.00, Kendall $\tau$ = 1.00, n = 50). Die Pearson-Korrelation von 0.86
+> unterschätzt ihn, weil der Verlauf exponentiell und nicht linear ist.
+
+### Beispiel 4: Wann welches Mass
+
+#### Frage und Datenlage
+
+Die Wahl zwischen den drei Massen ist keine Geschmacksfrage. Sie folgt aus dem
+Skalenniveau und aus dem, was das Streudiagramm zeigt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-kor-r
+# Ordinale Daten: Zufriedenheit und Weiterempfehlung, je 1 bis 5
+zufrieden <- c(5, 4, 4, 5, 3, 2, 1, 3, 4, 5, 2, 3, 5, 4, 1, 2, 3, 4, 5, 3)
+empfehlen <- c(5, 5, 4, 4, 3, 2, 1, 4, 4, 5, 1, 3, 5, 3, 2, 2, 4, 5, 4, 3)
+
+table(zufrieden, empfehlen)
+
+round(c(pearson = cor(zufrieden, empfehlen),
+        spearman = cor(zufrieden, empfehlen, method = "spearman"),
+        kendall = cor(zufrieden, empfehlen, method = "kendall")), 3)
+
+# Kendall von Hand: konkordante gegen diskordante Paare
+paare <- expand.grid(i = seq_along(zufrieden), j = seq_along(zufrieden))
+paare <- paare[paare$i < paare$j, ]
+richtung <- sign(zufrieden[paare$i] - zufrieden[paare$j]) *
+  sign(empfehlen[paare$i] - empfehlen[paare$j])
+c(konkordant = sum(richtung > 0), diskordant = sum(richtung < 0),
+  bindungen = sum(richtung == 0), paare = nrow(paare))
+```
+
+##### Python
+
+```{python}
+#| label: b4-kor-py
+zufrieden = np.array([5, 4, 4, 5, 3, 2, 1, 3, 4, 5, 2, 3, 5, 4, 1, 2, 3, 4, 5, 3])
+empfehlen = np.array([5, 5, 4, 4, 3, 2, 1, 4, 4, 5, 1, 3, 5, 3, 2, 2, 4, 5, 4, 3])
+
+print(pd.crosstab(zufrieden, empfehlen))
+
+print({"pearson": round(float(np.corrcoef(zufrieden, empfehlen)[0, 1]), 3),
+       "spearman": round(float(stats.spearmanr(zufrieden, empfehlen).statistic), 3),
+       "kendall": round(float(stats.kendalltau(zufrieden, empfehlen).statistic), 3)})
+
+konkordant = diskordant = bindungen = 0
+for i in range(len(zufrieden)):
+    for j in range(i + 1, len(zufrieden)):
+        richtung = (np.sign(zufrieden[i] - zufrieden[j])
+                    * np.sign(empfehlen[i] - empfehlen[j]))
+        if richtung > 0:
+            konkordant += 1
+        elif richtung < 0:
+            diskordant += 1
+        else:
+            bindungen += 1
+
+print({"konkordant": konkordant, "diskordant": diskordant,
+       "bindungen": bindungen,
+       "paare": len(zufrieden) * (len(zufrieden) - 1) // 2})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+Zwanzig Befragte, beide Merkmale auf einer Skala von 1 bis 5.
+
+| Mass | Wert | Zulässig? |
+|---|---|---|
+| Pearson | | **nein** — er setzt voraus, dass der Abstand von 1 zu 2 dasselbe bedeutet wie der von 4 zu 5 |
+| Spearman | | ja |
+| **Kendall** | | ja, und **hier die bessere Wahl** |
+
+Die Aufteilung der 190 Paare in konkordante, diskordante und Bindungen zeigt,
+warum:
+
+| Kategorie | Bedeutung |
+|---|---|
+| **konkordant** | Beide Merkmale zeigen in dieselbe Richtung: Wer zufriedener ist, empfiehlt auch eher. |
+| **diskordant** | Gegenläufig. |
+| **Bindungen** | Mindestens eines der beiden Merkmale ist bei beiden Befragten gleich. |
+
+| Beobachtung | Deutung |
+|---|---|
+| Es gibt **viele Bindungen** | Bei einer Skala mit fünf Stufen und zwanzig Befragten ist das unvermeidlich: Jeder Wert kommt mehrfach vor. |
+| Genau deshalb ist Kendall besser geeignet | Seine Varianten $\tau_b$ und $\tau_c$ behandeln Bindungen ausdrücklich; Spearman rechnet mit gemittelten Rängen und wird bei vielen Bindungen unzuverlässig. R und `scipy` verwenden voreingestellt $\tau_b$. |
+| Kendall liegt **unter** Spearman | Der übliche Fall. Die beiden messen nicht dasselbe auf verschiedenen Skalen, sondern verschiedene Dinge — ein direkter Vergleich der Zahlen ist nicht sinnvoll. |
+| $(\tau + 1)/2$ | Der Anteil gleichgerichteter Paare. Das ist die einzige der drei Kennzahlen mit einer unmittelbaren Wahrscheinlichkeitsdeutung. |
+
+::: {.note-box}
+**Die Entscheidungsregel in vier Zeilen:**
+
+| Situation | Mass |
+|---|---|
+| beide metrisch, Streudiagramm zeigt eine Gerade | Pearson |
+| beide metrisch, Zusammenhang monoton aber krumm | Spearman |
+| mindestens eines ordinal, wenige Stufen, viele Bindungen | Kendall |
+| Zusammenhang nicht monoton (U-Form) | **keines** — transformieren oder ein Modell |
+:::
+
+#### Interpretation
+
+Die Reihenfolge ist immer dieselbe: erst Skalenniveau, dann Streudiagramm, dann
+Kennzahl. Wer mit der Kennzahl anfängt, wählt sie nach Gewohnheit statt nach
+Passung.
+
+### Beispiel 5: Scheinkorrelation
+
+#### Frage und Datenlage
+
+Der klassische Fall: Glaceverkauf und Badeunfälle. Beide werden von der
+Temperatur getrieben, haben aber miteinander nichts zu tun. Was zeigt die
+Korrelation, und wie macht man den Schein sichtbar?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-kor-r
+#| fig-cap: "Beispiel 5: links der scheinbare Zusammenhang, rechts derselbe nach Herausrechnen der Temperatur."
+#| fig-height: 3.2
+temperatur <- 5 + 25 * lehmer(6615, 200)
+glace <- 20 + 3 * temperatur + normalwerte(6616, 200, 0, 10)
+badeunfaelle <- 2 + 0.4 * temperatur + normalwerte(6617, 200, 0, 2)
+
+rest_glace <- resid(lm(glace ~ temperatur))
+rest_unfaelle <- resid(lm(badeunfaelle ~ temperatur))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 2.5, 1))
+plot(glace, badeunfaelle, pch = 16, cex = 0.6, col = "grey30",
+     xlab = "Glaceverkauf", ylab = "Badeunfälle", main = "roh")
+plot(rest_glace, rest_unfaelle, pch = 16, cex = 0.6, col = "grey30",
+     xlab = "Glace, Rest", ylab = "Unfälle, Rest",
+     main = "Temperatur herausgerechnet")
+par(mfrow = c(1, 1))
+
+round(c(
+  glace_unfaelle = cor(glace, badeunfaelle),
+  glace_temperatur = cor(glace, temperatur),
+  unfaelle_temperatur = cor(badeunfaelle, temperatur),
+  partiell = cor(rest_glace, rest_unfaelle)
+), 3)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-kor-py
+#| fig-cap: "Beispiel 5: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+temperatur = 5 + 25 * lehmer(6615, 200)
+glace = 20 + 3 * temperatur + normalwerte(6616, 200, 0, 10)
+badeunfaelle = 2 + 0.4 * temperatur + normalwerte(6617, 200, 0, 2)
+
+X = sm.add_constant(temperatur)
+rest_glace = sm.OLS(glace, X).fit().resid
+rest_unfaelle = sm.OLS(badeunfaelle, X).fit().resid
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+achsen[0].scatter(glace, badeunfaelle, s=10, color="0.3")
+achsen[0].set_xlabel("Glaceverkauf")
+achsen[0].set_ylabel("Badeunfälle")
+achsen[0].set_title("roh")
+achsen[1].scatter(rest_glace, rest_unfaelle, s=10, color="0.3")
+achsen[1].set_xlabel("Glace, Rest")
+achsen[1].set_ylabel("Unfälle, Rest")
+achsen[1].set_title("Temperatur herausgerechnet")
+plt.tight_layout()
+plt.show()
+
+print({
+    "glace_unfaelle": round(float(np.corrcoef(glace, badeunfaelle)[0, 1]), 3),
+    "glace_temperatur": round(float(np.corrcoef(glace, temperatur)[0, 1]), 3),
+    "unfaelle_temperatur": round(float(np.corrcoef(badeunfaelle,
+                                                   temperatur)[0, 1]), 3),
+    "partiell": round(float(np.corrcoef(rest_glace, rest_unfaelle)[0, 1]), 3),
+})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Paar | $r$ | Deutung |
+|---|---|---|
+| Glace – Badeunfälle | **0.767** | Ein starker Zusammenhang, der jede Schwelle überschreitet. |
+| Glace – Temperatur | 0.900 | Die gemeinsame Ursache, erste Hälfte. |
+| Badeunfälle – Temperatur | 0.829 | Die gemeinsame Ursache, zweite Hälfte. |
+| **partiell**, Temperatur herausgerechnet | **0.085** | **Nichts bleibt übrig.** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| 0.767 ist **keine Fehlrechnung** | Der Zusammenhang existiert in den Daten. Was nicht existiert, ist eine Wirkung des einen auf das andere. |
+| Warum 0.767 herauskommt | Ungefähr das Produkt der beiden Einzelkorrelationen: $0.900 \cdot 0.829 = 0.746$. Bei einer reinen gemeinsamen Ursache ist das genau die Erwartung. |
+| Die **partielle Korrelation** | Man rechnet die Temperatur aus beiden Merkmalen heraus (über eine Regression) und korreliert die **Reste**. Bleibt dort nichts übrig, war der Zusammenhang vollständig durch die dritte Grösse erklärt. |
+| 0.085 statt exakt 0 | Stichprobenzufall bei n = 200. |
+| Das rechte Streudiagramm | zeigt eine strukturlose Wolke gegenüber der klaren Steigung links. |
+
+::: {.note-box}
+**Was dieses Beispiel nicht zeigt: wie man die dritte Grösse findet.** Hier war
+sie bekannt, weil die Daten so konstruiert wurden. In echten Daten ist genau das
+die Schwierigkeit — eine nicht erhobene gemeinsame Ursache bleibt unsichtbar,
+und keine Rechnung kann sie aufdecken.
+
+Was hilft, ist Fachwissen und ein Erhebungsdesign, das die Kandidaten mitmisst.
+Systematisch behandelt wird das unter
+[multipler Regression](../regression/multiple-lineare-regression.qmd) —
+technisch ist die partielle Korrelation oben genau ein Schritt davon.
+
+Die drei möglichen Erklärungen für jede beobachtete Korrelation bleiben:
+
+| Erklärung | Beispiel hier |
+|---|---|
+| $x$ wirkt auf $y$ | Glace verursacht Unfälle — inhaltlich absurd |
+| $y$ wirkt auf $x$ | Unfälle treiben den Glacekonsum — ebenso |
+| dritte Grösse treibt beide | Temperatur — das ist es |
+
+Die Daten allein unterscheiden nicht zwischen ihnen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Glaceverkauf und Badeunfälle korrelieren mit $r$ = 0.77 (n = 200). Der
+> Zusammenhang geht vollständig auf die Aussentemperatur zurück: Wird sie aus
+> beiden Merkmalen herausgerechnet, bleibt eine partielle Korrelation von 0.09.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Die Korrelation zwischen zwei Merkmalen beträgt 0.02. Haben sie nichts
@@ -180,8 +760,9 @@ miteinander zu tun?
 - [ ] Ja, der Wert liegt praktisch bei null ~ Ausgeschlossen ist damit nur ein
       linearer Zusammenhang.
 - [x] Nicht unbedingt, ein U-förmiger Zusammenhang ergibt ebenfalls fast null ~
-      Richtig. Pearson misst nur den linearen Anteil. @fig-anscombe-r zeigt vier
-      Datensätze mit identischer Korrelation und völlig verschiedener Struktur.
+      Richtig. Pearson misst nur den linearen Anteil. In Beispiel 3 liefert ein
+      deterministischer U-Zusammenhang r = -0.015, während die Korrelation mit
+      dem Betrag von x bei 0.94 liegt.
 - [ ] Der Wert ist zu klein zum Interpretieren ~ Interpretieren lässt er sich
       gut, man muss nur wissen, was er misst.
 :::
@@ -198,61 +779,63 @@ Milliliter umgerechnet wird, die Kovarianz aber schon?
       um den Faktor 1000, und die Kovarianz zeigt das auch.
 :::
 
-### Der wichtigste Vorbehalt
-
-Ein statistischer Zusammenhang belegt keine Ursache. Drei Erklärungen sind
-immer möglich, und die Daten allein unterscheiden nicht zwischen ihnen: x wirkt
-auf y, y wirkt auf x, oder eine dritte, nicht beobachtete Grösse treibt beide.
-
-Der klassische Fall ist die Scheinkorrelation über eine gemeinsame Ursache:
-
-```{r}
-#| label: schein-r
-# Eine verborgene Groesse treibt beide Merkmale
-temperatur <- runif(200, 5, 30)
-glace      <- 20 + 3 * temperatur + rnorm(200, 0, 10)
-badeunfaelle <- 2 + 0.4 * temperatur + rnorm(200, 0, 2)
-
-round(cor(glace, badeunfaelle), 3)                 # deutlich positiv
-# Bei festgehaltener Temperatur verschwindet der Zusammenhang
-round(cor(resid(lm(glace ~ temperatur)),
-          resid(lm(badeunfaelle ~ temperatur))), 3)
-```
-
-Die erste Zahl zeigt einen klaren Zusammenhang zwischen Glaceverkauf und
-Badeunfällen. Rechnet man die Temperatur aus beiden heraus, bleibt nichts
-übrig. Genau das leistet in komplexeren Fällen die multiple Regression, die im
-Aufbaumodul folgt.
-
 ::: {.quiz}
-Ein Modell hat ein Bestimmtheitsmass von 0.92. Ist es damit ein gutes Modell?
+Ein einzelner Punkt kommt zu zwanzig anderen dazu, und die Pearson-Korrelation
+springt von +0.98 auf -0.11. Was folgt daraus?
 
-- [ ] Ja, es erklärt 92 Prozent der Streuung ~ Das tut es, sagt aber nichts
-      über die Angemessenheit der Modellform.
-- [x] Nicht ohne Blick auf die Residuen ~ Richtig. Ein falsch spezifiziertes
-      Modell kann einen hohen Wert erreichen, und trotzdem bilden seine
-      Residuen einen deutlichen Bogen. Das Beispiel dazu steht unter
-      [einfache lineare Regression](../regression/einfache-lineare-regression.qmd).
-- [ ] Nein, unter 0.95 ist ein Modell unbrauchbar ~ Eine solche Schwelle gibt
-      es nicht; was ein guter Wert ist, hängt vom Fachgebiet ab.
+- [x] Pearson ist nicht robust; ein Hebelpunkt kann das Vorzeichen umkehren ~
+      Richtig. Der Punkt liegt weit ausserhalb des x-Bereichs und zieht die
+      gedachte Gerade mit sich. Die Rangkorrelation fällt im selben Beispiel nur
+      auf 0.71, weil sie den Punkt als eine Beobachtung unter vielen zählt.
+- [ ] Die Daten wurden falsch erhoben ~ Möglich, folgt aber nicht daraus. Ein
+      extremer Wert kann echt sein.
+- [ ] Die Stichprobe ist zu klein ~ Bei grösserem n wäre die Wirkung kleiner,
+      aber das Problem bleibt dasselbe.
 :::
 
 ::: {.quiz}
-Die Steigung beträgt 2.8, der Achsenabschnitt 14, die beobachteten Laufzeiten
-liegen zwischen 3 und 20 Stunden. Was ist von der Aussage zu halten, bei null
-Stunden würden 14 Liter verbraucht?
+Zwei ordinale Merkmale mit je fünf Stufen sollen verglichen werden, n = 20. Was
+spricht für Kendall statt Spearman?
 
-- [ ] Sie stimmt, das ist die Bedeutung des Achsenabschnitts ~ Rechnerisch ja,
-      inhaltlich nicht gedeckt.
-- [x] Sie extrapoliert über den beobachteten Bereich hinaus ~ Richtig. Der Wert
-      null kommt in den Daten nicht vor, das Modell wurde dort nie geprüft, und
-      ob die Beziehung dort noch linear verläuft, ist unbekannt.
-- [ ] Sie ist falsch, weil der Achsenabschnitt immer null sein müsste ~ Es gibt
-      keinen Grund, ihn auf null zu zwingen; das würde das Modell nur
-      verschlechtern.
+- [x] Bei wenigen Stufen und vielen Bindungen ist Kendall zuverlässiger ~
+      Richtig. Seine Varianten behandeln Bindungen ausdrücklich, während Spearman
+      mit gemittelten Rängen rechnet. Zusätzlich hat Kendall eine unmittelbare
+      Deutung als Anteil gleichgerichteter Paare.
+- [ ] Kendall liefert grössere Werte ~ Er liefert typisch kleinere, weil er
+      etwas anderes misst.
+- [ ] Spearman ist für ordinale Daten nicht zulässig ~ Er ist zulässig, nur bei
+      vielen Bindungen weniger geeignet.
+:::
+
+::: {.quiz}
+Glaceverkauf und Badeunfälle korrelieren mit 0.77. Nach Herausrechnen der
+Temperatur bleibt 0.09. Was ist damit gezeigt?
+
+- [x] Der Zusammenhang lässt sich vollständig durch die gemeinsame Ursache
+      erklären ~ Richtig. Das ist die partielle Korrelation: Die Temperatur wird
+      aus beiden Merkmalen herausgerechnet, und aus den Resten bleibt nichts.
+- [ ] Glace verursacht keine Badeunfälle ~ Das ist die richtige inhaltliche
+      Schlussfolgerung, aber sie folgt aus dem Sachverstand, nicht aus der
+      Rechnung. Die Rechnung zeigt nur, dass die Temperatur genügt.
+- [ ] Die ursprüngliche Korrelation war falsch berechnet ~ Sie war korrekt. Der
+      Zusammenhang existiert in den Daten, nur nicht als Wirkung.
+:::
+
+::: {.quiz}
+Ein Bericht nennt $r$ = 0.5 und beschreibt den Zusammenhang als "halb so stark
+wie ein perfekter". Was ist daran falsch?
+
+- [x] Geteilt wird die Streuung, und $r^2$ = 0.25 heisst 25 Prozent gemeinsame
+      Streuung ~ Richtig. Drei Viertel der Streuung kommen anderswo her. Die
+      Skala von r ist nicht linear in dem, was man umgangssprachlich unter
+      "Stärke" versteht.
+- [ ] Nichts, 0.5 ist die Hälfte von 1 ~ Rechnerisch ja, inhaltlich führt es in
+      die Irre.
+- [ ] r kann nicht als Stärke gedeutet werden ~ Es kann, nur nicht linear.
 :::
 
 ## Verlinkte Ressourcen
 
 - [OpenIntro Statistics, Kapitel zu Zusammenhängen](https://www.openintro.org/book/os/)
 - [Spurious Correlations: Zusammenhänge ohne Ursache](https://www.tylervigen.com/spurious-correlations)
+- [Anscombes Quartett](https://en.wikipedia.org/wiki/Anscombe%27s_quartet)
