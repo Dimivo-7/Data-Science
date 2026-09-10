@@ -37,6 +37,28 @@ Die Kurzfassung dessen, was die Einträge unten gelehrt haben:
 
 ## Einträge
 
+### 2026-09-10 — Glossar-Tooltip in der Reiterbeschriftung
+
+**Symptom:** Kein Build-Fehler. Im Reiter "Beispiel 1: Unabhängigkeit, und wo
+die Abweichung sitzt" war das Wort Unabhängigkeit unterstrichen und zeigte beim
+Überfahren einen Glossar-Tooltip. Betroffen waren sechs Reiter auf vier Seiten.
+
+**Ursache:** Dieselbe wie beim Glossar in der Navigation. Reitertitel entstehen
+aus Überschriften; zu dem Zeitpunkt, an dem der Filter läuft, hat Quarto sie
+bereits umgebaut, sodass der Ausschluss von `Header` nicht mehr greift.
+
+**Regel:** `styles.scss` neutralisiert `.glossary-term` jetzt auch unter
+`.panel-tabset > .nav-tabs`, mit `pointer-events: none`, damit der Klick den
+Reiter trifft und nicht den Begriff.
+
+**Wie es aufgefallen ist:** Beim Prüfen der gerenderten Seite mit einem
+Suchmuster, das an einem `<span>` abbrach. Der vermeintliche Fehler (leere
+Reitertitel) war keiner; der echte Fehler wurde nur deshalb sichtbar, weil ich
+mir daraufhin das rohe HTML angesehen habe. Prüfmuster, die etwas nicht finden,
+sind ein Anlass zum Nachsehen und kein Befund.
+
+---
+
 ### 2026-09-10 — fehlender Import, Beispiel von der Nachbarseite übernommen
 
 **Symptom:** Build rot, `render.log` meldet
