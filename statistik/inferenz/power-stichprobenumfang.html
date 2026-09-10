@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Power-Analyse vor der Erhebung und die Planung von n.">
+<meta name="description" content="Wie viele Fälle braucht es, und was findet man mit denen, die man hat?">
 
 <title>Power und Stichprobenumfang – Data Science Notizen</title>
 <style>
@@ -26,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -51,6 +86,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
 <link href="../../site_libs/bootstrap/bootstrap-dark-465920036d67acc459edb9c5a85eb638.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
 <link href="../../site_libs/bootstrap/bootstrap-859fad7443d2c57e682f9a01ffe74f27.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-contrib/glightbox/glightbox.min.js"></script>
+<link href="../../site_libs/quarto-contrib/glightbox/glightbox.min.css" rel="stylesheet">
+<link href="../../site_libs/quarto-contrib/glightbox/lightbox.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -80,6 +118,35 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -279,7 +346,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/index.html">Inferenz</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/power-stichprobenumfang.html"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/index.html">Inferenz</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/power-stichprobenumfang.html"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -339,7 +406,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/python-funktionen-module.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Funktionen und <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren.">Module</span> in Python</span></a>
+ <span class="menu-text">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -387,7 +454,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../programmierung/reproduzierbarkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">Reproduzierbarkeit</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></span></a>
   </div>
 </li>
       </ul>
@@ -410,7 +477,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../daten/tidy-data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus.">Tidy Data</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Form einer Tabelle, in der jede Zeile eine Beobachtung, jede Spalte ein Merkmal und jede Tabelle eine Beobachtungseinheit beschreibt. Werkzeuge zur Datenanalyse setzen diese Form voraus." data-topic="Programmierung" tabindex="0">Tidy Data</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -510,7 +577,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Linux und <span class="glossary-term" data-topic="Werkzeuge" tabindex="0" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht.">Shell</span></span></a>
+ <span class="menu-text">Linux und <span class="glossary-term" data-def="Textbasierte Bedienoberfläche des Betriebssystems. Befehle sind wiederholbar und dokumentierbar, was sie auf Servern und in Skripten unverzichtbar macht." data-topic="Werkzeuge" tabindex="0">Shell</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -560,7 +627,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/grundlagen/skalenniveaus.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse.">Skalenniveaus</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Einteilung eines Merkmals danach, welche Vergleiche zulässig sind. Nominal erlaubt nur Gleichheit, ordinal zusätzlich eine Rangfolge, intervall zusätzlich Differenzen, verhältnis zusätzlich Verhältnisse." data-topic="Statistik" tabindex="0">Skalenniveaus</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -601,19 +668,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/kombinatorik-wahrscheinlichkeit.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit.">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Lehre vom Abzählen der Möglichkeiten. Sie liefert die Anzahl günstiger und möglicher Fälle und damit den Nenner der Laplace-Wahrscheinlichkeit." data-topic="Statistik" tabindex="0">Kombinatorik</span> und Wahrscheinlichkeit</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft.">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis.">Bayes</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit eines Ereignisses unter der Voraussetzung, dass ein anderes eingetreten ist. Die Bedingung verkleinert den betrachteten Grundraum auf die Fälle, in denen sie zutrifft." data-topic="Statistik" tabindex="0">Bedingte Wahrscheinlichkeit</span> und <span class="glossary-term" data-def="Regel, mit der sich eine bedingte Wahrscheinlichkeit umkehren lässt. Aus der Wahrscheinlichkeit eines Testergebnisses bei bekannter Ursache wird die Wahrscheinlichkeit der Ursache bei bekanntem Ergebnis." data-topic="Statistik" tabindex="0">Bayes</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/zufallsvariablen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden.">Zufallsvariablen</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Abbildung, die jedem Ergebnis eines Zufallsvorgangs eine Zahl zuordnet. Erst dadurch lassen sich Erwartungswert und Varianz bilden." data-topic="Statistik" tabindex="0">Zufallsvariablen</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -631,13 +698,13 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/normalverteilung-zgws.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären.">Normalverteilung</span> und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind.">zentraler Grenzwertsatz</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Symmetrische, glockenförmige Verteilung, die durch Mittelwert und Standardabweichung festgelegt ist. Ihre Bedeutung stammt vom zentralen Grenzwertsatz, nicht davon, dass viele Merkmale so verteilt wären." data-topic="Statistik" tabindex="0">Normalverteilung</span> und <span class="glossary-term" data-def="Summen und Mittelwerte vieler unabhängiger Zufallsgrössen nähern sich einer Normalverteilung an, unabhaengig davon, wie die einzelnen Groessen selbst verteilt sind." data-topic="Statistik" tabindex="0">zentraler Grenzwertsatz</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/wahrscheinlichkeit/qq-plots.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder.">QQ-Plots</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Darstellung der beobachteten gegen die theoretisch erwarteten Quantile. Liegen die Punkte auf einer Geraden, passt die Verteilungsannahme; Krümmung zeigt Schiefe, Abknicken an den Enden schwerere Ränder." data-topic="Statistik" tabindex="0">QQ-Plots</span></span></a>
   </div>
 </li>
       </ul>
@@ -654,7 +721,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Schätzen und <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall.">Konfidenzintervalle</span></span></a>
+ <span class="menu-text">Schätzen und <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervalle</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -671,14 +738,14 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</span></a>
+  <a href="../../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Multiples Testen</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../../statistik/inferenz/multiples-testen.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Multiples Testen</span></a>
+  <a href="../../statistik/inferenz/power-stichprobenumfang.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -701,19 +768,19 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-eine-stichprobe.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für eine Stichprobe</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für eine Stichprobe</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-zwei-stichproben.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span> für zwei Stichproben</span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span> für zwei Stichproben</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/t-test-gepaart.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Gepaarter <span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer.">t-Test</span></span></a>
+ <span class="menu-text">Gepaarter <span class="glossary-term" data-def="Test auf Unterschiede von Mittelwerten, in den Varianten gegen einen Sollwert, zwischen zwei Gruppen und für verbundene Messungen. Die gepaarte Variante ist bei paarweise erhobenen Daten deutlich trennschärfer." data-topic="Statistik" tabindex="0">t-Test</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -725,7 +792,7 @@ ul.task-list li input[type="checkbox"] {
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../../statistik/tests/chi-quadrat-tests.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus.">Chi-Quadrat-Tests</span></span></a>
+ <span class="menu-text"><span class="glossary-term" data-def="Test für Häufigkeiten kategorialer Merkmale. Vergleicht beobachtete mit den unter der Nullhypothese erwarteten Häufigkeiten und setzt hinreichend grosse erwartete Werte voraus." data-topic="Statistik" tabindex="0">Chi-Quadrat-Tests</span></span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -1098,13 +1165,11 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#kurzsteckbrief" id="toc-kurzsteckbrief" class="nav-link active" data-scroll-target="#kurzsteckbrief">Kurzsteckbrief</a></li>
   <li><a href="#wann-diese-methode-wann-nicht" id="toc-wann-diese-methode-wann-nicht" class="nav-link" data-scroll-target="#wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</a></li>
   <li><a href="#grundidee-und-modell" id="toc-grundidee-und-modell" class="nav-link" data-scroll-target="#grundidee-und-modell">Grundidee und Modell</a></li>
-  <li><a href="#voraussetzungen-und-ihre-prüfung" id="toc-voraussetzungen-und-ihre-prüfung" class="nav-link" data-scroll-target="#voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</a></li>
-  <li><a href="#durchführung-in-r-und-python" id="toc-durchführung-in-r-und-python" class="nav-link" data-scroll-target="#durchführung-in-r-und-python">Durchführung in R und Python</a></li>
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
-  <li><a href="#ergebnisse-interpretieren" id="toc-ergebnisse-interpretieren" class="nav-link" data-scroll-target="#ergebnisse-interpretieren">Ergebnisse interpretieren</a></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
   <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
   <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
@@ -1114,12 +1179,12 @@ ul.task-list li input[type="checkbox"] {
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/index.html">Inferenz</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/power-stichprobenumfang.html"><span class="glossary-term" data-topic="Statistik" tabindex="0" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art.">Power</span> und Stichprobenumfang</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../../statistik/index.html">Statistik</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/index.html">Inferenz</a></li><li class="breadcrumb-item"><a href="../../statistik/inferenz/power-stichprobenumfang.html"><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und Stichprobenumfang</a></li></ol></nav>
 <div class="quarto-title">
 <h1 class="title">Power und Stichprobenumfang</h1>
   <div class="quarto-categories">
-    <div class="quarto-category">Power</div>
-    <div class="quarto-category">Versuchsplanung</div>
+    <div class="quarto-category">Hypothesentests</div>
+    <div class="quarto-category">Effektstärke</div>
     <div class="quarto-category">Interpretation</div>
     <div class="quarto-category">R</div>
     <div class="quarto-category">Python</div>
@@ -1128,7 +1193,7 @@ ul.task-list li input[type="checkbox"] {
 
 <div>
   <div class="description">
-    Power-Analyse vor der Erhebung und die Planung von n.
+    Wie viele Fälle braucht es, und was findet man mit denen, die man hat?
   </div>
 </div>
 
@@ -1146,43 +1211,971 @@ ul.task-list li input[type="checkbox"] {
 
 
 <div class="placeholder-notice">
-<p>Diese Seite ist ein Gerüst. Die Abschnitte stehen, der Inhalt fehlt noch.</p>
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
 <section id="kurzsteckbrief" class="level2">
 <h2 class="anchored" data-anchor-id="kurzsteckbrief">Kurzsteckbrief</h2>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>Fragestellung</td>
+<td>Wie viele Beobachtungen braucht es, um einen Effekt bestimmter Grösse zu finden? Und was lässt sich mit dem vorhandenen Umfang finden?</td>
+</tr>
+<tr class="even">
+<td>Eingang</td>
+<td>drei von vier Grössen: Effektstärke, Stichprobenumfang, Signifikanzniveau, Power</td>
+</tr>
+<tr class="odd">
+<td>Was die Methode liefert</td>
+<td>die vierte Grösse</td>
+</tr>
+<tr class="even">
+<td>R-Funktion</td>
+<td><code>pwr::pwr.t.test()</code>, <code>pwr.anova.test()</code>, <code>pwr.r.test()</code>, <code>pwr.chisq.test()</code></td>
+</tr>
+<tr class="odd">
+<td>Python-Funktion</td>
+<td><code>statsmodels.stats.power.TTestIndPower()</code> mit <code>.power()</code> und <code>.solve_power()</code></td>
+</tr>
+<tr class="even">
+<td>Verwandte Methoden</td>
+<td><a href="../../statistik/inferenz/effektstaerken.html">Effektstärken</a>, <a href="../../statistik/inferenz/hypothesentests-grundlagen.html">Hypothesentests: Grundlagen</a></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="wann-diese-methode-wann-nicht" class="level2">
 <h2 class="anchored" data-anchor-id="wann-diese-methode-wann-nicht">Wann diese Methode, wann nicht</h2>
+<p>Die Powerrechnung gehört <strong>vor</strong> die Datenerhebung. Sie beantwortet die Frage, ob sich der geplante Versuch überhaupt lohnt: Wer einen mittleren Effekt sucht und zwanzig Fälle je Gruppe erheben kann, wird ihn in zwei von drei Fällen verfehlen, und das lässt sich vorher wissen.</p>
+<p>Nach der Datenerhebung ist ihr Nutzen begrenzt und ihre häufigste Anwendung sogar irreführend, siehe Beispiel 3.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Stattdessen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Die Daten liegen bereits vor und waren nicht signifikant</td>
+<td>das <a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html">Konfidenzintervall</a> berichten, nicht die nachträgliche Power</td>
+</tr>
+<tr class="even">
+<td>Der Umfang steht fest und ist nicht änderbar</td>
+<td>ausrechnen, welcher Effekt überhaupt findbar wäre, siehe Beispiel 2</td>
+</tr>
+<tr class="odd">
+<td>Es geht um die Genauigkeit einer Schätzung statt um einen Test</td>
+<td>Umfang über die gewünschte Intervallbreite planen</td>
+</tr>
+<tr class="even">
+<td>Mehrere Tests sind geplant</td>
+<td>die Korrektur für <a href="../../statistik/inferenz/multiples-testen.html">multiples Testen</a> in die Rechnung aufnehmen</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="grundidee-und-modell" class="level2">
 <h2 class="anchored" data-anchor-id="grundidee-und-modell">Grundidee und Modell</h2>
-</section>
-<section id="voraussetzungen-und-ihre-prüfung" class="level2">
-<h2 class="anchored" data-anchor-id="voraussetzungen-und-ihre-prüfung">Voraussetzungen und ihre Prüfung</h2>
-</section>
-<section id="durchführung-in-r-und-python" class="level2">
-<h2 class="anchored" data-anchor-id="durchführung-in-r-und-python">Durchführung in R und Python</h2>
+<p>Vier Grössen hängen zusammen. Legt man drei fest, ergibt sich die vierte:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Übliche Wahl</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Signifikanzniveau <span class="math inline">\(\alpha\)</span></td>
+<td>0.05</td>
+<td>Wahrscheinlichkeit, einen Effekt zu behaupten, den es nicht gibt (Fehler erster Art)</td>
+</tr>
+<tr class="even">
+<td>Power <span class="math inline">\(1-\beta\)</span></td>
+<td>0.80</td>
+<td>Wahrscheinlichkeit, einen vorhandenen Effekt zu finden</td>
+</tr>
+<tr class="odd">
+<td>Effektstärke</td>
+<td>aus Vorwissen oder Relevanzschwelle</td>
+<td>wie gross der gesuchte Effekt ist, siehe <a href="../../statistik/inferenz/effektstaerken.html">Effektstärken</a></td>
+</tr>
+<tr class="even">
+<td>Stichprobenumfang <span class="math inline">\(n\)</span></td>
+<td>das Ergebnis</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> ist das Gegenstück zum <span class="glossary-term" data-def="Ein tatsächlich vorhandener Effekt wird übersehen. Seine Wahrscheinlichkeit hängt von Stichprobenumfang und Effektgrösse ab und wird selten berichtet." data-topic="Statistik" tabindex="0">Fehler zweiter Art</span>: <span class="math inline">\(\beta\)</span> ist die Wahrscheinlichkeit, einen vorhandenen Effekt zu übersehen, und <span class="math inline">\(1-\beta\)</span> die, ihn zu finden.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Effekt existiert</th>
+<th>Effekt existiert nicht</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Test signifikant</strong></td>
+<td>richtig, Wahrscheinlichkeit <span class="math inline">\(1-\beta\)</span></td>
+<td>Fehler erster Art, Wahrscheinlichkeit <span class="math inline">\(\alpha\)</span></td>
+</tr>
+<tr class="even">
+<td><strong>Test nicht signifikant</strong></td>
+<td>Fehler zweiter Art, Wahrscheinlichkeit <span class="math inline">\(\beta\)</span></td>
+<td>richtig</td>
+</tr>
+</tbody>
+</table>
+<p>Die Konvention 0.80 bedeutet, dass ein <span class="glossary-term" data-def="Ein tatsächlich vorhandener Effekt wird übersehen. Seine Wahrscheinlichkeit hängt von Stichprobenumfang und Effektgrösse ab und wird selten berichtet." data-topic="Statistik" tabindex="0">Fehler zweiter Art</span> viermal so oft hingenommen wird wie einer erster Art. Das ist eine Setzung, keine Notwendigkeit: Wo ein übersehener Effekt teuer ist, gehört die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> höher.</p>
+<div class="note-box">
+<p><strong>Die wichtigste Zahl in der Rechnung ist die Effektstärke, und sie ist die unsicherste.</strong> Sie soll den <strong>kleinsten Effekt</strong> bezeichnen, den zu finden sich lohnt, nicht den erwarteten. Wer den erwarteten einsetzt und danebenliegt, erhebt zu wenig; wer aus einer kleinen Vorstudie schätzt, übernimmt deren Überschätzung, siehe <a href="../../statistik/inferenz/effektstaerken.html">Effektstärken</a>, Beispiel 3.</p>
+</div>
 </section>
 <section id="output-lesen" class="level2">
 <h2 class="anchored" data-anchor-id="output-lesen">Output lesen</h2>
-</section>
-<section id="ergebnisse-interpretieren" class="level2">
-<h2 class="anchored" data-anchor-id="ergebnisse-interpretieren">Ergebnisse interpretieren</h2>
+<p>R, <code>pwr.t.test()</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>Was sie sagt</th>
+<th>Falle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>n</code></td>
+<td>Umfang <strong>je Gruppe</strong></td>
+<td>nicht der Gesamtumfang; bei zwei Gruppen verdoppeln</td>
+</tr>
+<tr class="even">
+<td><code>d</code></td>
+<td>angenommene Effektstärke</td>
+<td>die Eingabe, nicht ein Ergebnis</td>
+</tr>
+<tr class="odd">
+<td><code>sig.level</code></td>
+<td><span class="math inline">\(\alpha\)</span></td>
+<td>Voreinstellung 0.05</td>
+</tr>
+<tr class="even">
+<td><code>power</code></td>
+<td>Trefferwahrscheinlichkeit</td>
+<td>Voreinstellung, wenn <code>n</code> gesucht wird, ist keine gesetzt; sie muss angegeben werden</td>
+</tr>
+<tr class="odd">
+<td><code>alternative</code></td>
+<td>ein- oder zweiseitig</td>
+<td>einseitig senkt den nötigen Umfang und verlangt eine vorab festgelegte Richtung</td>
+</tr>
+</tbody>
+</table>
+<p>Python, <code>TTestIndPower</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Aufruf</th>
+<th>Ergebnis</th>
+<th>Unterschied zu R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>.power(effect_size=, nobs1=, alpha=)</code></td>
+<td>Power</td>
+<td>wie <code>pwr.t.test(n=, d=)</code></td>
+</tr>
+<tr class="even">
+<td><code>.solve_power(effect_size=, power=, alpha=)</code></td>
+<td><code>nobs1</code>, also n je Gruppe</td>
+<td>wie <code>pwr.t.test(d=, power=)</code></td>
+</tr>
+<tr class="odd">
+<td><code>ratio=</code></td>
+<td>Verhältnis der Gruppengrössen</td>
+<td>in R über <code>pwr.t2n.test()</code></td>
+</tr>
+</tbody>
+</table>
+<p>Beide geben gebrochene Umfänge aus. Aufgerundet wird immer, nie ab.</p>
 </section>
 <section id="interpretationsfallen" class="level2">
 <h2 class="anchored" data-anchor-id="interpretationsfallen">Interpretationsfallen</h2>
+<ul>
+<li><strong>Nachträglich berechnete <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> ist zirkulär.</strong> Sie wird aus dem beobachteten Effekt berechnet und ist deshalb eine Umrechnung des <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Werts</span>, siehe Beispiel 3.</li>
+<li><strong><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> gilt für den angenommenen Effekt.</strong> Ist der wahre Effekt kleiner, ist die tatsächliche <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> kleiner.</li>
+<li><strong><code>n</code> ist der Umfang je Gruppe.</strong> Der häufigste Ablesefehler.</li>
+<li><strong>Ungleiche Gruppen kosten <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span>.</strong> Bei festem Gesamtumfang ist die Aufteilung 50 zu 50 die beste; 80 zu 20 verliert spürbar.</li>
+<li><strong>Ausfälle einplanen.</strong> Wer 64 je Gruppe braucht und mit 10 Prozent Ausfall rechnet, erhebt 72.</li>
+<li><strong>Mehrere Tests senken die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span>.</strong> Eine Bonferroni-Korrektur auf 0.01 statt 0.05 verlangt rund 50 Prozent mehr Fälle.</li>
+<li><strong><span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> ersetzt keine Voraussetzungsprüfung.</strong> Sie unterstellt, dass das geplante Verfahren anwendbar ist.</li>
+</ul>
 </section>
 <section id="ergebnis-berichten" class="level2">
 <h2 class="anchored" data-anchor-id="ergebnis-berichten">Ergebnis berichten</h2>
+<blockquote class="blockquote">
+<p>Der Versuch wurde auf einen Effekt von [Effektstärke] ausgelegt, der als kleinste praktisch bedeutsame Grösse festgelegt wurde. Bei <span class="math inline">\(\alpha\)</span> = 0.05 zweiseitig und einer <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> von [Wert] ergibt sich ein Umfang von [n] je Gruppe; erhoben wurden [tatsächlich] je Gruppe.</p>
+</blockquote>
+<p>Genannt werden: die angenommene Effektstärke <strong>und ihre Herkunft</strong>, <span class="math inline">\(\alpha\)</span>, die angestrebte <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span>, das Verfahren, und ob ein- oder zweiseitig geprüft wird. Die Herkunft der Effektstärke ist der Punkt, an dem eine Powerrechnung steht oder fällt.</p>
 </section>
 <section id="abgrenzung-zu-verwandten-methoden" class="level2">
 <h2 class="anchored" data-anchor-id="abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Methode</th>
+<th>Wann diese statt der Powerrechnung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="../../statistik/inferenz/effektstaerken.html">Effektstärken</a></td>
+<td>die Grösse eines gefundenen Effekts beschreiben</td>
+</tr>
+<tr class="even">
+<td><a href="../../statistik/inferenz/schaetzen-konfidenzintervalle.html">Schätzen und Konfidenzintervalle</a></td>
+<td>nach der Erhebung: was ist mit den Daten vereinbar?</td>
+</tr>
+<tr class="odd">
+<td><a href="../../statistik/inferenz/multiples-testen.html">Multiples Testen</a></td>
+<td>mehrere Tests sind geplant</td>
+</tr>
+<tr class="even">
+<td>Äquivalenztest</td>
+<td>die Frage lautet, ob ein Effekt klein genug ist</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Beispiel 1: Wie viele Fälle brauche ich?</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Beispiel 2: Was finde ich mit dem Umfang, den ich habe?</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Beispiel 3: Warum nachträgliche <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> nichts sagt</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-4" role="tab" aria-controls="tabset-5-4" aria-selected="false" href="">Beispiel 4: Was den nötigen Umfang sonst noch treibt</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>Ein Vergleich zweier Gruppen ist geplant. Als kleinster praktisch bedeutsamer Unterschied wurde ein mittlerer Effekt festgelegt, also <span class="math inline">\(d = 0.5\)</span>. Angestrebt wird eine <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> von 0.80 bei <span class="math inline">\(\alpha\)</span> = 0.05 zweiseitig.</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pwr.t.test</span>(<span class="at">d =</span> <span class="fl">0.5</span>, <span class="at">power =</span> <span class="fl">0.80</span>, <span class="at">sig.level =</span> <span class="fl">0.05</span>,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">type =</span> <span class="st">"two.sample"</span>, <span class="at">alternative =</span> <span class="st">"two.sided"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+     Two-sample t test power calculation 
+
+              n = 63.76561
+              d = 0.5
+      sig.level = 0.05
+          power = 0.8
+    alternative = two.sided
+
+NOTE: n is number in *each* group</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Umfang fuer verschiedene Effektstaerken</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (d <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.3</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>, <span class="fl">1.0</span>)) {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">pwr.t.test</span>(<span class="at">d =</span> d, <span class="at">power =</span> <span class="fl">0.80</span>, <span class="at">sig.level =</span> <span class="fl">0.05</span>)<span class="sc">$</span>n</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"d = %.1f: %6.2f je Gruppe, aufgerundet %3d, insgesamt %3d</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>              d, n, <span class="fu">ceiling</span>(n), <span class="dv">2</span> <span class="sc">*</span> <span class="fu">ceiling</span>(n)))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>d = 0.2: 393.41 je Gruppe, aufgerundet 394, insgesamt 788
+d = 0.3: 175.38 je Gruppe, aufgerundet 176, insgesamt 352
+d = 0.5:  63.77 je Gruppe, aufgerundet  64, insgesamt 128
+d = 0.8:  25.52 je Gruppe, aufgerundet  26, insgesamt  52
+d = 1.0:  16.71 je Gruppe, aufgerundet  17, insgesamt  34</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>n_noetig <span class="op">=</span> analyse.solve_power(effect_size<span class="op">=</span><span class="fl">0.5</span>, power<span class="op">=</span><span class="fl">0.80</span>, alpha<span class="op">=</span><span class="fl">0.05</span>, ratio<span class="op">=</span><span class="fl">1.0</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"n je Gruppe für d = 0.5:"</span>, <span class="bu">round</span>(n_noetig, <span class="dv">3</span>),</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>      <span class="st">"-&gt; aufgerundet"</span>, <span class="bu">int</span>(np.ceil(n_noetig)))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>n je Gruppe für d = 0.5: 63.766 -&gt; aufgerundet 64</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> d <span class="kw">in</span> (<span class="fl">0.2</span>, <span class="fl">0.3</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>, <span class="fl">1.0</span>):</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    n <span class="op">=</span> analyse.solve_power(effect_size<span class="op">=</span>d, power<span class="op">=</span><span class="fl">0.80</span>, alpha<span class="op">=</span><span class="fl">0.05</span>, ratio<span class="op">=</span><span class="fl">1.0</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"d = </span><span class="sc">{</span>d<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>n<span class="sc">:6.2f}</span><span class="ss"> je Gruppe, aufgerundet </span><span class="sc">{</span><span class="bu">int</span>(np.ceil(n))<span class="sc">:3d}</span><span class="ss">, "</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"insgesamt </span><span class="sc">{</span><span class="dv">2</span><span class="op">*</span><span class="bu">int</span>(np.ceil(n))<span class="sc">:3d}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>d = 0.2: 393.41 je Gruppe, aufgerundet 394, insgesamt 788
+d = 0.3: 175.38 je Gruppe, aufgerundet 176, insgesamt 352
+d = 0.5:  63.77 je Gruppe, aufgerundet  64, insgesamt 128
+d = 0.8:  25.52 je Gruppe, aufgerundet  26, insgesamt  52
+d = 1.0:  16.71 je Gruppe, aufgerundet  17, insgesamt  34</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Effektstärke</th>
+<th>n je Gruppe (genau)</th>
+<th>aufgerundet</th>
+<th>insgesamt</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.2 (klein)</td>
+<td>393.41</td>
+<td>394</td>
+<td>788</td>
+</tr>
+<tr class="even">
+<td>0.3</td>
+<td>175.39</td>
+<td>176</td>
+<td>352</td>
+</tr>
+<tr class="odd">
+<td>0.5 (mittel)</td>
+<td>63.77</td>
+<td>64</td>
+<td>128</td>
+</tr>
+<tr class="even">
+<td>0.8 (gross)</td>
+<td>25.53</td>
+<td>26</td>
+<td>52</td>
+</tr>
+<tr class="odd">
+<td>1.0</td>
+<td>16.72</td>
+<td>17</td>
+<td>34</td>
+</tr>
+</tbody>
+</table>
+<p>Die entscheidende Beobachtung: <strong>Der Umfang wächst mit dem Quadrat des Kehrwerts der Effektstärke.</strong> Ein halb so grosser Effekt braucht viermal so viele Fälle. Von <span class="math inline">\(d = 0.8\)</span> auf <span class="math inline">\(d = 0.2\)</span>, also ein Viertel der Effektstärke, steigt der Umfang von 26 auf 394 je Gruppe, also auf das Fünfzehnfache.</p>
+<p>Das ist der Grund, warum kleine Effekte in der Praxis so schwer nachzuweisen sind, und warum Studien, die kleine Effekte mit kleinen Stichproben finden, skeptisch zu betrachten sind.</p>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Der Versuch wurde auf einen Effekt von <span class="math inline">\(d\)</span> = 0.5 ausgelegt, der als kleinste praktisch bedeutsame Grösse festgelegt wurde. Bei <span class="math inline">\(\alpha\)</span> = 0.05 zweiseitig und einer angestrebten <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> von 0.80 ergibt sich ein Umfang von 64 Fällen je Gruppe, also 128 insgesamt. Unter Einplanung von 10 Prozent Ausfällen werden 72 je Gruppe erhoben.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Der Umfang steht fest: zwanzig Fälle je Gruppe, mehr ist nicht zu bekommen. Die Frage dreht sich um: Welche Effekte lassen sich damit überhaupt finden?</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>umfaenge <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">5</span>, <span class="dv">200</span>, <span class="at">by =</span> <span class="dv">5</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="cn">NULL</span>, <span class="at">xlim =</span> <span class="fu">range</span>(umfaenge), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>),</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"n je Gruppe"</span>, <span class="at">ylab =</span> <span class="st">"Power"</span>, <span class="at">main =</span> <span class="st">"Power-Kurven"</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="fl">0.8</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"firebrick"</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>farben <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"steelblue"</span>, <span class="st">"darkorange"</span>, <span class="st">"seagreen"</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(<span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>))) {</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>)[i]</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  werte <span class="ot">&lt;-</span> <span class="fu">sapply</span>(umfaenge, <span class="cf">function</span>(n) <span class="fu">pwr.t.test</span>(<span class="at">n =</span> n, <span class="at">d =</span> d,</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>                                                   <span class="at">sig.level =</span> <span class="fl">0.05</span>)<span class="sc">$</span>power)</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">lines</span>(umfaenge, werte, <span class="at">col =</span> farben[i], <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">"bottomright"</span>, <span class="fu">paste</span>(<span class="st">"d ="</span>, <span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>)), <span class="at">col =</span> farben,</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">lwd =</span> <span class="dv">2</span>, <span class="at">bty =</span> <span class="st">"n"</span>)</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (d <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>, <span class="fl">1.2</span>)) {</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"d = %.1f: Power bei n = 20 je Gruppe = %.4f</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>              d, <span class="fu">pwr.t.test</span>(<span class="at">n =</span> <span class="dv">20</span>, <span class="at">d =</span> d, <span class="at">sig.level =</span> <span class="fl">0.05</span>)<span class="sc">$</span>power))</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>d = 0.2: Power bei n = 20 je Gruppe = 0.0946
+d = 0.5: Power bei n = 20 je Gruppe = 0.3379
+d = 0.8: Power bei n = 20 je Gruppe = 0.6934
+d = 1.2: Power bei n = 20 je Gruppe = 0.9588</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Welcher Effekt ist mit n = 20 bei Power 0.80 gerade noch findbar?</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">pwr.t.test</span>(<span class="at">n =</span> <span class="dv">20</span>, <span class="at">power =</span> <span class="fl">0.80</span>, <span class="at">sig.level =</span> <span class="fl">0.05</span>)<span class="sc">$</span>d</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9091587</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-b2-pow-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-pow-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="power-stichprobenumfang_files/figure-html/fig-b2-pow-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Beispiel 2: Power in Abhängigkeit vom Umfang, für drei Effektstärken."><img src="power-stichprobenumfang_files/figure-html/fig-b2-pow-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-pow-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Beispiel 2: Power in Abhängigkeit vom Umfang, für drei Effektstärken.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>umfaenge <span class="op">=</span> np.arange(<span class="dv">5</span>, <span class="dv">205</span>, <span class="dv">5</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>fig, achse <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.6</span>))</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>achse.axhline(<span class="fl">0.8</span>, linestyle<span class="op">=</span><span class="st">"--"</span>, color<span class="op">=</span><span class="st">"firebrick"</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> d, farbe <span class="kw">in</span> <span class="bu">zip</span>((<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>), (<span class="st">"steelblue"</span>, <span class="st">"darkorange"</span>, <span class="st">"seagreen"</span>)):</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    werte <span class="op">=</span> [analyse.power(effect_size<span class="op">=</span>d, nobs1<span class="op">=</span>n, alpha<span class="op">=</span><span class="fl">0.05</span>) <span class="cf">for</span> n <span class="kw">in</span> umfaenge]</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    achse.plot(umfaenge, werte, color<span class="op">=</span>farbe, linewidth<span class="op">=</span><span class="dv">2</span>, label<span class="op">=</span><span class="ss">f"d = </span><span class="sc">{</span>d<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>achse.set_xlabel(<span class="st">"n je Gruppe"</span>)</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>achse.set_ylabel(<span class="st">"Power"</span>)</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>achse.set_ylim(<span class="dv">0</span>, <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>(0.0, 1.0)</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>achse.set_title(<span class="st">"Power-Kurven"</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>achse.legend(frameon<span class="op">=</span><span class="va">False</span>, loc<span class="op">=</span><span class="st">"lower right"</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b2-pow-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-pow-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="power-stichprobenumfang_files/figure-html/fig-b2-pow-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Beispiel 2: dieselben Kurven in Python."><img src="power-stichprobenumfang_files/figure-html/fig-b2-pow-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-pow-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Beispiel 2: dieselben Kurven in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> d <span class="kw">in</span> (<span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">0.8</span>, <span class="fl">1.2</span>):</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"d = </span><span class="sc">{</span>d<span class="sc">}</span><span class="ss">: Power bei n = 20 je Gruppe = "</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"</span><span class="sc">{</span>analyse<span class="sc">.</span>power(effect_size<span class="op">=</span>d, nobs1<span class="op">=</span><span class="dv">20</span>, alpha<span class="op">=</span><span class="fl">0.05</span>)<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>d = 0.2: Power bei n = 20 je Gruppe = 0.0946
+d = 0.5: Power bei n = 20 je Gruppe = 0.3379
+d = 0.8: Power bei n = 20 je Gruppe = 0.6934
+d = 1.2: Power bei n = 20 je Gruppe = 0.9588</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>findbar <span class="op">=</span> analyse.solve_power(nobs1<span class="op">=</span><span class="dv">20</span>, power<span class="op">=</span><span class="fl">0.80</span>, alpha<span class="op">=</span><span class="fl">0.05</span>, ratio<span class="op">=</span><span class="fl">1.0</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Mit n = 20 bei Power 0.80 findbar ab d ="</span>, <span class="bu">round</span>(findbar, <span class="dv">4</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Mit n = 20 bei Power 0.80 findbar ab d = 0.9091</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Effektstärke</th>
+<th>Power bei n = 20 je Gruppe</th>
+<th>Wie das zu lesen ist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.2</td>
+<td>0.095</td>
+<td>In neun von zehn Versuchen bleibt ein kleiner Effekt unentdeckt. Die Power liegt kaum über dem Signifikanzniveau von 0.05, also kaum über der Rate falscher Alarme.</td>
+</tr>
+<tr class="even">
+<td>0.5</td>
+<td>0.338</td>
+<td>Ein mittlerer Effekt wird in zwei von drei Versuchen übersehen.</td>
+</tr>
+<tr class="odd">
+<td>0.8</td>
+<td>0.693</td>
+<td>Auch ein grosser Effekt bleibt in knapp einem Drittel der Fälle unentdeckt.</td>
+</tr>
+<tr class="even">
+<td>1.2</td>
+<td>0.959</td>
+<td>Erst hier wird der Versuch verlässlich.</td>
+</tr>
+</tbody>
+</table>
+<p>Die Kurven zeigen dasselbe grafisch: Für <span class="math inline">\(d = 0.8\)</span> ist die Schwelle von 0.80 bei rund 26 Fällen je Gruppe erreicht, für <span class="math inline">\(d = 0.5\)</span> erst bei 64, und für <span class="math inline">\(d = 0.2\)</span> liegt die Kurve über den ganzen dargestellten Bereich unter 0.55.</p>
+<div class="note-box">
+<p><strong>Die nützlichste Rechnung bei festem Umfang</strong> ist die Umkehrung: Welcher Effekt wäre mit dieser Fallzahl gerade noch findbar? Bei n = 20 je Gruppe und <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> 0.80 liegt diese Grenze bei <span class="math inline">\(d\)</span> = 0.91.</p>
+<p>Das ist eine Zahl, mit der sich vorab argumentieren lässt: Wenn der erwartete Effekt deutlich darunter liegt, ist der Versuch in dieser Form nicht aussagekräftig, und die ehrliche Konsequenz ist entweder mehr Daten, ein präziseres Design (etwa gepaart statt ungepaart) oder der Verzicht.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Bei einem festen Umfang von 20 Fällen je Gruppe beträgt die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> für einen mittleren Effekt (<span class="math inline">\(d\)</span> = 0.5) nur 0.34. Verlässlich findbar (<span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> 0.80) sind erst Effekte ab <span class="math inline">\(d\)</span> = 0.91. Der Versuch ist damit nicht geeignet, einen mittleren Effekt nachzuweisen; ein nicht signifikantes Ergebnis wäre nicht als Beleg für dessen Fehlen zu lesen.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>Ein Versuch ist gelaufen und nicht <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">signifikant</span> geworden. Eine verbreitete Reaktion ist, die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> <strong>nachträglich</strong> aus dem beobachteten Effekt zu berechnen und zu berichten. Was kommt dabei heraus?</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fuer eine Reihe beobachteter Effekte bei festem n: p-Wert und nachtraegliche</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Power nebeneinander</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">20</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>beobachtet <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.10</span>, <span class="fl">0.30</span>, <span class="fl">0.45</span>, <span class="fl">0.64</span>, <span class="fl">0.90</span>)</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>tabelle <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">d_beobachtet =</span> beobachtet,</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">t =</span> beobachtet <span class="sc">*</span> <span class="fu">sqrt</span>(n <span class="sc">/</span> <span class="dv">2</span>)</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>tabelle<span class="sc">$</span>p <span class="ot">&lt;-</span> <span class="dv">2</span> <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> <span class="fu">pt</span>(tabelle<span class="sc">$</span>t, <span class="dv">2</span> <span class="sc">*</span> n <span class="sc">-</span> <span class="dv">2</span>))</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>tabelle<span class="sc">$</span>power_nachtraeglich <span class="ot">&lt;-</span> <span class="fu">sapply</span>(beobachtet, <span class="cf">function</span>(d)</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pwr.t.test</span>(<span class="at">n =</span> n, <span class="at">d =</span> d, <span class="at">sig.level =</span> <span class="fl">0.05</span>)<span class="sc">$</span>power)</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(tabelle, <span class="dv">4</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  d_beobachtet      t      p power_nachtraeglich
+1         0.10 0.3162 0.7536              0.0610
+2         0.30 0.9487 0.3488              0.1523
+3         0.45 1.4230 0.1629              0.2838
+4         0.64 2.0239 0.0501              0.5051
+5         0.90 2.8460 0.0071              0.7920</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>n <span class="op">=</span> <span class="dv">20</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>beobachtet <span class="op">=</span> np.array([<span class="fl">0.10</span>, <span class="fl">0.30</span>, <span class="fl">0.45</span>, <span class="fl">0.64</span>, <span class="fl">0.90</span>])</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> beobachtet <span class="op">*</span> np.sqrt(n <span class="op">/</span> <span class="dv">2</span>)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>p <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> (<span class="dv">1</span> <span class="op">-</span> stats.t.cdf(t, <span class="dv">2</span> <span class="op">*</span> n <span class="op">-</span> <span class="dv">2</span>))</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>power_nach <span class="op">=</span> [analyse.power(effect_size<span class="op">=</span>d, nobs1<span class="op">=</span>n, alpha<span class="op">=</span><span class="fl">0.05</span>)</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>              <span class="cf">for</span> d <span class="kw">in</span> beobachtet]</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.DataFrame({<span class="st">"d_beobachtet"</span>: beobachtet, <span class="st">"t"</span>: t.<span class="bu">round</span>(<span class="dv">4</span>),</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"p"</span>: p.<span class="bu">round</span>(<span class="dv">4</span>),</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"power_nachtraeglich"</span>: np.<span class="bu">round</span>(power_nach, <span class="dv">4</span>)}))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   d_beobachtet       t       p  power_nachtraeglich
+0          0.10  0.3162  0.7536               0.0610
+1          0.30  0.9487  0.3488               0.1523
+2          0.45  1.4230  0.1629               0.2838
+3          0.64  2.0239  0.0501               0.5051
+4          0.90  2.8460  0.0071               0.7920</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>beobachtetes <span class="math inline">\(d\)</span></th>
+<th>t</th>
+<th>p</th>
+<th>nachträgliche Power</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.10</td>
+<td>0.316</td>
+<td>0.754</td>
+<td>0.061</td>
+</tr>
+<tr class="even">
+<td>0.30</td>
+<td>0.949</td>
+<td>0.349</td>
+<td>0.152</td>
+</tr>
+<tr class="odd">
+<td>0.45</td>
+<td>1.423</td>
+<td>0.163</td>
+<td>0.284</td>
+</tr>
+<tr class="even">
+<td>0.64</td>
+<td>2.024</td>
+<td>0.050</td>
+<td>0.505</td>
+</tr>
+<tr class="odd">
+<td>0.90</td>
+<td>2.846</td>
+<td>0.007</td>
+<td>0.792</td>
+</tr>
+</tbody>
+</table>
+<p>Die beiden letzten Spalten sind <strong>dieselbe Information in zwei Schreibweisen</strong>. Ein kleiner <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> geht immer mit hoher nachträglicher <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> einher, ein grosser immer mit niedriger, und der Zusammenhang ist bei festem n eindeutig. Die Zeile mit p = 0.05 hat eine <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> von genau 0.50 — das gilt allgemein und ist kein Zufall dieses Beispiels: Liegt der beobachtete Effekt genau auf der Signifikanzschwelle, ergibt die nachträgliche Rechnung immer eine <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> um 0.5.</p>
+<div class="note-box">
+<p><strong>Warum die Aussage “die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> war zu niedrig, deshalb nicht <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">signifikant</span>” zirkulär ist.</strong> Sie berechnet die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> aus genau dem Effekt, der beobachtet wurde, und stellt dann fest, dass ein kleiner beobachteter Effekt eine kleine <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> ergibt. Das ist keine neue Erkenntnis, sondern eine Umformulierung von “der beobachtete Effekt war klein”.</p>
+<p><strong>Was stattdessen zu berichten ist:</strong> das <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervall</span>. Es beantwortet die Frage, die tatsächlich interessiert, nämlich welche Effektgrössen mit den Daten noch vereinbar sind. Ein Intervall von -0.2 bis 1.4 sagt “wir wissen es nicht”, eines von -0.1 bis 0.15 sagt “ein bedeutsamer Effekt ist ausgeschlossen”. Der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> von 0.35 sagt in beiden Fällen dasselbe.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<p>Eine Powerrechnung ist nach der Erhebung nur in einer Form sinnvoll: mit einer <strong>vorab</strong> oder <span class="glossary-term" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre." data-topic="Statistik" tabindex="0">unabhängig</span> festgelegten Effektstärke, um zu zeigen, dass der Versuch für diese Grösse ausgelegt war. Diese Rechnung hängt nicht vom Ergebnis ab und ist deshalb nicht zirkulär.</p>
+<blockquote class="blockquote">
+<p>Der Versuch war auf <span class="math inline">\(d\)</span> = 0.5 ausgelegt (<span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> 0.80 bei 64 je Gruppe); erhoben wurden 20 je Gruppe, was die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> auf 0.34 senkt. Das Ergebnis war nicht <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">signifikant</span> (p = 0.35); das 95-Prozent-Konfidenzintervall der standardisierten Differenz reicht von -0.32 bis 0.92 und lässt damit Effekte bis in den grossen Bereich zu.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-5-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>Neben der Effektstärke gibt es drei Stellschrauben, die den Umfang deutlich verändern und in der Planung oft übersehen werden: das <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">Signifikanzniveau</span>, die Aufteilung auf die Gruppen und die Wahl zwischen gepaartem und ungepaartem Design.</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Wirkung des Signifikanzniveaus (d = 0.5, Power 0.80):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Wirkung des Signifikanzniveaus (d = 0.5, Power 0.80):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (a <span class="cf">in</span> <span class="fu">c</span>(<span class="fl">0.10</span>, <span class="fl">0.05</span>, <span class="fl">0.01</span>, <span class="fl">0.001</span>)) {</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">pwr.t.test</span>(<span class="at">d =</span> <span class="fl">0.5</span>, <span class="at">power =</span> <span class="fl">0.80</span>, <span class="at">sig.level =</span> a)<span class="sc">$</span>n</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"  alpha = %.3f: %6.2f je Gruppe</span><span class="sc">\n</span><span class="st">"</span>, a, n))</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  alpha = 0.100:  50.15 je Gruppe
+  alpha = 0.050:  63.77 je Gruppe
+  alpha = 0.010:  95.10 je Gruppe
+  alpha = 0.001: 139.31 je Gruppe</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Wirkung der Aufteilung bei rund 128 Faellen insgesamt (d = 0.5):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Wirkung der Aufteilung bei rund 128 Faellen insgesamt (d = 0.5):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (paar <span class="cf">in</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="dv">64</span>, <span class="dv">64</span>), <span class="fu">c</span>(<span class="dv">80</span>, <span class="dv">48</span>), <span class="fu">c</span>(<span class="dv">96</span>, <span class="dv">32</span>), <span class="fu">c</span>(<span class="dv">110</span>, <span class="dv">18</span>))) {</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">pwr.t2n.test</span>(<span class="at">n1 =</span> paar[<span class="dv">1</span>], <span class="at">n2 =</span> paar[<span class="dv">2</span>], <span class="at">d =</span> <span class="fl">0.5</span>, <span class="at">sig.level =</span> <span class="fl">0.05</span>)<span class="sc">$</span>power</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"  %3d zu %3d: Power = %.4f</span><span class="sc">\n</span><span class="st">"</span>, paar[<span class="dv">1</span>], paar[<span class="dv">2</span>], p))</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   64 zu  64: Power = 0.8015
+   80 zu  48: Power = 0.7757
+   96 zu  32: Power = 0.6811
+  110 zu  18: Power = 0.4967</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Einseitig statt zweiseitig (d = 0.5, Power 0.80):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Einseitig statt zweiseitig (d = 0.5, Power 0.80):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"  zweiseitig: %6.2f  einseitig: %6.2f</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>            <span class="fu">pwr.t.test</span>(<span class="at">d =</span> <span class="fl">0.5</span>, <span class="at">power =</span> <span class="fl">0.80</span>, <span class="at">alternative =</span> <span class="st">"two.sided"</span>)<span class="sc">$</span>n,</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>            <span class="fu">pwr.t.test</span>(<span class="at">d =</span> <span class="fl">0.5</span>, <span class="at">power =</span> <span class="fl">0.80</span>, <span class="at">alternative =</span> <span class="st">"greater"</span>)<span class="sc">$</span>n))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  zweiseitig:  63.77  einseitig:  50.15</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Wirkung des Signifikanzniveaus (d = 0.5, Power 0.80):"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Wirkung des Signifikanzniveaus (d = 0.5, Power 0.80):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> a <span class="kw">in</span> (<span class="fl">0.10</span>, <span class="fl">0.05</span>, <span class="fl">0.01</span>, <span class="fl">0.001</span>):</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>    n <span class="op">=</span> analyse.solve_power(effect_size<span class="op">=</span><span class="fl">0.5</span>, power<span class="op">=</span><span class="fl">0.80</span>, alpha<span class="op">=</span>a, ratio<span class="op">=</span><span class="fl">1.0</span>)</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  alpha = </span><span class="sc">{</span>a<span class="sc">:.3f}</span><span class="ss">: </span><span class="sc">{</span>n<span class="sc">:6.2f}</span><span class="ss"> je Gruppe"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  alpha = 0.100:  50.15 je Gruppe
+  alpha = 0.050:  63.77 je Gruppe
+  alpha = 0.010:  95.10 je Gruppe
+  alpha = 0.001: 139.31 je Gruppe</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Wirkung der Aufteilung bei rund 128 Fällen insgesamt (d = 0.5):"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Wirkung der Aufteilung bei rund 128 Fällen insgesamt (d = 0.5):</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> n1, n2 <span class="kw">in</span> [(<span class="dv">64</span>, <span class="dv">64</span>), (<span class="dv">80</span>, <span class="dv">48</span>), (<span class="dv">96</span>, <span class="dv">32</span>), (<span class="dv">110</span>, <span class="dv">18</span>)]:</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>    p <span class="op">=</span> analyse.power(effect_size<span class="op">=</span><span class="fl">0.5</span>, nobs1<span class="op">=</span>n1, alpha<span class="op">=</span><span class="fl">0.05</span>, ratio<span class="op">=</span>n2 <span class="op">/</span> n1)</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"  </span><span class="sc">{</span>n1<span class="sc">:3d}</span><span class="ss"> zu </span><span class="sc">{</span>n2<span class="sc">:3d}</span><span class="ss">: Power = </span><span class="sc">{</span>p<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   64 zu  64: Power = 0.8015
+   80 zu  48: Power = 0.7757
+   96 zu  32: Power = 0.6811
+  110 zu  18: Power = 0.4967</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<p><strong><span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">Signifikanzniveau</span>.</strong> Je strenger, desto mehr Fälle:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th><span class="math inline">\(\alpha\)</span></th>
+<th>n je Gruppe</th>
+<th>Bemerkung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.10</td>
+<td>50.15</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>0.05</td>
+<td>63.77</td>
+<td>die Voreinstellung</td>
+</tr>
+<tr class="odd">
+<td>0.01</td>
+<td>95.10</td>
+<td>rund 50 Prozent mehr als bei 0.05</td>
+</tr>
+<tr class="even">
+<td>0.001</td>
+<td>139.31</td>
+<td>mehr als das Doppelte</td>
+</tr>
+</tbody>
+</table>
+<p>Das ist der versteckte Preis einer Korrektur für <a href="../../statistik/inferenz/multiples-testen.html">multiples Testen</a>: Wer fünf Tests plant und nach Bonferroni auf <span class="math inline">\(\alpha\)</span> = 0.01 geht, braucht rund die Hälfte mehr Fälle je Test, um dieselbe <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> zu halten.</p>
+<p><strong>Aufteilung auf die Gruppen.</strong> Bei festem Gesamtumfang:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Aufteilung</th>
+<th>Power</th>
+<th>Bemerkung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>64 zu 64</td>
+<td>0.801</td>
+<td>das Optimum</td>
+</tr>
+<tr class="even">
+<td>80 zu 48</td>
+<td>0.776</td>
+<td>schon spürbar weniger</td>
+</tr>
+<tr class="odd">
+<td>96 zu 32</td>
+<td>0.681</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>110 zu 18</td>
+<td>0.497</td>
+<td>statt 0.80 nur noch 0.50, bei gleichem Gesamtumfang</td>
+</tr>
+</tbody>
+</table>
+<p>Die kleinere Gruppe bestimmt die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> fast allein. Eine Kontrollgruppe von 18 Fällen lässt sich nicht dadurch ausgleichen, dass die Behandlungsgruppe auf 110 aufgestockt wird.</p>
+<p><strong>Ein- statt zweiseitig</strong> senkt den Umfang von 63.77 auf rund 50.15 je Gruppe, also um gut ein Fünftel. Der Preis ist, dass die Richtung vorab festgelegt sein muss und ein Effekt in die andere Richtung nicht nachweisbar wäre, selbst wenn er deutlich ausfiele.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<p>Die grösste Reserve steckt aber nicht in diesen Stellschrauben, sondern im Design. Ein <a href="../../statistik/tests/t-test-gepaart.html">gepaarter Versuch</a> misst dieselbe Person zweimal und entfernt damit die Unterschiede zwischen den Personen aus der Fehlerstreuung. Bei einer Korrelation von 0.8 zwischen den beiden Messungen sinkt der nötige Umfang auf einen Bruchteil.</p>
+<p>Deshalb lohnt sich die Frage nach dem Design vor der Frage nach dem Umfang: Fünfzehn Personen, zweimal gemessen, schlagen oft hundert Personen, einmal gemessen.</p>
+<blockquote class="blockquote">
+<p>Geplant war ein Umfang von 64 je Gruppe für <span class="math inline">\(d\)</span> = 0.5 bei <span class="math inline">\(\alpha\)</span> = 0.05 und <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> 0.80. Wegen der geplanten fünf Vergleiche wurde <span class="math inline">\(\alpha\)</span> nach Bonferroni auf 0.01 gesenkt, was den Umfang auf 95 je Gruppe erhöht. Die Gruppen werden gleich gross besetzt, da eine ungleiche Aufteilung die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> spürbar senkt.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
 </section>
 <section id="verständnisfragen" class="level2">
 <h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Versuch mit 20 Fällen je Gruppe ist nicht <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">signifikant</span> geworden. Die nachträglich berechnete <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> beträgt 0.28. Was folgt daraus?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Nichts, was der <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> nicht schon gesagt hätte
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die nachträgliche <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> wird aus dem beobachteten Effekt berechnet und ist bei festem n eine eindeutige Umrechnung des <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Werts</span>. Aussagekräftig ist stattdessen das <span class="glossary-term" data-def="Spanne, die bei wiederholter Anwendung des Verfahrens in einem festgelegten Anteil der Fälle den wahren Parameter überdeckt. Die Aussage gilt dem Verfahren, nicht dem einzelnen berechneten Intervall." data-topic="Statistik" tabindex="0">Konfidenzintervall</span>.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Der Versuch war zu klein, deshalb war er nicht <span class="glossary-term" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik" tabindex="0">signifikant</span>
+</div>
+<div class="quiz__erklaerung">
+Der Satz klingt plausibel und ist zirkulär: Er begründet den grossen <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> mit einer Zahl, die aus demselben <span class="glossary-term" data-def="Wahrscheinlichkeit, unter der Nullhypothese ein mindestens so extremes Ergebnis zu erhalten. Nicht die Wahrscheinlichkeit, dass die Nullhypothese zutrifft, und kein Mass für die Grösse eines Effekts." data-topic="Statistik" tabindex="0">p-Wert</span> stammt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Es gibt keinen Effekt
+</div>
+<div class="quiz__erklaerung">
+Ein nicht signifikantes Ergebnis belegt nie das Fehlen eines Effekts.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Der Umfang für <span class="math inline">\(d\)</span> = 0.5 beträgt 64 je Gruppe. Wie viele braucht es für <span class="math inline">\(d\)</span> = 0.25?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Rund viermal so viele, also etwa 250 je Gruppe
+</div>
+<div class="quiz__erklaerung">
+Richtig. Der Umfang wächst mit dem Quadrat des Kehrwerts der Effektstärke. Halbierte Effektstärke bedeutet vervierfachten Umfang.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Doppelt so viele, also 128
+</div>
+<div class="quiz__erklaerung">
+Der Zusammenhang ist quadratisch, nicht linear.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Dasselbe, der Umfang hängt nur an <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> und alpha
+</div>
+<div class="quiz__erklaerung">
+Die Effektstärke ist die Grösse, die den Umfang am stärksten bestimmt.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Bei 128 Fällen insgesamt: Welche Aufteilung liefert die höchste <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span>?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+64 zu 64
+</div>
+<div class="quiz__erklaerung">
+Richtig. Bei festem Gesamtumfang ist die gleiche Aufteilung optimal. Die kleinere Gruppe bestimmt die <span class="glossary-term" data-def="Wahrscheinlichkeit, einen vorhandenen Effekt auch zu finden. Sie wächst mit Stichprobenumfang und Effektgrösse und ist das Gegenstück zum Fehler zweiter Art." data-topic="Statistik" tabindex="0">Power</span> fast allein; 110 zu 18 erreicht nur 0.50 statt 0.80.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+96 zu 32, weil die grössere Gruppe genauer geschätzt wird
+</div>
+<div class="quiz__erklaerung">
+Die Genauigkeit der grösseren Gruppe nützt wenig, solange die kleinere die Unsicherheit bestimmt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Die Aufteilung spielt keine Rolle, nur die Summe zählt
+</div>
+<div class="quiz__erklaerung">
+Sie spielt eine erhebliche Rolle, wie die Tabelle in Beispiel 4 zeigt.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Welche Effektstärke gehört in eine Powerrechnung vor der Erhebung?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Der kleinste Effekt, dessen Nachweis sich lohnt
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die Powerrechnung soll sicherstellen, dass ein Effekt dieser Grösse gefunden wird. Wer den erwarteten Effekt einsetzt und ihn überschätzt, plant zu klein.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Der in einer Vorstudie beobachtete Effekt
+</div>
+<div class="quiz__erklaerung">
+Effektstärken aus kleinen Vorstudien sind systematisch überschätzt und führen zu zu kleinen Umfängen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Der grösste plausible Effekt
+</div>
+<div class="quiz__erklaerung">
+Damit wäre der Versuch für alle kleineren Effekte unterdimensioniert.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://cran.r-project.org/package=pwr">pwr: Basic Power Analysis</a></li>
+<li><a href="https://www.statsmodels.org/stable/stats.html#power-and-sample-size-calculations">statsmodels: Power and Sample Size</a></li>
+<li><a href="../../statistik/inferenz/effektstaerken.html">Effektstärken</a></li>
+</ul>
 
 
 </section>
@@ -1627,11 +2620,76 @@ ul.task-list li input[type="checkbox"] {
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 18:05</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">10. September 2026, 18:22</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
 </script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
+})();
+</script>
+<script>var lightboxQuarto = GLightbox({"closeEffect":"zoom","descPosition":"bottom","loop":false,"openEffect":"zoom","selector":".lightbox"});
+(function() {
+  let previousOnload = window.onload;
+  window.onload = () => {
+    if (previousOnload) {
+      previousOnload();
+    }
+    lightboxQuarto.on('slide_before_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      const href = trigger.getAttribute('href');
+      if (href !== null) {
+        const imgEl = window.document.querySelector(`a[href="${href}"] img`);
+        if (imgEl !== null) {
+          const srcAttr = imgEl.getAttribute("src");
+          if (srcAttr && srcAttr.startsWith("data:")) {
+            slideConfig.href = srcAttr;
+          }
+        }
+      } 
+    });
+  
+    lightboxQuarto.on('slide_after_load', (data) => {
+      const { slideIndex, slideNode, slideConfig, player, trigger } = data;
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(slideNode);
+      }
+    });
+  
+  };
+  
+})();
+          </script>
 
 
 
