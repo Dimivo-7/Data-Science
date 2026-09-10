@@ -256,13 +256,13 @@ print(pd.DataFrame({
 
 | | Reihe | MA(3) | MA(12) |
 |---|---|---|---|
-| Streuung | 94.5 | 90.0 | **72.5** |
-| fehlende Werte | 0 | 2 | 11 |
+| Streuung (Python / R) | 94.5 | 90.0 | **72.5 / 71.3** |
+| fehlende Werte (Python / R) | 0 | 2 | **11 / 12** |
 
 | Fenster | Was es glättet | Was es stehen lässt |
 |---|---|---|
 | **MA(3)** | das monatliche Rauschen | Trend **und** Saison. Die Streuung sinkt nur von 94.5 auf 90.0, weil die Saison den grössten Teil der Schwankung ausmacht und unberührt bleibt. |
-| **MA(12)** | Rauschen und Saison vollständig | nur den Trend. Die Streuung fällt auf 72.5 — was übrig bleibt, ist der Anstieg über sechs Jahre. |
+| **MA(12)** | Rauschen und Saison vollständig | nur den Trend. Die Streuung fällt auf rund 72 — was übrig bleibt, ist der Anstieg über sechs Jahre. |
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
@@ -273,10 +273,10 @@ print(pd.DataFrame({
 ::: {.note-box}
 Bei gerader Fensterbreite gibt es ein Zentrierungsproblem: Ein Fenster über 12
 Monate hat keinen mittleren Monat. R löst es in `ma(order = 12)` über ein
-doppeltes Mittel mit halbem Gewicht an den Enden, `rolling(12, center=True)` in
-Python legt das Fenster dagegen leicht asymmetrisch. Für die Betrachtung ändert
-das wenig, für exakte Vergleiche zwischen den Sprachen viel — daher die
-abweichende Zahl fehlender Werte.
+doppeltes Mittel mit halbem Gewicht an den Enden und verliert dabei je sechs
+Werte an beiden Rändern, also zwölf. `rolling(12, center=True)` in Python legt
+das Fenster dagegen leicht asymmetrisch und verliert elf. Für die Betrachtung
+ändert das wenig, für exakte Vergleiche zwischen den Sprachen viel.
 :::
 
 #### Interpretation
@@ -386,11 +386,14 @@ Die Prognose gegen die tatsächlichen Werte (Python-Ausgabe):
 | **2025-11** | 789.7 | 829 | **+39.3** |
 | 2025-12 | 805.1 | 788 | -17.1 |
 
-| Kennzahl | Wert | Bedeutung |
+(R schätzt die Glättungsparameter und die Startwerte leicht anders und kommt auf
+Prognosen von 799.7 bis 802.6 statt 802.5 bis 805.1. Siehe den Kasten unten.)
+
+| Kennzahl | Wert (Python / R) | Bedeutung |
 |---|---|---|
-| **RMSE** | **21.59** | Wurzel des mittleren quadratischen Fehlers, in Einheiten der Reihe. Weil quadriert wird, schlagen die beiden Ausreisser im Juli und November überproportional durch. |
-| **MAE** | **17.87** | Mittlerer absoluter Fehler, ebenfalls in Einheiten der Reihe. Immer kleiner oder gleich dem RMSE; der Abstand zwischen beiden zeigt, wie ungleich die Fehler verteilt sind. |
-| **MAPE** | **2.36 %** | Mittlerer absoluter prozentualer Fehler. Nur brauchbar, weil die Reihe weit von null entfernt liegt. |
+| **RMSE** | **21.60 / 23.28** | Wurzel des mittleren quadratischen Fehlers, in Einheiten der Reihe. Weil quadriert wird, schlagen die beiden Ausreisser im Juli und November überproportional durch. |
+| **MAE** | **17.87 / 19.16** | Mittlerer absoluter Fehler, ebenfalls in Einheiten der Reihe. Immer kleiner oder gleich dem RMSE; der Abstand zwischen beiden zeigt, wie ungleich die Fehler verteilt sind. |
+| **MAPE** | **2.37 / 2.54 %** | Mittlerer absoluter prozentualer Fehler. Nur brauchbar, weil die Reihe weit von null entfernt liegt. |
 | Residuenstreuung im Training | **19.89** | Fast identisch mit dem RMSE auf dem Testteil. Das ist das erwünschte Bild: Das Modell prognostiziert die ungesehenen Monate ungefähr so gut, wie es die gesehenen anpasst. |
 | Fehler mit **beiden Vorzeichen** | +0.5 bis -27.3 | Kein systematischer Versatz nach oben oder unten. Läge die Prognose durchgehend zu hoch, wäre der Trend falsch geschätzt. |
 
@@ -402,7 +405,11 @@ Saisonfigur konstruiert. Aus Holt-Winters wird damit faktisch eine Regression mi
 Gerade und Saisondummies.
 
 R lässt exakte Nullen nicht zu (die Optimierung läuft in den Grenzen 0.0001 bis
-0.9999) und liefert deshalb winzige positive Werte.
+0.9999) und schätzt deshalb alle drei Parameter zu 0.0001. Zusätzlich bestimmt R
+die Startwerte anders — sichtbar an `Initial states` mit einem Niveau von 494.68
+und einem Trend von 4.12, die den eingebauten 500 und 4 sehr nahe kommen. Daraus
+ergeben sich leicht andere Prognosen und ein etwas höherer Testfehler (RMSE 23.3
+statt 21.6).
 
 In echten Daten sind Werte nahe null ein Hinweis, dass ein einfacheres Modell
 genügt — und Werte nahe eins einer, dass das Modell dem Rauschen folgt.
@@ -487,17 +494,22 @@ print("alpha der einfachen Glättung:",
 
 #### Output Zeile für Zeile
 
-| Modell | RMSE | MAE | MAPE | Was es kann |
-|---|---|---|---|---|
-| naiv saisonal | 50.65 | 42.92 | 5.58 % | Saison ja, Trend nein |
-| einfache Glättung | 43.54 | 36.58 | 4.92 % | nur ein Niveau |
-| Holt | 56.94 | 45.74 | 6.25 % | Niveau und Trend, **keine Saison** |
-| **Holt-Winters** | **21.59** | **17.87** | **2.36 %** | Niveau, Trend und Saison |
+| Modell | RMSE (Python / R) | MAPE (Python / R) | Was es kann |
+|---|---|---|---|
+| naiv saisonal | 50.65 / 50.65 | 5.58 / 5.58 % | Saison ja, Trend nein |
+| einfache Glättung | 43.54 / 43.54 | 4.92 / 4.92 % | nur ein Niveau |
+| Holt | 56.94 / 45.42 | 6.25 / 5.03 % | Niveau und Trend, **keine Saison** |
+| **Holt-Winters** | **21.60 / 23.28** | **2.37 / 2.54 %** | Niveau, Trend und Saison |
+
+Die beiden Spalten unterscheiden sich genau dort, wo Parameter geschätzt werden
+müssen: Bei der naiven Prognose und der einfachen Glättung stimmen die Zahlen
+exakt überein, bei Holt und Holt-Winters nicht. Die **Rangfolge** ist in beiden
+Sprachen dieselbe.
 
 | Beobachtung | Erklärung |
 |---|---|
 | Holt-Winters ist **mehr als doppelt so gut** wie alles andere | Die Reihe hat Trend **und** Saison; nur ein Modell, das beides kennt, kann sie prognostizieren. |
-| **Holt ist schlechter als die einfache Glättung** | Überraschend, aber erklärbar: Holt schreibt den Trend als Gerade fort und ignoriert die Saison — die Prognose läuft also mitten durch die Saisonzacken hindurch und verfehlt Hoch- wie Tiefpunkte. Die einfache Glättung liegt mit ihrer waagrechten Linie zufällig näher. **Ein zusätzlicher Modellbestandteil verbessert nicht automatisch.** |
+| **Holt ist schlechter als die einfache Glättung** | In beiden Sprachen. Überraschend, aber erklärbar: Holt schreibt den Trend als Gerade fort und ignoriert die Saison — die Prognose läuft also mitten durch die Saisonzacken hindurch und verfehlt Hoch- wie Tiefpunkte. Die einfache Glättung liegt mit ihrer waagrechten Linie zufällig näher. **Ein zusätzlicher Modellbestandteil verbessert nicht automatisch.** |
 | Die einfache Glättung schätzt $\alpha = 1$ | Damit ist sie die naive Prognose "der letzte Wert" — die Vorhersage für alle zwölf Monate ist der Dezemberwert von 2024. |
 | Die naive saisonale Prognose | ist der eigentliche Massstab: Sie kostet nichts und erreicht 5.58 Prozent MAPE. Ein Modell, das sie nicht deutlich schlägt, ist den Aufwand nicht wert. |
 
@@ -580,9 +592,12 @@ print("geschätzt   ", masse(test.values, modell_ses.forecast(12).values))
 | $\alpha$ | RMSE | MAE | Verhalten |
 |---|---|---|---|
 | **0.05** | **105.68** | 96.84 | Das Niveau folgt dem Trend viel zu träge und bleibt am Ende weit unter der Reihe. Der Fehler ist fünfmal so gross wie nötig. |
-| 0.5 | dazwischen | | |
-| **0.95** | **43.31** | 36.58 | Praktisch identisch mit dem geschätzten Wert. |
+| 0.5 | 45.10 | 37.56 | Schon nahe am Optimum — die Kurve ist flach. |
+| **0.95** | **43.31** | 36.58 | Minimal besser als der geschätzte Wert. |
 | geschätzt ($\alpha = 1$) | 43.54 | 36.58 | |
+
+R und Python liefern hier **identische** Zahlen, weil $\alpha$ vorgegeben ist und
+der Startwert in beiden Fällen auf den ersten Beobachtungswert gesetzt wurde.
 
 | Beobachtung | Erklärung |
 |---|---|
@@ -660,12 +675,19 @@ print("Standardabweichung:    ", round(float(residuen.std(ddof=1)), 3))
 
 #### Output Zeile für Zeile
 
-Der Ljung-Box-Test in Python über zwölf Abstände ergibt eine Teststatistik von
-21.50 und **p = 0.044**.
+Der Ljung-Box-Test über zwölf Abstände:
+
+| Umgebung | Teststatistik | Freiheitsgrade | p |
+|---|---|---|---|
+| Python, `acorr_ljungbox` | 21.50 | 12 | **0.044** |
+| R, `checkresiduals` | 19.09 | 12 | **0.086** |
+
+Zusätzlich über andere Abstandszahlen (Python): p = 0.055 bei 6 Abständen und
+p = 0.077 bei 18.
 
 | Prüfpunkt | Befund | Wie er zu lesen ist |
 |---|---|---|
-| **Ljung-Box, p = 0.044** | knapp unter 0.05 | Der Test prüft, ob **irgendeine** der ersten zwölf Autokorrelationen von null verschieden ist. Die Nullhypothese lautet "keine Autokorrelation"; ein kleiner p-Wert heisst also, dass Struktur übrig ist. Hier: ein Grenzfall. |
+| **Ljung-Box** | 0.044 in Python, 0.086 in R | Der Test prüft, ob **irgendeine** der ersten zwölf Autokorrelationen von null verschieden ist. Die Nullhypothese lautet "keine Autokorrelation"; ein kleiner p-Wert heisst also, dass Struktur übrig ist. Hier: ein Grenzfall. |
 | **ACF der Residuen** | ein bis zwei Balken knapp ausserhalb | Bei 20 angezeigten Abständen ist ein Ausreisser zufällig zu erwarten. Entscheidend ist, ob er an einer **deutbaren** Stelle liegt — etwa bei 12, was auf eine unerfasste Saison hinweisen würde. |
 | **Verlauf** | schwankt um null, keine Trichterform | Keine wachsende Streuung, kein Muster. |
 | **Verteilung** | ungefähr symmetrisch | Grundlage der Prognoseintervalle; starke Schiefe würde sie unbrauchbar machen. |
@@ -676,11 +698,12 @@ Der Ljung-Box-Test in Python über zwölf Abstände ergibt eine Teststatistik vo
 
 1. Der Test wird mit wachsender Reihenlänge empfindlich und findet dann auch
    praktisch bedeutungslose Autokorrelationen.
-2. Die Anzahl geprüfter Abstände ist eine Wahl — bei 6 oder 18 Abständen kommt
-   ein anderer p-Wert heraus.
-3. **R und Python zählen die Freiheitsgrade verschieden.** R zieht in
-   `checkresiduals()` die Anzahl geschätzter Parameter ab, `acorr_ljungbox()`
-   in der obigen Form nicht. Bei einem Wert nahe 0.05 kippt das die Entscheidung.
+2. Die Anzahl geprüfter Abstände ist eine Wahl — hier ergeben 6, 12 und 18
+   Abstände p-Werte von 0.055, 0.044 und 0.077.
+3. **R und Python kommen auf verschiedene Teststatistiken** (19.09 gegen 21.50)
+   und damit auf 0.086 gegen 0.044 — einmal über und einmal unter der Schwelle.
+   Der Grund liegt in den leicht verschiedenen Modellanpassungen.
+   **Ein Befund, der an der Wahl der Umgebung kippt, ist kein Befund.**
 
 Was zählt, ist die Grafik: Liegt der auffällige Balken bei Abstand 12, fehlt
 Saison. Liegt er irgendwo, ist es Zufall. Und wenn wirklich Struktur übrig ist,
@@ -691,8 +714,8 @@ ist [ARIMA](arima-sarima.qmd) der nächste Schritt.
 
 > Die Residuen des Modells schwanken ohne erkennbares Muster um null
 > (Standardabweichung 19.9); der Ljung-Box-Test über zwölf Abstände liegt mit
-> p = 0.044 im Grenzbereich, ohne dass die ACF eine deutbare Struktur zeigt. Die
-> Prognoseintervalle sind damit vertretbar.
+> p = 0.04 bis 0.09 je nach Umgebung im Grenzbereich, ohne dass die ACF eine
+> deutbare Struktur zeigt. Die Prognoseintervalle sind damit vertretbar.
 
 ::::
 

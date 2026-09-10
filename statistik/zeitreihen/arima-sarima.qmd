@@ -351,22 +351,21 @@ for ordnung in [(0, 1, 1), (1, 1, 0), (1, 1, 1), (2, 1, 2)]:
 
 #### Output Zeile für Zeile
 
-Python-Ausgabe:
-
-| Ordnung | AIC | BIC | log-Likelihood | Parameter |
-|---|---|---|---|---|
-| (0,1,1) | 511.02 | 517.15 | -252.51 | 2 |
-| (1,1,0) | 519.90 | 526.08 | -256.95 | 2 |
-| (1,1,1) | 501.64 | 509.81 | -246.82 | 3 |
-| **(2,1,2)** | **483.41** | **495.56** | **-235.70** | 5 |
+| Ordnung | Parameter | AICc, R | BIC, R | AIC, Python | BIC, Python |
+|---|---|---|---|---|---|
+| (0,1,1) | 2 | 637.62 | 644.05 | 511.02 | 517.15 |
+| (1,1,0) | 2 | 637.82 | 644.25 | 519.90 | 526.08 |
+| **(1,1,1)** | 3 | **626.93** | **635.38** | 501.64 | 509.81 |
+| (2,1,2) | 5 | 631.11 | 643.37 | **483.41** | **495.56** |
 
 | Beobachtung | Deutung |
 |---|---|
-| Die log-Likelihood **steigt immer** mit mehr Parametern | -256.95 → -235.70. Das ist keine Information, sondern eine Selbstverständlichkeit; deshalb braucht es die Kriterien. |
-| AIC und BIC bestrafen Parameter verschieden | AIC mit 2 je Parameter, BIC mit $\ln n$, hier also 4.4. Bei sparsamen Modellen entscheiden sie oft gleich, bei grossen bevorzugt BIC das kleinere. |
-| Unterschiede unter etwa **zwei** gelten als unbedeutend | Hier liegen die Kandidaten 8 bis 36 Punkte auseinander — die Rangfolge ist also deutlich. |
-| (2,1,2) gewinnt beide Kriterien | Und trotzdem ist es nicht das zu berichtende Modell. Warum, zeigen Beispiel 3 und der Testfehler. |
-| **Die Werte in den beiden Tabs sind nicht vergleichbar** | `Arima()` und `SARIMAX` behandeln die Startwerte der differenzierten Reihe verschieden; die Zahlenniveaus liegen weit auseinander. Verglichen wird **innerhalb** einer Umgebung, nie über die Tabs hinweg. |
+| **Die beiden Umgebungen wählen verschieden** | R nimmt (1,1,1), Python (2,1,2). Das ist der wichtigste Befund dieses Beispiels — und kein Widerspruch, sondern die Folge davon, dass `Arima()` und `SARIMAX` verschieden rechnen. |
+| Die Zahlenniveaus liegen 130 Punkte auseinander | Die beiden Funktionen behandeln die Startwerte der differenzierten Reihe verschieden; R bezieht die Likelihood auf die volle Reihe, Python auf die differenzierte. Verglichen wird deshalb **innerhalb** einer Umgebung, nie über die Tabs hinweg. |
+| Warum Python (2,1,2) bevorzugt | Weil hier `enforce_stationarity` und `enforce_invertibility` abgeschaltet sind, darf das grösste Modell an den Rand des Parameterraums laufen und holt sich dort ein besseres Kriterium. R lässt das nicht zu. |
+| Die log-Likelihood **steigt immer** mit mehr Parametern | Das ist keine Information, sondern eine Selbstverständlichkeit; deshalb braucht es überhaupt Kriterien. |
+| AIC und BIC bestrafen Parameter verschieden | AIC mit 2 je Parameter, BIC mit $\ln n$, hier also 4.4. `AICc` korrigiert AIC zusätzlich für kleine Stichproben und ist bei $n = 84$ die bessere Wahl. |
+| Unterschiede unter etwa **zwei** gelten als unbedeutend | In der R-Spalte liegen (0,1,1) und (1,1,0) mit 637.62 und 637.82 gleichauf; zwischen ihnen entscheidet das Kriterium nichts. |
 
 ::: {.note-box}
 **Zwei Regeln zu Informationskriterien, die oft verletzt werden:**
@@ -433,19 +432,20 @@ print(ohne_d.params.round(4))
 
 #### Output Zeile für Zeile
 
-| Koeffizient | Schätzung | Standardfehler | Was er sagt |
+| Koeffizient | Schätzung (R / Python) | Standardfehler (R / Python) | Was er sagt |
 |---|---|---|---|
-| `ar.L1` | **0.534** | 0.163 | Trägheit auf der gewöhnlichen Ebene: Gut die Hälfte der Abweichung überträgt sich auf den Folgemonat. Schätzung geteilt durch Standardfehler ergibt 3.3 — deutlich von null verschieden. |
-| `ma.L1` | **-1.000** | **1393** | **Hier stimmt etwas nicht.** |
-| `ma.S.L12` | **-1.000** | 3098 | Ebenfalls am Rand — hier aber der Normalfall. |
-| `sigma2` | 247.8 | | Streuung der Residuen, Grundlage der Prognoseintervalle. |
+| `ar1` beziehungsweise `ar.L1` | **0.554 / 0.534** | 0.101 / 0.163 | Trägheit auf der gewöhnlichen Ebene: Gut die Hälfte der Abweichung überträgt sich auf den Folgemonat. Schätzung geteilt durch Standardfehler ergibt 5.5 beziehungsweise 3.3 — deutlich von null verschieden. |
+| `ma1` beziehungsweise `ma.L1` | **-1.000 / -1.000** | 0.073 / **1393** | Beide landen **exakt auf -1**. Hier stimmt etwas nicht. |
+| `sma1` beziehungsweise `ma.S.L12` | -1.000 / -1.000 | 0.271 / 3098 | Ebenfalls am Rand — hier aber der Normalfall. |
+| `sigma^2` | 249.6 / 247.8 | | Streuung der Residuen, Grundlage der Prognoseintervalle. |
 
 | Befund | Erklärung |
 |---|---|
-| **`ma.L1 = -1.000` mit riesigem Standardfehler** | Der Koeffizient liegt exakt auf dem Rand des zulässigen Bereichs (Invertierbarkeit verlangt Betrag unter eins). Der Standardfehler von 1393 heisst: An dieser Stelle ist die Likelihood flach, der Wert ist praktisch unbestimmt. |
+| **Der MA-Koeffizient liegt exakt bei -1.000** | Auf dem Rand des zulässigen Bereichs; Invertierbarkeit verlangt einen Betrag unter eins. Dass **beide** Umgebungen dort landen, ist der eigentliche Befund. |
+| Die Standardfehler unterscheiden sich um vier Grössenordnungen | R erzwingt Invertierbarkeit und meldet einen unauffälligen Wert von 0.073; Python hat die Schranke hier abgeschaltet, läuft frei in den Rand und meldet 1393 — also "an dieser Stelle ist die Likelihood flach, der Wert ist unbestimmt". **Die ehrlichere Ausgabe ist die von Python**, weil sie das Problem sichtbar macht statt es wegzuklemmen. |
 | Was das inhaltlich bedeutet | Ein MA(1)-Koeffizient von -1 hebt eine Differenz genau wieder auf. Das Modell sagt also: **die gewöhnliche Differenz war unnötig.** Und das stimmt — die Reihe wurde mit einem *deterministischen* Trend erzeugt, der nicht wegdifferenziert gehört, siehe [Stationarität](stationaritaet-acf-pacf.qmd), Beispiel 3. |
 | `ma.S.L12 = -1.000` ist dagegen unauffällig | Bei saisonal differenzierten Reihen ist ein saisonaler MA-Koeffizient nahe -1 der Regelfall und kein Warnzeichen. |
-| Die Alternative ohne gewöhnliche Differenz | `(1,0,0)(0,1,1)` mit Drift schätzt `ar.L1 = 0.503` und einen Drift von rund 23 je Monat — beides gut bestimmt, kein Randwert. |
+| Die Alternative ohne gewöhnliche Differenz | `(1,0,0)(0,1,1)` mit Drift kommt ohne Randwert aus. In R lautet der Drift 3.96 je Monat (nahe an den eingebauten 4), in Python nennt `trend="c"` stattdessen ein Absolutglied. |
 
 ::: {.note-box}
 **Warum die Informationskriterien das nicht zeigen:** Ein Modell, das eine
@@ -465,11 +465,11 @@ Vergleich mit anderen Ordnungen.
 
 #### Interpretation und Ergebnissatz
 
-> Das Modell SARIMA(1,1,1)(0,1,1)$_{12}$ schätzt einen AR-Koeffizienten von 0.53
-> (SE 0.16); der gewöhnliche MA-Koeffizient läuft mit -1.00 auf den Rand des
-> Parameterraums und ist praktisch unbestimmt (SE 1393), was auf eine
-> überflüssige gewöhnliche Differenz hinweist. Eine Variante ohne diese Differenz
-> und mit Drift schätzt dieselbe Trägheit (0.50) ohne Randwert.
+> Das Modell SARIMA(1,1,1)(0,1,1)$_{12}$ schätzt einen AR-Koeffizienten von 0.55
+> (SE 0.10); der gewöhnliche MA-Koeffizient läuft mit -1.00 auf den Rand des
+> Parameterraums, was auf eine überflüssige gewöhnliche Differenz hinweist. Eine
+> Variante ohne diese Differenz und mit Drift schätzt dieselbe Trägheit ohne
+> Randwert und einen Drift von 3.96 je Monat.
 
 ### Beispiel 4: Residuen mit und ohne Struktur
 
@@ -527,6 +527,10 @@ for name, m in [("ohne Saison", zu_einfach), ("mit Saison", modell)]:
 |---|---|---|---|---|
 | **ohne Saison** | **0.0001** | **< 0.0001** | **+0.284** | **+0.193** |
 | mit Saison | 0.240 | 0.123 | -0.054 | -0.106 |
+
+(Python-Werte. `checkresiduals()` in R wählt die Anzahl Abstände selbst — für das
+Modell ohne Saison 17 statt 12 — und kommt auf $Q^* = 70.8$ mit p = 7·10⁻⁹, also
+zum selben Schluss.)
 
 | Befund | Erklärung |
 |---|---|
@@ -647,17 +651,17 @@ print("Bandbreite Monat 12:", round(float(band.iloc[-1, 1] - band.iloc[-1, 0]), 
 
 #### Output Zeile für Zeile
 
-| Modell | RMSE | MAE | MAPE |
-|---|---|---|---|
-| naiv saisonal | 50.29 | 47.08 | 5.62 % |
-| ARIMA ohne Saison | 72.63 | 60.13 | 7.35 % |
-| Holt-Winters | 18.17 | 15.49 | 1.84 % |
-| **SARIMA(1,1,1)(0,1,1)** | **17.07** | **14.15** | **1.68 %** |
+| Modell | RMSE (Python / R) | MAPE (Python / R) |
+|---|---|---|
+| naiv saisonal | 50.29 / 50.29 | 5.62 / 5.62 % |
+| ARIMA ohne Saison | 72.63 / — | 7.35 / — % |
+| Holt-Winters | 18.17 / 19.22 | 1.84 / 2.02 % |
+| **SARIMA(1,1,1)(0,1,1)** | **17.07 / 16.96** | **1.68 / 1.67 %** |
 
 | Beobachtung | Deutung |
 |---|---|
 | SARIMA schlägt die naive Prognose um den **Faktor 3** | Das rechtfertigt den Aufwand gegenüber "gar kein Modell". |
-| Gegenüber **Holt-Winters** beträgt der Vorsprung 1.1 Punkte RMSE | Also rund 6 Prozent. Das ist der Vergleich, der wirklich zählt: gegen das einfachere Verfahren, das dieselbe Aufgabe löst. Ob 6 Prozent den zusätzlichen Aufwand aus Ordnungswahl und Diagnostik wert sind, ist eine Sachfrage, keine statistische. |
+| Gegenüber **Holt-Winters** beträgt der Vorsprung rund einen Punkt RMSE | Also 6 Prozent in Python, 12 Prozent in R. Das ist der Vergleich, der wirklich zählt: gegen das einfachere Verfahren, das dieselbe Aufgabe löst. Ob der Gewinn den zusätzlichen Aufwand aus Ordnungswahl und Diagnostik wert ist, ist eine Sachfrage, keine statistische. |
 | Das Modell **ohne Saison** ist schlechter als die naive Prognose | 72.6 gegen 50.3. Ein Modell kann alles andere unterbieten, wenn ihm der wichtigste Bestandteil fehlt. |
 | Bandbreite Monat 1 gegen Monat 12 | 67.7 gegen 83.4 | Das Intervall wächst um rund ein Viertel. Bei ARIMA-Modellen mit Differenzen wächst es mit dem Horizont unbegrenzt weiter — deshalb gehört der Horizont begrenzt und die Bandbreite mitberichtet. |
 
@@ -729,14 +733,14 @@ print({"RMSE_rollierend": round(float(np.sqrt((alle ** 2).mean())), 2),
 
 #### Output Zeile für Zeile
 
-| Bewertung | RMSE | Grundlage |
+| Bewertung | RMSE (Python / R) | Grundlage |
 |---|---|---|
-| einmaliger Testteil | 17.07 | 12 Prognosen von **einem** Zeitpunkt aus |
-| rollierend (Python) | **18.08** | 18 Prognosen aus 3 Fenstern, Horizont je 6 |
+| einmaliger Testteil | 17.07 / 16.96 | 12 Prognosen von **einem** Zeitpunkt aus |
+| rollierend | **18.08 / 18.98** | Python: 18 Prognosen aus 3 Fenstern; R: `tsCV()` schiebt um je einen Schritt und sammelt deutlich mehr |
 
 | Beobachtung | Deutung |
 |---|---|
-| Die beiden Werte liegen nahe beieinander | 17.1 gegen 18.1. Der einmalige Testteil war also nicht ungewöhnlich günstig — ein beruhigender Befund. |
+| Die Werte liegen nahe beieinander | 17.1 gegen 18.1 in Python, 17.0 gegen 19.0 in R. Der einmalige Testteil war also nicht ungewöhnlich günstig — ein beruhigender Befund. |
 | Die rollierende Zahl beruht auf **mehr** Prognosen | und ist damit weniger vom gewählten Abschnitt abhängig. Bei knapp beieinander liegenden Modellen ist sie die richtige Grundlage. |
 | Der Horizont unterscheidet sich | 6 statt 12 Monate. Kürzere Horizonte sind leichter, deshalb sind die Zahlen nicht direkt vergleichbar — nur die Grössenordnung. |
 | Der Preis | Das Modell wird für jedes Fenster neu geschätzt. Bei drei Fenstern ist das harmlos, bei einer langen Reihe mit Schrittweite eins nicht. |
@@ -755,9 +759,9 @@ Holt-Winters. Dann entscheidet ein einzelner Testabschnitt zufällig.
 
 #### Interpretation und Ergebnissatz
 
-> In einer rollierenden Bewertung über drei Fenster mit je sechs Monaten Horizont
-> erreicht das Modell einen RMSE von 18.1, gegenüber 17.1 auf dem einmaligen
-> Testteil. Die Prognosegüte hängt damit nicht am gewählten Testabschnitt.
+> In einer rollierenden Bewertung mit sechs Monaten Horizont erreicht das Modell
+> einen RMSE von 18.1 (Python, drei Fenster) beziehungsweise 19.0 (R, `tsCV()`),
+> gegenüber 17.0 auf dem einmaligen Testteil. Die Prognosegüte hängt damit nicht am gewählten Testabschnitt.
 
 ::::
 
