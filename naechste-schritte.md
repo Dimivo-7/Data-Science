@@ -103,7 +103,7 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `statistik/grundlagen/` | **vollständig**: Lage- und Streuungsmasse, Korrelation, Skalenniveaus, Häufigkeiten, explorative Datenanalyse |
 | `statistik/wahrscheinlichkeit/` | **vollständig**: Kombinatorik, bedingte Wahrscheinlichkeit und Bayes, Zufallsvariablen, diskrete und stetige Verteilungen, Normalverteilung und ZGWS, QQ-Plots, **Prüfverteilungen** (neu) |
 | `statistik/multivariat/` | zusätzlich **lineare Algebra für die PCA** (neu) |
-| `referenz/` | R und Python für die verwendeten Funktionen gefüllt (Verteilungen, Hypothesentests, Regression, Multivariat, Grafik) |
+| `referenz/` | **vollständig**: R und Python mit je 135 Befehlen in 16 Abschnitten, zeilenweise parallel aufgebaut |
 
 ## Als Nächstes
 

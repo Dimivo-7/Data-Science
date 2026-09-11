@@ -3,55 +3,120 @@ title: "Befehlsreferenz Python"
 description: "Nachschlagetabelle der Python-Befehle, thematisch geordnet."
 categories: ["Python", "pandas"]
 seitentyp: referenz
-stand: geruest
+stand: fertig
 order: 20
 ---
 Diese Seite rechnet nichts. Sie listet Befehle mit den wichtigsten
 Argumenten, damit man beim Arbeiten nachschlagen kann. Die Abschnitte sind in
-beiden Sprachreferenzen identisch benannt und gleich sortiert, sodass sich
-zwischen ihnen hin- und herspringen lässt.
+beiden Sprachreferenzen identisch benannt und gleich sortiert, und seit dem
+11.09.2026 stehen auch die **Zeilen an derselben Stelle**: Wer in der einen
+Referenz die dritte Zeile unter "Data Wrangling" liest, findet in der anderen
+dieselbe Aufgabe an derselben Stelle.
+
+Die Spalte Bemerkung hält vor allem die Stolpersteine fest — und dort, wo sich
+die beiden Sprachen unterschiedlich verhalten, steht der Unterschied fett.
 
 ## Umgebung und Pakete
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Paket installieren | `pip install pandas` | in der Shell, nicht im Skript |
+| Modul importieren | `import pandas as pd` | das Kürzel ist Konvention, nicht Pflicht |
+| Einzelne Funktion holen | `from scipy.stats import norm` | Gegenstück zu `dplyr::` in R, nur umgekehrt: hier wird der Name kürzer |
+| Installierte Version | `pd.__version__` |  |
+| Ist ein Paket vorhanden? | `importlib.util.find_spec("pandas") is not None` | gibt `True`/`False` statt eines Fehlers |
+| Arbeitsverzeichnis | `os.getcwd()`, `os.chdir(pfad)` | in Projekten besser `pathlib.Path(__file__).parent / "daten"` |
+| Sitzungsinformationen | `pip freeze` bzw. `session_info.show()` | gehört ans Ende eines Berichts, damit die Versionen dokumentiert sind |
 
 ## Datenstrukturen
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Liste | `[1, 2, 3]` | darf gemischte Typen enthalten, anders als ein R-Vektor |
+| Dictionary | `{"a": 1, "b": "x"}` | entspricht am ehesten einer benannten Liste |
+| DataFrame | `pd.DataFrame({"x": [1, 2, 3], "y": list("abc")})` | jede Spalte hat einen eigenen `dtype` |
+| Array und Matrix | `np.array(x).reshape(3, 4)` | **`reshape` füllt zeilenweise** — in R füllt `matrix()` ohne `byrow` spaltenweise |
+| Geordnete Kategorie | `pd.Categorical(x, categories=["klein", "gross"], ordered=True)` | die Reihenfolge der `categories` bestimmt die Sortierung |
+| Typ und Aufbau ansehen | `type(x)`, `df.dtypes`, `df.info()` | `df.info()` entspricht `str()` in R |
+| Grösse | `len(x)`, `df.shape`, `len(df)`, `df.shape[1]` |  |
+| Element wählen | `x[0]`, `df["spalte"]`, `df.loc[zeile, spalte]`, `df.iloc[0, 1]` | **Zählung ab 0**, in R ab 1; `.loc` geht nach Namen, `.iloc` nach Position |
+| Fehlende Werte | `np.nan`, `pd.isna(x)`, `df.dropna()` | `np.nan == np.nan` ergibt `False`, deshalb immer `pd.isna()` |
 
 ## Import und Export
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| CSV lesen | `pd.read_csv("daten.csv")` | die Spaltentypen werden geraten, `df.dtypes` danach ansehen |
+| CSV mit Semikolon und Dezimalkomma | `pd.read_csv(datei, sep=";", decimal=",")` | der übliche Fall bei Exporten aus deutschsprachigem Excel |
+| Spaltentypen vorgeben | `pd.read_csv(datei, dtype={"plz": str})` | verhindert, dass Postleitzahlen zu Zahlen werden |
+| Zeichensatz | `pd.read_csv(datei, encoding="latin1")` | bei zerschossenen Umlauten |
+| Excel lesen | `pd.read_excel("datei.xlsx", sheet_name=1)` | `sheet_name` nimmt Nummer (ab 0) oder Name |
+| CSV schreiben | `df.to_csv("raus.csv", index=False)` | **ohne `index=False`** entsteht eine zusätzliche erste Spalte |
+| Eigenes Format | `df.to_parquet("df.parquet")`, `pd.read_parquet(...)` | erhält Typen, im Gegensatz zu CSV; entspricht `saveRDS()` |
+| Erster Blick | `df.head()`, `df.info()`, `df.describe()` | in dieser Reihenfolge, bevor gerechnet wird |
 
 ## Data Wrangling
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Zeilen filtern | `df[(df["x"] > 5) & (df["gruppe"] == "A")]` | **runde Klammern um jede Bedingung**, und `&` statt `and` |
+| Spalten wählen | `df[["a", "b"]]`, `df.drop(columns="c")` | auch `df.select_dtypes("number")` |
+| Spalte berechnen | `df.assign(neu=lambda d: d["a"] / d["b"])` | `df["neu"] = ...` ändert den Datensatz an Ort und Stelle |
+| Sortieren | `df.sort_values("x")`, `df.sort_values("x", ascending=False)` |  |
+| Gruppieren und zusammenfassen | `df.groupby("gruppe").agg(mittel=("x", "mean"), n=("x", "size"))` | `reset_index()` macht den Index wieder zur Spalte |
+| Häufigkeiten | `df["gruppe"].value_counts()` | `normalize=True` gibt Anteile statt Anzahlen |
+| Umbenennen | `df.rename(columns={"alt": "neu"})` | Ziel steht rechts, in R links |
+| Doppelte entfernen | `df.drop_duplicates()`, `df.drop_duplicates(subset="id")` |  |
+| Zusammenführen | `a.merge(b, on="id", how="left")` | `how="inner"` ist die Voreinstellung — in dplyr gibt es keine |
+| Breit zu lang | `df.melt(id_vars="id", var_name="jahr", value_name="wert")` |  |
+| Lang zu breit | `df.pivot(index="id", columns="jahr", values="wert")` |  |
+| Fallunterscheidung | `pd.cut(x, [0, 10, 100, np.inf], labels=["klein", "mittel", "gross"])` | für einzelne Bedingungen `np.where(bedingung, a, b)` |
+| Spalte als Array | `df["x"].to_numpy()` | `.values` gilt als veraltet |
 
 ## Datum und Zeit
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Text zu Datum | `pd.to_datetime(x, dayfirst=True)` | **ohne `dayfirst`** wird `01.02.2026` als 2. Januar gelesen |
+| Mit festem Muster | `pd.to_datetime(x, format="%d.%m.%Y")` | `%Y` vierstellig, `%y` zweistellig |
+| Heute und jetzt | `pd.Timestamp.today()`, `pd.Timestamp.now()` |  |
+| Bestandteile | `s.dt.year`, `s.dt.month`, `s.dt.day` | `.dt` nur auf einer Series, nicht auf einem einzelnen Zeitstempel |
+| Wochentag | `s.dt.day_name()`, `s.dt.dayofweek` | `dayofweek` zählt ab 0 für Montag |
+| Auf Monat runden | `s.dt.to_period("M")` | der übliche Weg, um Monatsauswertungen zu bilden |
+| Differenz | `(a - b).dt.days` | die Differenz ist ein `Timedelta`, `.dt.days` macht eine Zahl daraus |
+| Monate addieren | `s + pd.DateOffset(months=1)` | kürzt auf den letzten gültigen Tag, statt `NaT` zu liefern |
+| Zeitzone wechseln | `s.dt.tz_convert("Europe/Zurich")` | `tz_localize()` setzt dagegen die Zone erstmals |
+| Formatiert ausgeben | `s.dt.strftime("%d.%m.%Y")` |  |
 
 ## Zeichenketten
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Länge | `s.str.len()` | `len(text)` bei einem einzelnen Text |
+| Teilstück | `s.str[:3]` | negative Werte zählen von hinten |
+| Enthält? | `s.str.contains("muster")` | `na=False` setzen, sonst entsteht `NaN` statt `False` |
+| Ersetzen | `s.str.replace("alt", "neu", regex=False)` | **`regex` explizit angeben** — die Voreinstellung hat sich mit pandas 2 geändert |
+| Trennen | `s.str.split(",")` | `expand=True` ergibt mehrere Spalten |
+| Leerzeichen entfernen | `s.str.strip()` |  |
+| Gross- und Kleinschreibung | `s.str.lower()`, `s.str.title()` |  |
+| Zusammensetzen | `a + b`, `" ".join([a, b])` | `+` verbindet Texte, in R braucht es `paste0()` |
+| Formatiert zusammensetzen | `f"{x:.2f} Prozent"` | `:.2f` zwei Nachkommastellen, `:d` ganze Zahl, `:>8` rechtsbündig |
+| Reguläre Ausdrücke | `s.str.match(r"^\d{4}$")` | `r"..."` spart das Verdoppeln der Backslashes |
 
 ## Deskriptive Statistik
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Mittelwert und Median | `s.mean()`, `s.median()` | pandas übergeht `NaN` von sich aus — R bricht ohne `na.rm = TRUE` ab |
+| Streuung | `s.std()`, `s.var()` | **pandas teilt durch `n - 1`, `np.std()` dagegen durch `n`** — bei numpy `ddof=1` setzen |
+| Quantile | `s.quantile([0.25, 0.75])` | entspricht `type = 7` in R und interpoliert ebenso |
+| Quartilsabstand und Spannweite | `s.quantile(.75) - s.quantile(.25)`, `s.max() - s.min()` | einen eigenen Befehl für den IQR gibt es nicht |
+| Überblick | `df.describe()` | Anzahl, Mittel, Streuung, Minimum, Quartile, Maximum |
+| Häufigkeiten | `s.value_counts()`, `pd.crosstab(x, y)` |  |
+| Anteile | `s.value_counts(normalize=True)`, `pd.crosstab(x, y, normalize="index")` | `"index"` zeilenweise, `"columns"` spaltenweise, `True` über alles |
+| Korrelation | `df.corr()`, `x.corr(y)` | `method="spearman"` für Ränge; `NaN` werden paarweise übergangen |
+| Spaltenweise | `df.mean(axis=0)`, `df.std(axis=0)` | `axis=0` über die Zeilen hinweg, also je Spalte |
+| Nach Gruppen | `df.groupby("gruppe")["wert"].mean()` |  |
 
 ## Verteilungen und Zufallszahlen
 
@@ -68,6 +133,7 @@ zwischen ihnen hin- und herspringen lässt.
 |---|---|---|
 | t-Test, zwei unabhängige Gruppen | `pingouin.ttest(a, b, correction=True)` | `correction=True` ist die Welch-Variante |
 | Ausgabespalten von pingouin | `T`, `dof`, `p_val`, `CI95`, `cohen_d`, `power`, `BF10` | ab pingouin 0.6 mit Unterstrich statt `p-val`, `CI95%`, `cohen-d` |
+| Effektstärke Cohens d | `pingouin.compute_effsize(a, b, eftype="cohen")` | steht bei `pingouin.ttest()` bereits in der Spalte `cohen_d` |
 | Rangtest zweier Gruppen | `pingouin.mwu(a, b)` | Normalapproximation; R rechnet ohne Bindungen exakt |
 | Varianzanalyse | `pingouin.anova(data=df, dv="wert", between="gruppe")` | |
 
@@ -77,10 +143,12 @@ zwischen ihnen hin- und herspringen lässt.
 |---|---|---|
 | Lineares Modell schätzen | `smf.ols("y ~ x", data=df).fit()` | Formelsyntax wie in R |
 | Modell lesen | `modell.summary()` | Konfidenzintervalle stehen bereits in der Tabelle |
+| Konfidenzintervalle der Koeffizienten | `modell.conf_int()` | einzeln abrufbar; in R stehen sie **nicht** in `summary()` |
 | Quadratischer Term | `smf.ols("y ~ x + I(x**2)", data=df).fit()` | |
 | Residuen und Vorhersagen | `modell.resid`, `modell.fittedvalues` | |
 | Residualstreuung | `np.sqrt(modell.mse_resid)` | steht nicht in `summary()`, anders als in R |
-| Einflussreiche Fälle | `modell.get_influence().cooks_distance[0]`, `.hat_matrix_diag` | |
+| Diagnoseplots | kein Gegenstück zu `plot(modell)` | einzeln zeichnen: Residuen gegen Vorhersage, QQ-Plot der Residuen |
+| Einflussreiche Fälle | `modell.get_influence().cooks_distance[0]`, `.hat_matrix_diag` | Cook-Distanz über 1 gilt als auffällig |
 | Test auf ungleiche Streuung | `sm.stats.diagnostic.het_breuschpagan(modell.resid, modell.model.exog)` | gibt vier Werte zurück: LM, p, F, p |
 | Vorhersage für neue Daten | `modell.predict(df_neu)` | |
 
@@ -88,7 +156,16 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Paket | `import lifelines` | muss zusätzlich installiert werden |
+| Zielgrösse | zwei Vektoren: `T` (Zeit) und `E` (Ereignis) | `E` ist 1 für eingetreten, 0 für zensiert; anders als in R kein eigenes Objekt |
+| Kaplan-Meier-Schätzung | `km = lifelines.KaplanMeierFitter().fit(T, E)` | je Gruppe ein eigenes Objekt, statt einer Formel mit `~ gruppe` |
+| Median und Fallzahlen | `km.median_survival_time_`, `km.event_table` | **`inf` heisst: Der Median wurde nicht erreicht** — in R steht dort `NA` |
+| Überlebenswahrscheinlichkeit zu festen Zeiten | `km.survival_function_at_times([6, 12, 24])` |  |
+| Kurven zeichnen | `km.plot_survival_function(ax=ax)` | das Band ist log-log-basiert; `survfit()` in R verwendet log |
+| Gruppen vergleichen | `lifelines.statistics.logrank_test(T1, T2, E1, E2)` | der Log-Rank-Test |
+| Cox-Modell | `cph = lifelines.CoxPHFitter().fit(df, "zeit", "ereignis")` | `cph.print_summary()` zeigt `exp(coef)`, also das Hazard Ratio |
+| Proportionalität prüfen | `cph.check_assumptions(df)` | kleiner p-Wert heisst: Der Effekt ändert sich über die Zeit |
+| Nach einer Variable schichten | `CoxPHFitter().fit(df, "zeit", "ereignis", strata=["x2"])` | für Variablen, die die Annahme verletzen |
 
 ## Multivariate Verfahren
 
@@ -105,7 +182,16 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Zeitreihe bilden | `pd.Series(x, index=pd.date_range("2020-01-01", periods=n, freq="MS"))` | `freq="MS"` ist der Monatsanfang, `"M"` das Monatsende |
+| Zerlegen | `seasonal_decompose(reihe, model="additive")`, `STL(reihe).fit()` | `seasonal_decompose()` hält die Saisonfigur fest, `STL()` lässt sie sich ändern |
+| Autokorrelation | `plot_acf(x, ax=ax)`, `plot_pacf(x, ax=ax)` | die Werte liefern `acf(x)` und `pacf(x)` aus `statsmodels.tsa.stattools` |
+| Differenzieren | `s.diff()`, `s.diff(12)` | einmal gegen den Trend, mit `12` gegen die Saison; erzeugt führende `NaN` |
+| Stationarität prüfen | `adfuller(x)`, `kpss(x)` | **`adfuller()` enthält keinen Trendterm**, `adf.test()` in R schon — die p-Werte weichen dadurch ab |
+| Exponentielle Glättung | `ExponentialSmoothing(reihe, trend="add", seasonal="add", seasonal_periods=12).fit()` | lässt exakte Nullen als Parameter zu, R schränkt auf 1e-4 ein |
+| ARIMA automatisch | kein eingebautes Gegenstück | die Ordnung über eine eigene Schleife nach AICc wählen |
+| ARIMA von Hand | `SARIMAX(reihe, order=(1,1,1), seasonal_order=(0,1,1,12)).fit()` | `enforce_invertibility=False` erlaubt Koeffizienten am Rand |
+| Prognose | `ergebnis.forecast(12)`, `ergebnis.get_forecast(12).conf_int()` |  |
+| Residuen prüfen | `acorr_ljungbox(ergebnis.resid, lags=[24])` | die Freiheitsgrade weichen von `checkresiduals()` in R ab |
 
 ## Grafik
 
@@ -122,11 +208,26 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Verbindung öffnen | `con = sqlite3.connect("daten.sqlite")` | für andere Systeme `sqlalchemy.create_engine("postgresql://...")` |
+| Tabellen auflisten | `pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table'", con)` | je nach System anders; über SQLAlchemy `inspect(engine).get_table_names()` |
+| Abfrage | `pd.read_sql_query("SELECT * FROM tabelle LIMIT 10", con)` | gibt einen DataFrame zurück |
+| Abfrage mit Werten | `pd.read_sql_query("SELECT * FROM t WHERE x > ?", con, params=(5,))` | **nie** die Abfrage per f-String zusammenbauen — SQL-Injection und Formatfehler |
+| Schreiben ohne Ergebnis | `con.execute("DELETE FROM t WHERE x < 0")`, danach `con.commit()` | **ohne `commit()`** ist nichts gespeichert |
+| DataFrame speichern | `df.to_sql("tabelle", con, if_exists="replace", index=False)` | `index=False`, sonst entsteht eine zusätzliche Spalte |
+| Abfrage schrittweise aufbauen | kein Gegenstück zu dbplyr | SQL wird hier als Text geschrieben; alternativ ibis oder polars |
+| Abfrageplan ansehen | `EXPLAIN QUERY PLAN SELECT ...` | als gewöhnliche Abfrage abschicken |
+| Verbindung schliessen | `con.close()` | oder `with sqlite3.connect(...) as con:` verwenden |
 
 ## Reproduzierbarkeit
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Zufall festlegen | `rng = np.random.default_rng(42)` | **gilt nur innerhalb von Python** — dieselbe Saat ergibt in R andere Zahlen |
+| Beispieldaten sprachübergreifend | deterministisch erzeugen statt `rng.normal()` | in dieser Sammlung über einen Lehmer-Generator, siehe `naechste-schritte.md` |
+| Projektumgebung anlegen | `python -m venv .venv` | danach aktivieren, dann erst installieren |
+| Stand festhalten | `pip freeze > requirements.txt` | nach jeder Paketänderung |
+| Umgebung wiederherstellen | `pip install -r requirements.txt` | auf einem anderen Rechner |
+| Versionen dokumentieren | `session_info.show()` | ans Ende des Berichts |
+| Pfade ohne `chdir()` | `pathlib.Path(__file__).parent / "daten" / "roh.csv"` | funktioniert unabhängig davon, von wo das Skript gestartet wird |
+| Ergebnisse einfrieren | im Quarto-Frontmatter `freeze: auto` | Chunks laufen nur neu, wenn sich der Code ändert |
 

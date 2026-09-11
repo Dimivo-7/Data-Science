@@ -3,55 +3,120 @@ title: "Befehlsreferenz R"
 description: "Nachschlagetabelle der R-Befehle, thematisch geordnet."
 categories: ["R", "tidyverse"]
 seitentyp: referenz
-stand: geruest
+stand: fertig
 order: 10
 ---
 Diese Seite rechnet nichts. Sie listet Befehle mit den wichtigsten
 Argumenten, damit man beim Arbeiten nachschlagen kann. Die Abschnitte sind in
-beiden Sprachreferenzen identisch benannt und gleich sortiert, sodass sich
-zwischen ihnen hin- und herspringen lässt.
+beiden Sprachreferenzen identisch benannt und gleich sortiert, und seit dem
+11.09.2026 stehen auch die **Zeilen an derselben Stelle**: Wer in der einen
+Referenz die dritte Zeile unter "Data Wrangling" liest, findet in der anderen
+dieselbe Aufgabe an derselben Stelle.
+
+Die Spalte Bemerkung hält vor allem die Stolpersteine fest — und dort, wo sich
+die beiden Sprachen unterschiedlich verhalten, steht der Unterschied fett.
 
 ## Umgebung und Pakete
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Paket installieren | `install.packages("dplyr")` | einmalig in der Konsole, nicht ins Skript |
+| Paket laden | `library(dplyr)` | Fehler, wenn das Paket fehlt |
+| Funktion ohne Laden benutzen | `dplyr::filter(df, x > 5)` | zeigt die Herkunft und umgeht Namenskonflikte |
+| Installierte Version | `packageVersion("dplyr")` |  |
+| Ist ein Paket vorhanden? | `requireNamespace("dplyr", quietly = TRUE)` | gibt `TRUE`/`FALSE` statt eines Fehlers |
+| Arbeitsverzeichnis | `getwd()`, `setwd(pfad)` | in Projekten besser `here::here("daten", "x.csv")` |
+| Sitzungsinformationen | `sessionInfo()` | gehört ans Ende eines Berichts, damit die Versionen dokumentiert sind |
 
 ## Datenstrukturen
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Vektor | `c(1, 2, 3)` | alle Elemente haben denselben Typ |
+| Liste | `list(a = 1, b = "x")` | darf gemischte Typen enthalten |
+| Data Frame | `data.frame(x = 1:3, y = c("a", "b", "c"))` | `stringsAsFactors` ist seit R 4.0 auf `FALSE` |
+| Matrix | `matrix(x, nrow = 3, byrow = TRUE)` | **ohne `byrow`** wird spaltenweise gefüllt — der häufigste Unterschied zu Python |
+| Faktor | `factor(x, levels = c("klein", "gross"), ordered = TRUE)` | die Reihenfolge der `levels` bestimmt die Sortierung, nicht das Alphabet |
+| Typ und Aufbau ansehen | `class(x)`, `str(x)` | `str()` ist der schnellste Überblick über einen Datensatz |
+| Grösse | `length(x)`, `dim(df)`, `nrow(df)`, `ncol(df)` |  |
+| Element wählen | `x[1]`, `df$spalte`, `df[["spalte"]]`, `df[zeile, spalte]` | **Zählung ab 1**, in Python ab 0 |
+| Fehlende Werte | `NA`, `is.na(x)`, `complete.cases(df)` | `NA == NA` ergibt `NA`, deshalb immer `is.na()` |
 
 ## Import und Export
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| CSV lesen | `readr::read_csv("daten.csv")` | gibt ein Tibble zurück und meldet die erkannten Spaltentypen |
+| CSV mit Semikolon und Dezimalkomma | `readr::read_csv2("daten.csv")` | der übliche Fall bei Exporten aus deutschsprachigem Excel |
+| Spaltentypen vorgeben | `read_csv(datei, col_types = cols(plz = col_character()))` | verhindert, dass Postleitzahlen zu Zahlen werden |
+| Zeichensatz | `read_csv(datei, locale = locale(encoding = "latin1"))` | bei zerschossenen Umlauten |
+| Excel lesen | `readxl::read_excel("datei.xlsx", sheet = 2)` | `sheet` nimmt Nummer oder Name |
+| CSV schreiben | `readr::write_csv(df, "raus.csv")` |  |
+| R-eigenes Format | `saveRDS(obj, "obj.rds")`, `readRDS("obj.rds")` | erhält Typen und Attribute, im Gegensatz zu CSV |
+| Erster Blick | `head(df)`, `str(df)`, `summary(df)` | in dieser Reihenfolge, bevor gerechnet wird |
 
 ## Data Wrangling
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Zeilen filtern | `filter(df, x > 5, gruppe == "A")` | mehrere Bedingungen mit Komma wirken wie `&` |
+| Spalten wählen | `select(df, a, b)`, `select(df, -c)` | auch `starts_with()`, `where(is.numeric)` |
+| Spalte berechnen | `mutate(df, neu = a / b)` | neue Spalten dürfen im selben Aufruf aufeinander aufbauen |
+| Sortieren | `arrange(df, x)`, `arrange(df, desc(x))` |  |
+| Gruppieren und zusammenfassen | `df |> group_by(gruppe) |> summarise(mittel = mean(x), n = n())` | `.groups = "drop"` vermeidet eine Warnung |
+| Häufigkeiten | `count(df, gruppe)` | Kurzform für gruppieren und zählen |
+| Umbenennen | `rename(df, neu = alt)` | Ziel steht links |
+| Doppelte entfernen | `distinct(df)`, `distinct(df, id, .keep_all = TRUE)` |  |
+| Zusammenführen | `left_join(a, b, by = "id")` | `by` immer angeben; ohne `by` rät dplyr anhand gleicher Namen |
+| Breit zu lang | `pivot_longer(df, cols = -id, names_to = "jahr", values_to = "wert")` |  |
+| Lang zu breit | `pivot_wider(df, names_from = jahr, values_from = wert)` |  |
+| Fallunterscheidung | `case_when(x < 10 ~ "klein", x < 100 ~ "mittel", .default = "gross")` | die erste zutreffende Bedingung gewinnt |
+| Spalte als Vektor | `pull(df, x)` | Gegenstück zu `df$x` in der Pipe |
 
 ## Datum und Zeit
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Text zu Datum | `lubridate::dmy("31.12.2026")` | der Funktionsname nennt die Reihenfolge: `dmy`, `mdy`, `ymd` |
+| Mit festem Muster | `as.Date(x, format = "%d.%m.%Y")` | `%Y` vierstellig, `%y` zweistellig |
+| Heute und jetzt | `Sys.Date()`, `Sys.time()` |  |
+| Bestandteile | `year(x)`, `month(x)`, `day(x)` | aus lubridate |
+| Wochentag | `wday(x, label = TRUE, week_start = 1)` | `week_start = 1` beginnt die Woche am Montag |
+| Auf Monat runden | `floor_date(x, "month")` | der übliche Weg, um Monatsauswertungen zu bilden |
+| Differenz | `difftime(a, b, units = "days")` | `a - b` allein liefert eine Einheit, die R selbst wählt |
+| Monate addieren | `x %m+% months(1)` | **nicht** `x + months(1)`: Der 31. Januar ergäbe dort `NA` |
+| Zeitzone wechseln | `with_tz(x, "Europe/Zurich")` | `force_tz()` ändert dagegen die Bedeutung des Zeitpunkts |
+| Formatiert ausgeben | `format(x, "%d.%m.%Y")` |  |
 
 ## Zeichenketten
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Länge | `stringr::str_length(x)` | `nchar()` in Basis-R |
+| Teilstück | `str_sub(x, 1, 3)` | negative Werte zählen von hinten |
+| Enthält? | `str_detect(x, "muster")` | gibt einen logischen Vektor |
+| Ersetzen | `str_replace_all(x, "alt", "neu")` | `str_replace()` ersetzt nur das erste Vorkommen |
+| Trennen | `str_split(x, ",")` | Ergebnis ist eine Liste |
+| Leerzeichen entfernen | `str_trim(x)`, `str_squish(x)` | `str_squish()` räumt auch im Inneren auf |
+| Gross- und Kleinschreibung | `str_to_lower(x)`, `str_to_title(x)` |  |
+| Zusammensetzen | `paste0(a, b)`, `str_c(a, b, sep = " ")` | `paste()` setzt ein Leerzeichen, `paste0()` nicht |
+| Formatiert zusammensetzen | `sprintf("%.2f Prozent", x)` | `%.2f` zwei Nachkommastellen, `%d` ganze Zahl, `%s` Text |
+| Reguläre Ausdrücke | `str_detect(x, "^\\d{4}$")` | im R-String wird der Backslash verdoppelt |
 
 ## Deskriptive Statistik
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Mittelwert und Median | `mean(x)`, `median(x)` | **`na.rm = TRUE` nicht vergessen**, sonst ergibt ein `NA` das Ergebnis `NA` |
+| Streuung | `sd(x)`, `var(x)` | beide teilen durch `n - 1` (Bessel-Korrektur) |
+| Quantile | `quantile(x, c(0.25, 0.75))` | `type = 7` ist die Voreinstellung und interpoliert |
+| Quartilsabstand und Spannweite | `IQR(x)`, `range(x)`, `diff(range(x))` |  |
+| Überblick | `summary(df)` | Minimum, Quartile, Mittel, Maximum, Anzahl `NA` |
+| Häufigkeiten | `table(x)`, `table(x, y)` | zweites Argument ergibt eine Kreuztabelle |
+| Anteile | `prop.table(tab)`, `prop.table(tab, 1)` | `1` zeilenweise, `2` spaltenweise, ohne Angabe über alles |
+| Korrelation | `cor(x, y)`, `cor(df)` | `method = "spearman"` für Ränge, `use = "complete.obs"` bei `NA` |
+| Spaltenweise | `colMeans(m)`, `apply(df, 2, sd)` |  |
+| Nach Gruppen | `tapply(df$wert, df$gruppe, mean)` | in dplyr `group_by()` mit `summarise()` |
 
 ## Verteilungen und Zufallszahlen
 
@@ -81,6 +146,7 @@ zwischen ihnen hin- und herspringen lässt.
 | Konfidenzintervalle der Koeffizienten | `confint(modell)` | steht nicht in `summary()` |
 | Quadratischer Term | `lm(y ~ x + I(x^2), data = df)` | `I()` schützt das Hochzeichen vor der Formelsyntax |
 | Residuen und Vorhersagen | `resid(modell)`, `fitted(modell)` | |
+| Residualstreuung | `summary(modell)$sigma` | in Python über `np.sqrt(modell.mse_resid)` |
 | Diagnoseplots | `plot(modell, which = 1)` bis `which = 6` | 1 Residuen gegen Vorhersage, 2 QQ-Plot |
 | Einflussreiche Fälle | `cooks.distance(modell)`, `hatvalues(modell)` | Cook-Distanz über 1 gilt als auffällig |
 | Test auf ungleiche Streuung | `lmtest::bptest(modell)` | grosser p-Wert heisst unauffällig |
@@ -90,7 +156,16 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Paket | `library(survival)` | gehört zur Standardinstallation von R |
+| Zielgrösse bilden | `Surv(zeit, ereignis)` | `ereignis` ist 1 für eingetreten, 0 für zensiert |
+| Kaplan-Meier-Schätzung | `survfit(Surv(zeit, ereignis) ~ 1, data = df)` | `~ gruppe` statt `~ 1` liefert eine Kurve je Gruppe |
+| Median und Fallzahlen | `fit`  (einfach ausgeben) | **`NA` heisst: Der Median wurde nicht erreicht**, nicht dass er fehlt |
+| Überlebenswahrscheinlichkeit zu festen Zeiten | `summary(fit, times = c(6, 12, 24))` |  |
+| Kurven zeichnen | `plot(fit, conf.int = TRUE)` | `conf.type = "log-log"` in `survfit()` entspricht der Voreinstellung von lifelines |
+| Gruppen vergleichen | `survdiff(Surv(zeit, ereignis) ~ gruppe, data = df)` | der Log-Rank-Test |
+| Cox-Modell | `coxph(Surv(zeit, ereignis) ~ x1 + x2, data = df)` | `exp(coef)` in `summary()` ist das Hazard Ratio |
+| Proportionalität prüfen | `cox.zph(modell)` | kleiner p-Wert heisst: Der Effekt ändert sich über die Zeit |
+| Nach einer Variable schichten | `coxph(Surv(...) ~ x1 + strata(x2), data = df)` | für Variablen, die die Annahme verletzen |
 
 ## Multivariate Verfahren
 
@@ -107,7 +182,16 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Zeitreihe bilden | `ts(x, start = c(2020, 1), frequency = 12)` | `frequency` ist die Zahl der Zeitpunkte je Periode, 12 für Monate |
+| Zerlegen | `decompose(reihe)`, `stl(reihe, s.window = "periodic")` | `decompose()` hält die Saisonfigur fest, `stl()` lässt sie sich ändern |
+| Autokorrelation | `acf(x)`, `pacf(x)` | `plot = FALSE` liefert die Werte statt der Grafik |
+| Differenzieren | `diff(x)`, `diff(x, lag = 12)` | einmal gegen den Trend, mit `lag` gegen die Saison |
+| Stationarität prüfen | `tseries::adf.test(x)`, `tseries::kpss.test(x)` | **`adf.test()` enthält einen Trendterm**, `adfuller()` in Python nicht — die p-Werte weichen dadurch ab |
+| Exponentielle Glättung | `forecast::hw(reihe, h = 12)`, `HoltWinters(reihe)` | die Parameterschranken liegen bei 1e-4, statsmodels lässt exakte Nullen zu |
+| ARIMA automatisch | `forecast::auto.arima(reihe)` | wählt nach AICc; die Auswahl kann von der in Python abweichen |
+| ARIMA von Hand | `forecast::Arima(reihe, order = c(1,1,1), seasonal = c(0,1,1))` |  |
+| Prognose | `forecast(modell, h = 12)` | mit `autoplot()` zeichnen |
+| Residuen prüfen | `forecast::checkresiduals(modell)` | enthält den Ljung-Box-Test; die Freiheitsgrade weichen von `acorr_ljungbox` ab |
 
 ## Grafik
 
@@ -124,11 +208,26 @@ zwischen ihnen hin- und herspringen lässt.
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Verbindung öffnen | `con <- DBI::dbConnect(RSQLite::SQLite(), "daten.sqlite")` | für PostgreSQL `RPostgres::Postgres()`, für MariaDB `RMariaDB::MariaDB()` |
+| Tabellen auflisten | `DBI::dbListTables(con)`, `dbListFields(con, "tabelle")` |  |
+| Abfrage | `DBI::dbGetQuery(con, "SELECT * FROM tabelle LIMIT 10")` | gibt einen Data Frame zurück |
+| Abfrage mit Werten | `dbGetQuery(con, "SELECT * FROM t WHERE x > ?", params = list(5))` | **nie** die Abfrage per `paste0()` zusammenbauen — SQL-Injection und Formatfehler |
+| Schreiben ohne Ergebnis | `DBI::dbExecute(con, "DELETE FROM t WHERE x < 0")` | gibt die Zahl der betroffenen Zeilen |
+| Data Frame speichern | `DBI::dbWriteTable(con, "tabelle", df, overwrite = TRUE)` |  |
+| Mit dplyr auf der Datenbank | `tbl(con, "tabelle") |> filter(x > 5) |> collect()` | dbplyr übersetzt nach SQL; `collect()` holt das Ergebnis erst am Ende |
+| Übersetztes SQL ansehen | `show_query(abfrage)` | nützlich zum Lernen und Prüfen |
+| Verbindung schliessen | `DBI::dbDisconnect(con)` | gehört in jedes Skript |
 
 ## Reproduzierbarkeit
 
 | Aufgabe | Befehl | Bemerkung |
 |---|---|---|
-| | | |
+| Zufall festlegen | `set.seed(42)` | **gilt nur innerhalb von R** — dieselbe Saat ergibt in Python andere Zahlen |
+| Beispieldaten sprachübergreifend | deterministisch erzeugen statt `rnorm()` | in dieser Sammlung über einen Lehmer-Generator, siehe `naechste-schritte.md` |
+| Projektumgebung anlegen | `renv::init()` | schreibt eine `renv.lock` |
+| Stand festhalten | `renv::snapshot()` | nach jeder Paketänderung |
+| Umgebung wiederherstellen | `renv::restore()` | auf einem anderen Rechner |
+| Versionen dokumentieren | `sessionInfo()` | ans Ende des Berichts |
+| Pfade ohne `setwd()` | `here::here("daten", "roh.csv")` | funktioniert unabhängig davon, von wo das Skript gestartet wird |
+| Ergebnisse einfrieren | im Quarto-Frontmatter `freeze: auto` | Chunks laufen nur neu, wenn sich der Code ändert |
 
