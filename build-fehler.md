@@ -420,3 +420,39 @@ Befund. Vor jedem `stand: fertig` laufen lassen.
 
 **Reihenfolge, die sich bewaehrt hat:** erst `zeige-ausgaben.py` lesen, dann
 `pruefe-zahlen.py` als Netz darunter.
+
+---
+
+### 2026-09-11 — Warteschleifen auf den Build sind dreimal schiefgegangen
+
+**Der dritte Anlauf.** Die Schleife begann mit
+
+```sh
+git fetch -q origin main origin/gh-pages
+```
+
+`origin/gh-pages` ist kein gueltiger Refspec fuer `git fetch origin`. Der
+Befehl schlug jedes Mal fehl, `origin/main` wurde deshalb **nie** aktualisiert,
+und die Schleife haette bis zum Timeout gewartet — obwohl der Build nach
+wenigen Minuten durch war. Durch `2>/dev/null` war der Fehler unsichtbar.
+
+**Die Lehre ist groesser als der Tippfehler.** Drei Anlaeufe, drei
+Fehlerarten: falsches Signal (Commit-Titel), unmoegliches Signal (Chunk-Label),
+kaputter Fetch. Eine Warteschleife, die still das Falsche tut, sieht genauso
+aus wie eine, die geduldig wartet.
+
+**Regel:** **Keine Warteschleifen mehr auf den Build.** Stattdessen beim
+naechsten Arbeitsschritt einmal nachsehen:
+
+```sh
+git fetch origin main && git log --oneline -3 origin/main
+```
+
+Ist der Freeze da, weitermachen; ist er es nicht, in der Zwischenzeit lokal
+weiterarbeiten und spaeter erneut nachsehen. Das kostet einen Befehl und kann
+nicht still haengenbleiben.
+
+**Falls doch einmal eine Schleife noetig ist:** `git fetch` ohne `2>/dev/null`
+laufen lassen und den Rueckgabewert pruefen (`git fetch ... || echo FETCH
+FEHLGESCHLAGEN`), sonst ist ein kaputter Fetch von einem laufenden Build nicht
+zu unterscheiden.

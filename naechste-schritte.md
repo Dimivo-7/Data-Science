@@ -120,9 +120,11 @@ Seit dem 11.09.2026 stehen **alle 50 Seiten** auf `fertig`.
 
 Offen ist nur noch:
 
-1. **Querverweise in der Gegenrichtung.** Die neuen Seiten verlinken auf
-   `hauptkomponentenanalyse.qmd`, `multiple-lineare-regression.qmd` und
-   `multiples-testen.qmd`; umgekehrt fehlt der Verweis teilweise.
+1. **Nichts Inhaltliches mehr offen.** Die Querverweise sind am 11.09.2026 in
+   beide Richtungen gelegt: zehn Seiten verweisen jetzt auf die zwei neuen
+   (`pruefverteilungen.qmd` aus Tests und Inferenz, `lineare-algebra-pca.qmd`
+   aus den multivariaten Seiten). Alle 810 internen `.qmd`-Links im Repo
+   lösen auf.
 2. **`statistik/fragen.qmd` und `verfahren-waehlen.qmd`** enthalten keinen
    Code und damit keine prüfbaren Zahlen. Sie stehen auf `fertig`, weil es
    dort nichts gegen eine Ausgabe zu halten gibt — nicht, weil das Skript sie
