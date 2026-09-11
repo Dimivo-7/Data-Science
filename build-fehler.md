@@ -456,3 +456,34 @@ nicht still haengenbleiben.
 laufen lassen und den Rueckgabewert pruefen (`git fetch ... || echo FETCH
 FEHLGESCHLAGEN`), sonst ist ein kaputter Fetch von einem laufenden Build nicht
 zu unterscheiden.
+
+---
+
+### 2026-09-11 — matplotlib-Aufrufe drucken ihr Rueckgabeobjekt mit
+
+**Symptom:** Unter der Grafik steht Zeilen wie
+
+```
+<matplotlib.container.PieContainer object at 0x7fa659907f20>
+Text(1, -0.85, '1')
+Text(0.5, 1.0, 'Radius = Wert')
+```
+
+**Ursache:** Die Python-Engine gibt den Rueckgabewert einer Anweisung aus, wenn
+er nicht `None` ist. `ax.pie()`, `ax.bar()`, `ax.scatter()`, `ax.text()`,
+`ax.set_title()` und `ax.set_ylim()` geben alle etwas zurueck. Besonders
+auffaellig wird es in Schleifen, weil dort je Durchlauf eine Zeile entsteht.
+
+**Regel:** Auf den Visualisierungsseiten jeden matplotlib-Aufruf, dessen
+Rueckgabewert nicht gebraucht wird, an `_` zuweisen:
+
+```python
+_ = achse.scatter(x, y, s=flaeche)
+_ = achse.set_title("Titel")
+```
+
+`plt.subplots()`, `plt.tight_layout()` und `plt.show()` brauchen das nicht.
+
+**Erkennungszeichen:** `python zeige-ausgaben.py <freeze> | grep -E "object at|Text\(|Line2D"` —
+findet alle Stellen auf einen Schlag. Derselbe Fehler trat zuvor mit
+`stats.probplot()` auf `qq-plots.qmd` auf; er gehoert zur selben Familie.
