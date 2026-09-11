@@ -334,3 +334,33 @@ eines theoretischen Quantils mitrechnen — er muss das Niveau treffen.
 Saatpaare im Verhaeltnis 2:1 oder 3:1 sind 1234/2468 (stetige-verteilungen,
 verschiedene Beispiele) und 1414/2121/4242 (zeitreihen-grundlagen und
 zensierung, verschiedene Beispiele) — nirgends im selben Rechenschritt.
+
+---
+
+### 2026-09-11 — Die Warteregel auf den Freeze-Commit war zu grob
+
+**Symptom:** Der Wartebefehl
+
+```sh
+until git log --oneline -2 origin/main | grep -q "Freeze-Ergebnisse aktualisieren"; do ...
+```
+
+meldete sofort Erfolg, weil der Freeze-Commit des **vorherigen** Builds noch
+unter den letzten zwei Eintraegen stand. Daraufhin wurde waehrend eines
+laufenden Builds gepusht — genau der Fehler von 2026-09-10.
+
+**Regel:** Nicht auf den Commit-Titel warten, sondern darauf, dass das
+**neue Chunk-Label** in der Freeze-Datei auf `origin/main` steht:
+
+```sh
+while true; do
+  git fetch -q origin main
+  treffer=$(git show origin/main:_freeze/<pfad>/execute-results/html.json 2>/dev/null \
+            | grep -c "<neues-chunk-label>")
+  [ "$treffer" -gt 0 ] && break
+  sleep 45
+done
+```
+
+Das ist zugleich der Nachweis, dass der Freeze wirklich die neue Fassung
+enthaelt, und nicht nur, dass irgendein Build fertig geworden ist.

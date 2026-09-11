@@ -4,8 +4,9 @@ Diese Datei hält fest, wo die Arbeit steht und wie es weitergeht. Sie liegt im
 Repo, damit der Stand auf jedem Rechner verfügbar ist und nicht in einem
 lokalen Gedächtnis hängt.
 
-Stand: 10. September 2026, Bereiche Tests, Regression, Inferenz und Multivariat
-vollständig; Überlebenszeit begonnen.
+Stand: 11. September 2026. **Alle Bereiche sind inhaltlich vollständig und auf
+die Beispiel-Reiter umgestellt.** Die beiden Lücken aus dem Modulplan-Abgleich
+(Prüfverteilungen, lineare Algebra für die PCA) sind geschlossen.
 
 ---
 
@@ -97,24 +98,26 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `statistik/regression/` | **vollständig**: einfache und multiple lineare Regression, logistische Regression, Regressionsdiagnostik, Modellauswahl, Klassifikationsgüte |
 | `statistik/inferenz/` | **vollständig**: Schätzen und Konfidenzintervalle, Hypothesentest-Grundlagen, Effektstärken, Power, multiples Testen, Bootstrap |
 | `statistik/multivariat/` | **vollständig**: Hauptkomponentenanalyse, Faktorenanalyse, Distanzmasse, k-Means, hierarchisches Clustering, Clustergüte |
-| `statistik/ueberlebenszeit/` | Kaplan-Meier |
+| `statistik/ueberlebenszeit/` | **vollständig**: Kaplan-Meier, Log-Rank-Test, Cox-Modell, Zensierung und Überlebensfunktion |
+| `statistik/zeitreihen/` | **vollständig**: Grundlagen, Stationarität und ACF/PACF, Glättung, ARIMA/SARIMA |
+| `statistik/grundlagen/` | **vollständig**: Lage- und Streuungsmasse, Korrelation, Skalenniveaus, Häufigkeiten, explorative Datenanalyse |
+| `statistik/wahrscheinlichkeit/` | **vollständig**: Kombinatorik, bedingte Wahrscheinlichkeit und Bayes, Zufallsvariablen, diskrete und stetige Verteilungen, Normalverteilung und ZGWS, QQ-Plots, **Prüfverteilungen** (neu) |
+| `statistik/multivariat/` | zusätzlich **lineare Algebra für die PCA** (neu) |
 | `referenz/` | R und Python für die verwendeten Funktionen gefüllt (Verteilungen, Hypothesentests, Regression, Multivariat, Grafik) |
 
 ## Als Nächstes
 
-1. **`statistik/ueberlebenszeit/`**: Log-Rank-Test, Cox-Modell, Zensierung und
-   Überlebensfunktion. Alle drei teilen den Abo-Datensatz aus `kaplan-meier.qmd`
-   (Lehmer-Saaten 7001/7002/7003) — dieselbe Vorschrift übernehmen, damit die
-   Seiten zusammenpassen.
-2. **`statistik/zeitreihen/`**: Grundlagen, Stationarität und ACF/PACF,
-   Glättung, ARIMA/SARIMA.
-3. **`statistik/grundlagen/`** (5 Seiten) und **`statistik/wahrscheinlichkeit/`**
-   (7 Seiten).
-4. **Zwei fehlende Seiten anlegen.** Der Abgleich mit den beiden Modulplänen
-   (`0_ESDS_…pdf` und `0_StatDa_…pdf`) ergab genau zwei Lücken:
-   - Prüfverteilungen: t-, Chi-Quadrat- und F-Verteilung
-   - Grundlagen der linearen Algebra für die Hauptkomponentenanalyse
-     (Matrizen, Eigenwerte, Eigenvektoren)
+Der inhaltliche Aufbau ist abgeschlossen. Was bleibt, ist Pflege:
+
+1. **Zahlen der neuesten Seiten gegen den Freeze prüfen.** Offen sind
+   `kombinatorik-wahrscheinlichkeit.qmd`, `pruefverteilungen.qmd` und
+   `lineare-algebra-pca.qmd`. Vorgehen wie immer über
+   `python zeige-ausgaben.py _freeze/<pfad>/execute-results/html.json`.
+2. **`stand: entwurf` auf `geprueft` heben**, sobald die Zahlen einer Seite
+   gegen den Freeze gezogen sind.
+3. **Querverweise durchgehen.** Die neuen Seiten verlinken auf
+   `hauptkomponentenanalyse.qmd`, `multiple-lineare-regression.qmd` und
+   `multiples-testen.qmd`; die Gegenrichtung fehlt teilweise noch.
 
 ## Der Lehmer-Generator als Standardweg für Beispieldaten
 
@@ -139,6 +142,27 @@ Verteilungen bilden: gleichverteilt `von + (bis - von) * u`, exponentiell
 **Verschiedene Saaten für verschiedene Variablen**, sonst sind sie identisch.
 Der Generator hat eine Periode von gut zwei Milliarden, überlappende Ströme sind
 bei den hier verwendeten Längen kein Thema.
+
+**Aber:** Eine Saat je Spalte reicht nicht, sobald mehrere Ströme
+*zusammengerechnet* werden (Quadratsummen, Kovarianzmatrizen, Distanzen über
+viele Merkmale). Der Generator ist multiplikativ, aus der Saat `s` entsteht
+`16807^k * s mod m`; zwei Saaten im Verhältnis 2:1 liefern deshalb linear
+abhängige Ströme (gemessen: 101 und 202 korrelieren mit **0.584**). Für
+mehrdimensionale Daten **einen langen Strom ziehen und umformen**:
+
+```r
+normalmatrix <- function(saat, zeilen, spalten)
+  matrix(qnorm(lehmer(saat, zeilen * spalten)), nrow = zeilen, byrow = TRUE)
+```
+
+```python
+def normalmatrix(saat, zeilen, spalten):
+    return stats.norm.ppf(lehmer(saat, zeilen * spalten)).reshape(zeilen, spalten)
+```
+
+Der Fehler bleibt in Mittelwert und Varianz **unsichtbar** und zeigt sich erst
+in Schiefe, Wölbung oder einem Ablehnanteil — siehe `build-fehler.md`,
+Eintrag vom 11.09.2026.
 
 ## Bekannte Abweichungen zwischen R und Python
 
