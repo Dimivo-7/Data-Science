@@ -1,41 +1,42 @@
 ---
 title: "Python-Grundlagen"
 description: "Datentypen, Kontrollfluss, Listen und Dictionaries als Arbeitsbasis."
-categories: ["Programmiergrundlagen", "Python"]
+categories: ["Programmiergrundlagen", "Python", "R"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
 stand: entwurf
 order: 10
 ---
 
-```{r}
-#| label: setup-r
-#| include: false
-set.seed(42)
-```
-
 ```{python}
 #| label: setup-python
 #| include: false
-import numpy as np
-rng = np.random.default_rng(42)
+import copy
+import math
+from collections import Counter
 ```
 
 ## Kernideen
 
-- Dynamische Typisierung, Namen als Referenzen
-- Eingebaute Typen und ihre Unveränderlichkeit
-- Sequenzen und Container: Liste, Tupel, Dictionary, Set
-- Kontrollfluss und Einrückung als Blockstruktur
-- Comprehensions statt Füllschleifen
-- Arbeitsumgebungen: Konsole, Jupyter, Spyder, PyCharm
+- Ein Name ist ein **Verweis** auf ein Objekt, kein Behälter. Zwei Namen
+  können auf dasselbe Objekt zeigen.
+- Vier Container decken den Alltag ab: **Liste, Tupel, Dictionary, Set**. Die
+  Wahl hängt daran, ob Reihenfolge, Veränderbarkeit oder Schlüssel gebraucht
+  werden.
+- Python zählt **ab null** und schliesst beim Slicing die obere Grenze aus.
+  Ein negativer Index heisst "von hinten", in R heisst er "weglassen".
+- Blöcke entstehen durch **Einrückung**, nicht durch Klammern.
+- Eine Liste rechnet nicht elementweise. Dafür gibt es **Comprehensions** oder
+  [NumPy](numpy-scipy.qmd).
+- Gleitkommazahlen vergleicht man nie mit `==`, sondern mit einer Toleranz.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** keines. Diese Seite ist der Einstieg in Python. Wer von R
-herkommt, findet in jedem Tabset den Vergleich; wer hier anfängt, braucht ihn
-nicht. Weiter geht es mit [Funktionen und Module in Python](python-funktionen-module.qmd).
+**Vorwissen:** keines. Diese Seite ist der Einstieg in Python. Wer von
+[R](r-grundlagen.qmd) herkommt, findet in jedem Beispiel den Vergleich; wer
+hier anfängt, kann den R-Reiter überspringen. Weiter geht es mit
+[Funktionen und Module in Python](python-funktionen-module.qmd).
 :::
 
 ### Ein Name ist kein Behälter
@@ -44,149 +45,377 @@ In vielen Sprachen deklariert man eine Variable mit einem Typ, und dieser Typ
 gilt. Python macht es anders: Ein Name ist nur ein Verweis auf ein Objekt, und
 derselbe Name kann nacheinander auf Objekte ganz verschiedener Art zeigen.
 
-```{python}
-#| label: referenz-py
-x = 42
-print(type(x))
-
-x = "jetzt Text"
-print(type(x))
+```python
+x = 42          # x zeigt auf eine ganze Zahl
+x = "Text"      # jetzt auf eine Zeichenkette, ohne Fehler
 ```
 
 Das macht den Einstieg schnell und verschiebt Fehler von der Übersetzungs- in
 die Laufzeit. Ein Tippfehler in einem Namen fällt erst auf, wenn die Zeile
-ausgeführt wird, und das kann in einem selten betretenen Zweig lange dauern.
+ausgeführt wird. Die Konsequenz für die Praxis: früh und oft ausführen, statt
+lange zu schreiben und dann zu starten.
 
-Die Konsequenz für die Praxis: früh und oft ausführen, statt lange zu schreiben
-und dann zu starten.
+Die zweite Folge ist die wichtigere. Schreibt man `b = a`, entsteht **kein
+neues Objekt**, sondern ein zweiter Name für dasselbe. Ändert man das Objekt
+über `b`, sieht man die Änderung auch über `a`. R verhält sich hier anders
+(copy on modify), und genau das macht Beispiel 1 zur ersten Stolperstelle
+beim Sprachwechsel.
 
 ### Die vier Container
 
-Für die tägliche Arbeit genügen vier Sammlungstypen. Die Wahl zwischen ihnen
-ist keine Geschmacksfrage, sondern hängt daran, was gebraucht wird.
+| Typ | Schreibweise | geordnet | veränderlich | Zugriff über | wofür |
+|---|---|---|---|---|---|
+| Liste | `[1, 2, 3]` | ja | ja | Position | der Normalfall |
+| Tupel | `(1, 2, 3)` | ja | nein | Position | feste Wertegruppen, Rückgabe mehrerer Werte |
+| Dictionary | `{"a": 1}` | ja (Einfügung) | ja | Schlüssel | benannte Daten |
+| Set | `{1, 2, 3}` | nein | ja | nur Mitgliedschaft | Eindeutigkeit, Mengenoperationen |
 
-| Typ | geordnet | veränderlich | Zugriff über | wofür |
-|---|---|---|---|---|
-| Liste | ja | ja | Position | der Normalfall |
-| Tupel | ja | nein | Position | feste Wertegruppen, Rückgabe mehrerer Werte |
-| Dictionary | ja (Einfügung) | ja | Schlüssel | benannte Daten |
-| Set | nein | ja | nur Mitgliedschaft | Eindeutigkeit, Mengenoperationen |
+Ein Dictionary-Schlüssel muss unveränderlich sein. Ein Tupel taugt deshalb als
+Schlüssel, eine Liste nicht. Das ist der eigentliche Grund, warum es beide
+Typen gibt.
 
-::: panel-tabset
-## R
+### Das Gegenstück in R
 
-```{r}
-#| label: container-r
-# Vektor als Gegenstueck zur Liste, benannte Liste zum Dictionary
-werte <- c(3, 1, 4, 1, 5)
-werte[2]                       # R zaehlt ab 1
-
-person <- list(name = "Ada", jahr = 1815)
-person$name
-
-unique(werte)                  # Gegenstueck zum Set
-```
-
-## Python
-
-```{python}
-#| label: container-py
-werte = [3, 1, 4, 1, 5]
-print(werte[1])                # Python zaehlt ab 0
-
-person = {"name": "Ada", "jahr": 1815}
-print(person["name"])
-
-print(set(werte))              # Duplikate fallen weg
-```
-:::
-
-::: {.note-box}
-Der Indexunterschied ist die häufigste Stolperstelle beim Wechsel zwischen den
-Sprachen. R beginnt bei eins, Python bei null. Beim Slicing kommt hinzu, dass
-in Python die obere Grenze **nicht** enthalten ist: `werte[0:2]` liefert zwei
-Elemente, nicht drei.
-:::
-
-```{python}
-#| label: slicing-py
-werte = [3, 1, 4, 1, 5]
-print(werte[0:2])      # Position 0 und 1
-print(werte[:3])       # von vorne
-print(werte[-1])       # das letzte
-print(werte[::-1])     # rueckwaerts
-```
-
-### Veränderlich oder nicht
-
-Der Unterschied zwischen Liste und Tupel wirkt nebensächlich und hat handfeste
-Folgen. Eine Liste lässt sich nach dem Anlegen ändern, ein Tupel nicht. Weil ein
-Dictionary-Schlüssel unveränderlich sein muss, kann ein Tupel als Schlüssel
-dienen, eine Liste nicht.
-
-```{python}
-#| label: veraenderlich-py
-liste = [1, 2, 3]
-liste[0] = 99
-print(liste)
-
-tupel = (1, 2, 3)
-try:
-    tupel[0] = 99
-except TypeError as fehler:
-    print("Tupel:", fehler)
-
-# deshalb funktioniert das hier
-koordinaten = {(47.3, 8.5): "Zürich", (46.9, 7.4): "Bern"}
-print(koordinaten[(46.9, 7.4)])
-```
-
-Daraus folgt eine der bekanntesten Fallen. Weil ein Name nur ein Verweis ist,
-zeigen zwei Namen nach einer Zuweisung auf dasselbe Objekt:
-
-```{python}
-#| label: alias-py
-a = [1, 2, 3]
-b = a               # kein neues Objekt, nur ein zweiter Verweis
-b.append(4)
-print("a:", a)      # a hat sich mitveraendert
-
-c = a.copy()        # jetzt eine echte Kopie
-c.append(5)
-print("a:", a, " c:", c)
-```
-
-::: {.quiz}
-`werte = [3, 1, 4, 1, 5]`. Was liefert `werte[0:2]`?
-
-- [x] Zwei Elemente, nämlich `[3, 1]` ~ Richtig. Die obere Grenze ist
-      ausgeschlossen. Der Vorteil dieser Regel ist, dass die Länge des
-      Ausschnitts die Differenz der beiden Zahlen ist.
-- [ ] Drei Elemente, `[3, 1, 4]` ~ Das wäre bei eingeschlossener Grenze der
-      Fall, wie in R. Beim Sprachwechsel ist das die häufigste Falle.
-- [ ] Einen Fehler, weil die Liste bei 1 beginnt ~ Python beginnt bei 0.
-:::
-
-::: {.quiz}
-Wann ist ein Tupel der Liste vorzuziehen?
-
-- [ ] Wenn die Werte nur gelesen werden sollen ~ Nur lesen kann man aus einer
-      Liste ebenso gut. Der Unterschied ist, ob sich der Inhalt ändern lässt.
-- [x] Wenn die Gruppe als Dictionary-Schlüssel dienen soll ~ Richtig. Schlüssel
-      müssen unveränderlich sein, weshalb ein Koordinatenpaar als Tupel
-      funktioniert und als Liste einen Fehler auslöst.
-- [ ] Wenn verschiedene Typen gemischt werden ~ Das können beide.
-:::
+| Python | R | Unterschied, der beisst |
+|---|---|---|
+| Liste `[3, 1, 4]` | atomarer Vektor `c(3, 1, 4)` | der R-Vektor rechnet elementweise, die Liste nicht |
+| Liste mit gemischten Typen | `list(...)` | |
+| Dictionary | benannte Liste `list(a = 1)` | fehlender Schlüssel: Python `KeyError`, R `NULL` |
+| Set | `unique()`, `union()`, `intersect()` | R hat keinen eigenen Mengentyp |
+| `werte[0]` | `werte[1]` | Zählung ab null gegen ab eins |
+| `werte[-1]` | `werte[length(werte)]` | `werte[-1]` heisst in R "ohne das erste" |
 
 ### Kontrollfluss und Einrückung
 
-Python bildet Blöcke nicht mit Klammern, sondern mit Einzug. Das erzwingt
-lesbaren Code und bestraft gemischte Tabulatoren und Leerzeichen sofort.
+Python bildet Blöcke mit Einzug. Das erzwingt lesbaren Code und bestraft
+gemischte Tabulatoren und Leerzeichen sofort mit einem `IndentationError`.
+
+```python
+for w in werte:
+    if w > 40:
+        art = "hoch"
+    elif w > 10:
+        art = "mittel"
+    else:
+        art = "tief"
+```
+
+Eine Schleife, die nichts tut als eine Liste zu füllen, schreibt man als
+**Comprehension**: `[w ** 2 for w in werte if w > 10]`. Das ist kein Stilmittel,
+sondern die idiomatische Form. R braucht dafür keine Schleife, weil dort jede
+Rechnung auf dem ganzen Vektor läuft.
+
+### Wo man arbeitet
+
+| Umgebung | wofür sie taugt | Grenze |
+|---|---|---|
+| Konsole | einzelne Ausdrücke ausprobieren | nichts bleibt erhalten |
+| Jupyter | Analyse mit Text, Code und Ausgabe in einem Dokument | Ausführungsreihenfolge kann von der Lesereihenfolge abweichen |
+| Spyder | Skripte mit Variablenübersicht, nahe an RStudio | weniger für grosse Projekte |
+| PyCharm, VS Code | mehrere Dateien, Tests, Refactoring | schwergewichtig für eine kurze Auswertung |
+
+::: {.note-box}
+Die Falle bei Notebooks ist real. Wer Zellen in beliebiger Reihenfolge
+ausführt, erzeugt einen Zustand, der sich beim Durchlauf von oben nicht
+reproduzieren lässt. Die Probe: Kernel neu starten und alles von oben
+ausführen. Läuft es dann nicht durch, war das Ergebnis nie reproduzierbar.
+Mehr dazu unter [Reproduzierbarkeit](reproduzierbarkeit.qmd).
+:::
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| Liste filtern und umformen | `x[x %% 2 == 0]^2` | `[v ** 2 for v in x if v % 2 == 0]` |
+| über Schlüssel und Werte laufen | `for (n in names(p)) p[[n]]` | `for n, w in p.items():` |
+| Text mit Werten | `sprintf("%s: %.2f", n, w)` | `f"{n}: {w:.2f}"` |
+| Häufigkeiten | `table(x)` | `Counter(x)` |
+| zwei Listen paarweise | `for (i in seq_along(a))` | `for u, v in zip(a, b):` |
+| Wert mit Ersatz holen | `if (is.null(p$d)) 0 else p$d` | `p.get("d", 0)` |
+| Typ abfragen | `class(x)` | `type(x)` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Namen, Verweise und Kopien
+
+#### Frage und Datenlage
+
+Eine kleine Liste wird einem zweiten Namen zugewiesen und über diesen
+verändert. Was passiert mit dem Original, in Python und in R? Und reicht
+`copy()`, wenn die Liste selbst Listen enthält?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-gr-r
+a <- c(1, 2, 3)
+b <- a
+b[4] <- 4
+list(a = a, b = b)
+
+# Auch verschachtelt kopiert R beim Aendern
+tief <- list(c(1, 2), c(3, 4))
+flach <- tief
+flach[[1]] <- c(flach[[1]], 99)
+tief[[1]]
+```
+
+##### Python
 
 ```{python}
-#| label: kontrollfluss-py
-werte = [12, 45, 7, 31, 88]
+#| label: b1-gr-py
+a = [1, 2, 3]
+b = a
+b.append(4)
+print({"a": a, "b": b, "a_is_b": a is b})
 
+c = a.copy()
+c.append(5)
+print({"a": a, "c": c, "a_is_c": a is c})
+
+# Neu zuweisen ist etwas anderes als veraendern
+x = [1, 2, 3]
+y = x
+y = y + [4]
+print({"x": x, "y": y, "x_is_y": x is y})
+
+# copy() ist flach: innere Listen bleiben geteilt
+tief = [[1, 2], [3, 4]]
+flach = tief.copy()
+echt = copy.deepcopy(tief)
+flach[0].append(99)
+print({"tief": tief, "echt": echt})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Python | R | Erklärung |
+|---|---|---|---|
+| `a` nach Änderung über `b` | **`[1, 2, 3, 4]`** | **`1 2 3`** | In Python sind `a` und `b` dasselbe Objekt (`a_is_b` ist `True`). R kopiert in dem Moment, in dem `b` verändert wird. |
+| `a` nach `c = a.copy()` | `[1, 2, 3, 4]` | | `copy()` erzeugt ein neues Objekt, `a_is_c` ist `False`, das Anhängen an `c` lässt `a` in Ruhe. |
+| `x` nach `y = y + [4]` | `[1, 2, 3]` | | `+` baut eine **neue** Liste und bindet `y` neu. `append` dagegen verändert das Objekt, auf das beide zeigen. |
+| `tief` nach `flach[0].append(99)` | **`[[1, 2, 99], [3, 4]]`** | **`1 2`** | `copy()` kopiert nur die äussere Liste. Die inneren Listen sind weiterhin geteilt. Erst `copy.deepcopy` trennt vollständig, `echt` bleibt `[[1, 2], [3, 4]]`. |
+
+::: {.note-box}
+**Merkregel:** Methoden wie `append`, `extend`, `sort` und Zuweisungen an
+`liste[i]` verändern das Objekt, und alle Namen sehen es. Operatoren wie `+`
+und Funktionen wie `sorted()` liefern ein neues Objekt. Wer unsicher ist,
+prüft mit `a is b`.
+:::
+
+#### Interpretation und Ergebnissatz
+
+Die Falle ist nicht die Zuweisung, sondern die Kombination aus Zuweisung und
+veränderndem Methodenaufruf. In R kann sie nicht auftreten, weil dort jede
+Änderung eine Kopie erzeugt, sobald ein zweiter Name auf das Objekt zeigt.
+Wer Code von R nach Python überträgt, muss deshalb an genau diesen Stellen
+eine Kopie einbauen.
+
+> Nach `b = a` und `b.append(4)` enthält auch `a` die 4, weil beide Namen auf
+> dieselbe Liste zeigen; in R bleibt `a` bei `1 2 3`. `copy()` trennt nur die
+> äussere Ebene: Bei verschachtelten Listen braucht es `copy.deepcopy()`.
+
+### Beispiel 2: Indizes und Slicing
+
+#### Frage und Datenlage
+
+Fünf Messwerte `12.1, 14.3, 11.8, 15.0, 13.6`. Wie holt man den ersten, den
+letzten, einen Ausschnitt, und was passiert bei einem Index jenseits des Endes?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-gr-r
+werte <- c(12.1, 14.3, 11.8, 15.0, 13.6)
+werte[1]
+werte[2:3]
+werte[-1]              # OHNE das erste, nicht das letzte
+werte[length(werte)]
+rev(werte)
+werte[10]              # kein Fehler, sondern NA
+```
+
+##### Python
+
+```{python}
+#| label: b2-gr-py
+werte = [12.1, 14.3, 11.8, 15.0, 13.6]
+print(werte[0])
+print(werte[1:3])
+print(werte[-1])       # das letzte
+print(werte[1:])       # ohne das erste
+print(werte[::-1])
+try:
+    werte[10]
+except IndexError as fehler:
+    print(type(fehler).__name__, fehler)
+print(werte[3:10])     # Slicing ueber das Ende hinaus ist erlaubt
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Absicht | Python | Ergebnis | R | Ergebnis |
+|---|---|---|---|---|
+| erstes Element | `werte[0]` | 12.1 | `werte[1]` | 12.1 |
+| zweites und drittes | `werte[1:3]` | `[14.3, 11.8]` | `werte[2:3]` | `14.3 11.8` |
+| letztes | `werte[-1]` | 13.6 | `werte[length(werte)]` | 13.6 |
+| alle ausser dem ersten | `werte[1:]` | vier Werte ab 14.3 | `werte[-1]` | vier Werte ab 14.3 |
+| umgekehrt | `werte[::-1]` | `[13.6, 15.0, 11.8, 14.3, 12.1]` | `rev(werte)` | dieselben Werte |
+| Index 10 | `werte[10]` | **`IndexError`** | `werte[10]` | **`NA`** |
+| Ausschnitt über das Ende | `werte[3:10]` | `[15.0, 13.6]` | | |
+
+Drei Unterschiede stecken in dieser Tabelle:
+
+1. **Start bei null.** `werte[1]` ist in Python der zweite Wert.
+2. **Obere Grenze ausgeschlossen.** `werte[1:3]` liefert die Positionen 1 und
+   2, also zwei Werte. Der Vorteil: Die Länge des Ausschnitts ist die
+   Differenz der Grenzen, und `werte[:k]` und `werte[k:]` ergeben zusammen
+   die ganze Liste ohne Überlappung.
+3. **Negativer Index.** In Python zählt er von hinten, in R entfernt er das
+   Element. `werte[-1]` liefert in Python einen Wert, in R vier.
+
+#### Interpretation und Ergebnissatz
+
+Python bricht bei einem ungültigen Einzelindex ab, R gibt stillschweigend
+`NA` zurück und rechnet weiter. Das Python-Verhalten ist lauter und deshalb
+sicherer: Ein falscher Index fällt sofort auf, statt als fehlender Wert in
+einem Mittelwert zu verschwinden. Slicing ist dagegen tolerant und kürzt
+einfach ab.
+
+> Der Ausschnitt `werte[1:3]` enthält die zwei Werte 14.3 und 11.8, weil
+> Python ab null zählt und die obere Grenze ausschliesst. `werte[-1]` ist in
+> Python der letzte Wert 13.6, in R dagegen der Vektor ohne das erste Element.
+
+### Beispiel 3: Den passenden Container wählen
+
+#### Frage und Datenlage
+
+In einem Prüfprotokoll stehen die Teiletypen `A, B, A, C, A, B`. Welche Typen
+kommen vor, wie oft, welcher am häufigsten? Dazu ein Lagerbestand je Typ, der
+um einen Eintrag ergänzt und nach einem fehlenden Typ gefragt wird.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-gr-r
+teile <- c("A", "B", "A", "C", "A", "B")
+unique(teile)
+table(teile)
+names(which.max(table(teile)))
+
+lager <- list(A = 120, B = 45)
+lager$C <- 8
+str(lager)
+lager$D                # fehlender Schluessel: NULL, kein Fehler
+```
+
+##### Python
+
+```{python}
+#| label: b3-gr-py
+teile = ["A", "B", "A", "C", "A", "B"]
+print(sorted(set(teile)))
+zaehlung = Counter(teile)
+print(zaehlung)
+print(zaehlung.most_common(1))
+
+lager = {"A": 120, "B": 45}
+lager["C"] = 8
+print(lager)
+print(lager.get("D", 0))
+try:
+    lager["D"]
+except KeyError as fehler:
+    print(type(fehler).__name__, fehler)
+
+# Tupel als Schluessel geht, Liste nicht
+orte = {(47.37, 8.54): "Zürich"}
+print(orte[(47.37, 8.54)])
+try:
+    {[47.37, 8.54]: "Zürich"}
+except TypeError as fehler:
+    print(type(fehler).__name__)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Frage | Python | R | Container |
+|---|---|---|---|
+| welche Typen | `['A', 'B', 'C']` | `"A" "B" "C"` | Set, in R `unique()` |
+| wie oft | `Counter({'A': 3, 'B': 2, 'C': 1})` | Tabelle mit 3, 2, 1 | `Counter` ist ein Dictionary mit Zählfunktionen |
+| häufigster | `[('A', 3)]` | `"A"` | `most_common(1)` liefert eine Liste von Tupeln aus Wert und Anzahl |
+| Lager nach Ergänzung | `{'A': 120, 'B': 45, 'C': 8}` | Liste mit drei Einträgen | Dictionary, in R benannte Liste |
+| fehlender Typ D mit `get` | `0` | | `get` mit Ersatzwert ist der übliche Weg |
+| fehlender Typ D direkt | **`KeyError 'D'`** | **`NULL`** | Python bricht ab, R liefert ein leeres Objekt |
+| Tupel als Schlüssel | `Zürich` | | Tupel sind unveränderlich und damit als Schlüssel zulässig |
+| Liste als Schlüssel | **`TypeError`** | | Listen sind veränderlich und nicht hashbar |
+
+Warum `sorted(set(...))` und nicht nur `set(...)`: Ein Set hat keine
+Reihenfolge. Die Ausgabe eines Sets aus Zeichenketten kann sich zwischen zwei
+Programmläufen ändern. Wer eine reproduzierbare Ausgabe will, sortiert.
+
+#### Interpretation und Ergebnissatz
+
+Die Wahl des Containers ist eine Frage an die Daten: Zählt die Reihenfolge
+(Liste), soll sich nichts ändern (Tupel), wird über Namen zugegriffen
+(Dictionary), oder geht es nur um Vorkommen (Set)? Mit der richtigen Wahl
+werden die Rechnungen Einzeiler.
+
+> Im Protokoll kommen die drei Typen A, B und C vor, A dreimal und damit am
+> häufigsten. Der fehlende Typ D führt bei direktem Zugriff zu einem
+> `KeyError`; mit `lager.get("D", 0)` erhält man stattdessen den Ersatzwert 0.
+
+### Beispiel 4: Schleife, Comprehension, Vektor
+
+#### Frage und Datenlage
+
+Fünf Werte `12, 45, 7, 31, 88` sollen in die Klassen tief, mittel und hoch
+eingeteilt, quadriert, gefiltert und gezählt werden. Dazu die Probe, was
+`werte * 2` tut.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-gr-r
+werte <- c(12, 45, 7, 31, 88)
+art <- ifelse(werte > 40, "hoch", ifelse(werte > 10, "mittel", "tief"))
+data.frame(werte, art)
+
+werte^2
+werte[werte > 30]
+werte * 2
+sum(werte > 30)
+```
+
+##### Python
+
+```{python}
+#| label: b4-gr-py
+werte = [12, 45, 7, 31, 88]
 for w in werte:
     if w > 40:
         art = "hoch"
@@ -195,230 +424,189 @@ for w in werte:
     else:
         art = "tief"
     print(f"{w:>3} -> {art}")
-```
-
-Das `f` vor der Zeichenkette markiert eine f-String-Formatierung: Ausdrücke in
-geschweiften Klammern werden ausgewertet und eingesetzt, `:>3` richtet
-rechtsbündig auf drei Stellen aus.
-
-### Comprehensions
-
-Eine Schleife, die nichts tut, als eine Liste zu füllen, lässt sich kürzer und
-schneller schreiben. Das ist kein Stilmittel, sondern die idiomatische Form:
-
-```{python}
-#| label: comprehension-py
-werte = [12, 45, 7, 31, 88]
-
-# umstaendlich
-quadrate = []
-for w in werte:
-    quadrate.append(w ** 2)
-
-# idiomatisch
-quadrate_kurz = [w ** 2 for w in werte]
-print(quadrate == quadrate_kurz)
-
-# mit Bedingung
-print([w for w in werte if w > 30])
-
-# auch fuer Dictionaries
-print({w: w ** 2 for w in werte if w < 20})
-```
-
-Der Vergleich zu R liegt nahe. Dort erledigt die Vektorisierung dasselbe, ohne
-dass überhaupt eine Schleifenkonstruktion sichtbar wird:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: vektorisiert-r
-werte <- c(12, 45, 7, 31, 88)
-
-werte^2                # elementweise, ohne Schleife
-werte[werte > 30]      # Filtern ueber einen logischen Vektor
-```
-
-## Python
-
-```{python}
-#| label: comprehension2-py
-werte = [12, 45, 7, 31, 88]
 
 print([w ** 2 for w in werte])
 print([w for w in werte if w > 30])
+print({w: w ** 2 for w in werte if w < 20})
+print(werte * 2)
+print(sum(1 for w in werte if w > 30))
 ```
+
 :::
 
-Ohne NumPy braucht Python die Comprehension, weil eine Liste keine
-Rechenoperationen elementweise unterstützt. Mit NumPy, siehe
-[NumPy und SciPy](numpy-scipy.qmd), verhält sich Python dann wie R.
+#### Output Zeile für Zeile
 
-```{python}
-#| label: liste-mal-zwei-py
-werte = [1, 2, 3]
-print(werte * 2)        # verdoppelt die Liste, multipliziert nicht!
+| Aufgabe | Python | R | Ergebnis |
+|---|---|---|---|
+| Klassen | `for` mit `if`/`elif`/`else` | `ifelse()` verschachtelt | 12 und 31 mittel, 45 und 88 hoch, 7 tief |
+| quadrieren | `[w ** 2 for w in werte]` | `werte^2` | 144, 2025, 49, 961, 7744 |
+| filtern | `[w for w in werte if w > 30]` | `werte[werte > 30]` | 45, 31, 88 |
+| Dictionary bauen | `{w: w ** 2 for w in werte if w < 20}` | | `{12: 144, 7: 49}` |
+| mal zwei | `werte * 2` | `werte * 2` | Python: **die Liste zweimal hintereinander**, zehn Elemente. R: 24, 90, 14, 62, 176 |
+| zählen | `sum(1 for w in werte if w > 30)` | `sum(werte > 30)` | 3 |
+
+`f"{w:>3}"` in der Schleife ist ein f-String: Der Ausdruck in geschweiften
+Klammern wird eingesetzt, `:>3` richtet ihn rechtsbündig auf drei Stellen aus.
+Deshalb stehen die Pfeile untereinander.
+
+In R zählt `sum(werte > 30)` die `TRUE`-Werte, weil ein logischer Vektor beim
+Summieren zu 0 und 1 wird. Python kann dasselbe mit `sum(w > 30 for w in werte)`,
+denn auch dort ist `True` gleich 1.
+
+#### Interpretation und Ergebnissatz
+
+Die Zeile `werte * 2` ist der klassische Stolperstein beim Wechsel von R: Auf
+einer Liste wiederholt der Stern die Liste, statt die Elemente zu
+multiplizieren. Wer elementweise rechnen will, nimmt eine Comprehension oder
+wechselt zu einem NumPy-Array, das sich dann wie ein R-Vektor verhält.
+
+> Drei der fünf Werte liegen über 30 (45, 31 und 88). `werte * 2` verdoppelt
+> in Python die Länge der Liste auf zehn Elemente; elementweise rechnet erst
+> eine Comprehension oder ein NumPy-Array.
+
+### Beispiel 5: Division, Rundung und Gleitkomma
+
+#### Frage und Datenlage
+
+Drei Dinge, die in beiden Sprachen überraschen: was `7 / 2` und die ganzzahlige
+Division liefern, warum `0.1 + 0.2 == 0.3` falsch ist, und wie `round(2.5)`
+rundet.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-gr-r
+c(7 / 2, 7 %/% 2, 7 %% 2, -7 %/% 2, -7 %% 2)
+c(class(7 / 2), class(7L %/% 2L), class(5))
+
+0.1 + 0.2 == 0.3
+print(0.1 + 0.2, digits = 17)
+isTRUE(all.equal(0.1 + 0.2, 0.3))
+
+c(round(0.5), round(1.5), round(2.5), round(2.675, 2))
 ```
 
-Diese Zeile ist ein klassischer Stolperstein: Der Stern wiederholt die Liste,
-statt ihre Elemente zu multiplizieren.
+##### Python
+
+```{python}
+#| label: b5-gr-py
+print(7 / 2, 7 // 2, 7 % 2, -7 // 2, -7 % 2)
+print(type(7 / 2).__name__, type(7 // 2).__name__, type(5).__name__)
+
+print(0.1 + 0.2 == 0.3, 0.1 + 0.2)
+print(math.isclose(0.1 + 0.2, 0.3))
+
+print(round(0.5), round(1.5), round(2.5), round(2.675, 2))
+print(f"{2.675:.20f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausdruck | Python | R | Erklärung |
+|---|---|---|---|
+| `7 / 2` | 3.5 | 3.5 | Echte Division, in beiden Sprachen eine Gleitkommazahl. |
+| ganzzahlige Division | `7 // 2` = 3 | `7 %/% 2` = 3 | Abrunden auf die nächste ganze Zahl. |
+| Rest | `7 % 2` = 1 | `7 %% 2` = 1 | |
+| negativ geteilt | `-7 // 2` = **−4** | `-7 %/% 2` = **−4** | Abgerundet wird **nach unten**, nicht Richtung null. −3.5 wird zu −4. |
+| Rest bei negativ | `-7 % 2` = 1 | `-7 %% 2` = 1 | Der Rest hat das Vorzeichen des Teilers, damit `(a // b) * b + a % b == a` gilt. |
+| Typ von `5` | `int` | `numeric` | Eine ganze Zahl ohne Nachsatz ist in R eine Gleitkommazahl. Ganzzahlig wird sie erst mit `5L`. |
+| `0.1 + 0.2 == 0.3` | `False` | `FALSE` | 0.1 und 0.2 sind binär nicht exakt darstellbar. Die Summe ist **0.30000000000000004**. |
+| Vergleich mit Toleranz | `math.isclose` → `True` | `all.equal` → `TRUE` | So vergleicht man Gleitkommazahlen. |
+| `round(0.5)`, `round(1.5)`, `round(2.5)` | 0, 2, 2 | 0, 2, 2 | **Auf die gerade Zahl** gerundet (Banker's Rounding), nicht kaufmännisch. Das verhindert einen systematischen Aufwärtsfehler bei vielen Rundungen. |
+| `round(2.675, 2)` | 2.67 | 2.67 | Kein Rundungsfehler: 2.675 ist intern **2.67499999999999982236**, also knapp unter der Mitte. |
+
+#### Interpretation und Ergebnissatz
+
+Beide Sprachen folgen demselben Gleitkommastandard, deshalb verhalten sie sich
+bei Rundung und Vergleich gleich. Der einzige echte Unterschied in diesem
+Beispiel ist der Typ: Python unterscheidet `int` und `float` schon am Literal,
+R nicht. Das zählt, wenn Werte als Index oder in einer Datenbank landen.
+
+> `0.1 + 0.2` ergibt in beiden Sprachen 0.30000000000000004, weshalb der
+> Vergleich mit `==` scheitert und eine Toleranz (`math.isclose`,
+> `all.equal`) nötig ist. `round(2.5)` liefert 2, weil auf die gerade Zahl
+> gerundet wird.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+`werte = [3, 1, 4, 1, 5]`. Was liefert `werte[0:2]`?
+
+- [x] Zwei Elemente, nämlich `[3, 1]` ~ Richtig. Die obere Grenze ist
+      ausgeschlossen. Der Vorteil dieser Regel ist, dass die Länge des
+      Ausschnitts die Differenz der beiden Zahlen ist.
+- [ ] Drei Elemente, `[3, 1, 4]` ~ Das wäre bei eingeschlossener Grenze der
+      Fall, wie bei `werte[1:3]` in R. Beim Sprachwechsel ist das die häufigste
+      Falle.
+- [ ] Einen Fehler, weil die Liste bei 1 beginnt ~ Python beginnt bei 0.
+:::
+
+::: {.quiz}
+Nach `a = [1, 2]`, `b = a` und `b.append(3)`: Was enthält `a`?
+
+- [x] `[1, 2, 3]` ~ Richtig. `b = a` erzeugt keine Kopie, beide Namen zeigen
+      auf dieselbe Liste, und `append` verändert diese Liste. Beispiel 1 zeigt
+      den Nachweis mit `a is b`.
+- [ ] `[1, 2]` ~ So verhielte sich R, das beim Ändern kopiert. In Python
+      braucht es dafür `b = a.copy()`.
+- [ ] Einen Fehler, weil `a` nicht verändert wurde ~ Der Aufruf ist gültig.
+:::
+
+::: {.quiz}
+Wann ist ein Tupel der Liste vorzuziehen?
+
+- [ ] Wenn die Werte nur gelesen werden sollen ~ Nur lesen kann man aus einer
+      Liste ebenso gut. Der Unterschied ist, ob sich der Inhalt ändern lässt.
+- [x] Wenn die Gruppe als Dictionary-Schlüssel dienen soll ~ Richtig.
+      Schlüssel müssen unveränderlich sein, weshalb ein Koordinatenpaar als
+      Tupel funktioniert und als Liste einen `TypeError` auslöst.
+- [ ] Wenn verschiedene Typen gemischt werden ~ Das können beide.
+:::
 
 ::: {.quiz}
 Was ergibt `[0] * 3`?
 
-- [x] `[0, 0, 0]` ~ Richtig. Bei Listen wiederholt der Stern die Liste. Wer die
-      Elemente multiplizieren will, braucht eine Comprehension oder NumPy.
-- [ ] `[0]`, weil null mal drei null ist ~ Das wäre elementweise Multiplikation.
-      Genau diese Verwechslung ist gemeint.
+- [x] `[0, 0, 0]` ~ Richtig. Bei Listen wiederholt der Stern die Liste. Wer
+      die Elemente multiplizieren will, braucht eine Comprehension oder NumPy.
+- [ ] `[0]`, weil null mal drei null ist ~ Das wäre elementweise
+      Multiplikation. Genau diese Verwechslung ist gemeint.
 - [ ] Einen Fehler ~ Die Operation ist gültig und wird oft genutzt, um eine
       Liste vorzubelegen.
 :::
 
 ::: {.quiz}
-Warum ist eine Comprehension der Schleife vorzuziehen, die nur eine Liste
-füllt?
+Ein Skript prüft `if summe == 0.3:` nach `summe = 0.1 + 0.2`. Was passiert?
 
-- [ ] Weil Schleifen in Python nicht erlaubt sind ~ Sie sind erlaubt und für
-      alles mit Bedingungen und Zwischenschritten richtig.
-- [x] Weil die Absicht in einer Zeile lesbar ist und die leere Startliste
-      entfällt ~ Richtig. Der Interpreter führt die Schleife intern aus, was
-      zudem schneller ist als wiederholtes `append`.
-- [ ] Weil sie den Speicher schont ~ Beide erzeugen dieselbe Liste. Wer Speicher
-      sparen will, braucht einen Generator.
+- [ ] Der Zweig wird ausgeführt ~ Die Summe ist 0.30000000000000004, nicht
+      0.3.
+- [x] Der Zweig wird übersprungen, richtig wäre `math.isclose(summe, 0.3)` ~
+      Richtig. Gleitkommazahlen werden mit einer Toleranz verglichen. In R
+      entspricht das `isTRUE(all.equal(summe, 0.3))`.
+- [ ] Python rundet automatisch und der Vergleich gelingt ~ Weder Python noch
+      R runden beim Vergleich.
 :::
 
-### Wo man arbeitet
+::: {.quiz}
+Ein Code-Stück aus R lautet `werte[-1]` und wird wörtlich nach Python
+übertragen. Was ändert sich?
 
-Vier Umgebungen, die verschiedene Zwecke bedienen und keine Rangfolge bilden.
-
-| Umgebung | wofür sie taugt | Grenze |
-|---|---|---|
-| Konsole | einzelne Ausdrücke ausprobieren | nichts bleibt erhalten |
-| Jupyter | Analyse mit Text, Code und Ausgabe in einem Dokument | Ausführungsreihenfolge kann von der Lesereihenfolge abweichen |
-| Spyder | Skripte mit Variablenübersicht, nahe an RStudio | weniger für grosse Projekte |
-| PyCharm | mehrere Dateien, Tests, Refactoring | schwergewichtig für eine kurze Auswertung |
-
-::: {.note-box}
-Die Falle bei Notebooks ist real. Wer Zellen in beliebiger Reihenfolge
-ausführt, erzeugt einen Zustand, der sich beim Durchlauf von oben nicht
-reproduzieren lässt. Die Probe ist derselbe Reflex wie in RStudio: Kernel neu
-starten und alles von oben ausführen. Läuft es dann nicht durch, war das
-Ergebnis nie reproduzierbar.
+- [x] Aus "alle ausser dem ersten" wird "nur das letzte" ~ Richtig. Der
+      negative Index hat in den beiden Sprachen verschiedene Bedeutungen. Das
+      Python-Gegenstück zum R-Ausdruck ist `werte[1:]`.
+- [ ] Nichts, beide entfernen das erste Element ~ Nur R entfernt.
+- [ ] Python meldet einen Fehler ~ Negative Indizes sind in Python gültig.
 :::
-
-## Typische Aufgaben
-
-Rezepte zum Nachschlagen. Die Beispiele sind Listings, sie rechnen nichts.
-
-**Eine Liste filtern und dabei umformen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-zahlen <- 1:10
-gerade_quadrate <- sapply(zahlen[zahlen %% 2 == 0], function(x) x^2)
-```
-
-## Python
-
-```python
-zahlen = range(1, 11)
-gerade_quadrate = [x**2 for x in zahlen if x % 2 == 0]
-```
-
-:::
-
-**Über ein Dictionary beziehungsweise eine benannte Liste laufen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-preise <- list(brot = 3.5, milch = 1.8)
-for (name in names(preise)) cat(name, preise[[name]], "\n")
-```
-
-## Python
-
-```python
-preise = {"brot": 3.5, "milch": 1.8}
-for name, wert in preise.items():
-    print(name, wert)
-```
-
-:::
-
-**Text mit Werten zusammensetzen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-sprintf("%s kostet %.2f", "Brot", 3.5)
-```
-
-## Python
-
-```python
-ware, preis = "Brot", 3.5
-f"{ware} kostet {preis:.2f}"
-```
-
-:::
-
-**Häufigkeiten zählen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-table(c("a", "b", "a"))
-```
-
-## Python
-
-```python
-from collections import Counter
-Counter(["a", "b", "a"])
-```
-
-:::
-
-**Zwei Listen paarweise durchlaufen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-for (i in seq_along(namen)) cat(namen[i], werte[i], "\n")
-```
-
-## Python
-
-```python
-for name, wert in zip(namen, werte):
-    print(name, wert)
-```
-
-:::
-
-**Prüfen, ob ein Objekt veränderlich ist**
-
-```python
-x = (1, 2)
-x[0] = 5        # TypeError, Tupel sind unveraenderlich
-y = [1, 2]
-y[0] = 5        # geht, Listen sind veraenderlich
-```
 
 ## Verlinkte Ressourcen
 
 - [Python-Tutorial der offiziellen Dokumentation](https://docs.python.org/3/tutorial/)
 - [Datenstrukturen im Python-Tutorial](https://docs.python.org/3/tutorial/datastructures.html)
+- [Gleitkomma-Arithmetik: Probleme und Grenzen](https://docs.python.org/3/tutorial/floatingpoint.html)
