@@ -107,53 +107,47 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 
 ## Als Nächstes
 
-### Laufende Arbeit: der Bereich `visualisierung/`
+### Stand
 
-Der Statistikteil ist fertig (50 Seiten, alle auf `stand: fertig`, Zahlen
-maschinell gegen den Freeze geprüft). Seit dem 11.09.2026 läuft derselbe Umbau
-im Visualisierungsbereich: Theorie ausserhalb des Tabsets, `## Beispiele` mit
-fünf Beispielen in R **und** Python, sechs Verständnisfragen.
-
-**Fertig (3 von 11):**
-
-| Seite | Beispiele |
+| Bereich | Stand |
 |---|---|
-| `wahrnehmung-kodierung.qmd` | Länge gegen Winkel, Fläche und Radius, ein Akzent gegen fünf, zwölf Serien, gemeinsame gegen getrennte Skala |
-| `irrefuehrende-darstellungen.qmd` | abgeschnittene Achse, zweite y-Achse, gewählter Ausschnitt, Simpson, Prozent gegen Prozentpunkte |
-| `diagrammtyp-waehlen.qmd` | Boxplot verbirgt die Form, Überplottung, alphabetische Sortierung, gestapelt gegen gruppiert, Balken ohne Unsicherheit |
+| `statistik/` (50 Seiten) | **fertig**, Zahlen maschinell geprüft |
+| `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
+| `visualisierung/` (11 Seiten) | **umgebaut**, Prüfung der Zahlen offen |
+| `programmierung/`, `daten/`, `ki/`, `datenbanken/`, `werkzeuge/` | unverändert, keine Beispiele |
 
-**Noch offen (8):** `zielbild-audience.qmd` (order 10), `ggplot2.qmd` (40),
-`matplotlib.qmd` (50), `seaborn-plotly.qmd` (60), `farbe.qmd` (70),
-`dashboards-interaktivitaet.qmd` (90), `fragen.qmd` (95),
-`storytelling.qmd` (100).
+### Offen für den Visualisierungsbereich
 
-**Der Massstab für diesen Bereich:** Bei Visualisierung ist die Ausgabe ein
-Bild, nicht eine Zahl. Trotzdem bekommt **jede Behauptung eine Kennzahl** —
-sonst bleibt die Seite Meinung. Bewährte Muster: Anteile (Akzentfläche,
-verdeckte Punkte), Winkel- und Längenverhältnisse, Verzerrungsfaktoren,
-Rangkorrelationen, Steigungen, Kreuzungszahlen.
+1. **Build abwarten und `pruefe-zahlen.py` laufen lassen.** Erst danach
+   `stand: fertig` setzen. Ein Render-Log-Commit der Action heisst, dass der
+   Build abgebrochen ist — dann zuerst `render.log` lesen.
+2. Bekannte Stolpersteine dieses Bereichs stehen in `build-fehler.md`:
+   matplotlib-Rückgabewerte an `_` zuweisen, `unname()` vor dem Benennen in
+   `c()`, keine Variable `t` in R.
 
-**Ideen für die offenen Seiten:**
+### Was der Bereich jetzt kann
 
-- `farbe.qmd`: sRGB nach Lab von Hand umrechnen und die paarweisen
-  Farbabstände einer Palette messen; Graustufentest als Luminanzvergleich;
-  Simulation von Farbfehlsichtigkeit
-- `ggplot2.qmd` / `matplotlib.qmd` / `seaborn-plotly.qmd`: Werkzeugseiten —
-  hier sind Beispiele eher Rezepte; der Vergleich derselben Grafik in beiden
-  Sprachen ist die eigentliche Aussage
-- `zielbild-audience.qmd` und `storytelling.qmd`: am wenigsten rechenbar;
-  Kandidaten sind der Fünf-Sekunden-Test als Zählung der Bildelemente und die
-  Frage, ob der Titel von den Daten gedeckt ist
-- `dashboards-interaktivitaet.qmd`: Ladezeit und Zahl der Klicks bis zur
-  Antwort als Kennzahlen
+Jede Behauptung hat eine Kennzahl. Die tragenden Beispiele:
+
+| Seite | Kennzahl |
+|---|---|
+| Wahrnehmung | 6 von 10 Winkelpaaren unter 10 Grad; Radiuskodierung macht 8-fach zu 64-fach |
+| Diagrammwahl | 79.6 Prozent verdeckte Punkte; Rangkorrelation 1.0 auf 0.3 |
+| Irreführung | Achse ab 95 verzerrt 5.70-fach; 40 Prozent Scheinkorrelation bei Irrfahrten |
+| Farbe | Okabe-Ito hält dE 26.4; Rot-Grün fällt unter Deuteranopie von 119.8 auf 8.2 |
+| Zielbild | 3 von 45 Paaren signifikant bei reinem Rauschen |
+| Storytelling | Betonung 1.45 auf 10.66; Kampagneneffekt +4.56 mit p = 0.22 |
+| ggplot2 | Steigungen je Typ 2.384 bis 2.534 gegen 2.358 gesamt |
+| matplotlib | Log-Achse: jede Verdopplung 0.3010; 300 dpi sind 2100 x 960 Pixel |
+| seaborn | 4 gegen 11 Codezeilen; 90 Ansichten aus vier Filtern |
+| Dashboards | dieselbe Schwelle: 29.4 gegen 0 Prozent Alarme je nach Takt |
 
 ### Danach
 
-1. **Weitere Bereiche ohne Beispiele:** `programmierung/` (10 Seiten),
-   `daten/` (6), `ki/` (10), `datenbanken/` (8), `werkzeuge/` (3). Alle
-   stehen auf `entwurf` und haben kein einziges `### Beispiel`.
-2. **`stand: fertig`** je Seite erst setzen, wenn `pruefe-zahlen.py` sie ohne
-   Befund meldet.
+Die fünf verbleibenden Bereiche (37 Seiten) haben kein einziges `### Beispiel`
+und stehen alle auf `entwurf`. Reihenfolge nach vorhandener Substanz:
+`programmierung/` (112 Code-Chunks), `daten/`, `datenbanken/`, `werkzeuge/`,
+`ki/` (gar kein Code).
 
 ## Der Lehmer-Generator als Standardweg für Beispieldaten
 
