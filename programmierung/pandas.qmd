@@ -108,9 +108,10 @@ ist es umgekehrt, dort geht es ohne Klammern.
 
 `df[bedingung]["wert"] = 99` besteht aus zwei Zugriffen. Der erste erzeugt ein
 Zwischenergebnis, der zweite schreibt in dieses Zwischenergebnis, das danach
-verworfen wird. Seit pandas 3 gilt dafür eine feste Regel (**copy on
-write**): Jedes Zwischenergebnis verhält sich wie eine Kopie, die Zuweisung
-bewirkt nie etwas, und pandas warnt mit `ChainedAssignmentError`. Richtig ist
+verworfen wird. Bei einer Auswahl per Bedingung ist das Zwischenergebnis eine
+Kopie, die Zuweisung bewirkt nichts, und pandas warnt: bis Version 2 mit
+`SettingWithCopyWarning`, ab Version 3 (**copy on write**, dort gilt es für
+jedes Zwischenergebnis) mit `ChainedAssignmentError`. Richtig ist
 ein einziger Zugriff: `df.loc[bedingung, "wert"] = 99`. In R ist die
 verkettete Form `df$wert[bedingung] <- 99` dagegen gültig und üblich.
 
@@ -336,7 +337,7 @@ print(df["wert"].tolist())
 
 | Variante | Warnung | Werte danach | Erklärung |
 |---|---|---|---|
-| zwei Zugriffe | `ChainedAssignmentError` | **`[1, 2, 3]`** | Die Zuweisung traf eine Kopie, die sofort verworfen wurde. Das Original ist unverändert. |
+| zwei Zugriffe | `SettingWithCopyWarning` (ab pandas 3 `ChainedAssignmentError`) | **`[1, 2, 3]`** | Die Zuweisung traf eine Kopie, die sofort verworfen wurde. Das Original ist unverändert. |
 | ein `.loc` | keine | `[99, 2, 99]` | Zeilen und Spalte in einem Zugriff. |
 | R verkettet | | 99 2 99 | In R ist `df$wert[...] <- 99` eine gültige Ersetzung. |
 
@@ -347,13 +348,13 @@ Sie ist der einzige Hinweis darauf, dass eine Zuweisung nichts bewirkt hat.
 #### Interpretation und Ergebnissatz
 
 Der Fehler ist heimtückisch, weil der Code gültig aussieht und in R genau so
-geschrieben würde. In pandas vor Version 3 hing das Ergebnis sogar vom Fall
-ab, weil ein Zwischenergebnis mal eine View und mal eine Kopie war. Mit copy
-on write ist es eindeutig, aber eindeutig **wirkungslos**. Die Regel bleibt:
+geschrieben würde. Bis pandas 2 hängt das Ergebnis sogar vom Fall ab, weil ein
+Zwischenergebnis mal eine View und mal eine Kopie ist; ab pandas 3 ist es mit
+copy on write eindeutig, aber eindeutig **wirkungslos**. Die Regel bleibt:
 Wer schreiben will, benutzt einen einzigen `.loc`-Zugriff.
 
-> Die verkettete Zuweisung liess die Werte bei 1, 2, 3 und löste eine
-> `ChainedAssignmentError`-Warnung aus; erst `df.loc[bedingung, "wert"] = 99`
+> Die verkettete Zuweisung liess die Werte bei 1, 2, 3 und löste eine Warnung
+> aus; erst `df.loc[bedingung, "wert"] = 99`
 > setzte beide Zeilen der Gruppe a auf 99. In R ist die verkettete Form
 > gültig.
 
@@ -612,8 +613,8 @@ benannte Vektoren 11, 22, 33. Was ergibt pandas?
 Warum ist `df[df["a"] > 1]["b"] = 0` wirkungslos?
 
 - [x] Die Zuweisung trifft ein Zwischenergebnis, das danach verworfen wird ~
-      Richtig. Seit pandas 3 ist das mit copy on write immer so, und pandas
-      warnt mit `ChainedAssignmentError`. Ein einziger `.loc`-Zugriff umgeht
+      Richtig. pandas warnt dabei mit `SettingWithCopyWarning`, ab Version 3
+      mit `ChainedAssignmentError`. Ein einziger `.loc`-Zugriff umgeht
       das.
 - [ ] Die Bedingung ist falsch geschrieben ~ Die Bedingung ist in Ordnung.
 - [ ] Es funktioniert nur bei numerischen Spalten ~ Der Datentyp spielt keine

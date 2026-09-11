@@ -144,8 +144,12 @@ zuweisen. Weitere Erfahrungen dieses Umbaus:
   nicht unter Windows vorrechnen und in den Text schreiben: Der Build läuft
   unter Linux.
 - **Zeitmessungen** nie als Zahl in den Text; sie schwanken je Lauf.
-- Die Build-Umgebung hat Python 3.12, pandas 3.0.5, NumPy 2.5.3. Ein
-  Wegwerf-venv mit denselben Versionen rechnet lokal identisch.
+- **Die pandas-Version im Build ist nicht stabil.** Zwei Builds am selben
+  Abend installierten pandas 3.0.5 und 2.3.3 (die Action bindet keine
+  Versionen, und `scikit-learn<1.6` zieht die Auflösung mal hierhin, mal
+  dorthin). Text zu versionsabhängigem Verhalten (Warnungsnamen, `str` gegen
+  `object`) deshalb versionsneutral schreiben, oder pandas in `publish.yml`
+  festschreiben. Python 3.12 und NumPy 2.5.3 waren in beiden Builds gleich.
 
 ### Der Visualisierungsbereich ist abgeschlossen
 
