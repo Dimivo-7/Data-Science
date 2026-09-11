@@ -284,3 +284,53 @@ laeuft in der Zwischenzeit lokal weiter und wird gesammelt.
 **Erkennungszeichen:** `git log -1 -- _freeze/<pfad>/execute-results/html.json`
 zeigt einen aelteren Commit als den eigenen. Oder direkt:
 `grep -c "<neues-chunk-label>" _freeze/<pfad>/execute-results/html.json` gibt 0.
+
+---
+
+### 2026-09-11 — Eine Saat je Spalte macht mehrdimensionale Beispieldaten abhaengig
+
+**Symptom:** Auf der Seite `pruefverteilungen.qmd` sollte die Summe von zehn
+quadrierten Standardnormalwerten chi-quadrat-verteilt sein. Mittelwert (9.99
+gegen 10) und Varianz (21.5 gegen 20) sahen brauchbar aus, die **Schiefe** lag
+aber bei 3.63 statt 0.89, und der Anteil oberhalb des 95-Prozent-Quantils bei
+0.13 statt 0.05.
+
+**Ursache:** Der Lehmer-Generator ist multiplikativ: aus der Saat `s` entsteht
+die Folge `16807^k * s mod m`. Zwei Saaten, von denen die eine ein kleines
+Vielfaches der anderen ist, liefern deshalb **linear abhaengige Stroeme**.
+Gemessene Korrelation zweier Stroeme:
+
+| Saatpaar | Korrelation |
+|---|---|
+| 1000 / 1001 | 0.030 |
+| 7001 / 7002 | -0.016 |
+| **101 / 202** | **0.584** |
+
+Zusaetzlich summieren sich auch kleine Restabhaengigkeiten benachbarter Saaten
+auf, sobald viele Spalten aufaddiert werden.
+
+**Regel:** Fuer mehrdimensionale Beispieldaten **einen langen Strom ziehen und
+umformen** statt eine Saat je Spalte:
+
+```r
+normalmatrix <- function(saat, zeilen, spalten)
+  matrix(qnorm(lehmer(saat, zeilen * spalten)), nrow = zeilen, byrow = TRUE)
+```
+
+```python
+def normalmatrix(saat, zeilen, spalten):
+    return stats.norm.ppf(lehmer(saat, zeilen * spalten)).reshape(zeilen, spalten)
+```
+
+Und nie zwei Saaten waehlen, bei denen die eine ein kleines Vielfaches der
+anderen ist (kein 101/202, kein 1234/2468 im selben Rechenschritt).
+
+**Erkennungszeichen:** Mittelwert und Varianz stimmen, aber **Schiefe,
+Woelbung oder ein Ablehnanteil** weichen deutlich ab. Eine Kontrolle der ersten
+zwei Momente faengt diesen Fehler nicht. Gegenprobe: einen Anteil oberhalb
+eines theoretischen Quantils mitrechnen — er muss das Niveau treffen.
+
+**Bestand geprueft:** Die vorhandenen Seiten sind nicht betroffen. Die einzigen
+Saatpaare im Verhaeltnis 2:1 oder 3:1 sind 1234/2468 (stetige-verteilungen,
+verschiedene Beispiele) und 1414/2121/4242 (zeitreihen-grundlagen und
+zensierung, verschiedene Beispiele) — nirgends im selben Rechenschritt.
