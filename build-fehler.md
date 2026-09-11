@@ -487,3 +487,41 @@ _ = achse.set_title("Titel")
 **Erkennungszeichen:** `python zeige-ausgaben.py <freeze> | grep -E "object at|Text\(|Line2D"` —
 findet alle Stellen auf einen Schlag. Derselbe Fehler trat zuvor mit
 `stats.probplot()` auf `qq-plots.qmd` auf; er gehoert zur selben Familie.
+
+---
+
+### 2026-09-11 — Benannte Werte in c() erzeugen zusammengesetzte Namen
+
+**Symptom:** Der Build brach ab mit
+
+```
+Error in `pruefung[, "unten"]`: subscript out of bounds
+```
+
+obwohl die Spalte sichtbar `unten` heissen sollte.
+
+**Ursache:** `confint(modell)[2, ]` gibt einen **benannten** Vektor zurueck, mit
+den Namen `2.5 %` und `97.5 %`. Steht so etwas in einem `c(...)`-Aufruf,
+verbindet R beide Namen:
+
+```r
+ki <- confint(m)[2, ]
+c(unten = ki[1])        # heisst "unten.2.5 %", nicht "unten"
+```
+
+**Regel:** Werte, die aus `confint()`, `coef()`, `summary()$coefficients` oder
+`quantile()` stammen, vor dem Benennen durch `unname()` schicken:
+
+```r
+ki <- unname(confint(m)[2, ])
+c(unten = ki[1], oben = ki[2])
+```
+
+**Erkennungszeichen:** `names()` auf das Ergebnis anwenden. Oder im Fehlertext:
+`subscript out of bounds` bei einem Spaltennamen, den man sicher vergeben hat.
+
+**Nebenwirkung, die es teuer machte:** Quarto haelt beim ersten Fehler an. Die
+Seite `farbe.qmd`, die im selben Lauf haette gebaut werden sollen, kam deshalb
+gar nicht mehr dran und sah zwei Durchgaenge lang wie "Zahlen stimmen nicht"
+aus. **Ein Render-Log-Commit der Action ist das Zeichen, dass der Build
+abgebrochen ist** -- dann zuerst `render.log` lesen, nicht die Zahlen pruefen.
