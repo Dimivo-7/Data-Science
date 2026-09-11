@@ -337,9 +337,9 @@ zensierung, verschiedene Beispiele) — nirgends im selben Rechenschritt.
 
 ---
 
-### 2026-09-11 — Die Warteregel auf den Freeze-Commit war zu grob
+### 2026-09-11 — Die Warteregel auf den Freeze-Commit war zweimal falsch
 
-**Symptom:** Der Wartebefehl
+**Erster Anlauf.** Der Wartebefehl
 
 ```sh
 until git log --oneline -2 origin/main | grep -q "Freeze-Ergebnisse aktualisieren"; do ...
@@ -349,14 +349,21 @@ meldete sofort Erfolg, weil der Freeze-Commit des **vorherigen** Builds noch
 unter den letzten zwei Eintraegen stand. Daraufhin wurde waehrend eines
 laufenden Builds gepusht — genau der Fehler von 2026-09-10.
 
-**Regel:** Nicht auf den Commit-Titel warten, sondern darauf, dass das
-**neue Chunk-Label** in der Freeze-Datei auf `origin/main` steht:
+**Zweiter Anlauf, ebenfalls falsch.** Die Nachbesserung wartete darauf, dass
+das **Chunk-Label** der neuen Seite in der Freeze-Datei auftaucht. Das
+geschieht nie: Quarto legt in `result.markdown` nur den gerenderten Inhalt ab,
+die `#| label:`-Zeilen sind zu diesem Zeitpunkt bereits verarbeitet. Die
+Warteschleife lief deshalb ins Leere, obwohl der Build laengst fertig war.
+
+**Regel:** Auf eine **Zeichenkette aus der Ausgabe** warten, nicht auf den
+Commit-Titel und nicht auf ein Chunk-Label. Am besten auf einen Namen, der nur
+im `print()` bzw. in der benannten Ergebniszeile der neuen Seite vorkommt:
 
 ```sh
 while true; do
   git fetch -q origin main
   treffer=$(git show origin/main:_freeze/<pfad>/execute-results/html.json 2>/dev/null \
-            | grep -c "<neues-chunk-label>")
+            | grep -c "<name-aus-der-ausgabe>")
   [ "$treffer" -gt 0 ] && break
   sleep 45
 done
@@ -364,3 +371,37 @@ done
 
 Das ist zugleich der Nachweis, dass der Freeze wirklich die neue Fassung
 enthaelt, und nicht nur, dass irgendein Build fertig geworden ist.
+
+**Merksatz zum Aufbau der Freeze-Datei:** Die Ausgaben stecken unter
+`result.markdown`, nicht auf der obersten Ebene. Ein `grep` auf die Rohdatei
+findet sie trotzdem, weil alles in einem JSON-String liegt.
+
+---
+
+### 2026-09-11 — Zahlen im Text maschinell gegen die Ausgabe pruefen
+
+**Anlass:** Der Massstab fuer `stand: fertig` ist, dass jede Zahl im Fliesstext
+zur tatsaechlichen Ausgabe passt. Das von Hand fuer 50 Seiten zu behaupten, ist
+keine Pruefung.
+
+**Werkzeug:** `pruefe-zahlen.py` zieht alle Zahlen mit mindestens zwei
+Nachkommastellen aus dem Fliesstext (ohne Code-Chunks und Inline-Code) und
+sucht sie in der Freeze-Ausgabe. Zugelassen sind Rundung auf die gezeigten
+Stellen, Prozentangaben und ein abweichendes Vorzeichen.
+
+```sh
+python pruefe-zahlen.py                     # alle Seiten
+python pruefe-zahlen.py statistik/tests     # ein Verzeichnis
+```
+
+**Zwei Fallen beim Bau des Skripts, beide beim ersten Lauf aufgetreten:**
+
+1. **Das typografische Minuszeichen.** Im Text steht `−0.354` (U+2212), in der
+   Ausgabe `-0.354` (ASCII). Ohne Vergleich der Betraege meldete das Skript
+   21 Seiten als fehlerhaft, die alle in Ordnung waren.
+2. **Einstellige Nachkommastellen nicht pruefen.** `0.5` oder `2.0` kommen in
+   jeder Ausgabe irgendwo vor; die Pruefung waere wertlos. Ab zwei Stellen ist
+   die Trefferwahrscheinlichkeit gering genug, dass ein Fund etwas bedeutet.
+
+**Ergebnis des ersten vollstaendigen Laufs:** 47 von 47 gebauten Seiten ohne
+Befund. Vor jedem `stand: fertig` laufen lassen.
