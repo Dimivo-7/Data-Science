@@ -118,6 +118,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -1149,10 +1178,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
   <ul class="collapse">
   <li><a href="#drei-aufgaben-drei-palettentypen" id="toc-drei-aufgaben-drei-palettentypen" class="nav-link" data-scroll-target="#drei-aufgaben-drei-palettentypen">Drei Aufgaben, drei Palettentypen</a></li>
-  <li><a href="#hervorheben-heisst-grau-werden-lassen" id="toc-hervorheben-heisst-grau-werden-lassen" class="nav-link" data-scroll-target="#hervorheben-heisst-grau-werden-lassen">Hervorheben heisst grau werden lassen</a></li>
-  <li><a href="#farbfehlsichtigkeit" id="toc-farbfehlsichtigkeit" class="nav-link" data-scroll-target="#farbfehlsichtigkeit">Farbfehlsichtigkeit</a></li>
+  <li><a href="#warum-sich-farbe-rechnen-lässt" id="toc-warum-sich-farbe-rechnen-lässt" class="nav-link" data-scroll-target="#warum-sich-farbe-rechnen-lässt">Warum sich Farbe rechnen lässt</a></li>
   <li><a href="#der-graustufentest" id="toc-der-graustufentest" class="nav-link" data-scroll-target="#der-graustufentest">Der Graustufentest</a></li>
+  <li><a href="#farbfehlsichtigkeit" id="toc-farbfehlsichtigkeit" class="nav-link" data-scroll-target="#farbfehlsichtigkeit">Farbfehlsichtigkeit</a></li>
   </ul></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
+  <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -1169,6 +1200,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div class="quarto-category">Wahrnehmung</div>
     <div class="quarto-category">Visualisierung</div>
     <div class="quarto-category">R</div>
+    <div class="quarto-category">Python</div>
   </div>
   </div>
 
@@ -1197,12 +1229,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="kernideen" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
 <ul>
-<li>Farbe hat drei Aufgaben: unterscheiden, Mengen darstellen, hervorheben</li>
-<li>Zu jeder Aufgabe gehört ein Palettentyp, und Verwechslungen führen in die Irre</li>
-<li>Ein Farbverlauf über nominale Kategorien behauptet eine Rangfolge</li>
-<li>Regenbogenpaletten erzeugen Grenzen, die in den Daten nicht existieren</li>
-<li>Rot-Grün darf nie der einzige Unterscheidungskanal sein</li>
-<li>Der Graustufentest zeigt, ob eine Grafik zu viel Last auf den Farbton legt</li>
+<li>Farbe hat drei Aufgaben: <strong>unterscheiden, Mengen darstellen, hervorheben</strong>. Zu jeder gehört ein Palettentyp, und Verwechslungen führen in die Irre.</li>
+<li>Ein Farbverlauf über nominale Kategorien behauptet eine Rangfolge.</li>
+<li>Wie verschieden zwei Farben sind, lässt sich <strong>messen</strong> — im Lab-Raum, wo Abstände ungefähr der wahrgenommenen Verschiedenheit entsprechen.</li>
+<li>Regenbogenpaletten sind nicht <strong>monoton in der Helligkeit</strong>: Sie erzeugen Grenzen, wo keine sind, und lassen weit entfernte Werte gleich aussehen.</li>
+<li>Rot-Grün darf nie der einzige Unterscheidungskanal sein. Unter Deuteranopie fällt der Abstand zwischen Rot und Grün von 120 auf 8.</li>
+<li>Kontrast ist <strong>nachrechenbar</strong>: Für Text braucht es mindestens 4.5 zu 1.</li>
 </ul>
 </section>
 <section id="erklärung" class="level2">
@@ -1254,71 +1286,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<p>Der häufigste Fehler ist die Verwechslung der ersten beiden. Ein Farbverlauf über Standorte suggeriert, dass Bern “weniger” ist als Zürich. Umgekehrt zerlegt eine qualitative Palette eine kontinuierliche Grösse in scheinbare <span class="glossary-term" data-def="Programmierung: Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.  ·  Statistik: Zusammengefasster Wertebereich bei der Darstellung eines stetigen Merkmals. Die Zahl der Klassen bestimmt, wie viel Struktur ein Histogramm zeigt." tabindex="0" data-topic="Programmierung, Statistik">Klassen</span>.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>werte <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">length.out =</span> <span class="dv">40</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>zeige_palette <span class="ot">&lt;-</span> <span class="cf">function</span>(farben, titel) {</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">image</span>(<span class="fu">matrix</span>(<span class="fu">seq_along</span>(farben), <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> farben, <span class="at">axes =</span> <span class="cn">FALSE</span>, <span class="at">main =</span> titel)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">zeige_palette</span>(<span class="fu">hcl.colors</span>(<span class="dv">40</span>, <span class="st">"Viridis"</span>), <span class="st">"sequenziell (Viridis)"</span>)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">zeige_palette</span>(<span class="fu">rainbow</span>(<span class="dv">40</span>), <span class="st">"Regenbogen"</span>)</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">zeige_palette</span>(<span class="fu">grey.colors</span>(<span class="dv">40</span>, <span class="at">start =</span> <span class="dv">0</span>, <span class="at">end =</span> <span class="dv">1</span>), <span class="st">"Graustufen"</span>)</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output-display">
-<div id="fig-paletten-r" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-paletten-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="farbe_files/figure-html/fig-paletten-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Dieselben Werte mit einer sequenziellen Palette, mit Regenbogen und in Graustufen umgerechnet."><img src="farbe_files/figure-html/fig-paletten-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-paletten-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Abbildung&nbsp;1: Dieselben Werte mit einer sequenziellen Palette, mit Regenbogen und in Graustufen umgerechnet.
-</figcaption>
-</figure>
-</div>
-</div>
-</div>
-<p>Die sequenzielle Palette wird gleichmässig heller; der Regenbogen springt dagegen zwischen Gelb und Grün und erzeugt dort scheinbare Kanten, die in den Daten nicht vorkommen. Genau deshalb ist er für Mengen ungeeignet, obwohl er seit Jahrzehnten Voreinstellung in vielen Programmen war.</p>
+<p>Der häufigste Fehler ist die Verwechslung der ersten beiden. Ein Farbverlauf über Standorte suggeriert, dass Bern “weniger” ist als Zürich. Umgekehrt zerlegt eine qualitative Palette eine kontinuierliche Grösse in scheinbare <span class="glossary-term" data-def="Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen." tabindex="0" data-topic="Programmierung">Klassen</span>.</p>
 </section>
-<section id="hervorheben-heisst-grau-werden-lassen" class="level3">
-<h3 class="anchored" data-anchor-id="hervorheben-heisst-grau-werden-lassen">Hervorheben heisst grau werden lassen</h3>
-<p>Die wirksamste Farbentscheidung ist meist, Farbe wegzunehmen. Alles in Grau, und genau das, worum es geht, in einer Farbe. Das Auge findet die <span class="glossary-term" data-def="Fehler, der die Ausführung unterbricht, statt einen besonderen Rückgabewert zu liefern. Gefangen werden sollte nur, was erwartet wird und sinnvoll behandelt werden kann." tabindex="0" data-topic="Programmierung">Ausnahme</span> sofort, und die Grafik verträgt zusätzlich Beschriftung, ohne unruhig zu werden.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>jahre <span class="ot">&lt;-</span> <span class="dv">2019</span><span class="sc">:</span><span class="dv">2026</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>verlauf <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">jahr =</span> <span class="fu">rep</span>(jahre, <span class="dv">5</span>),</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">region =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">"Nord"</span>, <span class="st">"Ost"</span>, <span class="st">"Sued"</span>, <span class="st">"West"</span>, <span class="st">"Mitte"</span>), <span class="at">each =</span> <span class="dv">8</span>),</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">wert =</span> <span class="fu">c</span>(<span class="dv">100</span>, <span class="dv">104</span>, <span class="dv">108</span>, <span class="dv">111</span>, <span class="dv">113</span>, <span class="dv">116</span>, <span class="dv">118</span>, <span class="dv">121</span>,</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>           <span class="dv">98</span>, <span class="dv">101</span>, <span class="dv">103</span>, <span class="dv">104</span>, <span class="dv">106</span>, <span class="dv">108</span>, <span class="dv">109</span>, <span class="dv">111</span>,</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>           <span class="dv">95</span>, <span class="dv">99</span>, <span class="dv">106</span>, <span class="dv">115</span>, <span class="dv">126</span>, <span class="dv">138</span>, <span class="dv">151</span>, <span class="dv">166</span>,</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>           <span class="dv">102</span>, <span class="dv">103</span>, <span class="dv">105</span>, <span class="dv">106</span>, <span class="dv">107</span>, <span class="dv">108</span>, <span class="dv">110</span>, <span class="dv">112</span>,</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>           <span class="dv">99</span>, <span class="dv">100</span>, <span class="dv">102</span>, <span class="dv">103</span>, <span class="dv">105</span>, <span class="dv">106</span>, <span class="dv">107</span>, <span class="dv">109</span>)</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="fu">matplot</span>(jahre, <span class="fu">matrix</span>(verlauf<span class="sc">$</span>wert, <span class="at">nrow =</span> <span class="dv">8</span>), <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lty =</span> <span class="dv">1</span>, <span class="at">lwd =</span> <span class="dv">2</span>,</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">hcl.colors</span>(<span class="dv">5</span>, <span class="st">"Dark 3"</span>), <span class="at">xlab =</span> <span class="st">"Jahr"</span>, <span class="at">ylab =</span> <span class="st">"Index"</span>,</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="at">main =</span> <span class="st">"fünf Farben"</span>)</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="fu">matplot</span>(jahre, <span class="fu">matrix</span>(verlauf<span class="sc">$</span>wert, <span class="at">nrow =</span> <span class="dv">8</span>), <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">lty =</span> <span class="dv">1</span>,</span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">lwd =</span> <span class="fu">c</span>(<span class="fl">1.5</span>, <span class="fl">1.5</span>, <span class="dv">3</span>, <span class="fl">1.5</span>, <span class="fl">1.5</span>),</span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"grey75"</span>, <span class="st">"grey75"</span>, <span class="st">"#b2182b"</span>, <span class="st">"grey75"</span>, <span class="st">"grey75"</span>),</span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        <span class="at">xlab =</span> <span class="st">"Jahr"</span>, <span class="at">ylab =</span> <span class="st">"Index"</span>, <span class="at">main =</span> <span class="st">"ein Akzent"</span>)</span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output-display">
-<div id="fig-akzent-r" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-akzent-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<a href="farbe_files/figure-html/fig-akzent-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Links jede Serie in einer eigenen Farbe, rechts eine hervorgehoben."><img src="farbe_files/figure-html/fig-akzent-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-akzent-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Abbildung&nbsp;2: Links jede Serie in einer eigenen Farbe, rechts eine hervorgehoben.
-</figcaption>
-</figure>
-</div>
-</div>
-</div>
-<p>Beide Bilder enthalten dieselben Daten. Rechts ist die Aussage sofort da: eine Region wächst, die übrigen nicht.</p>
+<section id="warum-sich-farbe-rechnen-lässt" class="level3">
+<h3 class="anchored" data-anchor-id="warum-sich-farbe-rechnen-lässt">Warum sich Farbe rechnen lässt</h3>
+<p>Der Hex-Wert einer Farbe sagt nichts darüber, wie verschieden zwei Farben <strong>aussehen</strong>: <code>#FF0000</code> und <code>#00FF00</code> unterscheiden sich in den Zahlen genauso stark wie <code>#FF0000</code> und <code>#FF0001</code>. Der <strong>Lab-Raum</strong> ist so gebaut, dass der euklidische Abstand ungefähr der wahrgenommenen Verschiedenheit entspricht. Dieser Abstand heisst ΔE.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>ΔE</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>unter 1</td>
+<td>für das Auge nicht unterscheidbar</td>
+</tr>
+<tr class="even">
+<td>1 bis 10</td>
+<td>erkennbar, wenn die Flächen aneinandergrenzen</td>
+</tr>
+<tr class="odd">
+<td>10 bis 25</td>
+<td>in einer Grafik sicher unterscheidbar</td>
+</tr>
+<tr class="even">
+<td>über 25</td>
+<td>deutlich verschieden</td>
+</tr>
+</tbody>
+</table>
+<p>Für eine Kategorienpalette gilt: Der <strong>kleinste</strong> paarweise Abstand entscheidet, denn an ihm scheitert das Ablesen. Beispiel 2 misst das nach.</p>
+<p>Die Umrechnung braucht kein Zusatzpaket — sRGB zu linearem RGB, dann über XYZ nach Lab sind rund zehn Zeilen, und sie stehen im Setup dieser Seite.</p>
+</section>
+<section id="der-graustufentest" class="level3">
+<h3 class="anchored" data-anchor-id="der-graustufentest">Der Graustufentest</h3>
+<p>Die schnellste Prüfung: die Grafik in Graustufen ansehen. Ist sie dann nicht mehr lesbar, trägt der Farbton zu viel Last. Das betrifft nicht nur den Druck, sondern auch Projektoren, schlechte Bildschirme und eingeschränktes Farbsehen.</p>
+<p>Rechnerisch ist “Graustufe” die <strong>relative Luminanz</strong>, die gewichtete Summe der linearisierten Kanäle mit 0.2126, 0.7152 und 0.0722. Eine sequenzielle Palette muss darin <strong>monoton</strong> sein, sonst kodiert sie Mengen falsch. Beispiel 3 zeigt, woran Regenbogenpaletten scheitern.</p>
 </section>
 <section id="farbfehlsichtigkeit" class="level3">
 <h3 class="anchored" data-anchor-id="farbfehlsichtigkeit">Farbfehlsichtigkeit</h3>
@@ -1330,20 +1335,1242 @@ Abbildung&nbsp;2: Links jede Serie in einer eigenen Farbe, rechts eine hervorgeh
 <li><strong>Nicht auf Farbe allein hervorheben.</strong> Ein Akzent verträgt zusätzlich eine dickere Linie oder eine Beschriftung.</li>
 </ol>
 <p>Die Okabe-Ito-Palette für Kategorien, als Werte zum Kopieren:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>okabe_ito <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"#E69F00"</span>, <span class="st">"#56B4E9"</span>, <span class="st">"#009E73"</span>, <span class="st">"#F0E442"</span>,</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>               <span class="st">"#0072B2"</span>, <span class="st">"#D55E00"</span>, <span class="st">"#CC79A7"</span>, <span class="st">"#000000"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>okabe_ito <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"#E69F00"</span>, <span class="st">"#56B4E9"</span>, <span class="st">"#009E73"</span>, <span class="st">"#F0E442"</span>,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>               <span class="st">"#0072B2"</span>, <span class="st">"#D55E00"</span>, <span class="st">"#CC79A7"</span>, <span class="st">"#000000"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="der-graustufentest" class="level3">
-<h3 class="anchored" data-anchor-id="der-graustufentest">Der Graustufentest</h3>
-<p>Die schnellste Prüfung: die Grafik in Graustufen ansehen. Ist sie dann nicht mehr lesbar, trägt der Farbton zu viel Last. Das betrifft nicht nur den Druck, sondern auch Projektoren, schlechte Bildschirme und eben eingeschränktes Farbsehen.</p>
-<p>Zwei weitere Prüfungen gehören dazu: Kontrast zwischen Text und Hintergrund von mindestens 4.5 zu 1, und keine Information, die ausschliesslich über Farbe kodiert ist.</p>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">Beispiel 1: Der falsche Palettentyp</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Beispiel 2: Wie weit die Farben auseinanderliegen</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-3" role="tab" aria-controls="tabset-6-3" aria-selected="false" href="">Beispiel 3: Der Graustufentest, nachgerechnet</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-4" role="tab" aria-controls="tabset-6-4" aria-selected="false" href="">Beispiel 4: Was bei Rot-Grün-Schwäche übrig bleibt</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-5-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-5" role="tab" aria-controls="tabset-6-5" aria-selected="false" href="">Beispiel 5: Kontrast ist nachrechenbar</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>Fünf Standorte ohne Reihenfolge, dargestellt mit einer sequenziellen Palette. Was genau behauptet diese Grafik, das die Daten nicht hergeben?</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>standorte <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Genf"</span>, <span class="st">"Luzern"</span>, <span class="st">"Zug"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>umsatz <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">41</span>, <span class="dv">37</span>, <span class="dv">52</span>, <span class="dv">33</span>, <span class="dv">45</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>verlauf <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"#440154"</span>, <span class="st">"#3E4A89"</span>, <span class="st">"#26828E"</span>, <span class="st">"#35B779"</span>, <span class="st">"#FDE725"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">rbind</span>(<span class="at">luminanz =</span> <span class="fu">sapply</span>(verlauf, luminanz)), <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         #440154 #3E4A89 #26828E #35B779 #FDE725
+luminanz   0.019   0.077   0.183    0.36   0.782</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">verhaeltnis_hellste_zu_dunkelste =</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>          <span class="fu">luminanz</span>(verlauf[<span class="dv">5</span>]) <span class="sc">/</span> <span class="fu">luminanz</span>(verlauf[<span class="dv">1</span>])), <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>verhaeltnis_hellste_zu_dunkelste 
+                            41.3 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Die Verlaufspalette ordnet die Standorte -- nach welchem Kriterium?</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">standort =</span> standorte, <span class="at">umsatz =</span> umsatz,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">luminanz =</span> <span class="fu">round</span>(<span class="fu">sapply</span>(verlauf, luminanz), <span class="dv">3</span>), <span class="at">row.names =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  standort umsatz luminanz
+1     Bern     41    0.019
+2     Chur     37    0.077
+3     Genf     52    0.183
+4   Luzern     33    0.360
+5      Zug     45    0.782</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">1</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">barplot</span>(umsatz, <span class="at">names.arg =</span> standorte, <span class="at">col =</span> verlauf, <span class="at">border =</span> <span class="cn">NA</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">ylab =</span> <span class="st">"Umsatz"</span>, <span class="at">main =</span> <span class="st">"Verlaufspalette"</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">barplot</span>(umsatz, <span class="at">names.arg =</span> standorte, <span class="at">col =</span> OKABE[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>], <span class="at">border =</span> <span class="cn">NA</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>        <span class="at">ylab =</span> <span class="st">"Umsatz"</span>, <span class="at">main =</span> <span class="st">"qualitative Palette"</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b1-fa-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b1-fa-r-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-1" title="Abbildung&nbsp;1: Beispiel 1: oben nominale Standorte mit Verlaufspalette, unten mit qualitativer."><img src="farbe_files/figure-html/fig-b1-fa-r-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;1: Beispiel 1: oben nominale Standorte mit Verlaufspalette, unten mit qualitativer.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>standorte <span class="op">=</span> [<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Genf"</span>, <span class="st">"Luzern"</span>, <span class="st">"Zug"</span>]</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>umsatz <span class="op">=</span> np.array([<span class="dv">41</span>, <span class="dv">37</span>, <span class="dv">52</span>, <span class="dv">33</span>, <span class="dv">45</span>])</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>verlauf <span class="op">=</span> [<span class="st">"#440154"</span>, <span class="st">"#3E4A89"</span>, <span class="st">"#26828E"</span>, <span class="st">"#35B779"</span>, <span class="st">"#FDE725"</span>]</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({<span class="st">"luminanz"</span>: [<span class="bu">round</span>(luminanz(h), <span class="dv">3</span>) <span class="cf">for</span> h <span class="kw">in</span> verlauf]})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'luminanz': [0.019, 0.077, 0.183, 0.36, 0.782]}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({<span class="st">"verhaeltnis_hellste_zu_dunkelste"</span>:</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>       <span class="bu">round</span>(luminanz(verlauf[<span class="dv">4</span>]) <span class="op">/</span> luminanz(verlauf[<span class="dv">0</span>]), <span class="dv">1</span>)})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'verhaeltnis_hellste_zu_dunkelste': 41.3}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.DataFrame({<span class="st">"standort"</span>: standorte, <span class="st">"umsatz"</span>: umsatz,</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"luminanz"</span>: [<span class="bu">round</span>(luminanz(h), <span class="dv">3</span>) <span class="cf">for</span> h <span class="kw">in</span> verlauf]})</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>      .to_string(index<span class="op">=</span><span class="va">False</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>standort  umsatz  luminanz
+    Bern      41     0.019
+    Chur      37     0.077
+    Genf      52     0.183
+  Luzern      33     0.360
+     Zug      45     0.782</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>fig, achsen <span class="op">=</span> plt.subplots(<span class="dv">1</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.4</span>))</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> achsen[<span class="dv">0</span>].bar(standorte, umsatz, color<span class="op">=</span>verlauf)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> achsen[<span class="dv">0</span>].set_title(<span class="st">"Verlaufspalette"</span>)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> achsen[<span class="dv">1</span>].bar(standorte, umsatz, color<span class="op">=</span>OKABE[:<span class="dv">5</span>])</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> achsen[<span class="dv">1</span>].set_title(<span class="st">"qualitative Palette"</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> achse <span class="kw">in</span> achsen:</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.set_ylabel(<span class="st">"Umsatz"</span>)</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b1-fa-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b1-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b1-fa-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-2" title="Abbildung&nbsp;2: Beispiel 1: dieselbe Gegenüberstellung in Python."><img src="farbe_files/figure-html/fig-b1-fa-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b1-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;2: Beispiel 1: dieselbe Gegenüberstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+<col style="width: 16%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Standort</th>
+<th>Bern</th>
+<th>Chur</th>
+<th>Genf</th>
+<th>Luzern</th>
+<th>Zug</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Umsatz</td>
+<td>41</td>
+<td>37</td>
+<td><strong>52</strong></td>
+<td><strong>33</strong></td>
+<td>45</td>
+</tr>
+<tr class="even">
+<td>Luminanz der Balkenfarbe</td>
+<td><strong>0.019</strong></td>
+<td>0.077</td>
+<td>0.183</td>
+<td>0.360</td>
+<td><strong>0.782</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Verhältnis der hellsten zur dunkelsten Farbe: <strong>41.3</strong>.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Beobachtung</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Die Farben werden von links nach rechts <strong>immer heller</strong></td>
+<td>Um den Faktor 41. Das Auge liest darin eine Steigerung — die Palette behauptet eine Reihenfolge Bern &lt; Chur &lt; Genf &lt; Luzern &lt; Zug.</td>
+</tr>
+<tr class="even">
+<td>Diese Reihenfolge ist <strong>alphabetisch</strong>, nicht inhaltlich</td>
+<td>Sie entstand aus der Sortierung der Namen. Mit den Umsätzen hat sie nichts zu tun: Genf hat den höchsten Umsatz (52) und bekommt eine mittlere Farbe, Zug mit 45 die hellste.</td>
+</tr>
+<tr class="odd">
+<td>Es werden also <strong>zwei Grössen</strong> dargestellt</td>
+<td>Die Balkenhöhe zeigt den Umsatz, die Farbe zeigt die alphabetische Position — und nur eine der beiden ist gemeint.</td>
+</tr>
+<tr class="even">
+<td>Rechts trägt die Farbe <strong>keine</strong> Information mehr</td>
+<td>Und das ist richtig so: Die Standorte sind bereits durch ihre Position unterscheidbar. <strong>Farbe, die nichts kodiert, sollte gar nicht variieren.</strong></td>
+</tr>
+<tr class="odd">
+<td>Die ehrlichste Variante wäre <strong>einfarbig</strong></td>
+<td>Alle Balken grau, nur der hervorgehobene farbig. Siehe <a href="../visualisierung/wahrnehmung-kodierung.html">Wahrnehmung, Beispiel 3</a>.</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong>Die Entscheidungsfrage lautet nicht “welche Farben”, sondern “wofür”.</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Kodiert die Farbe …</th>
+<th>Palettentyp</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>nichts (Position reicht schon)</td>
+<td><strong>keine</strong> — einfarbig oder grau</td>
+</tr>
+<tr class="even">
+<td>eine nominale Kategorie</td>
+<td>qualitativ</td>
+</tr>
+<tr class="odd">
+<td>eine geordnete Grösse mit einer Richtung</td>
+<td>sequenziell</td>
+</tr>
+<tr class="even">
+<td>eine Abweichung von einem Nullpunkt</td>
+<td>divergierend</td>
+</tr>
+<tr class="odd">
+<td>genau eine hervorzuhebende Gruppe</td>
+<td>Akzent auf Grau</td>
+</tr>
+</tbody>
+</table>
+<p>Die erste Zeile wird am häufigsten übersehen. Ein Balkendiagramm mit fünf verschiedenfarbigen Balken hat meistens fünf Farben zu viel.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Die sequenzielle Palette ordnet die fünf Standorte über eine Luminanz von 0.019 bis 0.782, also um den <span class="glossary-term" data-def="Programmierung: Datentyp in R für kategoriale Merkmale. Er speichert die Werte als Codes und führt die möglichen Ausprägungen als Stufen mit, auch solche, die in den Daten nicht vorkommen.  ·  Statistik: Nicht direkt beobachtete Grösse, die hinter mehreren gemessenen Merkmalen steht und deren gemeinsame Variation erklärt." tabindex="0" data-topic="Programmierung, Statistik">Faktor</span> 41. Diese Ordnung entspricht der alphabetischen Reihenfolge der Namen und nicht dem dargestellten Umsatz.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Zwei Kategorienpaletten: Okabe-Ito mit acht Farben und eine Regenbogenpalette mit zwölf. Gemessen wird der <strong>kleinste</strong> paarweise Abstand im Lab-Raum, denn an ihm entscheidet sich, ob eine Legende überhaupt zuzuordnen ist.</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>paarabstaende <span class="ot">&lt;-</span> <span class="cf">function</span>(farben, <span class="at">namen =</span> <span class="fu">seq_along</span>(farben)) {</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  paare <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">combn</span>(<span class="fu">length</span>(farben), <span class="dv">2</span>))</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">a =</span> namen[paare[, <span class="dv">1</span>]], <span class="at">b =</span> namen[paare[, <span class="dv">2</span>]],</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>             <span class="at">dE =</span> <span class="fu">apply</span>(paare, <span class="dv">1</span>, <span class="cf">function</span>(p) <span class="fu">abstand</span>(farben[p[<span class="dv">1</span>]], farben[p[<span class="dv">2</span>]])))</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>okabe_ab <span class="ot">&lt;-</span> <span class="fu">paarabstaende</span>(OKABE, OKABE_NAMEN)</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(okabe_ab[<span class="fu">order</span>(okabe_ab<span class="sc">$</span>dE), ], <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>            a        b       dE
+10 himmelblau     blau 26.43333
+5      orange zinnober 33.42918
+3      orange     gelb 35.09136</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">minimum =</span> <span class="fu">min</span>(okabe_ab<span class="sc">$</span>dE), <span class="at">median =</span> <span class="fu">median</span>(okabe_ab<span class="sc">$</span>dE),</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">maximum =</span> <span class="fu">max</span>(okabe_ab<span class="sc">$</span>dE), <span class="at">paare =</span> <span class="fu">nrow</span>(okabe_ab)), <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>minimum  median maximum   paare 
+   26.4    83.2   125.0    28.0 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>regen_ab <span class="ot">&lt;-</span> <span class="fu">paarabstaende</span>(REGEN12)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(regen_ab[<span class="fu">order</span>(regen_ab<span class="sc">$</span>dE), ], <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   a  b       dE
+61 9 10 17.38086
+31 4  5 18.71166
+39 5  6 37.81341</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">minimum =</span> <span class="fu">min</span>(regen_ab<span class="sc">$</span>dE), <span class="at">median =</span> <span class="fu">median</span>(regen_ab<span class="sc">$</span>dE),</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">paare_unter_20 =</span> <span class="fu">sum</span>(regen_ab<span class="sc">$</span>dE <span class="sc">&lt;</span> <span class="dv">20</span>), <span class="at">paare =</span> <span class="fu">nrow</span>(regen_ab)), <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       minimum         median paare_unter_20          paare 
+          17.4          145.8            2.0           66.0 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> OKABE, <span class="at">axes =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Okabe-Ito (8 Farben)"</span>)</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> REGEN12, <span class="at">axes =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Regenbogen (12 Farben)"</span>)</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b2-fa-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b2-fa-r-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-3" title="Abbildung&nbsp;3: Beispiel 2: Okabe-Ito mit acht Farben, Regenbogen mit zwölf."><img src="farbe_files/figure-html/fig-b2-fa-r-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;3: Beispiel 2: Okabe-Ito mit acht Farben, Regenbogen mit zwölf.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> paarabstaende(farben, namen<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>    namen <span class="op">=</span> namen <span class="cf">if</span> namen <span class="kw">is</span> <span class="kw">not</span> <span class="va">None</span> <span class="cf">else</span> <span class="bu">list</span>(<span class="bu">range</span>(<span class="dv">1</span>, <span class="bu">len</span>(farben) <span class="op">+</span> <span class="dv">1</span>))</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> pd.DataFrame([{<span class="st">"a"</span>: namen[i], <span class="st">"b"</span>: namen[j],</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>                          <span class="st">"dE"</span>: abstand(farben[i], farben[j])}</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>                         <span class="cf">for</span> i, j <span class="kw">in</span> itertools.combinations(<span class="bu">range</span>(<span class="bu">len</span>(farben)), <span class="dv">2</span>)])</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>okabe_ab <span class="op">=</span> paarabstaende(OKABE, OKABE_NAMEN)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(okabe_ab.nsmallest(<span class="dv">3</span>, <span class="st">"dE"</span>).to_string(index<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({<span class="st">"minimum"</span>: <span class="bu">round</span>(okabe_ab[<span class="st">"dE"</span>].<span class="bu">min</span>(), <span class="dv">1</span>),</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>       <span class="st">"median"</span>: <span class="bu">round</span>(okabe_ab[<span class="st">"dE"</span>].median(), <span class="dv">1</span>),</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>       <span class="st">"maximum"</span>: <span class="bu">round</span>(okabe_ab[<span class="st">"dE"</span>].<span class="bu">max</span>(), <span class="dv">1</span>),</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>       <span class="st">"paare"</span>: <span class="bu">len</span>(okabe_ab)})</span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>regen_ab <span class="op">=</span> paarabstaende(REGEN12)</span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(regen_ab.nsmallest(<span class="dv">3</span>, <span class="st">"dE"</span>).to_string(index<span class="op">=</span><span class="va">False</span>))</span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({<span class="st">"minimum"</span>: <span class="bu">round</span>(regen_ab[<span class="st">"dE"</span>].<span class="bu">min</span>(), <span class="dv">1</span>),</span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a>       <span class="st">"median"</span>: <span class="bu">round</span>(regen_ab[<span class="st">"dE"</span>].median(), <span class="dv">1</span>),</span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>       <span class="st">"paare_unter_20"</span>: <span class="bu">int</span>((regen_ab[<span class="st">"dE"</span>] <span class="op">&lt;</span> <span class="dv">20</span>).<span class="bu">sum</span>()),</span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>       <span class="st">"paare"</span>: <span class="bu">len</span>(regen_ab)})</span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>fig, achsen <span class="op">=</span> plt.subplots(<span class="dv">2</span>, <span class="dv">1</span>, figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">2.6</span>))</span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> achse, (titel, pal) <span class="kw">in</span> <span class="bu">zip</span>(achsen, [(<span class="st">"Okabe-Ito (8 Farben)"</span>, OKABE),</span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>                                        (<span class="st">"Regenbogen (12 Farben)"</span>, REGEN12)]):</span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k, farbe <span class="kw">in</span> <span class="bu">enumerate</span>(pal):</span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>        _ <span class="op">=</span> achse.bar(k, <span class="dv">1</span>, width<span class="op">=</span><span class="dv">1</span>, color<span class="op">=</span>farbe)</span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.set_title(titel, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.axis(<span class="st">"off"</span>)</span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b2-fa-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b2-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b2-fa-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-4" title="Abbildung&nbsp;4: Beispiel 2: dieselben zwei Paletten in Python."><img src="farbe_files/figure-html/fig-b2-fa-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b2-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;4: Beispiel 2: dieselben zwei Paletten in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<p>Okabe-Ito, die drei engsten Paare:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Paar</th>
+<th>ΔE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>himmelblau – blau</td>
+<td><strong>26.4</strong></td>
+</tr>
+<tr class="even">
+<td>orange – zinnober</td>
+<td>33.4</td>
+</tr>
+<tr class="odd">
+<td>orange – gelb</td>
+<td>35.1</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Palette</th>
+<th>Minimum</th>
+<th>Median</th>
+<th>Paare</th>
+<th>darunter unter ΔE 20</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Okabe-Ito</strong> (8)</td>
+<td><strong>26.4</strong></td>
+<td>83.2</td>
+<td>28</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td><strong>Regenbogen</strong> (12)</td>
+<td><strong>17.4</strong></td>
+<td>—</td>
+<td>66</td>
+<td><strong>2</strong></td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Beobachtung</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Okabe-Ito hält überall mindestens <strong>ΔE 26</strong> ein</td>
+<td>Auch das engste Paar liegt über der Schwelle von 25, ab der Farben “deutlich verschieden” sind. Die Palette ist genau darauf hin entworfen.</td>
+</tr>
+<tr class="even">
+<td>Der Median liegt bei <strong>83</strong></td>
+<td>Die meisten Paare sind weit auseinander. Das ist der Spielraum, der die acht Farben trägt.</td>
+</tr>
+<tr class="odd">
+<td>Der Regenbogen mit zwölf Farben fällt auf <strong>17.4</strong></td>
+<td>Und zwei Paare liegen unter 20. Das ist noch unterscheidbar, wenn die Flächen gross sind — in einer Legende mit kleinen Quadraten nicht mehr zuverlässig.</td>
+</tr>
+<tr class="even">
+<td>Das engste Paar ist <strong>blau und violett</strong></td>
+<td>Position 9 und 10 der Palette, also <strong>benachbarte</strong> Farbtöne. Bei zwölf Stufen auf einem Farbkreis liegen die Nachbarn zwangsläufig eng.</td>
+</tr>
+<tr class="odd">
+<td>Mehr Kategorien heisst immer <strong>engere Abstände</strong></td>
+<td>Der Farbraum ist endlich. Deshalb endet Farbe als Unterscheidungskanal bei ungefähr acht — nicht wegen einer Konvention, sondern wegen der Geometrie.</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong>Der kleinste Abstand ist das Mass, nicht der Durchschnitt.</strong> Eine Palette mit einem <span class="glossary-term" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser." tabindex="0" data-topic="Statistik">Median</span> von 80 und einem Minimum von 5 ist unbrauchbar: An genau dem einen Paar scheitert jede Zuordnung, und das Publikum weiss nicht, welches Paar es war.</p>
+<p>Deshalb lohnt sich diese Rechnung vor jeder selbstgebauten Palette — sie kostet fünf Zeilen und beantwortet die Frage, die man sonst nur raten kann.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Die Okabe-Ito-Palette hält bei acht Farben einen kleinsten paarweisen Lab-Abstand von 26.4 ein, bei einem <span class="glossary-term" data-def="Der Wert in der Mitte der sortierten Datenreihe. Er teilt die Beobachtungen in zwei gleich grosse Hälften und reagiert im Gegensatz zum Mittelwert kaum auf Ausreisser." tabindex="0" data-topic="Statistik">Median</span> von 83.2. Eine Regenbogenpalette mit zwölf Farben fällt auf 17.4, und zwei ihrer 66 Paare liegen unter ΔE 20.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>Zwei sequenzielle Paletten mit je zehn Stufen: Viridis und Regenbogen. Eine sequenzielle Palette muss in der Helligkeit <strong>monoton</strong> sein — sonst stehen verschiedene Werte für dieselbe Graustufe.</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (nm <span class="cf">in</span> <span class="fu">c</span>(<span class="st">"VIRIDIS10"</span>, <span class="st">"REGEN10"</span>)) {</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  L <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="fu">get</span>(nm), luminanz)</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">diff</span>(L)</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"%-10s Luminanz %s</span><span class="sc">\n</span><span class="st">"</span>, nm,</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>              <span class="fu">paste</span>(<span class="fu">sprintf</span>(<span class="st">"%.3f"</span>, L), <span class="at">collapse =</span> <span class="st">" "</span>)))</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"           %s, Richtungswechsel %d, Spanne %.3f bis %.3f</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>              <span class="cf">if</span> (<span class="fu">all</span>(d <span class="sc">&gt;</span> <span class="dv">0</span>)) <span class="st">"monoton steigend"</span> <span class="cf">else</span> <span class="st">"NICHT monoton"</span>,</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>              <span class="fu">sum</span>(<span class="fu">sign</span>(d[<span class="sc">-</span><span class="fu">length</span>(d)]) <span class="sc">*</span> <span class="fu">sign</span>(d[<span class="sc">-</span><span class="dv">1</span>]) <span class="sc">&lt;</span> <span class="dv">0</span>), <span class="fu">min</span>(L), <span class="fu">max</span>(L)))</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>VIRIDIS10  Luminanz 0.019 0.043 0.077 0.125 0.183 0.266 0.360 0.476 0.621 0.782
+           monoton steigend, Richtungswechsel 0, Spanne 0.019 bis 0.782
+REGEN10    Luminanz 0.213 0.440 0.844 0.722 0.725 0.787 0.167 0.079 0.201 0.236
+           NICHT monoton, Richtungswechsel 4, Spanne 0.079 bis 0.844</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Welche Stufen des Regenbogens werden in Graustufen ununterscheidbar?</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>L <span class="ot">&lt;-</span> <span class="fu">sapply</span>(REGEN10, luminanz)</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>paare <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">combn</span>(<span class="dv">10</span>, <span class="dv">2</span>))</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>koll <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">a =</span> paare[, <span class="dv">1</span>], <span class="at">b =</span> paare[, <span class="dv">2</span>],</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>                   <span class="at">unterschied =</span> <span class="fu">abs</span>(L[paare[, <span class="dv">1</span>]] <span class="sc">-</span> L[paare[, <span class="dv">2</span>]]))</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(koll[<span class="fu">order</span>(koll<span class="sc">$</span>unterschied), ], <span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   a  b unterschied
+25 4  5 0.002555019
+8  1  9 0.012026308
+9  1 10 0.022999077</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">paare_unter_0.02 =</span> <span class="fu">sum</span>(koll<span class="sc">$</span>unterschied <span class="sc">&lt;</span> <span class="fl">0.02</span>), <span class="at">paare =</span> <span class="fu">nrow</span>(koll))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>paare_unter_0.02            paare 
+               2               45 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>grau <span class="ot">&lt;-</span> <span class="cf">function</span>(farben) {</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sapply</span>(farben, <span class="cf">function</span>(h) {</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    g <span class="ot">&lt;-</span> <span class="fu">luminanz</span>(h)<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> <span class="fl">2.2</span>)</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rgb</span>(g, g, g)</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> VIRIDIS10, <span class="at">axes =</span> <span class="cn">FALSE</span>, <span class="at">main =</span> <span class="st">"Viridis"</span>)</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> REGEN10, <span class="at">axes =</span> <span class="cn">FALSE</span>, <span class="at">main =</span> <span class="st">"Regenbogen"</span>)</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> <span class="fu">grau</span>(VIRIDIS10), <span class="at">axes =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Viridis in Graustufen"</span>)</span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> <span class="fu">grau</span>(REGEN10), <span class="at">axes =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Regenbogen in Graustufen"</span>)</span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b3-fa-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b3-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b3-fa-r-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-5" title="Abbildung&nbsp;5: Beispiel 3: beide Paletten in Farbe und als Graustufe."><img src="farbe_files/figure-html/fig-b3-fa-r-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b3-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;5: Beispiel 3: beide Paletten in Farbe und als Graustufe.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> nm, pal <span class="kw">in</span> [(<span class="st">"VIRIDIS10"</span>, VIRIDIS10), (<span class="st">"REGEN10"</span>, REGEN10)]:</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>    L <span class="op">=</span> np.array([luminanz(h) <span class="cf">for</span> h <span class="kw">in</span> pal])</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> np.diff(L)</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>nm<span class="sc">:&lt;10}</span><span class="ss"> Luminanz "</span> <span class="op">+</span> <span class="st">" "</span>.join(<span class="ss">f"</span><span class="sc">{</span>v<span class="sc">:.3f}</span><span class="ss">"</span> <span class="cf">for</span> v <span class="kw">in</span> L))</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"           </span><span class="sc">{</span><span class="st">'monoton steigend'</span> <span class="cf">if</span> (d <span class="op">&gt;</span> <span class="dv">0</span>)<span class="sc">.</span><span class="bu">all</span>() <span class="cf">else</span> <span class="st">'NICHT monoton'</span><span class="sc">}</span><span class="ss">,"</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f" Richtungswechsel </span><span class="sc">{</span><span class="bu">int</span>(np.<span class="bu">sum</span>(np.sign(d[:<span class="op">-</span><span class="dv">1</span>]) <span class="op">*</span> np.sign(d[<span class="dv">1</span>:]) <span class="op">&lt;</span> <span class="dv">0</span>))<span class="sc">}</span><span class="ss">,"</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f" Spanne </span><span class="sc">{</span>L<span class="sc">.</span><span class="bu">min</span>()<span class="sc">:.3f}</span><span class="ss"> bis </span><span class="sc">{</span>L<span class="sc">.</span><span class="bu">max</span>()<span class="sc">:.3f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>VIRIDIS10  Luminanz 0.019 0.043 0.077 0.125 0.183 0.266 0.360 0.476 0.621 0.782
+           monoton steigend, Richtungswechsel 0, Spanne 0.019 bis 0.782
+REGEN10    Luminanz 0.213 0.440 0.844 0.722 0.725 0.787 0.167 0.079 0.201 0.236
+           NICHT monoton, Richtungswechsel 4, Spanne 0.079 bis 0.844</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>L <span class="op">=</span> np.array([luminanz(h) <span class="cf">for</span> h <span class="kw">in</span> REGEN10])</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>koll <span class="op">=</span> pd.DataFrame([{<span class="st">"a"</span>: i <span class="op">+</span> <span class="dv">1</span>, <span class="st">"b"</span>: j <span class="op">+</span> <span class="dv">1</span>, <span class="st">"unterschied"</span>: <span class="bu">abs</span>(L[i] <span class="op">-</span> L[j])}</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>                     <span class="cf">for</span> i, j <span class="kw">in</span> itertools.combinations(<span class="bu">range</span>(<span class="dv">10</span>), <span class="dv">2</span>)])</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(koll.nsmallest(<span class="dv">3</span>, <span class="st">"unterschied"</span>).to_string(index<span class="op">=</span><span class="va">False</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> a  b  unterschied
+ 4  5     0.002555
+ 1  9     0.012026
+ 1 10     0.022999</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({<span class="st">"paare_unter_0.02"</span>: <span class="bu">int</span>((koll[<span class="st">"unterschied"</span>] <span class="op">&lt;</span> <span class="fl">0.02</span>).<span class="bu">sum</span>()),</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>       <span class="st">"paare"</span>: <span class="bu">len</span>(koll)})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'paare_unter_0.02': 2, 'paare': 45}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> grau(farben):</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> [<span class="bu">str</span>(luminanz(h) <span class="op">**</span> (<span class="dv">1</span> <span class="op">/</span> <span class="fl">2.2</span>)) <span class="cf">for</span> h <span class="kw">in</span> farben]</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>fig, achsen <span class="op">=</span> plt.subplots(<span class="dv">2</span>, <span class="dv">2</span>, figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="fl">3.4</span>))</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> achse, (titel, pal) <span class="kw">in</span> <span class="bu">zip</span>(achsen.ravel(),</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>                               [(<span class="st">"Viridis"</span>, VIRIDIS10),</span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a>                                (<span class="st">"Regenbogen"</span>, REGEN10),</span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>                                (<span class="st">"Viridis in Graustufen"</span>, grau(VIRIDIS10)),</span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>                                (<span class="st">"Regenbogen in Graustufen"</span>, grau(REGEN10))]):</span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k, farbe <span class="kw">in</span> <span class="bu">enumerate</span>(pal):</span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>        _ <span class="op">=</span> achse.bar(k, <span class="dv">1</span>, width<span class="op">=</span><span class="dv">1</span>, color<span class="op">=</span>farbe)</span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.set_title(titel, fontsize<span class="op">=</span><span class="dv">9</span>)</span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.axis(<span class="st">"off"</span>)</span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b3-fa-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b3-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b3-fa-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-6" title="Abbildung&nbsp;6: Beispiel 3: dieselbe Gegenüberstellung in Python."><img src="farbe_files/figure-html/fig-b3-fa-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b3-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;6: Beispiel 3: dieselbe Gegenüberstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Palette</th>
+<th>Luminanz der zehn Stufen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Viridis</strong></td>
+<td>0.019 · 0.043 · 0.077 · 0.125 · 0.183 · 0.266 · 0.360 · 0.476 · 0.621 · 0.782</td>
+</tr>
+<tr class="even">
+<td><strong>Regenbogen</strong></td>
+<td>0.213 · 0.440 · <strong>0.844</strong> · 0.722 · 0.725 · 0.787 · <strong>0.167</strong> · <strong>0.079</strong> · 0.201 · 0.236</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Palette</th>
+<th>monoton?</th>
+<th>Richtungswechsel</th>
+<th>Spanne</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Viridis</td>
+<td><strong>ja</strong></td>
+<td><strong>0</strong></td>
+<td>0.019 bis 0.782</td>
+</tr>
+<tr class="even">
+<td>Regenbogen</td>
+<td><strong>nein</strong></td>
+<td><strong>4</strong></td>
+<td>0.079 bis 0.844</td>
+</tr>
+</tbody>
+</table>
+<p>Die engsten Graustufen-Paare im Regenbogen:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Stufen</th>
+<th>Luminanzunterschied</th>
+<th>Werte</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>4 und 5</td>
+<td><strong>0.0026</strong></td>
+<td>0.722 / 0.725</td>
+</tr>
+<tr class="even">
+<td>1 und 9</td>
+<td>0.0120</td>
+<td>0.213 / 0.201</td>
+</tr>
+<tr class="odd">
+<td>1 und 10</td>
+<td>0.0230</td>
+<td>0.213 / 0.236</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Beobachtung</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Viridis steigt <strong>durchgehend</strong></td>
+<td>Zehn Stufen, kein Richtungswechsel. In Graustufen bleibt die Reihenfolge vollständig erhalten — der Farbverlauf ist Zierde, die Information steckt in der Helligkeit.</td>
+</tr>
+<tr class="even">
+<td>Der Regenbogen wechselt <strong>viermal</strong> die Richtung</td>
+<td>Er wird hell, dunkel, wieder hell. Eine Menge, die gleichmässig wächst, erscheint darin als Auf und Ab.</td>
+</tr>
+<tr class="odd">
+<td>Die Stufen <strong>4 und 5</strong> trennen 0.0026 Luminanz</td>
+<td>Das ist in Graustufen dieselbe Farbe. Zwei verschiedene Werte, ein Grauton.</td>
+</tr>
+<tr class="even">
+<td><strong>Stufe 1 und 9</strong> sind fast gleich hell</td>
+<td>0.213 gegen 0.201 — also Rot und Violett, die beiden <strong>Enden</strong> der Skala. Wer die Grafik in Graustufen sieht, hält Minimum und Maximum für denselben Wert.</td>
+</tr>
+<tr class="odd">
+<td>Das hellste Feld liegt in der <strong>Mitte</strong></td>
+<td>Stufe 3 mit 0.844, Gelb. Ein Regenbogen hat seinen Helligkeitsgipfel dort, wo inhaltlich nichts Besonderes ist — und erzeugt so eine Grenze, die in den Daten nicht existiert.</td>
+</tr>
+</tbody>
+</table>
+<div class="warning-box">
+<p><strong>Warum Regenbogenpaletten trotzdem überall sind:</strong> Sie sehen bunt und “vollständig” aus, und sie waren jahrzehntelang die Voreinstellung. Ihre drei Probleme sind aber alle messbar:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Problem</th>
+<th>Messung auf dieser Seite</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>nicht monoton in der Helligkeit</td>
+<td>4 Richtungswechsel</td>
+</tr>
+<tr class="even">
+<td>erzeugt scheinbare Grenzen</td>
+<td>Helligkeitsgipfel bei Gelb, Stufe 3 von 10</td>
+</tr>
+<tr class="odd">
+<td>Enden sehen gleich aus</td>
+<td>Stufe 1 und 9 unterscheiden sich um 0.012 Luminanz</td>
+</tr>
+</tbody>
+</table>
+<p>Viridis, Cividis, Magma und Inferno sind gegen alle drei gebaut. In R über <code>hcl.colors(n, "Viridis")</code>, in Python über <code>cmap="viridis"</code>.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Viridis steigt über zehn Stufen monoton von einer Luminanz 0.019 auf 0.782 ohne Richtungswechsel. Die Regenbogenpalette wechselt viermal die Richtung; ihre Stufen 4 und 5 unterscheiden sich um 0.0026 Luminanz und ihre Stufen 1 und 9 — die beiden Enden — um 0.0120.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>Drei Farbpaare, jedes für sich gut unterscheidbar. Simuliert wird Deuteranopie über die Transformation im LMS-Raum, danach wird derselbe Lab-Abstand noch einmal gemessen.</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>paare <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="st">"#D62728"</span>, <span class="st">"#2CA02C"</span>, <span class="st">"rot / gruen"</span>),</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>              <span class="fu">c</span>(<span class="st">"#E69F00"</span>, <span class="st">"#56B4E9"</span>, <span class="st">"Okabe orange / himmelblau"</span>),</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>              <span class="fu">c</span>(<span class="st">"#009E73"</span>, <span class="st">"#D55E00"</span>, <span class="st">"Okabe gruen / zinnober"</span>))</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (p <span class="cf">in</span> paare) {</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"%-28s normal %6.1f   deuteranop %6.1f</span><span class="sc">\n</span><span class="st">"</span>,</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>              p[<span class="dv">3</span>], <span class="fu">abstand</span>(p[<span class="dv">1</span>], p[<span class="dv">2</span>]), <span class="fu">abstand_deuteranop</span>(p[<span class="dv">1</span>], p[<span class="dv">2</span>])))</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>rot / gruen                  normal  119.8   deuteranop    8.2
+Okabe orange / himmelblau    normal  113.1   deuteranop  116.2
+Okabe gruen / zinnober       normal  102.4   deuteranop   53.1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Ganze Paletten im Vergleich</span></span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>vergleich <span class="ot">&lt;-</span> <span class="cf">function</span>(farben) {</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>  idx <span class="ot">&lt;-</span> <span class="fu">t</span>(<span class="fu">combn</span>(<span class="fu">length</span>(farben), <span class="dv">2</span>))</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>  d <span class="ot">&lt;-</span> <span class="fu">apply</span>(idx, <span class="dv">1</span>, <span class="cf">function</span>(p) <span class="fu">abstand_deuteranop</span>(farben[p[<span class="dv">1</span>]], farben[p[<span class="dv">2</span>]]))</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="at">minimum =</span> <span class="fu">min</span>(d), <span class="at">paare_unter_10 =</span> <span class="fu">sum</span>(d <span class="sc">&lt;</span> <span class="dv">10</span>), <span class="at">paare =</span> <span class="fu">length</span>(d))</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">rbind</span>(<span class="at">Okabe =</span> <span class="fu">vergleich</span>(OKABE), <span class="at">Regenbogen12 =</span> <span class="fu">vergleich</span>(REGEN12)), <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             minimum paare_unter_10 paare
+Okabe           17.2              0    28
+Regenbogen12     4.9              1    66</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>als_hex <span class="ot">&lt;-</span> <span class="cf">function</span>(h) {</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>  v <span class="ot">&lt;-</span> <span class="fu">deuteranop</span>(h)</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rgb</span>(v[<span class="dv">1</span>]<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> <span class="fl">2.2</span>), v[<span class="dv">2</span>]<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> <span class="fl">2.2</span>), v[<span class="dv">3</span>]<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> <span class="fl">2.2</span>))</span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="fl">2.5</span>, <span class="dv">1</span>))</span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> OKABE, <span class="at">axes =</span> <span class="cn">FALSE</span>, <span class="at">main =</span> <span class="st">"Okabe-Ito normal"</span>)</span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a><span class="fu">image</span>(<span class="fu">matrix</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">ncol =</span> <span class="dv">1</span>), <span class="at">col =</span> <span class="fu">sapply</span>(OKABE, als_hex), <span class="at">axes =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">main =</span> <span class="st">"Okabe-Ito bei Deuteranopie"</span>)</span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b4-fa-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b4-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b4-fa-r-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-7" title="Abbildung&nbsp;7: Beispiel 4: oben die Originalfarben, unten wie sie bei Deuteranopie erscheinen."><img src="farbe_files/figure-html/fig-b4-fa-r-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b4-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;7: Beispiel 4: oben die Originalfarben, unten wie sie bei Deuteranopie erscheinen.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>paare <span class="op">=</span> [(<span class="st">"#D62728"</span>, <span class="st">"#2CA02C"</span>, <span class="st">"rot / gruen"</span>),</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>         (<span class="st">"#E69F00"</span>, <span class="st">"#56B4E9"</span>, <span class="st">"Okabe orange / himmelblau"</span>),</span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>         (<span class="st">"#009E73"</span>, <span class="st">"#D55E00"</span>, <span class="st">"Okabe gruen / zinnober"</span>)]</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> a, b, name <span class="kw">in</span> paare:</span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>name<span class="sc">:&lt;28}</span><span class="ss"> normal </span><span class="sc">{</span>abstand(a, b)<span class="sc">:6.1f}</span><span class="ss">"</span></span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a>          <span class="ss">f"   deuteranop </span><span class="sc">{</span>abstand_deuteranop(a, b)<span class="sc">:6.1f}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>rot / gruen                  normal  119.8   deuteranop    8.2
+Okabe orange / himmelblau    normal  113.1   deuteranop  116.2
+Okabe gruen / zinnober       normal  102.4   deuteranop   53.1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> vergleich(farben):</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>    d <span class="op">=</span> [abstand_deuteranop(farben[i], farben[j])</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>         <span class="cf">for</span> i, j <span class="kw">in</span> itertools.combinations(<span class="bu">range</span>(<span class="bu">len</span>(farben)), <span class="dv">2</span>)]</span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {<span class="st">"minimum"</span>: <span class="bu">min</span>(d), <span class="st">"paare_unter_10"</span>: <span class="bu">sum</span>(<span class="dv">1</span> <span class="cf">for</span> x <span class="kw">in</span> d <span class="cf">if</span> x <span class="op">&lt;</span> <span class="dv">10</span>),</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>            <span class="st">"paare"</span>: <span class="bu">len</span>(d)}</span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-7"><a href="#cb47-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-8"><a href="#cb47-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(pd.DataFrame({<span class="st">"Okabe"</span>: vergleich(OKABE),</span>
+<span id="cb47-9"><a href="#cb47-9" aria-hidden="true" tabindex="-1"></a>                    <span class="st">"Regenbogen12"</span>: vergleich(REGEN12)}).<span class="bu">round</span>(<span class="dv">1</span>).T)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              minimum  paare_unter_10  paare
+Okabe            17.2             0.0   28.0
+Regenbogen12      4.9             1.0   66.0</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> als_hex(h):</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>    v <span class="op">=</span> deuteranop(h) <span class="op">**</span> (<span class="dv">1</span> <span class="op">/</span> <span class="fl">2.2</span>)</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">"#</span><span class="sc">%02X%02X%02X</span><span class="st">"</span> <span class="op">%</span> <span class="bu">tuple</span>(<span class="bu">int</span>(<span class="bu">round</span>(x <span class="op">*</span> <span class="dv">255</span>)) <span class="cf">for</span> x <span class="kw">in</span> v)</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>fig, achsen <span class="op">=</span> plt.subplots(<span class="dv">2</span>, <span class="dv">1</span>, figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="dv">3</span>))</span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> achse, (titel, pal) <span class="kw">in</span> <span class="bu">zip</span>(achsen,</span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a>                               [(<span class="st">"Okabe-Ito normal"</span>, OKABE),</span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>                                (<span class="st">"Okabe-Ito bei Deuteranopie"</span>,</span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a>                                 [als_hex(h) <span class="cf">for</span> h <span class="kw">in</span> OKABE])]):</span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> k, farbe <span class="kw">in</span> <span class="bu">enumerate</span>(pal):</span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a>        _ <span class="op">=</span> achse.bar(k, <span class="dv">1</span>, width<span class="op">=</span><span class="dv">1</span>, color<span class="op">=</span>farbe)</span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.set_title(titel, fontsize<span class="op">=</span><span class="dv">10</span>)</span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.axis(<span class="st">"off"</span>)</span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b4-fa-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b4-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b4-fa-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-8" title="Abbildung&nbsp;8: Beispiel 4: dieselbe Simulation in Python."><img src="farbe_files/figure-html/fig-b4-fa-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b4-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;8: Beispiel 4: dieselbe Simulation in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Farbpaar</th>
+<th>ΔE normal</th>
+<th>ΔE bei Deuteranopie</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>rot / grün</strong> (matplotlib-Standardfarben)</td>
+<td><strong>119.8</strong></td>
+<td><strong>8.2</strong></td>
+</tr>
+<tr class="even">
+<td>Okabe orange / himmelblau</td>
+<td>113.1</td>
+<td><strong>116.2</strong></td>
+</tr>
+<tr class="odd">
+<td>Okabe grün / zinnober</td>
+<td>102.4</td>
+<td><strong>53.1</strong></td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Palette</th>
+<th>kleinster Abstand bei Deuteranopie</th>
+<th>Paare unter ΔE 10</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Okabe-Ito</strong> (28 Paare)</td>
+<td><strong>17.2</strong></td>
+<td><strong>0</strong></td>
+</tr>
+<tr class="even">
+<td><strong>Regenbogen 12</strong> (66 Paare)</td>
+<td><strong>4.9</strong></td>
+<td><strong>1</strong></td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Beobachtung</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Rot und Grün fallen von <strong>119.8 auf 8.2</strong></td>
+<td>Ein Abstand unter 10 heisst: nur bei direkt aneinandergrenzenden Flächen erkennbar. In einer Grafik mit getrennten Linien sind die beiden Serien nicht mehr auseinanderzuhalten.</td>
+</tr>
+<tr class="even">
+<td>Das sind die <strong>Standardfarben</strong> vieler Werkzeuge</td>
+<td><code>#D62728</code> und <code>#2CA02C</code> sind Farbe 4 und 3 der matplotlib-Standardpalette. Wer nichts einstellt, bekommt genau dieses Paar.</td>
+</tr>
+<tr class="odd">
+<td>Okabe orange / himmelblau bleibt bei <strong>116</strong></td>
+<td>Praktisch unverändert. Die Palette ist so entworfen, dass sie sich in der Blau-Gelb-Richtung unterscheidet, die von der Rot-Grün-Schwäche nicht betroffen ist.</td>
+</tr>
+<tr class="even">
+<td>Okabe grün / zinnober <strong>halbiert</strong> sich auf 53.1</td>
+<td>Auch die geprüfte Palette verliert Abstand — aber sie bleibt weit über der Erkennbarkeitsschwelle.</td>
+</tr>
+<tr class="odd">
+<td>Über die ganze Palette: <strong>kein einziges</strong> Okabe-Paar unter ΔE 10</td>
+<td>Gegen ein Paar beim Regenbogen mit zwölf Farben, dessen kleinster Abstand auf 4.9 fällt.</td>
+</tr>
+</tbody>
+</table>
+<div class="warning-box">
+<p><strong>Was daraus folgt, ist nicht “keine roten und grünen Farben mehr”.</strong> Rot und Grün dürfen vorkommen — sie dürfen nur nicht <strong>allein</strong> die Unterscheidung tragen.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Situation</th>
+<th>Lösung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>zwei Linien</td>
+<td>verschiedene Linienarten plus direkte Beschriftung</td>
+</tr>
+<tr class="even">
+<td>Ampelfarben in einer Tabelle</td>
+<td>zusätzlich ein Symbol (▲ ▼) oder Text</td>
+</tr>
+<tr class="odd">
+<td>Kategorien in einem Streudiagramm</td>
+<td>zusätzlich die Punktform</td>
+</tr>
+<tr class="even">
+<td>Verlauf</td>
+<td>Viridis statt Rot-Grün-Skala</td>
+</tr>
+</tbody>
+</table>
+<p>Die Prüfung kostet wenig: Diese zehn Zeilen Code auf die eigene Palette anwenden und schauen, ob ein Paar unter ΔE 10 fällt.</p>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Unter simulierter Deuteranopie fällt der Lab-Abstand zwischen dem Standard-Rot und -Grün von 119.8 auf 8.2 und damit unter die Erkennbarkeitsschwelle. Die Okabe-Ito-Palette behält über alle 28 Paare mindestens 17.2, während eine Regenbogenpalette mit zwölf Farben auf 4.9 fällt.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-6-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-5-tab">
+<section id="frage-und-datenlage-4" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-4">Frage und Datenlage</h4>
+<p>Welche der verwendeten Farben taugen für <strong>Text</strong>, welche nur für Flächen? Das Kontrastverhältnis nach WCAG beantwortet das mit einer Zahl: mindestens 4.5 zu 1 für normalen Text, 3 zu 1 für grosse Schrift.</p>
+</section>
+<section id="rechnung-4" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-4">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>farben <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">Akzentrot =</span> akzent, <span class="st">"Grau hell"</span> <span class="ot">=</span> <span class="st">"#c7c7c7"</span>, <span class="st">"Grau mittel"</span> <span class="ot">=</span> <span class="st">"#767676"</span>,</span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Okabe gelb"</span> <span class="ot">=</span> <span class="st">"#F0E442"</span>, <span class="st">"Okabe blau"</span> <span class="ot">=</span> <span class="st">"#0072B2"</span>,</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Okabe himmelblau"</span> <span class="ot">=</span> <span class="st">"#56B4E9"</span>, <span class="at">Schwarz =</span> <span class="st">"#000000"</span>)</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>urteil <span class="ot">&lt;-</span> <span class="cf">function</span>(k) {</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (k <span class="sc">&gt;=</span> <span class="fl">4.5</span>) <span class="st">"Text ok"</span> <span class="cf">else</span> <span class="cf">if</span> (k <span class="sc">&gt;=</span> <span class="dv">3</span>) <span class="st">"nur grosse Schrift"</span> <span class="cf">else</span> <span class="st">"nur Fläche"</span></span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (nm <span class="cf">in</span> <span class="fu">names</span>(farben)) {</span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>  k <span class="ot">&lt;-</span> <span class="fu">kontrast</span>(farben[[nm]], <span class="st">"#FFFFFF"</span>)</span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"%-18s %5.2f : 1   %s</span><span class="sc">\n</span><span class="st">"</span>, nm, k, <span class="fu">urteil</span>(k)))</span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Akzentrot           6.87 : 1   Text ok
+Grau hell           1.69 : 1   nur Fläche
+Grau mittel         4.54 : 1   Text ok
+Okabe gelb          1.32 : 1   nur Fläche
+Okabe blau          5.19 : 1   Text ok
+Okabe himmelblau    2.31 : 1   nur Fläche
+Schwarz            21.00 : 1   Text ok</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">akzent_auf_hellgrau =</span> <span class="fu">kontrast</span>(akzent, <span class="st">"#c7c7c7"</span>),</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">akzent_auf_mittelgrau =</span> <span class="fu">kontrast</span>(akzent, <span class="st">"#767676"</span>)), <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  akzent_auf_hellgrau akzent_auf_mittelgrau 
+                 4.06                  1.51 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">1</span>))</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="cn">NA</span>, <span class="at">xlim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">10</span>), <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">8</span>), <span class="at">axes =</span> <span class="cn">FALSE</span>, <span class="at">xlab =</span> <span class="st">""</span>, <span class="at">ylab =</span> <span class="st">""</span>,</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Textfarben auf weissem Grund"</span>)</span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(farben)) {</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>  k <span class="ot">&lt;-</span> <span class="fu">kontrast</span>(farben[[i]], <span class="st">"#FFFFFF"</span>)</span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">text</span>(<span class="dv">1</span>, <span class="dv">8</span> <span class="sc">-</span> i, <span class="fu">sprintf</span>(<span class="st">"%s — Kontrast %.2f : 1"</span>, <span class="fu">names</span>(farben)[i], k),</span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">col =</span> farben[[i]], <span class="at">adj =</span> <span class="dv">0</span>, <span class="at">cex =</span> <span class="fl">1.1</span>)</span>
+<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b5-fa-r" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b5-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b5-fa-r-3.png" class="lightbox" data-gallery="quarto-lightbox-gallery-9" title="Abbildung&nbsp;9: Beispiel 5: dieselben Farben als Textfarbe auf Weiss."><img src="farbe_files/figure-html/fig-b5-fa-r-3.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b5-fa-r-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;9: Beispiel 5: dieselben Farben als Textfarbe auf Weiss.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>farben <span class="op">=</span> {<span class="st">"Akzentrot"</span>: AKZENT, <span class="st">"Grau hell"</span>: <span class="st">"#c7c7c7"</span>, <span class="st">"Grau mittel"</span>: <span class="st">"#767676"</span>,</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>          <span class="st">"Okabe gelb"</span>: <span class="st">"#F0E442"</span>, <span class="st">"Okabe blau"</span>: <span class="st">"#0072B2"</span>,</span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>          <span class="st">"Okabe himmelblau"</span>: <span class="st">"#56B4E9"</span>, <span class="st">"Schwarz"</span>: <span class="st">"#000000"</span>}</span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> urteil(k):</span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> k <span class="op">&gt;=</span> <span class="fl">4.5</span>:</span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"Text ok"</span></span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">"nur grosse Schrift"</span> <span class="cf">if</span> k <span class="op">&gt;=</span> <span class="dv">3</span> <span class="cf">else</span> <span class="st">"nur Fläche"</span></span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-12"><a href="#cb55-12" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> nm, h <span class="kw">in</span> farben.items():</span>
+<span id="cb55-13"><a href="#cb55-13" aria-hidden="true" tabindex="-1"></a>    k <span class="op">=</span> kontrast(h, <span class="st">"#FFFFFF"</span>)</span>
+<span id="cb55-14"><a href="#cb55-14" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>nm<span class="sc">:&lt;18}</span><span class="ss"> </span><span class="sc">{</span>k<span class="sc">:5.2f}</span><span class="ss"> : 1   </span><span class="sc">{</span>urteil(k)<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Akzentrot           6.87 : 1   Text ok
+Grau hell           1.69 : 1   nur Fläche
+Grau mittel         4.54 : 1   Text ok
+Okabe gelb          1.32 : 1   nur Fläche
+Okabe blau          5.19 : 1   Text ok
+Okabe himmelblau    2.31 : 1   nur Fläche
+Schwarz            21.00 : 1   Text ok</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>({<span class="st">"akzent_auf_hellgrau"</span>: <span class="bu">round</span>(kontrast(AKZENT, <span class="st">"#c7c7c7"</span>), <span class="dv">2</span>),</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>       <span class="st">"akzent_auf_mittelgrau"</span>: <span class="bu">round</span>(kontrast(AKZENT, <span class="st">"#767676"</span>), <span class="dv">2</span>)})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'akzent_auf_hellgrau': 4.06, 'akzent_auf_mittelgrau': 1.51}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>fig, achse <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">7</span>, <span class="dv">3</span>))</span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, (nm, h) <span class="kw">in</span> <span class="bu">enumerate</span>(farben.items()):</span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>    k <span class="op">=</span> kontrast(h, <span class="st">"#FFFFFF"</span>)</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">=</span> achse.text(<span class="fl">0.02</span>, <span class="fl">0.92</span> <span class="op">-</span> i <span class="op">*</span> <span class="fl">0.13</span>, <span class="ss">f"</span><span class="sc">{</span>nm<span class="sc">}</span><span class="ss"> — Kontrast </span><span class="sc">{</span>k<span class="sc">:.2f}</span><span class="ss"> : 1"</span>,</span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a>                   color<span class="op">=</span>h, fontsize<span class="op">=</span><span class="dv">11</span>, transform<span class="op">=</span>achse.transAxes)</span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> achse.set_title(<span class="st">"Textfarben auf weissem Grund"</span>)</span>
+<span id="cb59-7"><a href="#cb59-7" aria-hidden="true" tabindex="-1"></a>_ <span class="op">=</span> achse.axis(<span class="st">"off"</span>)</span>
+<span id="cb59-8"><a href="#cb59-8" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb59-9"><a href="#cb59-9" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="fig-b5-fa-py" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-b5-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<a href="farbe_files/figure-html/fig-b5-fa-py-1.png" class="lightbox" data-gallery="quarto-lightbox-gallery-10" title="Abbildung&nbsp;10: Beispiel 5: dieselbe Darstellung in Python."><img src="farbe_files/figure-html/fig-b5-fa-py-1.png" class="img-fluid figure-img" style="width:100.0%"></a>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-b5-fa-py-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Abbildung&nbsp;10: Beispiel 5: dieselbe Darstellung in Python.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-4" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-4">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Farbe</th>
+<th>Kontrast gegen Weiss</th>
+<th>Urteil</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Schwarz</td>
+<td><strong>21.00 : 1</strong></td>
+<td>Text ok</td>
+</tr>
+<tr class="even">
+<td>Akzentrot <code>#b2182b</code></td>
+<td><strong>6.87 : 1</strong></td>
+<td>Text ok</td>
+</tr>
+<tr class="odd">
+<td>Okabe blau <code>#0072B2</code></td>
+<td><strong>5.19 : 1</strong></td>
+<td>Text ok</td>
+</tr>
+<tr class="even">
+<td>Grau mittel <code>#767676</code></td>
+<td><strong>4.54 : 1</strong></td>
+<td>Text ok, knapp</td>
+</tr>
+<tr class="odd">
+<td>Okabe himmelblau <code>#56B4E9</code></td>
+<td><strong>2.31 : 1</strong></td>
+<td>nur Fläche</td>
+</tr>
+<tr class="even">
+<td>Grau hell <code>#c7c7c7</code></td>
+<td><strong>1.69 : 1</strong></td>
+<td>nur Fläche</td>
+</tr>
+<tr class="odd">
+<td>Okabe gelb <code>#F0E442</code></td>
+<td><strong>1.32 : 1</strong></td>
+<td>nur Fläche</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Kombination</th>
+<th>Kontrast</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Akzentrot auf hellem Grau <code>#c7c7c7</code></td>
+<td><strong>4.06 : 1</strong></td>
+</tr>
+<tr class="even">
+<td>Akzentrot auf mittlerem Grau <code>#767676</code></td>
+<td><strong>1.51 : 1</strong></td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Beobachtung</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Okabe gelb</strong> erreicht nur 1.32 zu 1</td>
+<td>Als Balkenfläche gut, als Beschriftung unlesbar. Eine Palette für Flächen ist <strong>keine</strong> Palette für Text.</td>
+</tr>
+<tr class="even">
+<td>Das mittlere Grau liegt mit <strong>4.54</strong> knapp über der Schwelle</td>
+<td><code>#767676</code> ist das hellste Grau, das noch als Text durchgeht. Alles Hellere gehört in Flächen oder Hilfslinien.</td>
+</tr>
+<tr class="odd">
+<td>Das Akzentrot <strong>taugt für beides</strong></td>
+<td>6.87 zu 1 gegen Weiss. Deshalb funktioniert es sowohl für einen hervorgehobenen Balken als auch für die zugehörige Beschriftung.</td>
+</tr>
+<tr class="even">
+<td>Akzentrot auf mittlerem Grau ist mit <strong>1.51</strong> unbrauchbar</td>
+<td>Der Kontrast gilt immer gegen den <strong>tatsächlichen</strong> Hintergrund. Eine Farbe, die auf Weiss funktioniert, kann auf grauem Grund verschwinden.</td>
+</tr>
+<tr class="odd">
+<td>Die Schwelle 4.5 ist keine Geschmacksfrage</td>
+<td>Sie stammt aus den WCAG-Richtlinien und ist der Wert, ab dem Text auch bei eingeschränktem Sehvermögen lesbar bleibt.</td>
+</tr>
+</tbody>
+</table>
+<div class="note-box">
+<p><strong>Die Formel steht in drei Zeilen:</strong> relative Luminanz beider Farben bestimmen, heller und dunkler sortieren, dann</p>
+<p><span class="math display">\[\text{Kontrast} = \frac{L_{\text{hell}} + 0.05}{L_{\text{dunkel}} + 0.05}\]</span></p>
+<p>Der Wertebereich reicht von 1 zu 1 (identisch) bis 21 zu 1 (Schwarz auf Weiss).</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Verwendung</th>
+<th>Mindestkontrast</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>normaler Text</td>
+<td>4.5 : 1</td>
+</tr>
+<tr class="even">
+<td>grosse Schrift ab etwa 18 pt</td>
+<td>3 : 1</td>
+</tr>
+<tr class="odd">
+<td>Bedienelemente, Diagrammlinien</td>
+<td>3 : 1</td>
+</tr>
+<tr class="even">
+<td>reine Dekoration</td>
+<td>keine Anforderung</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="interpretation-und-ergebnissatz-4" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-4">Interpretation und Ergebnissatz</h4>
+<blockquote class="blockquote">
+<p>Von den sieben geprüften Farben erreichen vier den für Text nötigen Kontrast von 4.5 zu 1 gegen Weiss; Okabe gelb liegt mit 1.32 zu 1 weit darunter und taugt nur für Flächen. Das Akzentrot erreicht 6.87 zu 1 gegen Weiss, aber nur 1.51 zu 1 gegen mittleres Grau — der Kontrast gilt immer gegen den tatsächlichen Hintergrund.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
+</section>
+<section id="verständnisfragen" class="level2">
+<h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
 <div class="quiz">
 <div class="quiz__frage">
 <p>Eine Karte färbt Kantone nach Produktgruppe mit einer Verlaufsfarbskala von Hellblau bis Dunkelblau. Was stimmt daran nicht?</p>
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" tabindex="0" data-nummer="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
 Ein Verlauf behauptet eine Reihenfolge, die es bei Produktgruppen nicht gibt
 </div>
 <div class="quiz__erklaerung">
@@ -1351,7 +2578,7 @@ Richtig. Nominale Kategorien brauchen eine qualitative Palette; der Verlauf legt
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" tabindex="0" data-nummer="2">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
 Blau ist für Karten ungeeignet
 </div>
 <div class="quiz__erklaerung">
@@ -1359,7 +2586,7 @@ Die Farbwahl selbst ist unproblematisch, der Palettentyp ist es nicht.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" tabindex="0" data-nummer="3">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
 Es fehlt eine Legende
 </div>
 <div class="quiz__erklaerung">
@@ -1370,36 +2597,159 @@ Auch mit Legende bliebe die falsche Suggestion.
 </div>
 <div class="quiz">
 <div class="quiz__frage">
-<p>Eine Grafik unterscheidet zwei Serien allein durch Rot und Grün. Warum genügt das nicht?</p>
+<p>Woran misst man, ob eine Kategorienpalette genug Farben hergibt?</p>
 </div>
 <div class="quiz__optionen">
-<div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" tabindex="0" data-nummer="1">
-Weil Rot und Grün sich zu ähnlich sind
-</div>
-<div class="quiz__erklaerung">
-Für die meisten sind sie gut unterscheidbar; das Problem ist spezifischer.
-</div>
-</div>
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" tabindex="0" data-nummer="2">
-Weil rund acht Prozent der Männer diese beiden nicht sicher trennen
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Am kleinsten paarweisen Abstand im Lab-Raum
 </div>
 <div class="quiz__erklaerung">
-Richtig. Ein zweiter Kanal muss dazu: verschiedene Linienarten, direkte Beschriftung oder Position in getrennten Teilgrafiken.
+Richtig. Am engsten Paar scheitert die Zuordnung. Okabe-Ito hält bei acht Farben mindestens ΔE 26.4, eine Regenbogenpalette mit zwölf fällt auf 17.4.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" tabindex="0" data-nummer="3">
-Weil Rot immer Warnung bedeutet
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Am durchschnittlichen Abstand
 </div>
 <div class="quiz__erklaerung">
-Die Bedeutungskonvention ist ein eigenes Thema, aber nicht der Grund hier.
+Ein hoher Durchschnitt nützt nichts, wenn ein einzelnes Paar ununterscheidbar ist.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+An der Zahl der Farben allein
+</div>
+<div class="quiz__erklaerung">
+Entscheidend ist, wie weit sie auseinanderliegen, nicht wie viele es sind.
 </div>
 </div>
 </div>
 </div>
-</section>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum taugt eine Regenbogenpalette nicht für eine kontinuierliche Grösse?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Ihre Helligkeit ist nicht monoton — sie wechselt viermal die Richtung
+</div>
+<div class="quiz__erklaerung">
+Richtig. Der Helligkeitsgipfel liegt bei Gelb in der Mitte und erzeugt dort eine Grenze, die in den Daten nicht existiert. Zusätzlich sind die Stufen 1 und 9 fast gleich hell.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Weil sie zu bunt aussieht
+</div>
+<div class="quiz__erklaerung">
+Das ist Geschmack; die Probleme sind messbar.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+Weil sie zu wenige Stufen hat
+</div>
+<div class="quiz__erklaerung">
+Die Zahl der Stufen ist frei wählbar und nicht das Problem.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Der Lab-Abstand zwischen dem Standard-Rot und -Grün fällt unter simulierter Deuteranopie von 119.8 auf 8.2. Was folgt daraus?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Farbe darf nicht der einzige Unterscheidungskanal sein
+</div>
+<div class="quiz__erklaerung">
+Richtig. Ein Abstand unter 10 ist nur bei aneinandergrenzenden Flächen erkennbar. Zusätzlich braucht es Linienart, Form oder direkte Beschriftung.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Rot und Grün dürfen nie zusammen vorkommen
+</div>
+<div class="quiz__erklaerung">
+Sie dürfen, solange ein zweiter Kanal die Unterscheidung trägt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+Man sollte grundsätzlich in Graustufen arbeiten
+</div>
+<div class="quiz__erklaerung">
+Das wäre eine Überreaktion; geprüfte Paletten wie Okabe-Ito bleiben auch unter Deuteranopie über ΔE 17.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Okabe gelb hat gegen Weiss einen Kontrast von 1.32 zu 1. Was heisst das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Als Fläche brauchbar, als Textfarbe unlesbar
+</div>
+<div class="quiz__erklaerung">
+Richtig. Für Text verlangen die WCAG-Richtlinien mindestens 4.5 zu 1. Eine Palette für Flächen ist keine Palette für Beschriftungen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Die Farbe ist grundsätzlich unbrauchbar
+</div>
+<div class="quiz__erklaerung">
+Als Balkenfläche mit danebenstehender schwarzer Beschriftung funktioniert sie gut.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+Der Wert ist zu klein, also ist der Kontrast hoch
+</div>
+<div class="quiz__erklaerung">
+Umgekehrt: 1 zu 1 heisst identisch, 21 zu 1 ist Schwarz auf Weiss.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Das Akzentrot erreicht 6.87 zu 1 gegen Weiss, aber nur 1.51 zu 1 gegen mittleres Grau. Was ist die Lehre?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Kontrast gilt immer gegen den tatsächlichen Hintergrund
+</div>
+<div class="quiz__erklaerung">
+Richtig. Eine Farbe ist nicht für sich lesbar oder unlesbar, sondern nur im Paar. Wer den Hintergrund ändert, muss neu rechnen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Das Akzentrot ist schlecht gewählt
+</div>
+<div class="quiz__erklaerung">
+Gegen Weiss ist es gut geeignet; auf mittelgrauem Grund wäre jede mittelhelle Farbe problematisch.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+Graue Hintergründe sind zu vermeiden
+</div>
+<div class="quiz__erklaerung">
+Sie sind brauchbar, solange die Vordergrundfarben dazu passend gewählt werden.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
@@ -1408,6 +2758,8 @@ Die Bedeutungskonvention ist ein eigenes Thema, aber nicht der Grund hier.
 <li><a href="https://colorbrewer2.org/">ColorBrewer: Paletten nach Aufgabe</a></li>
 <li><a href="https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html">Viridis: Farbverläufe für alle Sehtypen</a></li>
 <li><a href="https://jfly.uni-koeln.de/color/">Okabe-Ito-Palette</a></li>
+<li><a href="https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html">WCAG: Kontrastanforderungen</a></li>
+<li><a href="../visualisierung/wahrnehmung-kodierung.html">Wahrnehmung und Kodierung</a> — warum Farbton keine Mengen kodiert</li>
 </ul>
 
 
@@ -1853,7 +3205,7 @@ Die Bedeutungskonvention ist ein eigenes Thema, aber nicht der Grund hier.
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">11. September 2026, 20:12</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">11. September 2026, 20:16</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
