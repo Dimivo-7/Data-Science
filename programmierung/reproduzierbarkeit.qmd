@@ -11,96 +11,458 @@ order: 90
 ```{r}
 #| label: setup-r
 #| include: false
-library(ggplot2)
-
-theme_set(theme_minimal(base_size = 12))
-set.seed(42)
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
 ```
 
 ```{python}
 #| label: setup-python
 #| include: false
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+import math
+from pathlib import Path, PureWindowsPath
 
-plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
-                     "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
+import numpy as np
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
 ```
 
 ## Kernideen
 
-- Das Projekt ersetzt das Arbeitsverzeichnis und den absoluten Pfad
-- Relative Pfade machen eine Auswertung übertragbar
-- Berichte, die Zahlen aus dem Code beziehen, veralten nicht
-- Ein Seed macht Zufall wiederholbar
-- Umgebung und Paketstände gehören zur Auswertung dazu
+- Eine Auswertung ist reproduzierbar, wenn sie **nach einem Neustart von oben
+  nach unten** durchläuft und dieselben Zahlen liefert.
+- Das **Projekt** legt das Arbeitsverzeichnis fest; Pfade werden **relativ**
+  dazu geschrieben und mit `file.path` beziehungsweise `pathlib` gebaut.
+- Zahlen im Bericht kommen **aus dem Code**, nicht aus der Zwischenablage.
+  Quarto und R Markdown setzen sie beim Rendern ein.
+- Ein **Seed** macht Zufall innerhalb einer Sprache wiederholbar, aber nicht
+  zwischen den Sprachen.
+- Auch deterministische Rechnungen hängen an Details: an der **Reihenfolge**
+  von Gleitkommaoperationen und am **Zustand der Sitzung**.
+- Die **Umgebung** gehört zur Auswertung, siehe
+  [Pakete und Umgebungen](pakete-umgebungen.qmd).
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** [R-Grundlagen](r-grundlagen.qmd) oder
 [Python-Grundlagen](python-grundlagen.qmd), je nachdem, womit gearbeitet wird.
-Wie man die Umgebung selbst festhält, steht unter
-[Pakete und Umgebungen](pakete-umgebungen.qmd).
+Wie man die Paketstände festhält, steht unter
+[Pakete und Umgebungen](pakete-umgebungen.qmd), wie man Änderungen
+nachvollziehbar speichert, unter [Git](../werkzeuge/git.qmd).
 :::
+
+### Vier Stufen
+
+| Stufe | Frage | Mittel |
+|---|---|---|
+| wiederholbar | liefert dasselbe Skript auf demselben Rechner dasselbe? | Seed, Neustart statt gewachsener Sitzung |
+| übertragbar | läuft es auf einem anderen Rechner? | Projektordner, relative Pfade |
+| dauerhaft | läuft es in einem Jahr noch? | festgehaltene Paketversionen, Container |
+| nachvollziehbar | versteht jemand anders, was passiert ist? | Bericht mit eingebettetem Code, Versionsverwaltung |
 
 ### Das Projekt statt des Arbeitsverzeichnisses
 
 Ein Skript, das bei jemand anderem nicht läuft, scheitert erfahrungsgemäss an
-einem absoluten Pfad. Er verweist auf ein Verzeichnis, das nur auf einem
-einzigen Rechner existiert. Dasselbe passiert dem eigenen Skript nach einem
-Umzug der Daten.
+einem absoluten Pfad wie `C:/Users/mv/Desktop/Analyse/daten.csv`. Er
+verweist auf ein Verzeichnis, das nur auf einem Rechner existiert. Ein
+RStudio-Projekt, ein Projektordner in VS Code oder das Verzeichnis eines
+Quarto-Projekts legt das Arbeitsverzeichnis auf den Projektordner fest;
+Pfade werden relativ dazu geschrieben und funktionieren überall, wo der Ordner
+als Ganzes liegt. Wer Pfade mit `file.path()` oder `pathlib` zusammensetzt
+statt mit Schrägstrichen, muss sich zudem nicht um Windows und Linux kümmern.
 
-Ein RStudio-Projekt löst das, indem es das Arbeitsverzeichnis auf den
-Projektordner festlegt. Pfade werden dann relativ dazu geschrieben und
-funktionieren überall, wo der Ordner als Ganzes liegt.
+### Der Zustand der Sitzung
 
-```r
-# schlecht: existiert nur auf einem Rechner
-read.csv("C:/Users/mv/Desktop/Analyse/daten/messung.csv")
-
-# gut: relativ zum Projektordner
-read.csv("daten/messung.csv")
-```
-
-Der zweite Punkt betrifft den Zustand der Sitzung. RStudio bietet an, die
-Objekte beim Beenden zu speichern und beim Start wiederherzustellen. Das wirkt
-hilfreich, verdeckt aber Fehler: Ein Skript, das nur läuft, weil eine Variable
-noch aus der letzten Woche im Speicher liegt, ist nicht reproduzierbar. Die
-Einstellung gehört ausgeschaltet, und die Probe aufs Exempel ist ein Neustart
-mit leerer Umgebung.
-
-::: {.note-box}
-Nützliche Kürzel in RStudio: neuer Codechunk, Chunk ausführen, Dokument
-rendern. Wer sie kennt, arbeitet spürbar flüssiger als über die Menüs.
-:::
+RStudio bietet an, die Objekte beim Beenden zu speichern und beim Start
+wiederherzustellen. Das wirkt hilfreich und verdeckt Fehler: Ein Skript, das
+nur läuft, weil eine Variable noch aus der letzten Woche im Speicher liegt,
+ist nicht reproduzierbar. Die Einstellung gehört ausgeschaltet
+(*Tools → Global Options → Workspace*). In Jupyter entsteht dasselbe
+Problem, wenn Zellen in beliebiger Reihenfolge ausgeführt werden. Die Probe
+ist in beiden Fällen dieselbe: Neustart mit leerer Umgebung und ein
+vollständiger Durchlauf von oben.
 
 ### Berichte, die nicht veralten
 
 Eine Zahl, die von Hand aus der Konsole in ein Textdokument kopiert wurde, ist
 ab dem nächsten Datenstand falsch, und niemand sieht ihr das an. Quarto und R
 Markdown lösen das, indem Text und Rechnung in derselben Datei stehen. Beim
-Rendern wird der Code ausgeführt und das Ergebnis eingesetzt.
-
-Der Baustein dafür heisst Chunk. Er beginnt mit drei Backticks und der
-Sprachangabe in geschweiften Klammern:
+Rendern wird der Code ausgeführt und das Ergebnis eingesetzt, in Chunks und
+mitten im Satz:
 
 ````{verbatim}
-Der Mittelwert liegt bei `r round(mean(mtcars$mpg), 2)`.
-
 ```{r}
-summary(mtcars$mpg)
+werte <- c(12.1, 14.3, 11.8, 15.0, 13.6)
 ```
+
+Der Mittelwert liegt bei `r round(mean(werte), 2)`.
 ````
 
-Gezeigt ist der eingebaute Datensatz `mtcars`, damit das Beispiel ohne
-Vorbereitung nachvollziehbar ist. Der erste Teil ist eingebetteter Code mitten
-im Satz. Ändert sich der Datensatz, ändert sich die Zahl im Text beim nächsten
-Rendern automatisch mit.
-Diese Seite funktioniert genau so: Jede Zahl und jede Abbildung darauf entsteht
-beim Bauen der Website aus dem Code, der daneben steht.
+Diese Sammlung arbeitet genau so: Jede Ausgabe entsteht beim Bauen der
+Website aus dem Code, der daneben steht. Die Zahlen im Fliesstext werden
+danach gegen die Ausgabe geprüft, weil ein Satz, der eine Zahl von Hand
+nennt, wieder veralten kann.
+
+### Notebooks und Versionsverwaltung
+
+Ausgaben in einem Jupyter-Notebook erzeugen bei jedem Speichern grosse,
+unleserliche Änderungen in Git. Wer sie vor dem Commit entfernt
+(`jupyter nbconvert --clear-output --inplace analyse.ipynb`), bekommt
+brauchbare Diffs. Quarto-Dateien (`.qmd`) haben das Problem nicht, weil sie
+reiner Text sind und die Ausgabe getrennt entsteht.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| Zufall wiederholbar | `set.seed(42)` | `rng = np.random.default_rng(42)` |
+| Pfad bauen | `file.path("daten", "messung.csv")` | `Path("daten") / "messung.csv"` |
+| Pfad relativ zum Projekt | `here::here("daten", "messung.csv")` | `Path(__file__).resolve().parent / "daten"` |
+| Dokument rendern | `quarto render bericht.qmd` | `quarto render bericht.qmd` |
+| Stand festhalten | `renv::snapshot()`, `sessionInfo()` | `pip freeze > requirements.txt` |
+| Notebook ohne Ausgaben | | `jupyter nbconvert --clear-output --inplace datei.ipynb` |
+| exakte Summe | `sum()` rechnet mit erhöhter Genauigkeit | `math.fsum()` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Seeds innerhalb und zwischen den Sprachen
+
+#### Frage und Datenlage
+
+Drei gleichverteilte Zufallszahlen mit dem Seed 42, zweimal hintereinander:
+Sind sie gleich? Und liefern R und Python mit demselben Seed dieselben Zahlen?
+Zum Vergleich drei Werte aus einem Lehmer-Generator mit der Saat 12345, in
+beiden Sprachen selbst geschrieben.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-rp-r
+set.seed(42)
+a <- runif(3)
+set.seed(42)
+b <- runif(3)
+round(a, 4)
+identical(a, b)
+
+round(lehmer(12345, 3), 6)
+```
+
+##### Python
+
+```{python}
+#| label: b1-rp-py
+a = np.random.default_rng(42).random(3)
+b = np.random.default_rng(42).random(3)
+print(np.round(a, 4), bool((a == b).all()))
+
+print(np.round(lehmer(12345, 3), 6))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | R | Python | Erklärung |
+|---|---|---|---|
+| zweimal Seed 42 | `identical`: `TRUE` | `True` | Innerhalb einer Sprache ist der Zufall mit Seed vollständig wiederholbar. |
+| die drei Zahlen | eine Folge | eine **andere** Folge | R verwendet den Mersenne-Twister, NumPy standardmässig PCG64. Derselbe Seed, verschiedene Generatoren. |
+| Lehmer mit Saat 12345 | 0.096617, 0.833995, 0.947702 | dieselben Werte | Ein Generator aus einer Formel, in beiden Sprachen gleich geschrieben, liefert identische Zahlen. |
+
+Der Lehmer-Generator rechnet `s = 16807 · s mod (2³¹ − 1)` und teilt durch
+den Modulus. Er ist statistisch schlicht, genügt aber für Beispieldaten und
+hat den einen Vorteil, auf den es hier ankommt: Er ist in jeder Sprache in
+drei Zeilen nachgebaut.
+
+#### Interpretation und Ergebnissatz
+
+Ein Seed garantiert Wiederholbarkeit, nicht Übertragbarkeit. Wer dieselbe
+Auswertung in R und Python rechnet und mit `set.seed(42)` und
+`default_rng(42)` Daten erzeugt, vergleicht zwei verschiedene Datensätze.
+Diese Sammlung hat genau das anfangs auf mehreren Seiten getan, und die
+Interpretationen stimmten nie für beide Sprachen zugleich. Seither sind alle
+Beispieldaten fest eingetragen oder mit dem Lehmer-Generator erzeugt.
+
+> Mit demselben Seed liefert jede Sprache bei jedem Lauf dieselben Zahlen,
+> R und Python aber verschiedene. Der in beiden Sprachen gleich geschriebene
+> Lehmer-Generator liefert identisch 0.096617, 0.833995 und 0.947702.
+
+### Beispiel 2: Die Zahl im Text kommt aus dem Code
+
+#### Frage und Datenlage
+
+Fünf Messwerte `12.1, 14.3, 11.8, 15.0, 13.6`. Der Mittelwert soll im
+Ergebnissatz stehen, ohne ihn abzutippen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-rp-r
+werte <- c(12.1, 14.3, 11.8, 15.0, 13.6)
+round(mean(werte), 2)
+```
+
+##### Python
+
+```{python}
+#| label: b2-rp-py
+werte = [12.1, 14.3, 11.8, 15.0, 13.6]
+mittel = round(sum(werte) / len(werte), 2)
+print(f"Der Mittelwert liegt bei {mittel}.")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Teil | Ergebnis | Erklärung |
+|---|---|---|
+| R-Chunk | 13.36 | die Rechnung, sichtbar mit Code |
+| Python mit f-String | `Der Mittelwert liegt bei 13.36.` | Der Satz entsteht im Code und wird als Ausgabe gezeigt. |
+| Ergebnissatz unten | 13.36 | eingesetzt über Inline-Code, der mit `r` beginnt, beim Rendern; der Quelltext steht oben unter "Berichte, die nicht veralten" |
+
+Inline-Code ist in dieser Sammlung auf R beschränkt, weil die Seiten mit
+knitr gerendert werden. Mit der Jupyter-Engine bietet Quarto dasselbe für
+Python in der Form `` `{python} ausdruck` ``.
+
+#### Interpretation und Ergebnissatz
+
+Ändert sich ein Messwert, ändert sich beim nächsten Rendern auch die Zahl im
+Satz. Ein abgetippter Wert bliebe stehen und wäre ab dann falsch, ohne dass
+man es ihm ansieht. Für Berichte, die mit neuen Daten wiederholt werden, ist
+das der eigentliche Gewinn.
+
+> Der Mittelwert der fünf Messwerte liegt bei `r round(mean(werte), 2)`.
+
+### Beispiel 3: Pfade bauen statt zusammenkleben
+
+#### Frage und Datenlage
+
+Die Datei `messung.csv` liegt im Projekt unter `daten/roh/`. Wie baut man
+diesen Pfad unabhängig vom Betriebssystem, und wie zerlegt man ihn in Name,
+Endung und Ordner?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-rp-r
+pfad <- file.path("daten", "roh", "messung.csv")
+pfad
+c(name = basename(pfad), ordner = dirname(pfad),
+  endung = tools::file_ext(pfad),
+  ohne_endung = tools::file_path_sans_ext(basename(pfad)))
+file.exists("C:/Users/mv/Desktop/Analyse/daten.csv")
+```
+
+##### Python
+
+```{python}
+#| label: b3-rp-py
+pfad = Path("daten") / "roh" / "messung.csv"
+print(pfad.as_posix())
+print(pfad.name, pfad.stem, pfad.suffix, pfad.parent.as_posix())
+print(pfad.with_suffix(".parquet").as_posix())
+print(str(PureWindowsPath("daten") / "roh" / "messung.csv"))
+print(pfad.is_absolute(), Path("C:/Users/mv/Desktop/Analyse/daten.csv").exists())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Python | R | Erklärung |
+|---|---|---|---|
+| Pfad | `daten/roh/messung.csv` | `"daten/roh/messung.csv"` | Relativ zum Projektordner, ohne Laufwerk und Benutzername. |
+| Name | `messung.csv` | `basename` | |
+| ohne Endung | `stem`: `messung` | `file_path_sans_ext` | |
+| Endung | `.csv` | `file_ext`: `csv` | Python behält den Punkt, R nicht. |
+| Ordner | `daten/roh` | `dirname` | |
+| andere Endung | `daten/roh/messung.parquet` | | etwa für die Ablage eines bereinigten Stands |
+| unter Windows | `daten\roh\messung.csv` | | Derselbe Code liefert dort den passenden Trenner. |
+| absolut? | `False` | | |
+| absoluter Fremdpfad vorhanden? | `False` | `FALSE` | Auf dem Rechner, der diese Seite baut, gibt es diesen Ordner nicht, genau wie auf jedem anderen fremden Rechner. |
+
+#### Interpretation und Ergebnissatz
+
+Der absolute Pfad aus der letzten Zeile ist der typische Grund, warum ein
+Skript beim Weitergeben scheitert. Ein relativer, gebauter Pfad beschreibt
+nur die Lage innerhalb des Projekts und funktioniert überall, wo der Ordner
+als Ganzes liegt. `pathlib` bietet dazu die Zerlegung in Name, Stamm und
+Endung, die beim Umbenennen und Umwandeln von Dateien laufend gebraucht wird.
+
+> Der Pfad `daten/roh/messung.csv` wird mit `file.path` beziehungsweise
+> `Path(...) / ...` gebaut und unter Windows automatisch mit Rückwärtsstrich
+> geschrieben. Der absolute Pfad auf einen fremden Benutzerordner existiert
+> auf dem Build-Rechner nicht.
+
+### Beispiel 4: Die Reihenfolge der Rechnung
+
+#### Frage und Datenlage
+
+Drei Additionen mit denselben Zahlen in verschiedener Klammerung, einmal mit
+`0.1, 0.2, 0.3` und einmal mit `1e16, 1, -1e16`. Liefern sie dasselbe, und
+was tun die eingebauten Summenfunktionen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-rp-r
+x <- (0.1 + 0.2) + 0.3
+y <- 0.1 + (0.2 + 0.3)
+c(sprintf("%.17g", x), sprintf("%.17g", y))
+x == y
+
+(1e16 + 1) - 1e16
+Reduce(`+`, c(1e16, 1, -1e16))     # Schritt fuer Schritt
+sum(c(1e16, 1, -1e16))             # mit erhoehter Genauigkeit
+```
+
+##### Python
+
+```{python}
+#| label: b4-rp-py
+x = (0.1 + 0.2) + 0.3
+y = 0.1 + (0.2 + 0.3)
+print(f"{x:.17g} {y:.17g} {x == y}")
+
+gross = [1e16, 1.0, -1e16]
+schrittweise = 0.0
+for wert in gross:
+    schrittweise += wert
+print(schrittweise, sum(gross), math.fsum(gross))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Rechnung | Python | R | Erklärung |
+|---|---|---|---|
+| `(0.1 + 0.2) + 0.3` | 0.60000000000000009 | dieselbe Zahl | Das Zwischenergebnis 0.30000000000000004 trägt seinen Fehler weiter. |
+| `0.1 + (0.2 + 0.3)` | 0.59999999999999998 | dieselbe Zahl | Andere Reihenfolge, anderer Rundungsfehler. |
+| gleich? | `False` | `FALSE` | Die Addition von Gleitkommazahlen ist nicht assoziativ. |
+| `1e16 + 1 − 1e16` schrittweise | 0.0 | 0 | 1e16 + 1 lässt sich nicht darstellen und wird zu 1e16; die 1 ist verloren. |
+| eingebaute Summe | `sum`: 1.0 | `sum`: 1 | Python rechnet seit Version 3.12 mit Fehlerausgleich, R summiert intern mit erhöhter Genauigkeit. Beide finden die 1 wieder. |
+| exakte Summe | `math.fsum`: 1.0 | | garantiert korrekt gerundet |
+
+#### Interpretation und Ergebnissatz
+
+Dasselbe Programm ist also nur dann bit für bit reproduzierbar, wenn auch die
+Reihenfolge der Operationen gleich bleibt. Bei paralleler Berechnung, bei
+anderer Sortierung der Daten oder bei einer neuen Bibliotheksversion kann
+sich die letzte Stelle ändern. Das ist kein Fehler, sondern der Grund, warum
+Ergebnisse mit Toleranz verglichen werden (siehe
+[Python-Grundlagen](python-grundlagen.qmd), Beispiel 5) und warum man in
+Berichten nicht mehr Stellen nennt, als die Daten tragen.
+
+> `(0.1 + 0.2) + 0.3` und `0.1 + (0.2 + 0.3)` unterscheiden sich in der
+> siebzehnten Stelle, in R wie in Python. Schrittweise addiert geht die 1 in
+> `1e16 + 1 − 1e16` verloren; die eingebauten Summenfunktionen beider Sprachen
+> liefern 1.
+
+### Beispiel 5: Versteckter Zustand
+
+#### Frage und Datenlage
+
+Eine Funktion multipliziert mit einem Faktor, der ausserhalb von ihr
+definiert ist. Zwischen zwei Aufrufen wird der Faktor weiter oben im Skript
+geändert, etwa in einer Notebook-Zelle, die später noch einmal ausgeführt
+wurde.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-rp-r
+faktor <- 2
+skaliere <- function(x) x * faktor
+skaliere(3)
+
+faktor <- 10                 # irgendwo weiter oben geaendert
+skaliere(3)
+
+skaliere_sauber <- function(x, faktor) x * faktor
+skaliere_sauber(3, faktor = 2)
+```
+
+##### Python
+
+```{python}
+#| label: b5-rp-py
+faktor = 2
+def skaliere(x):
+    return x * faktor
+print(skaliere(3))
+
+faktor = 10                  # irgendwo weiter oben geaendert
+print(skaliere(3))
+
+def skaliere_sauber(x, faktor):
+    return x * faktor
+print(skaliere_sauber(3, faktor=2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Aufruf | Ergebnis | Erklärung |
+|---|---|---|
+| erster Aufruf | 6 | Der Faktor ist 2. |
+| nach der Änderung | **30** | Derselbe Aufruf, ein anderes Ergebnis. Die Funktion liest den Faktor erst beim Aufruf. |
+| mit Argument | 6 | Alles, was die Funktion braucht, steht im Aufruf. |
+
+#### Interpretation und Ergebnissatz
+
+Im Skript sieht man die Ursache, weil die Zeilen untereinander stehen. In einer
+gewachsenen Sitzung oder einem Notebook, dessen Zellen in anderer Reihenfolge
+liefen, sieht man sie nicht: Dieselbe Zelle liefert heute 30 und nach einem
+Neustart 6. Zwei Gegenmittel ergänzen sich. Funktionen bekommen alles, was
+sie brauchen, als Argument. Und vor jedem Ergebnis, das weitergegeben wird,
+steht der Neustart mit vollständigem Durchlauf von oben.
+
+> Derselbe Aufruf `skaliere(3)` lieferte 6 und nach einer Änderung des
+> äusseren Faktors 30. Mit dem Faktor als Argument hängt das Ergebnis nur
+> noch vom Aufruf ab.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Ein Skript liest Daten über `read.csv("C:/Users/mv/Desktop/Analyse/daten.csv")`
@@ -109,11 +471,24 @@ und läuft auf dem eigenen Rechner einwandfrei. Was spricht trotzdem dagegen?
 - [ ] Nichts, solange es funktioniert ~ Es funktioniert genau so lange, wie
       niemand anders es ausführt und niemand den Ordner verschiebt.
 - [x] Der Pfad enthält eine Voraussetzung, die nirgends dokumentiert ist ~
-      Richtig. Auf einem anderen Rechner, unter anderem Benutzernamen oder nach
-      einem Umzug bricht es ab. Ein relativer Pfad beschreibt nur die Lage
-      innerhalb des Projekts.
+      Richtig. Auf einem anderen Rechner existiert der Ordner nicht, wie
+      Beispiel 3 zeigt. Ein relativer Pfad beschreibt nur die Lage innerhalb
+      des Projekts.
 - [ ] `read.csv` ist veraltet ~ Um die Funktion geht es nicht, sondern um den
-      Pfad, den sie bekommt.
+      Pfad.
+:::
+
+::: {.quiz}
+R rechnet mit `set.seed(42)`, Python mit `np.random.default_rng(42)`. Die
+Mittelwerte der erzeugten Daten unterscheiden sich. Was ist los?
+
+- [x] Die beiden Sprachen verwenden verschiedene Zufallsgeneratoren ~
+      Richtig. Derselbe Seed erzeugt verschiedene Folgen. Für vergleichbare
+      Ergebnisse braucht es fest eingetragene Daten oder einen in beiden
+      Sprachen gleich geschriebenen Generator.
+- [ ] Einer der beiden Seeds wurde falsch gesetzt ~ Beide sind korrekt
+      gesetzt und je für sich wiederholbar.
+- [ ] Python rundet anders ~ Die Zahlen sind von Anfang an verschieden.
 :::
 
 ::: {.quiz}
@@ -121,94 +496,39 @@ Warum sollte RStudio den Arbeitsspeicher beim Beenden nicht sichern?
 
 - [ ] Weil das Speichern zu lange dauert ~ Die Zeit ist nicht das Problem.
 - [x] Weil sonst Objekte überleben, die das Skript gar nicht mehr erzeugt ~
-      Richtig. Das Skript läuft dann scheinbar, obwohl es unvollständig ist.
-      Der Fehler zeigt sich erst bei jemand anderem. Die Probe ist ein Neustart
-      mit leerer Umgebung.
+      Richtig. Das Skript läuft dann scheinbar, obwohl es unvollständig ist,
+      wie der Faktor in Beispiel 5. Die Probe ist ein Neustart mit leerer
+      Umgebung.
 - [ ] Weil die Datei zu gross wird ~ Sie kann gross werden, aber der
       entscheidende Grund ist die verdeckte Abhängigkeit.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+Zwei Läufe derselben Auswertung, einmal seriell und einmal parallel,
+unterscheiden sich in der 16. Nachkommastelle. Ist das ein Fehler?
 
-**Zufall wiederholbar machen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-set.seed(42)
-rnorm(5)
-```
-
-## Python
-
-```python
-rng = np.random.default_rng(42)
-rng.normal(size=5)
-```
-
+- [ ] Ja, eine deterministische Rechnung muss bitgleich sein ~ Nur bei
+      gleicher Reihenfolge der Operationen.
+- [x] Nein, Gleitkommaaddition ist nicht assoziativ, und die Reihenfolge hat
+      sich geändert ~ Richtig, wie Beispiel 4 zeigt. Ergebnisse vergleicht
+      man deshalb mit Toleranz und berichtet nur sinnvolle Stellen.
+- [ ] Ja, einer der Rechner ist defekt ~ Beide rechnen korrekt nach dem
+      Gleitkommastandard.
 :::
 
-Ein globaler Seed am Anfang genügt, solange die Reihenfolge der Aufrufe gleich
-bleibt. In Python ist der eigene Generator dem globalen `np.random.seed`
-vorzuziehen, weil er nicht von fremdem Code verstellt wird.
+::: {.quiz}
+Eine Zahl im Bericht wurde aus der Konsole kopiert. Was ist das Risiko?
 
-**Pfade relativ zum Projekt bilden**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-here::here("daten", "messung.csv")
-```
-
-## Python
-
-```python
-from pathlib import Path
-PROJEKT = Path(__file__).resolve().parent
-PROJEKT / "daten" / "messung.csv"
-```
-
+- [x] Sie veraltet beim nächsten Datenstand, ohne dass es auffällt ~
+      Richtig. Inline-Code, der mit `r` beginnt, setzt die
+      Zahl bei jedem Rendern neu ein.
+- [ ] Sie wird falsch gerundet ~ Das Kopieren ändert die Rundung nicht.
+- [ ] Keines, solange sie einmal richtig war ~ Genau das ist das Risiko:
+      einmal richtig heisst nicht immer richtig.
 :::
-
-**Die Umgebung festhalten**
-
-```bash
-pip freeze > requirements.txt          # Python
-```
-
-```r
-renv::snapshot()                       # R
-sessionInfo()                          # Paketstaende dokumentieren
-```
-
-**Ein Notebook so ablegen, dass die Historie lesbar bleibt**
-
-```bash
-jupyter nbconvert --clear-output --inplace analyse.ipynb
-```
-
-Ausgaben im Notebook erzeugen bei jedem Speichern grosse, unleserliche
-Änderungen in der Versionsverwaltung. Wer sie vor dem Commit entfernt, bekommt
-brauchbare Diffs, siehe [Git](../werkzeuge/git.qmd).
-
-**Ein Dokument rendern**
-
-```bash
-quarto render bericht.qmd
-quarto render bericht.qmd --to pdf
-```
-
-**Die Probe aufs Exempel**
-
-Ein Neustart mit leerer Umgebung und ein vollständiger Durchlauf von oben nach
-unten. Läuft die Auswertung dann durch, ist sie reproduzierbar; läuft sie nur
-in der gewachsenen Sitzung, ist sie es nicht.
 
 ## Verlinkte Ressourcen
 
 - [Quarto: Dokumentation](https://quarto.org/docs/guide/)
 - [What They Forgot to Teach You About R: Projektarbeit](https://rstats.wtf/)
+- [Was jeder über Gleitkomma-Arithmetik wissen sollte](https://docs.python.org/3/tutorial/floatingpoint.html)
