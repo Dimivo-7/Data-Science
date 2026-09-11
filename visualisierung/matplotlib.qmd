@@ -1,7 +1,7 @@
 ---
 title: "matplotlib"
 description: "Figure und Axes, Achsen, Beschriftung und Export in Python."
-categories: ["matplotlib", "Visualisierung", "Python"]
+categories: ["matplotlib", "Visualisierung", "Python", "R"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
 stand: entwurf
@@ -12,16 +12,30 @@ order: 50
 #| label: setup-r
 #| include: false
 library(ggplot2)
-theme_set(theme_minimal(base_size = 12))
-set.seed(42)
 
+theme_set(theme_minimal(base_size = 12))
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# Deterministisch, damit die R- und die Python-Fassung dieselben 150 Maschinen
+# zeigen.
+n <- 150
+u <- matrix(lehmer(3737, 2 * n), ncol = 2, byrow = TRUE)
 maschinen <- data.frame(
-  laufzeit = round(runif(150, 2, 22), 1),
-  typ      = rep(c("Fräse", "Presse", "Drehbank"), each = 50)
-)
+  laufzeit = round(2 + 20 * u[, 1], 1),
+  typ = factor(rep(c("Fräse", "Presse", "Drehbank"), each = 50),
+               levels = c("Drehbank", "Fräse", "Presse")))
 maschinen$verbrauch <- round(
   8 + 2.4 * maschinen$laufzeit +
-    ifelse(maschinen$typ == "Presse", 14, 0) + rnorm(150, 0, 5), 1)
+    ifelse(maschinen$typ == "Presse", 14, 0) + qnorm(u[, 2]) * 5, 1)
 ```
 
 ```{python}
@@ -30,35 +44,66 @@ maschinen$verbrauch <- round(
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
 
-laufzeit = np.round(rng.uniform(2, 22, 150), 1)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+n = 150
+u = lehmer(3737, 2 * n).reshape(n, 2)
+laufzeit = np.round(2 + 20 * u[:, 0], 1)
 typ = np.repeat(["Fräse", "Presse", "Drehbank"], 50)
 verbrauch = np.round(8 + 2.4 * laufzeit + np.where(typ == "Presse", 14, 0)
-                     + rng.normal(0, 5, 150), 1)
+                     + stats.norm.ppf(u[:, 1]) * 5, 1)
 maschinen = pd.DataFrame({"laufzeit": laufzeit, "typ": typ,
                           "verbrauch": verbrauch})
 ```
 
 ## Kernideen
 
-- `Figure` als Leinwand, `Axes` als Koordinatensystem
-- Objektorientiertes Interface gegenüber `pyplot`
-- Grundtypen: Linie, Streuung, Balken, Histogramm
-- Mehrere Teilgrafiken mit `subplots`
-- Beschriftung, Achsen, Legende, Export
+- **`Figure`** ist die Leinwand, **`Axes`** das Koordinatensystem darin,
+  **`Axis`** die einzelne Achse. Die Ähnlichkeit der letzten beiden Namen ist
+  eingebaut und muss gemerkt werden.
+- Es gibt **zwei Bedienweisen**. Der objektorientierte Weg ist der einzige, der
+  bei mehreren Grafiken eindeutig bleibt.
+- `plt.subplots()` liefert Figure und Axes in einem Schritt und ist deshalb der
+  übliche Einstieg.
+- Vier Grundtypen decken fast alles ab: Linie, Streuung, Balken, Histogramm.
+- Beim **Export** entscheiden `dpi` und `bbox_inches` darüber, ob die Grafik
+  brauchbar ist.
+- matplotlib zeichnet, was man sagt — Gruppierung, Legende und Reihenfolge
+  macht man selbst. Das ist der Unterschied zu [ggplot2](ggplot2.qmd).
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** [NumPy und SciPy](../programmierung/numpy-scipy.qmd) und [pandas](../programmierung/pandas.qmd), weil
-die Daten von dort kommen. Wer [ggplot2](ggplot2.qmd) kennt, hat den
-Vergleich zu ggplot2 im Kopf; der Unterschied im Denkansatz ist der rote Faden
-dieser Seite.
+**Vorwissen:** [NumPy und SciPy](../programmierung/numpy-scipy.qmd) und
+[pandas](../programmierung/pandas.qmd), weil die Daten von dort kommen. Wer
+[ggplot2](ggplot2.qmd) kennt, hat den Vergleich im Kopf; der Unterschied im
+Denkansatz ist der rote Faden dieser Seite.
 :::
+
+### Die Begriffe
+
+| Begriff | Was es ist |
+|---|---|
+| `Figure` | das ganze Bild, samt Grösse und Auflösung |
+| `Axes` | ein einzelnes Koordinatensystem darin |
+| `Axis` | eine Achse, also x oder y |
+
+Die Verwechslung von `Axes` und `Axis` ist eingebaut und lässt sich nur merken:
+**Ein `Axes` ist die Zeichenfläche, kein Strich.** In dieser Sammlung heisst die
+Variable deshalb konsequent `achse` beziehungsweise `achsen` — nie `ax`.
 
 ### Zwei Bedienweisen, und warum das verwirrt
 
@@ -66,271 +111,725 @@ Matplotlib lässt sich auf zwei Arten bedienen, und Codebeispiele im Netz
 mischen beide. Wer den Unterschied nicht kennt, kopiert Zeilen zusammen, die
 nicht zusammenpassen.
 
-Der `pyplot`-Weg arbeitet auf einer impliziten aktuellen Grafik. Jeder Befehl
-wirkt auf das, was zuletzt angelegt wurde:
+| Weg | Aufruf | Wirkt auf |
+|---|---|---|
+| **pyplot** | `plt.scatter(...)`, `plt.xlabel(...)` | die *aktuelle* Grafik, implizit |
+| **objektorientiert** | `achse.scatter(...)`, `achse.set_xlabel(...)` | genau das benannte `Axes` |
 
-```{python}
-#| label: fig-pyplot-py
-#| fig-cap: "Der pyplot-Weg. Kurz für einen Zwischenblick, unklar bei mehreren Grafiken."
-#| fig-height: 2.8
-plt.figure(figsize=(7, 2.8))
-plt.scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=10, alpha=0.6)
-plt.xlabel("Laufzeit (h)")
-plt.ylabel("Verbrauch (l)")
-plt.show()
-```
+Die Empfehlung gilt ohne Ausnahme, sobald mehr als eine Grafik im Spiel ist:
+**der objektorientierte Weg.** Nur so bleibt eindeutig, wohin gezeichnet wird,
+und nur so lassen sich Grafiken in Funktionen erzeugen und zurückgeben.
 
-Der objektorientierte Weg erzeugt Figure und Axes ausdrücklich und ruft alles
-darauf auf:
-
-```{python}
-#| label: fig-oo-py
-#| fig-cap: "Derselbe Inhalt objektorientiert. Es ist jederzeit eindeutig, wohin gezeichnet wird."
-#| fig-height: 2.8
-fig, ax = plt.subplots(figsize=(7, 2.8))
-ax.scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=10, alpha=0.6)
-ax.set_xlabel("Laufzeit (h)")
-ax.set_ylabel("Verbrauch (l)")
-plt.show()
-```
-
-::: {.note-box}
-Empfehlung ohne Ausnahme, sobald mehr als eine Grafik im Spiel ist: der
-objektorientierte Weg. Nur so bleibt eindeutig, in welches Koordinatensystem
-gezeichnet wird, und nur so lassen sich Grafiken in Funktionen erzeugen und
-zurückgeben.
-:::
-
-### Die Begriffe
-
-| Begriff | was es ist |
-|---|---|
-| `Figure` | das ganze Bild, samt Grösse und Auflösung |
-| `Axes` | ein einzelnes Koordinatensystem darin |
-| `Axis` | eine Achse, also x oder y |
-
-Die Verwechslung von `Axes` und `Axis` ist eingebaut und lässt sich nur merken:
-Ein `Axes` ist die Zeichenfläche, kein Strich.
-
-```{python}
-#| label: struktur-py
-fig, achsen = plt.subplots(2, 2, figsize=(7, 4))
-print(type(fig).__name__)
-print(achsen.shape)              # ein Gitter aus vier Axes
-plt.close(fig)                   # hier nur zur Anschauung, nicht zeichnen
-```
-
-`subplots` liefert beides in einem Schritt und ist deshalb der übliche Einstieg.
-
-### Mehrere Teilgrafiken
-
-```{python}
-#| label: fig-subplots-py
-#| fig-cap: "Ein Teilbild je Maschinentyp mit gemeinsamer y-Achse."
-#| fig-height: 3.2
-typen = ["Fräse", "Presse", "Drehbank"]
-
-fig, achsen = plt.subplots(1, 3, figsize=(7, 3.2), sharey=True)
-for ax, t in zip(achsen, typen):
-    teil = maschinen[maschinen["typ"] == t]
-    ax.scatter(teil["laufzeit"], teil["verbrauch"], s=12, alpha=0.7, color="0.3")
-    ax.set_title(t)
-    ax.set_xlabel("Laufzeit (h)")
-achsen[0].set_ylabel("Verbrauch (l)")
-fig.tight_layout()
-plt.show()
-```
-
-`sharey=True` sorgt für die gemeinsame Skala und ist genau das, was Facetten in
-ggplot2 automatisch tun. `tight_layout` verhindert, dass sich Beschriftungen
-überlappen.
+Ein Nebeneffekt, der in dieser Sammlung überall auftaucht: Jeder
+matplotlib-Aufruf gibt ein Objekt zurück, und in einem Quarto-Chunk wird das
+mitgedruckt. Deshalb steht im Code `_ = achse.scatter(...)`.
 
 ### Der Unterschied im Denkansatz
 
-Hier liegt der eigentliche Kontrast zu [ggplot2](ggplot2.qmd). Dort
-beschreibt man, welche Variable auf welche visuelle Eigenschaft abgebildet
-wird, und die Grafik entsteht daraus. Matplotlib kennt keine solche Grammatik;
-jedes Element wird einzeln gezeichnet.
+| | ggplot2 | matplotlib |
+|---|---|---|
+| Gruppen | `aes(colour = typ)` erzeugt Gruppen, Farben und Legende | man schleift selbst über die Gruppen |
+| Legende | entsteht aus der Zuordnung | entsteht aus `label=` plus `legend()` |
+| Teilbilder | `facet_wrap()` | `plt.subplots()` und eigene Schleife |
+| Statistik | `geom_smooth()` rechnet mit | selbst rechnen, etwa mit `np.polyfit` |
+| Theme | `theme_minimal()` | `plt.style.use()` oder `rcParams` |
 
-Am deutlichsten wird das beim Einfärben nach Gruppen. ggplot2 braucht dafür ein
-Wort, Matplotlib eine Schleife:
+Keines der beiden ist besser. ggplot2 nimmt einem Arbeit ab und schreibt dafür
+vor, wie die Daten aussehen müssen; matplotlib verlangt mehr Zeilen und lässt
+dafür alles zu.
 
-::: panel-tabset
-## R
+### Der Datensatz dieser Seite
+
+150 Maschinen mit Laufzeit, Typ und Stromverbrauch — deterministisch erzeugt,
+damit die R- und die Python-Fassung **dieselben** Maschinen zeigen.
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: pyplot oder objektorientiert
+
+#### Frage und Datenlage
+
+Derselbe Inhalt auf beide Arten. Und danach der Fall, in dem der Unterschied
+sichtbar wird: zwei Grafiken nacheinander.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: fig-gruppen-r
-#| fig-cap: "In ggplot2 genügt die Zuordnung der Farbe; Legende und Skala entstehen daraus."
-#| fig-height: 3.2
-ggplot(maschinen, aes(laufzeit, verbrauch, colour = typ)) +
-  geom_point(alpha = 0.7, size = 1.5) +
-  labs(x = "Laufzeit (h)", y = "Verbrauch (l)", colour = "Typ")
+#| label: b1-mp-r
+str(maschinen)
+round(c(laufzeit_min = min(maschinen$laufzeit),
+        laufzeit_max = max(maschinen$laufzeit),
+        verbrauch_min = min(maschinen$verbrauch),
+        verbrauch_max = max(maschinen$verbrauch),
+        korrelation = cor(maschinen$laufzeit, maschinen$verbrauch)), 4)
 ```
 
-## Python
+```{r}
+#| label: fig-b1-mp-r
+#| fig-cap: "Beispiel 1: In ggplot2 stellt sich die Frage nicht — es gibt nur einen Weg."
+#| fig-height: 2.8
+ggplot(maschinen, aes(laufzeit, verbrauch)) +
+  geom_point(alpha = 0.6, size = 1.2) +
+  labs(x = "Laufzeit in Stunden", y = "Verbrauch")
+```
+
+##### Python
 
 ```{python}
-#| label: fig-gruppen-py
-#| fig-cap: "In matplotlib wird je Gruppe gezeichnet und die Legende ergibt sich aus den Labels."
-#| fig-height: 3.2
-fig, ax = plt.subplots(figsize=(7, 3.2))
-for t in ["Fräse", "Presse", "Drehbank"]:
-    teil = maschinen[maschinen["typ"] == t]
-    ax.scatter(teil["laufzeit"], teil["verbrauch"], s=15, alpha=0.7, label=t)
+#| label: b1-mp-daten-py
+print(maschinen.dtypes)
+print({"laufzeit_min": round(float(laufzeit.min()), 4),
+       "laufzeit_max": round(float(laufzeit.max()), 4),
+       "verbrauch_min": round(float(verbrauch.min()), 4),
+       "verbrauch_max": round(float(verbrauch.max()), 4),
+       "korrelation": round(float(np.corrcoef(laufzeit, verbrauch)[0, 1]), 4)})
+```
 
-ax.set_xlabel("Laufzeit (h)")
-ax.set_ylabel("Verbrauch (l)")
-ax.legend(title="Typ")
+```{python}
+#| label: fig-b1a-mp-py
+#| fig-cap: "Der pyplot-Weg: kurz für einen Zwischenblick."
+#| fig-height: 2.6
+_ = plt.figure(figsize=(7, 2.6))
+_ = plt.scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=10, alpha=0.6)
+_ = plt.xlabel("Laufzeit in Stunden")
+_ = plt.ylabel("Verbrauch")
 plt.show()
 ```
+
+```{python}
+#| label: fig-b1b-mp-py
+#| fig-cap: "Derselbe Inhalt objektorientiert: es ist jederzeit eindeutig, wohin gezeichnet wird."
+#| fig-height: 2.6
+fig, achse = plt.subplots(figsize=(7, 2.6))
+_ = achse.scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=10, alpha=0.6)
+_ = achse.set_xlabel("Laufzeit in Stunden")
+_ = achse.set_ylabel("Verbrauch")
+plt.show()
+```
+
+```{python}
+#| label: b1c-mp-py
+# Warum der Unterschied zaehlt: Welche Grafik ist "die aktuelle"?
+fig_a, achse_a = plt.subplots(figsize=(3, 2))
+fig_b, achse_b = plt.subplots(figsize=(3, 2))
+print({"aktuelle_figur_ist_b": plt.gcf() is fig_b,
+       "aktuelle_figur_ist_a": plt.gcf() is fig_a})
+_ = achse_a.set_title("A")      # eindeutig
+_ = plt.title("B")              # landet auf der zuletzt angelegten
+print({"titel_a": achse_a.get_title(), "titel_b": achse_b.get_title()})
+plt.close(fig_a)
+plt.close(fig_b)
+```
+
 :::
 
-Der Preis ist mehr Code für den Standardfall. Der Gewinn ist volle Kontrolle,
-wenn eine Abbildung genau so aussehen muss wie verlangt, etwa mit einer
-zweiten y-Achse, eingezeichneten Anmerkungen oder ungewöhnlichem Layout.
+#### Output Zeile für Zeile
 
-### Beschriftung und Anmerkung
+| Grösse | Wert |
+|---|---|
+| Beobachtungen | 150 |
+| Laufzeit | **2.1 bis 21.8** Stunden |
+| Verbrauch | **4.4 bis 73.5** |
+| Korrelation | **0.8544** |
 
-Eine Grafik ohne Achsenbeschriftung ist unfertig. Der Titel sollte die Aussage
-tragen, nicht den Diagrammtyp wiederholen.
+| Prüfung | Ergebnis |
+|---|---|
+| `plt.gcf() is fig_b` | **True** |
+| `plt.gcf() is fig_a` | **False** |
+| Titel auf `achse_a` | **"A"** |
+| Titel auf `achse_b` | **"B"** |
 
-```{python}
-#| label: fig-fertig-py
-#| fig-cap: "Fertig beschriftet, mit hervorgehobenem Bereich und Anmerkung."
-fig, ax = plt.subplots()
-
-for t in ["Fräse", "Presse", "Drehbank"]:
-    teil = maschinen[maschinen["typ"] == t]
-    ax.scatter(teil["laufzeit"], teil["verbrauch"], s=15, alpha=0.7, label=t)
-
-# Ausgleichsgerade ueber alle Punkte
-k = np.polyfit(maschinen["laufzeit"], maschinen["verbrauch"], 1)
-xs = np.linspace(maschinen["laufzeit"].min(), maschinen["laufzeit"].max(), 2)
-ax.plot(xs, np.polyval(k, xs), color="black", linewidth=1, linestyle="--")
-
-ax.annotate("Presse liegt durchgehend höher",
-            xy=(18, 8 + 2.4 * 18 + 14), xytext=(6, 85),
-            arrowprops={"arrowstyle": "->", "color": "black"}, fontsize=9)
-
-ax.set_title("Der Verbrauch steigt linear mit der Laufzeit")
-ax.set_xlabel("Laufzeit (h)")
-ax.set_ylabel("Verbrauch (l)")
-ax.legend(title="Typ", loc="upper left")
-plt.show()
-```
-
-Solche Anmerkungen sind der Fall, in dem sich der niedrigere Abstraktionsgrad
-auszahlt: Position, Pfeil und Text lassen sich frei setzen. @fig-fertig-py zeigt,
-wie weit eine Grafik damit kommt, ohne dass ein weiteres Paket nötig wäre.
-
-### Export
-
-```python
-fig.savefig("abbildung.pdf", bbox_inches="tight")     # Vektor, fuer Druck
-fig.savefig("abbildung.png", dpi=300, bbox_inches="tight")
-```
-
-Vektorformat, wo es geht, denn es bleibt bei jeder Vergrösserung scharf. Wo es
-Raster sein muss, mindestens 300 dpi. `bbox_inches="tight"` schneidet den
-überflüssigen Rand ab, der sonst besonders bei Achsenbeschriftungen entsteht.
+| Beobachtung | Erklärung |
+|---|---|
+| Beide Wege erzeugen **dasselbe Bild** | Solange nur eine Grafik im Spiel ist, ist der pyplot-Weg kürzer und völlig in Ordnung. |
+| Bei zwei Figuren zeigt `plt.gcf()` auf die **zuletzt angelegte** | `plt.title("B")` landet deshalb auf `fig_b`, obwohl im Code davor `achse_a` bearbeitet wurde. Genau so entstehen Grafiken, in denen die Beschriftung im falschen Bild steht. |
+| Der objektorientierte Weg benennt das Ziel | `achse_a.set_title("A")` ist unabhängig davon, was zuletzt angelegt wurde. |
+| In ggplot2 stellt sich die Frage **gar nicht** | Dort ist eine Grafik ein Objekt, das man weitergibt. Es gibt keine "aktuelle Grafik". |
+| Die Variablen heissen hier `achse`, nicht `ax` | Damit der Unterschied zu `Axis` beim Lesen präsent bleibt. |
 
 ::: {.note-box}
-Pandas bringt eine eigene `plot`-Methode mit, die intern Matplotlib nutzt. Für
-den schnellen Blick während der Exploration reicht sie; sie gibt ein
-`Axes`-Objekt zurück, auf dem sich anschliessend weiterarbeiten lässt.
-:::
+**Die drei Zeilen, mit denen praktisch jede matplotlib-Grafik beginnt:**
 
-```{python}
-#| label: fig-pandas-plot-py
-#| fig-cap: "Der Umweg über pandas, mit anschliessender Beschriftung auf dem zurückgegebenen Axes."
-#| fig-height: 3
-ax = maschinen.plot.scatter(x="laufzeit", y="verbrauch", s=8,
-                            alpha=0.6, figsize=(7, 3), color="0.3")
-ax.set_xlabel("Laufzeit (h)")
-ax.set_ylabel("Verbrauch (l)")
+```python
+fig, achse = plt.subplots(figsize=(7, 4))
+...
+plt.tight_layout()
 plt.show()
 ```
 
-::: {.quiz}
-Warum ist der objektorientierte Weg bei mehreren Teilgrafiken zwingend, wie in
-@fig-subplots-py?
+`tight_layout()` verhindert abgeschnittene Beschriftungen — der häufigste
+Schönheitsfehler beim Export.
+:::
 
-- [x] `pyplot` wirkt immer auf die zuletzt angelegte Grafik ~ Richtig. Bei
-      mehreren Teilbildern ist von aussen nicht mehr erkennbar, welches gerade
-      das aktuelle ist, und die Reihenfolge der Befehle entscheidet über das
-      Ergebnis. Mit ausdrücklichen Axes-Objekten steht in jeder Zeile, wohin
-      gezeichnet wird.
-- [ ] `pyplot` kann nur eine Grafik pro Dokument erzeugen ~ Es kann beliebig
-      viele, nur nicht eindeutig angesprochen werden.
-- [ ] Der objektorientierte Weg ist schneller ~ Die Laufzeit ist dieselbe, der
-      Gewinn liegt in der Eindeutigkeit.
+#### Interpretation und Ergebnissatz
+
+> Der Datensatz umfasst 150 Maschinen mit Laufzeiten von 2.1 bis 21.8 Stunden
+> und Verbrauchswerten von 4.4 bis 73.5 bei einer Korrelation von 0.8544. Bei
+> zwei offenen Figuren wirkt jeder `plt.`-Aufruf auf die zuletzt angelegte —
+> der objektorientierte Weg benennt das Ziel und bleibt eindeutig.
+
+### Beispiel 2: Figure, Axes und das Gitter
+
+#### Frage und Datenlage
+
+Was genau liefert `plt.subplots(2, 2)` zurück, und wie spricht man ein
+einzelnes Teilbild an?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-mp-r
+#| fig-cap: "Beispiel 2: In ggplot2 übernimmt facet_wrap die Aufteilung."
+#| fig-height: 3
+ggplot(maschinen, aes(laufzeit, verbrauch)) +
+  geom_point(alpha = 0.5, size = 1.1) +
+  facet_wrap(~ typ) +
+  labs(x = "Laufzeit in Stunden", y = "Verbrauch")
+```
+
+```{r}
+#| label: b2-mp-r
+round(with(maschinen, tapply(verbrauch, typ, mean)), 2)
+table(maschinen$typ)
+```
+
+##### Python
+
+```{python}
+#| label: b2-mp-struktur-py
+fig, achsen = plt.subplots(2, 2, figsize=(7, 4))
+print({"typ_figur": type(fig).__name__,
+       "typ_achsen": type(achsen).__name__,
+       "form": achsen.shape,
+       "anzahl_axes": achsen.size,
+       "typ_einzeln": type(achsen[0, 0]).__name__})
+plt.close(fig)
+
+# Bei einer einzigen Teilgrafik ist achsen KEIN Array
+fig, achse = plt.subplots(figsize=(3, 2))
+print({"einzeln_ist_array": isinstance(achse, np.ndarray),
+       "typ": type(achse).__name__})
+plt.close(fig)
+
+# Mit squeeze=False bleibt es immer ein Gitter
+fig, achsen = plt.subplots(1, 1, squeeze=False, figsize=(3, 2))
+print({"mit_squeeze_false": achsen.shape})
+plt.close(fig)
+```
+
+```{python}
+#| label: fig-b2-mp-py
+#| fig-cap: "Beispiel 2: ein Teilbild je Maschinentyp, mit gemeinsamen Achsen."
+#| fig-height: 2.8
+typen = ["Drehbank", "Fräse", "Presse"]
+fig, achsen = plt.subplots(1, 3, figsize=(7, 2.8), sharex=True, sharey=True)
+for achse, name in zip(achsen, typen):
+    teil = maschinen[maschinen["typ"] == name]
+    _ = achse.scatter(teil["laufzeit"], teil["verbrauch"], s=10, alpha=0.6,
+                      color="0.3")
+    _ = achse.set_title(f"{name} (n={len(teil)})", fontsize=10)
+    _ = achse.set_xlabel("Laufzeit")
+_ = achsen[0].set_ylabel("Verbrauch")
+plt.tight_layout()
+plt.show()
+
+print(maschinen.groupby("typ")["verbrauch"].mean().round(2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Aufruf | Rückgabe |
+|---|---|
+| `plt.subplots(2, 2)` | `Figure` plus ein Array der Form **(2, 2)** mit **4** `Axes` |
+| `plt.subplots()` | `Figure` plus **ein einzelnes** `Axes`, **kein** Array |
+| `plt.subplots(1, 1, squeeze=False)` | Array der Form **(1, 1)** |
+
+| Typ | Anzahl | mittlerer Verbrauch |
+|---|---|---|
+| Drehbank | 50 | **36.06** |
+| Fräse | 50 | **37.34** |
+| Presse | 50 | **47.95** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| `subplots(2, 2)` liefert ein **NumPy-Array** | Ansprechbar über `achsen[0, 0]` oder, flach durchlaufen, über `achsen.ravel()`. |
+| Bei einer einzigen Teilgrafik gibt es **kein Array** | Das ist die Quelle eines häufigen Fehlers: Code, der mit `achsen[0]` arbeitet, bricht ab, sobald nur noch eine Teilgrafik übrig ist. |
+| `squeeze=False` macht es einheitlich | Wer eine Funktion schreibt, die mit beliebig vielen Teilbildern umgehen soll, setzt das — und spart sich die Fallunterscheidung. |
+| `sharex` und `sharey` sind das Gegenstück zu Facetten | Ohne sie hat jedes Teilbild eigene Achsen und die Teilbilder sind **nicht vergleichbar** — derselbe Punkt wie unter [Wahrnehmung, Beispiel 5](wahrnehmung-kodierung.qmd). |
+| Die Gruppierung macht man **selbst** | Die Schleife über `typen` ist genau die Arbeit, die `facet_wrap(~ typ)` in ggplot2 abnimmt. Dafür lässt sich hier jedes Teilbild einzeln anders gestalten. |
+
+::: {.note-box}
+**Nützliche Argumente von `subplots`:**
+
+| Argument | Wirkung |
+|---|---|
+| `figsize=(b, h)` | Grösse in Zoll |
+| `sharex`, `sharey` | gemeinsame Achsen — für Vergleichbarkeit fast immer nötig |
+| `squeeze=False` | Rückgabe bleibt ein Gitter |
+| `gridspec_kw={"height_ratios": [2, 1]}` | ungleich hohe Zeilen, etwa Kurve oben und Residuen unten |
+| `constrained_layout=True` | Alternative zu `tight_layout()` |
+:::
+
+#### Interpretation und Ergebnissatz
+
+> `plt.subplots(2, 2)` liefert eine Figure und ein (2, 2)-Array mit vier Axes,
+> `plt.subplots()` dagegen ein einzelnes Axes ohne Array — mit `squeeze=False`
+> bleibt die Form einheitlich. Die drei Maschinentypen haben mittlere
+> Verbrauchswerte von 36.06, 37.34 und 47.95 bei je 50 Maschinen.
+
+### Beispiel 3: Die vier Grundtypen
+
+#### Frage und Datenlage
+
+Linie, Streuung, Balken, Histogramm — vier Aufrufe, die fast alles abdecken,
+je einmal in matplotlib und in ggplot2.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-mp-r
+#| fig-cap: "Beispiel 3: Streuung, Balken und Histogramm in ggplot2."
+#| fig-height: 2.4
+mittel <- aggregate(verbrauch ~ typ, data = maschinen, FUN = mean)
+mittel$verbrauch <- round(mittel$verbrauch, 2)
+mittel
+
+print(ggplot(maschinen, aes(laufzeit, verbrauch)) + geom_point(alpha = 0.5))
+print(ggplot(mittel, aes(typ, verbrauch)) + geom_col(fill = "grey70"))
+print(ggplot(maschinen, aes(verbrauch)) +
+        geom_histogram(bins = 20, fill = "grey70", colour = "white"))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-mp-py
+#| fig-cap: "Beispiel 3: Linie, Streuung, Balken und Histogramm."
+#| fig-height: 4.4
+mittel = maschinen.groupby("typ")["verbrauch"].mean().round(2)
+print(mittel)
+
+# Fuer die Linie: Verbrauch nach Laufzeit in Stundenklassen
+klassen = pd.cut(maschinen["laufzeit"], bins=range(2, 24, 2))
+verlauf = maschinen.groupby(klassen, observed=True)["verbrauch"].mean()
+print(verlauf.round(2))
+
+fig, achsen = plt.subplots(2, 2, figsize=(7, 4.4))
+_ = achsen[0, 0].plot(range(len(verlauf)), verlauf.to_numpy(), marker="o", lw=1.6,
+                      color="0.3")
+_ = achsen[0, 0].set_title("plot: Verlauf", fontsize=10)
+_ = achsen[0, 1].scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=8,
+                         alpha=0.5, color="0.3")
+_ = achsen[0, 1].set_title("scatter: Zusammenhang", fontsize=10)
+_ = achsen[1, 0].bar(mittel.index, mittel.to_numpy(), color="0.7")
+_ = achsen[1, 0].set_title("bar: Vergleich", fontsize=10)
+_ = achsen[1, 1].hist(maschinen["verbrauch"], bins=20, color="0.7",
+                      edgecolor="white")
+_ = achsen[1, 1].set_title("hist: Verteilung", fontsize=10)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: b3-mp-zahlen-py
+print({"anteil_ueber_50_prozent":
+       round(float((maschinen["verbrauch"] > 50).mean() * 100), 1),
+       "median": round(float(maschinen["verbrauch"].median()), 2),
+       "schiefe": round(float(stats.skew(maschinen["verbrauch"])), 3)})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Typ | mittlerer Verbrauch |
+|---|---|
+| Drehbank | **36.06** |
+| Fräse | **37.34** |
+| Presse | **47.95** |
+
+| Kennzahl | Wert |
+|---|---|
+| Anteil über 50 | **29.3 Prozent** |
+| Median | **40.55** |
+| Schiefe | **0.027** |
+
+| Aufruf | Aufgabe | ggplot2-Gegenstück |
+|---|---|---|
+| `achse.plot(x, y)` | Verlauf | `geom_line()` |
+| `achse.scatter(x, y)` | Zusammenhang | `geom_point()` |
+| `achse.bar(x, h)` | Vergleich | `geom_col()` |
+| `achse.hist(x, bins=)` | Verteilung | `geom_histogram()` |
+
+| Beobachtung | Erklärung |
+|---|---|
+| `plot` verbindet die Punkte in der **Reihenfolge der Daten** | Nicht nach x sortiert. Unsortierte Daten ergeben ein Gekritzel — das ist der häufigste Fehler bei `plot`. |
+| `bar` erwartet **fertige Höhen** | Wie `geom_col`. Ein Gegenstück zu `geom_bar`, das selbst zählt, gibt es nicht; dafür nimmt man `value_counts()` davor. |
+| `hist` zählt dagegen **selbst** | Und gibt die Klassengrenzen zurück, wenn man sie braucht. |
+| Der Verbrauch ist fast symmetrisch verteilt | Schiefe 0.027, Median 40.55. Knapp **29.3 Prozent** liegen über 50. |
+| Die Klassenbildung für den Verlauf macht man **selbst** | `pd.cut` plus `groupby`. In ggplot2 übernähme das `stat_summary()`. |
+
+::: {.note-box}
+**Was matplotlib nicht von sich aus tut** — und wo die Zeilen hingehen, die man
+in ggplot2 spart:
+
+| Aufgabe | matplotlib |
+|---|---|
+| nach Gruppen einfärben | Schleife über die Gruppen |
+| Legende | `label=` je Aufruf, dann `achse.legend()` |
+| Glättungslinie | `np.polyfit` oder `statsmodels`, dann selbst zeichnen |
+| Klassen bilden | `pd.cut` und `groupby` |
+| Achsen teilen | `sharex=`, `sharey=` |
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Vier Aufrufe decken die vier Aufgaben ab: `plot` für den Verlauf, `scatter`
+> für den Zusammenhang, `bar` für den Vergleich der Mittelwerte 36.06, 37.34
+> und 47.95 und `hist` für die Verteilung, die mit einer Schiefe von 0.027 fast
+> symmetrisch ist.
+
+### Beispiel 4: Achsen, Grenzen und Skalen
+
+#### Frage und Datenlage
+
+Die Achse ist der Ort, an dem aus Zahlen Positionen werden. Vier Eingriffe:
+Grenzen setzen, logarithmisch skalieren, Ticks bestimmen, eine Hilfslinie
+ziehen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-mp-r
+#| fig-cap: "Beispiel 4: dieselben Eingriffe in ggplot2."
+#| fig-height: 2.8
+grenze <- 50
+round(c(anteil_ueber_grenze = mean(maschinen$verbrauch > grenze) * 100,
+        anzahl = sum(maschinen$verbrauch > grenze)), 1)
+
+ggplot(maschinen, aes(laufzeit, verbrauch)) +
+  geom_point(alpha = 0.5, size = 1.1) +
+  geom_hline(yintercept = grenze, linetype = "dashed", colour = "#b2182b") +
+  scale_x_continuous(breaks = seq(0, 22, 4)) +
+  coord_cartesian(xlim = c(0, 23), ylim = c(0, 80)) +
+  labs(x = "Laufzeit in Stunden", y = "Verbrauch")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-mp-py
+#| fig-cap: "Beispiel 4: Grenzen, Ticks, Hilfslinie und logarithmische Achse."
+#| fig-height: 3
+grenze = 50
+print({"anteil_ueber_grenze":
+       round(float((maschinen["verbrauch"] > grenze).mean() * 100), 1),
+       "anzahl": int((maschinen["verbrauch"] > grenze).sum())})
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3))
+_ = achsen[0].scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=8,
+                      alpha=0.5, color="0.3")
+_ = achsen[0].axhline(grenze, ls="--", color="#b2182b")
+_ = achsen[0].set_xlim(0, 23)
+_ = achsen[0].set_ylim(0, 80)
+_ = achsen[0].set_xticks(range(0, 24, 4))
+_ = achsen[0].set_title("Grenzen, Ticks, Hilfslinie", fontsize=10)
+
+_ = achsen[1].scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=8,
+                      alpha=0.5, color="0.3")
+_ = achsen[1].set_yscale("log")
+_ = achsen[1].set_title("dieselben Daten, y logarithmisch", fontsize=10)
+for achse in achsen:
+    _ = achse.set_xlabel("Laufzeit in Stunden")
+    _ = achse.set_ylabel("Verbrauch")
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: b4-mp-zahlen-py
+# Was die logarithmische Achse mit den Abstaenden macht
+punkte = np.array([5., 10., 20., 40., 80.])
+print(pd.DataFrame({"wert": punkte,
+                    "abstand_linear": np.r_[np.nan, np.diff(punkte)],
+                    "abstand_logarithmisch": np.r_[np.nan, np.diff(np.log10(punkte))]
+                    }).round(4).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kennzahl | Wert |
+|---|---|
+| Anteil über der Grenze von 50 | **29.3 Prozent** |
+| Anzahl Maschinen | **44** |
+
+Was die logarithmische Achse mit gleichen Verhältnissen macht:
+
+| Wert | 5 | 10 | 20 | 40 | 80 |
+|---|---|---|---|---|---|
+| Abstand linear | — | 5 | 10 | 20 | 40 |
+| Abstand logarithmisch | — | **0.3010** | **0.3010** | **0.3010** | **0.3010** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die Verdopplung hat auf der Log-Achse **immer denselben Abstand** | 0.3010, also $\log_{10} 2$. Das ist der Zweck: Gleiche **Verhältnisse** bekommen gleiche Strecken. |
+| Linear wächst der Abstand von 5 auf 40 | Dieselben Verdopplungen, achtfach verschiedene Strecken. |
+| `set_ylim` in matplotlib entspricht `coord_cartesian` in ggplot2 | Es zoomt, ohne Daten zu entfernen. Das ggplot2-Gegenstück `scale_y_continuous(limits =)` würde Punkte verwerfen. |
+| `axhline` ist die schnellste Anmerkung | Eine Grenzlinie plus die Zahl im Text sagt mehr als eine Legende. Hier: 44 von 150 Maschinen, also 29.3 Prozent, liegen darüber. |
+| `set_xticks` verhindert unglückliche Automatik | Bei Laufzeiten in Stunden sind Vierer-Schritte lesbarer als die automatischen 2.5er. |
+
+::: {.warning-box}
+**Wann eine logarithmische Achse richtig ist:** wenn die Daten über mehrere
+Grössenordnungen laufen **und** Verhältnisse interessieren — Einkommen,
+Bevölkerungszahlen, Konzentrationen.
+
+Wann nicht: bei Werten, die null oder negativ werden können, und wenn das
+Publikum die Achse nicht als logarithmisch erkennt. Eine Log-Achse ohne
+deutliche Beschriftung ist eine
+[irreführende Darstellung](irrefuehrende-darstellungen.qmd) — ein linearer
+Anstieg sieht dort flach aus.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> 44 der 150 Maschinen, also 29.3 Prozent, liegen über der Grenze von 50. Auf
+> einer logarithmischen Achse hat jede Verdopplung denselben Abstand von 0.3010,
+> während er linear von 5 auf 40 wächst.
+
+### Beispiel 5: Beschriftung und Export
+
+#### Frage und Datenlage
+
+Aus der Rohgrafik wird eine Abbildung. Dazu kommen Titel, Einheit, Anmerkung
+und Quelle — und dann die Frage, mit welchen Einstellungen sie gespeichert
+wird.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-mp-r
+#| fig-cap: "Beispiel 5: die fertige Fassung in ggplot2."
+#| fig-height: 3.2
+presse <- maschinen[maschinen$typ == "Presse", ]
+andere <- maschinen[maschinen$typ != "Presse", ]
+round(c(mittel_presse = mean(presse$verbrauch),
+        mittel_andere = mean(andere$verbrauch),
+        differenz = mean(presse$verbrauch) - mean(andere$verbrauch)), 2)
+
+ggplot(maschinen, aes(laufzeit, verbrauch)) +
+  geom_point(aes(colour = typ == "Presse"), alpha = 0.7, size = 1.3) +
+  scale_colour_manual(values = c(`FALSE` = "#c7c7c7", `TRUE` = "#b2182b"),
+                      guide = "none") +
+  annotate("text", x = 4, y = 68, colour = "#b2182b", hjust = 0, size = 3.4,
+           label = "Pressen: rund 11 Einheiten mehr") +
+  labs(title = "Pressen verbrauchen bei gleicher Laufzeit deutlich mehr",
+       subtitle = "150 Maschinen, Verbrauch gegen Laufzeit",
+       x = "Laufzeit in Stunden", y = "Verbrauch in Kilowattstunden",
+       caption = "Quelle: Betriebsdatenerfassung, Stand 2026")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-mp-py
+#| fig-cap: "Beispiel 5: dieselbe fertige Fassung in matplotlib."
+#| fig-height: 3.2
+ist_presse = maschinen["typ"] == "Presse"
+print({"mittel_presse": round(float(maschinen.loc[ist_presse, "verbrauch"].mean()), 2),
+       "mittel_andere": round(float(maschinen.loc[~ist_presse, "verbrauch"].mean()), 2),
+       "differenz": round(float(maschinen.loc[ist_presse, "verbrauch"].mean()
+                                - maschinen.loc[~ist_presse, "verbrauch"].mean()), 2)})
+
+fig, achse = plt.subplots(figsize=(7, 3.2))
+_ = achse.scatter(maschinen.loc[~ist_presse, "laufzeit"],
+                  maschinen.loc[~ist_presse, "verbrauch"],
+                  s=12, alpha=0.7, color="#c7c7c7")
+_ = achse.scatter(maschinen.loc[ist_presse, "laufzeit"],
+                  maschinen.loc[ist_presse, "verbrauch"],
+                  s=12, alpha=0.7, color="#b2182b")
+_ = achse.annotate("Pressen: rund 11 Einheiten mehr", xy=(4, 68),
+                   color="#b2182b", fontsize=9)
+_ = achse.set_title("Pressen verbrauchen bei gleicher Laufzeit deutlich mehr")
+_ = achse.set_xlabel("Laufzeit in Stunden")
+_ = achse.set_ylabel("Verbrauch in Kilowattstunden")
+_ = fig.text(0.01, -0.04, "Quelle: Betriebsdatenerfassung, Stand 2026",
+             fontsize=7, color="0.4")
+for rand in ("top", "right"):
+    _ = achse.spines[rand].set_visible(False)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: b5-mp-export-py
+# Was die Exporteinstellungen bedeuten
+einstellungen = pd.DataFrame({
+    "zweck": ["Bildschirm", "Bericht (Druck)", "Folie", "Weiterverarbeitung"],
+    "format": ["png", "png", "png", "pdf oder svg"],
+    "dpi": [96, 300, 150, "—"],
+    "bbox_inches": ["", "tight", "tight", "tight"]})
+print(einstellungen.to_string(index=False))
+
+breite_zoll, hoehe_zoll = 7, 3.2
+for dpi in (96, 150, 300):
+    print(f"dpi {dpi:3d}: {int(breite_zoll * dpi)} x {int(hoehe_zoll * dpi)} Pixel")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Gruppe | mittlerer Verbrauch |
+|---|---|
+| Pressen | **47.95** |
+| übrige | **36.70** |
+| **Differenz** | **11.26** |
+
+Exportgrössen bei 7 × 3.2 Zoll:
+
+| dpi | Pixel |
+|---|---|
+| 96 | **672 × 307** |
+| 150 | **1050 × 480** |
+| 300 | **2100 × 960** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Der Titel nennt die **Aussage** | Nicht "Streudiagramm Verbrauch gegen Laufzeit". Die Zahl dazu — 11.26 Einheiten Unterschied — steht in der Anmerkung. |
+| Die Anmerkung steht **im Bild** | `annotate` in beiden Sprachen. Sie ersetzt einen Absatz Erklärtext darunter, den in fünf Sekunden niemand liest. |
+| Die Einheit gehört an die **Achse** | "Verbrauch in Kilowattstunden", nicht "verbrauch". Der Spaltenname aus der Datei ist keine Achsenbeschriftung. |
+| Die Grafik hat **zwei Farben**, nicht drei | Pressen rot, alle anderen grau. Die Unterscheidung Fräse/Drehbank trägt hier nichts zur Aussage bei. |
+| `bbox_inches="tight"` ist beim Speichern fast immer nötig | Sonst werden Titel und Achsenbeschriftung abgeschnitten — `tight_layout()` allein wirkt nur auf die Anzeige. |
+| 300 dpi ergeben **2100 × 960** Pixel | Bei 7 Zoll Breite. Für den Druck ist das die Untergrenze; für den Bildschirm sind 96 bis 150 genug, und die Datei bleibt klein. |
+
+::: {.note-box}
+**Der Exportbefehl mit den Argumenten, die zählen:**
+
+```python
+fig.savefig("abbildung.png", dpi=300, bbox_inches="tight",
+            facecolor="white")
+```
+
+| Argument | Warum |
+|---|---|
+| `dpi` | Auflösung; 300 für Druck, 150 für Folien |
+| `bbox_inches="tight"` | schneidet den Rand passend, nichts fehlt |
+| `facecolor="white"` | sonst ist der Hintergrund bei manchen Themes durchsichtig |
+| `format="pdf"` | Vektorformat, beliebig skalierbar — für Berichte die bessere Wahl |
+
+In R ist das Gegenstück `ggsave("abbildung.png", breite, hoehe, dpi = 300)`.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Pressen verbrauchen im Mittel 47.95 gegenüber 36.70 bei den übrigen Maschinen,
+> also 11.26 Einheiten mehr. Die fertige Abbildung trägt diese Aussage im Titel,
+> die Zahl in der Anmerkung und die Einheit an der Achse; beim Export sorgt
+> `bbox_inches="tight"` dafür, dass nichts davon abgeschnitten wird.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Worin unterscheiden sich `Figure`, `Axes` und `Axis`?
+
+- [x] Figure ist das Bild, Axes die Zeichenfläche, Axis eine einzelne Achse ~
+      Richtig. Die Ähnlichkeit von Axes und Axis ist eingebaut; ein Axes ist
+      trotz des Namens kein Strich, sondern ein ganzes Koordinatensystem.
+- [ ] Axes und Axis sind dasselbe, nur Einzahl und Mehrzahl ~ Das ist die
+      naheliegende und falsche Deutung.
+- [ ] Figure und Axes sind dasselbe ~ Eine Figure kann viele Axes enthalten.
 :::
 
 ::: {.quiz}
-Was ist der Unterschied zwischen `Axes` und `Axis`?
+Zwei Figuren sind offen, dann folgt `plt.title("B")`. Wo landet der Titel?
 
-- [x] `Axes` ist die Zeichenfläche, `Axis` eine einzelne Achse darin ~ Richtig.
-      Ein `Axes` enthält zwei `Axis`-Objekte. Die Namensähnlichkeit ist die
-      häufigste Verwirrung beim Lesen der Dokumentation.
-- [ ] `Axes` ist die Mehrzahl von `Axis` und meint dasselbe ~ Sprachlich ja,
-      in Matplotlib aber sind es zwei verschiedene Dinge.
-- [ ] `Axis` ist das ganze Bild, `Axes` ein Ausschnitt ~ Das ganze Bild ist die
-      `Figure`.
+- [x] Auf der zuletzt angelegten Figur ~ Richtig, `plt.` wirkt auf die
+      aktuelle Figur, unabhängig davon, welches Axes im Code davor bearbeitet
+      wurde. Genau deshalb ist der objektorientierte Weg eindeutig.
+- [ ] Auf beiden ~ pyplot wirkt immer nur auf eine.
+- [ ] Das führt zu einem Fehler ~ Es läuft fehlerfrei durch und landet nur am
+      falschen Ort — das macht den Fehler so schwer zu finden.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+`plt.subplots(2, 2)` und `plt.subplots()` geben Verschiedenes zurück. Was?
 
-**Grundgerüst mit einer Achse**
+- [x] Einmal ein (2, 2)-Array mit vier Axes, einmal ein einzelnes Axes ohne
+      Array ~ Richtig. Code, der mit `achsen[0]` arbeitet, bricht deshalb ab,
+      sobald nur eine Teilgrafik übrig ist. `squeeze=False` macht die Form
+      einheitlich.
+- [ ] Beide geben ein Array zurück, nur verschieden gross ~ Bei einer einzigen
+      Teilgrafik wird die Dimension entfernt.
+- [ ] Beide geben ein einzelnes Axes zurück ~ Bei 2 mal 2 sind es vier.
+:::
 
-```python
-fig, ax = plt.subplots(figsize=(7, 4.2))
-ax.plot(x, y)
-ax.set_xlabel("Zeit")
-ax.set_ylabel("Wert")
-ax.set_title("Verlauf")
-```
+::: {.quiz}
+Warum ergibt `achse.plot(x, y)` bei unsortierten Daten ein Gekritzel?
 
-**Mehrere Teilgrafiken nebeneinander**
+- [x] plot verbindet die Punkte in der Reihenfolge der Daten, nicht nach x ~
+      Richtig. Vor einem Linienplot gehört `sort_values("x")`, sonst springt
+      die Linie hin und her.
+- [ ] plot ist nur für Zeitreihen gedacht ~ Es funktioniert für jede geordnete
+      Grösse, verlangt aber, dass die Ordnung in den Daten steht.
+- [ ] Die Punkte sind zu dicht ~ Die Dichte ändert an der Reihenfolge nichts.
+:::
 
-```python
-fig, axes = plt.subplots(1, 2, sharey=True)
-axes[0].hist(werte)
-axes[1].boxplot(werte)
-```
+::: {.quiz}
+Auf einer logarithmischen y-Achse haben die Werte 5, 10, 20, 40 und 80 jeweils
+denselben Abstand von 0.3010. Warum?
 
-**Häufige Diagrammtypen**
+- [x] Weil gleiche Verhältnisse gleiche Strecken bekommen; 0.3010 ist der
+      Zehnerlogarithmus von 2 ~ Richtig. Das ist der Zweck der Log-Achse: Sie
+      macht aus Verdopplungen gleich lange Schritte.
+- [ ] Weil die Achse die Werte gleichmässig verteilt ~ Sie verteilt nicht die
+      Werte, sondern ihre Logarithmen.
+- [ ] Das ist Zufall dieser Zahlenreihe ~ Es gilt für jede Folge mit konstantem
+      Faktor.
+:::
 
-```python
-ax.scatter(x, y, s=12, alpha=0.7)    # Streudiagramm
-ax.bar(kategorien, hoehen)           # Balken
-ax.hist(werte, bins=20)              # Histogramm
-ax.boxplot([gruppe_a, gruppe_b])     # Boxplots nebeneinander
-```
+::: {.quiz}
+Beim Speichern mit `fig.savefig("bild.png")` fehlt ein Teil der
+Achsenbeschriftung. Was hilft?
 
-**Eine Stelle im Diagramm beschriften**
-
-```python
-ax.annotate("Ausreisser", xy=(x0, y0), xytext=(x0 + 1, y0 + 5),
-            arrowprops={"arrowstyle": "->"})
-```
-
-**Achsenbereich, Gitter und Legende**
-
-```python
-ax.set_xlim(0, 100)
-ax.grid(True, alpha=0.3)
-ax.legend(loc="upper left", frameon=False)
-```
-
-**Speichern in Druckqualität**
-
-```python
-fig.savefig("abbildung.png", dpi=300, bbox_inches="tight")
-fig.savefig("abbildung.pdf", bbox_inches="tight")   # vektoriell
-```
+- [x] `bbox_inches="tight"` ~ Richtig. `tight_layout()` wirkt nur auf die
+      Anzeige; beim Export bestimmt `bbox_inches`, wie der Rand beschnitten
+      wird.
+- [ ] Eine höhere dpi-Zahl ~ Die ändert die Auflösung, nicht den Ausschnitt.
+- [ ] Eine kleinere Schrift ~ Behebt das Symptom manchmal, nicht die Ursache.
+:::
 
 ## Verlinkte Ressourcen
 
-- [Matplotlib-Dokumentation](https://matplotlib.org/stable/)
-- [Anatomie einer Figure](https://matplotlib.org/stable/gallery/showcase/anatomy.html)
-- [ggplot2-Referenz](https://ggplot2.tidyverse.org/)
+- [matplotlib: Anatomy of a Figure](https://matplotlib.org/stable/gallery/showcase/anatomy.html)
+- [matplotlib: Cheatsheets](https://matplotlib.org/cheatsheets/)
+- [ggplot2](ggplot2.qmd) — dieselben Aufgaben in R
+- [seaborn und plotly](seaborn-plotly.qmd) — was auf matplotlib aufsetzt
+- [Diagrammtyp wählen](diagrammtyp-waehlen.qmd) — welche Grafik die Aufgabe löst
