@@ -1,59 +1,55 @@
 ---
 title: "R-Grundlagen"
 description: "Vektoren, Data Frames, Funktionen und die Eigenheiten von R."
-categories: ["Programmiergrundlagen", "R"]
+categories: ["Programmiergrundlagen", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: werkzeug
 stand: entwurf
 order: 50
 ---
 
-```{r}
-#| label: setup-r
-#| include: false
-library(ggplot2)
-
-theme_set(theme_minimal(base_size = 12))
-set.seed(42)
-```
-
 ```{python}
 #| label: setup-python
 #| include: false
+import io
+
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
-                     "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
 ```
 
 ## Kernideen
 
-- Alles ist ein Vektor, auch der einzelne Wert
-- Vektorisierte Operationen statt Schleifen
-- Recycling ist bequem und eine häufige Fehlerquelle
-- Ein Vektor trägt genau einen Typ
-- Faktoren sind Kategorien mit festgelegten Stufen
-- Der Data Frame als Arbeitsstruktur, Liste und Matrix daneben
+- **Alles ist ein Vektor**, auch der einzelne Wert. Rechnungen laufen
+  elementweise über den ganzen Vektor, ohne Schleife.
+- **Recycling:** Ist ein Vektor kürzer, wiederholt R ihn. Das ist bei einer
+  einzelnen Zahl bequem und bei unpassenden Längen eine stille Fehlerquelle.
+- **Ein Vektor, ein Typ.** Treffen Typen aufeinander, wandelt R still in den
+  allgemeineren um: logisch, dann Zahl, dann Text.
+- **Faktoren** sind Kategorien mit festgelegten Stufen. Die Stufen bestimmen
+  Tabellen, Reihenfolgen und Referenzkategorien.
+- Der **Data Frame** ist eine Liste gleich langer Spalten: jede Zeile eine
+  Beobachtung, jede Spalte ein Merkmal.
+- **Liste** für Ungleichartiges, **Matrix** für Zahlen in Zeilen und Spalten.
+  R füllt Matrizen spaltenweise, NumPy zeilenweise.
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** keines. Diese Seite setzt weder Statistik noch
-Programmiererfahrung voraus. Die Datenstrukturen von hier tauchen im
-[Data Wrangling](../daten/data-wrangling.qmd) auf jeder Zeile wieder auf. Wie
-man daraus reproduzierbare Auswertungen macht, steht unter
-[Reproduzierbarkeit](reproduzierbarkeit.qmd).
+Programmiererfahrung voraus. Wer von Python kommt, findet den Vergleich in
+jedem Beispiel; die Python-Seite dazu ist
+[Python-Grundlagen](python-grundlagen.qmd). Die Datenstrukturen von hier
+tauchen im [Data Wrangling](../daten/data-wrangling.qmd) auf jeder Zeile
+wieder auf, und wie man daraus reproduzierbare Auswertungen macht, steht
+unter [Reproduzierbarkeit](reproduzierbarkeit.qmd).
 :::
 
 ### Wozu eine eigene Sprache für Daten
 
 Eine Tabellenkalkulation kommt weit. Sie stösst dort an ihre Grenze, wo eine
-Auswertung wiederholbar sein soll: Wer im Frühling dieselbe Analyse mit neuen
-Zahlen braucht, klickt sie erneut zusammen und weiss hinterher nicht sicher, ob
-er dieselben Schritte in derselben Reihenfolge erwischt hat. Ein Skript
+Auswertung wiederholbar sein soll: Wer dieselbe Analyse mit neuen Zahlen
+braucht, klickt sie erneut zusammen und weiss hinterher nicht sicher, ob
+dieselben Schritte in derselben Reihenfolge erwischt wurden. Ein Skript
 beantwortet diese Frage, weil jeder Schritt darin nachlesbar ist.
 
 R ist für genau diesen Zweck entstanden, nicht als allgemeine
@@ -62,76 +58,530 @@ die zunächst ungewohnt wirken und später Arbeit sparen.
 
 ### Alles ist ein Vektor
 
-Angenommen, fünfhundert Messwerte sollen von Millimeter in Zentimeter
-umgerechnet werden. In vielen Sprachen schreibt man dafür eine Schleife, die
-jeden Wert einzeln anfasst. In R entfällt dieser Schritt, weil die
-Grundstruktur nicht die einzelne Zahl ist, sondern die Folge von Zahlen.
+In vielen Sprachen ist die Grundeinheit die einzelne Zahl, und wer
+fünfhundert Messwerte umrechnen will, schreibt eine Schleife. In R ist die
+Grundeinheit die **Folge** von Werten, und ein einzelner Wert ist eine Folge
+der Länge eins. Deshalb wirkt `werte / 10` auf jeden Wert, und `werte > 20`
+liefert für jeden Wert ein `TRUE` oder `FALSE`. Summiert man diese
+Wahrheitswerte, zählt man die Treffer, weil `TRUE` beim Rechnen als 1 gilt;
+ihr Mittelwert ist der Anteil.
 
-Auch ein einzelner Wert ist bereits eine solche Folge, nur mit der Länge eins.
-Das lässt sich direkt nachsehen:
+Python bringt das nicht von Haus aus mit. Eine Python-Liste rechnet nicht
+elementweise; das Verhalten von R entsteht erst mit einem NumPy-Array, siehe
+[NumPy und SciPy](numpy-scipy.qmd).
 
-::: panel-tabset
-## R
+### Recycling
+
+Sind zwei Vektoren unterschiedlich lang, wiederholt R den kürzeren, bis er
+passt. Bei `werte / 10` ist das der Grund, warum die eine 10 auf alle Werte
+angewendet wird. Geht die Länge des längeren nicht in einem Vielfachen auf,
+gibt R eine **Warnung** aus und rechnet trotzdem. Geht sie auf, rechnet R
+**ohne jeden Hinweis**, auch wenn die Absicht eine andere war.
+
+NumPy folgt einer engeren Regel, dem **Broadcasting**: Formen werden von
+hinten verglichen und nur dort angeglichen, wo eine Achse die Länge eins hat.
+Sonst bricht die Rechnung ab.
+
+### Ein Vektor, ein Typ
+
+Ein Vektor trägt genau einen Typ. Treffen verschiedene Typen aufeinander,
+wandelt R sie in den allgemeineren um, statt einen Fehler zu melden. Dieser
+Vorgang heisst **Coercion**, und die Rangfolge lautet
+
+$$
+\text{logisch} \;\rightarrow\; \text{ganze Zahl} \;\rightarrow\; \text{Gleitkommazahl} \;\rightarrow\; \text{Text}
+$$
+
+Ein einziger Texteintrag in einer Spalte, etwa ein Strich für einen fehlenden
+Wert, verwandelt deshalb die ganze Spalte in Text. Die Kontrolle der
+Spaltentypen gehört direkt hinter jeden Import.
+
+### Faktoren
+
+Kategoriale Merkmale liessen sich als Text speichern. Damit ginge verloren,
+welche Ausprägungen überhaupt möglich sind und in welcher Reihenfolge sie
+stehen. Der Faktor führt die Stufen (`levels`) als eigene Eigenschaft mit.
+Intern speichert er ganze Zahlen, die auf die Stufen zeigen; das ist der
+Grund für die bekannteste Faktor-Falle in Beispiel 4. Das Gegenstück in
+pandas ist `pd.Categorical`.
+
+| Eigenschaft | Faktor ohne Vorgabe | Faktor mit `levels` | geordneter Faktor |
+|---|---|---|---|
+| Stufen | aus den Daten, alphabetisch | wie vorgegeben, auch unbesetzte | wie vorgegeben |
+| Vergleich `<`, `>` | nicht sinnvoll | nicht sinnvoll | erlaubt |
+| typischer Fall | Gerätetyp, Standort | Umfrage mit fester Antwortliste | Bewertungsskala |
+
+### Data Frame, Liste, Matrix
+
+| Struktur | Inhalt | Typen | Python |
+|---|---|---|---|
+| Vektor | eine Folge | einer | NumPy-Array, `pd.Series` |
+| Data Frame | gleich lange Spalten | je Spalte einer | `pd.DataFrame` |
+| Liste | beliebige Objekte unter Namen | beliebig | Dictionary |
+| Matrix | Zahlen in Zeilen und Spalten | einer | zweidimensionales NumPy-Array |
+
+Der Data Frame ist genau genommen eine Liste gleich langer Vektoren. Deshalb
+funktioniert `df$spalte` wie bei einer Liste, und deshalb dürfen die Spalten
+verschiedene Typen tragen, aber nicht verschieden lang sein: Sonst ginge die
+Zuordnung zur Beobachtung verloren.
+
+Beim Auswählen trennt das Komma Zeilen von Spalten: `df[zeilen, spalten]`.
+Ein leerer Platz heisst "alle". `df[df$gruppe == "A", ]` wählt alle Zeilen
+der Gruppe A und alle Spalten; innen steht eine Bedingung, die für jede Zeile
+wahr oder falsch ist.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| Struktur ansehen | `str(df)` | `df.dtypes`, `df.info()` |
+| Kennzahlen je Spalte | `summary(df)` | `df.describe()` |
+| Zeilen und Spalten wählen | `df[df$x > 40, c("a", "b")]` | `df.loc[df["x"] > 40, ["a", "b"]]` |
+| Spalte anlegen | `df$neu <- df$a / df$b` | `df["neu"] = df["a"] / df["b"]` |
+| Mittel je Gruppe | `tapply(df$x, df$g, mean)` | `df.groupby("g")["x"].mean()` |
+| Stufen festlegen | `factor(x, levels = c(...))` | `pd.Categorical(x, categories=[...])` |
+| unbesetzte Stufen entfernen | `droplevels(f)` | `s.cat.remove_unused_categories()` |
+| Zahlen aus einem Faktor | `as.numeric(as.character(f))` | `s.astype(float)` |
+| fehlende Werte zählen | `sum(is.na(x))` | `s.isna().sum()` |
+| Länge prüfen | `stopifnot(length(x) == n)` | `assert len(x) == n` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Rechnen mit ganzen Vektoren
+
+#### Frage und Datenlage
+
+Vier Messwerte `12, 45, 7, 31`. Sie sollen durch 10 geteilt werden, es soll
+gezählt werden, wie viele über 20 liegen, und welcher Anteil das ist. Dazu
+die Multiplikation mit einem zweiten Vektor gleicher Länge.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: vektor-grundlage-r
-x <- 5          # sieht aus wie eine einzelne Zahl
-length(x)       # ist aber ein Vektor der Laenge 1
+#| label: b1-rg-r
+x <- 5
+length(x)
 is.vector(x)
-```
 
-## Python
-
-```{python}
-#| label: vektor-grundlage-py
-x = 5           # hier wirklich eine einzelne Zahl
-print(type(x))
-# Die Entsprechung entsteht erst durch NumPy oder pandas:
-print(np.array([5]).shape)
-```
-:::
-
-Der Unterschied zwischen den Sprachen ist an dieser Stelle grundsätzlich. R
-bringt das Rechnen mit ganzen Folgen von Haus aus mit, Python holt es sich über
-eine Bibliothek dazu. Für die tägliche Arbeit läuft es auf dasselbe hinaus,
-beim Lesen fremden Codes hilft es, den Unterschied zu kennen.
-
-Aus dieser Grundentscheidung folgt, dass Rechenoperationen elementweise auf den
-ganzen Vektor wirken:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: vektorisierung-r
 werte <- c(12, 45, 7, 31)
-werte / 10        # jeder Wert wird geteilt
-werte > 20        # Vergleich liefert wieder einen Vektor, diesmal logisch
-sum(werte > 20)   # TRUE zaehlt als 1, FALSE als 0
+werte / 10
+werte > 20
+sum(werte > 20)
+mean(werte > 20)
+werte * c(10, 20, 30, 40)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: vektorisierung-py
+#| label: b1-rg-py
+x = 5
+print(type(x).__name__, np.array([5]).shape)
+
 werte = np.array([12, 45, 7, 31])
 print(werte / 10)
 print(werte > 20)
-print((werte > 20).sum())
+print((werte > 20).sum(), (werte > 20).mean())
+print(werte * np.array([10, 20, 30, 40]))
 ```
+
 :::
 
-Der letzte Ausdruck lohnt einen zweiten Blick, weil er ein Muster zeigt, das
-später ständig auftaucht. `werte > 20` liefert keinen einzelnen Wahrheitswert,
-sondern für jeden Messwert einen. Summiert man diese Wahrheitswerte, zählt R
-die Treffer, weil `TRUE` beim Rechnen als 1 gilt. Aus einer Bedingung wird so
-eine Anzahl, ohne dass eine Schleife nötig wäre.
+#### Output Zeile für Zeile
 
-::: {.note-box}
-Faustregel für den Anfang: Wer in R eine Schleife über Zahlen schreibt, sollte
-kurz innehalten. In den allermeisten Fällen gibt es eine vektorisierte
-Schreibweise, die kürzer und schneller ist.
+| Ausdruck | R | Python | Erklärung |
+|---|---|---|---|
+| einzelner Wert | Länge 1, `is.vector` ist `TRUE` | `int`, erst als Array Form `(1,)` | In R ist die 5 ein Vektor, in Python eine einzelne Zahl. |
+| `werte / 10` | 1.2 4.5 0.7 3.1 | `[1.2 4.5 0.7 3.1]` | Die eine 10 wird auf alle vier Werte angewendet. |
+| `werte > 20` | `FALSE TRUE FALSE TRUE` | `[False True False True]` | Ein Wahrheitswert je Messwert. |
+| Summe der Wahrheitswerte | 2 | 2 | Anzahl der Werte über 20: 45 und 31. |
+| Mittel der Wahrheitswerte | 0.5 | 0.5 | Anteil der Werte über 20. |
+| paarweise mal | 120 900 210 1240 | `[ 120  900  210 1240]` | Erstes mit erstem, zweites mit zweitem. Kein Skalarprodukt; das wäre `%*%` beziehungsweise `@`. |
+
+#### Interpretation und Ergebnissatz
+
+Das Muster `sum(bedingung)` und `mean(bedingung)` taucht in jeder Auswertung
+auf: Aus einer Bedingung wird ohne Schleife eine Anzahl oder ein Anteil. In
+Python gilt dasselbe, sobald die Werte in einem NumPy-Array oder einer
+pandas-Series stehen.
+
+> Zwei der vier Messwerte liegen über 20, das ist ein Anteil von 0.5. Die
+> Rechnung läuft in R auf dem Vektor selbst, in Python erst nach der
+> Umwandlung in ein NumPy-Array.
+
+### Beispiel 2: Recycling und Broadcasting
+
+#### Frage und Datenlage
+
+Ein Vektor mit sechs Werten `1` bis `6` wird mit einem Vektor der Länge zwei
+(`10, 100`) und einem der Länge vier (`10, 100, 1000, 10000`) multipliziert.
+Was tut R, was tut NumPy?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-rg-r
+lang <- c(1, 2, 3, 4, 5, 6)
+kurz <- c(10, 100)
+
+lang * kurz                          # 6 ist ein Vielfaches von 2: kein Hinweis
+
+vier <- c(10, 100, 1000, 10000)
+tryCatch(lang * vier, warning = function(w) conditionMessage(w))
+suppressWarnings(lang * vier)        # gerechnet wird trotzdem
+
+# Kontrolle vor der Rechnung
+stopifnot(length(lang) %% length(kurz) == 0)
+```
+
+##### Python
+
+```{python}
+#| label: b2-rg-py
+lang = np.array([1, 2, 3, 4, 5, 6])
+kurz = np.array([10, 100])
+
+try:
+    lang * kurz
+except ValueError as fehler:
+    print("ValueError:", fehler)
+
+print(lang * 10)                         # eine Zahl passt immer
+print(lang.reshape(3, 2) * kurz)         # passende Achse: Broadcasting
+```
+
 :::
+
+#### Output Zeile für Zeile
+
+| Rechnung | R | Python | Erklärung |
+|---|---|---|---|
+| sechs mal zwei | 10 200 30 400 50 600, **ohne Hinweis** | **`ValueError`**, Formen `(6,)` und `(2,)` passen nicht | R wiederholt `10, 100` dreimal. Ob das gemeint war, prüft niemand. |
+| sechs mal vier | Warnung `longer object length is not a multiple of shorter object length` | | 6 ist kein Vielfaches von 4. R warnt, rechnet aber: 10, 200, 3000, 40000, 50, 600. |
+| mal eine Zahl | | 10 20 30 40 50 60 | Eine Zahl hat die Form `()` und passt zu jeder Form. |
+| `(3, 2)` mal `(2,)` | | Zeilen `10 200`, `30 400`, `50 600` | Von hinten verglichen stimmen die 2 überein; die Zeile `10, 100` wird auf jede der drei Zeilen angewendet. |
+| `stopifnot` | kein Output | | Die Annahme stimmt, also läuft das Skript weiter. Stimmte sie nicht, bräche es an dieser Stelle ab. |
+
+#### Interpretation und Ergebnissatz
+
+Der gefährliche Fall ist nicht die Warnung, sondern die **Stille**: Sechs mal
+zwei liefert ein plausibel aussehendes Ergebnis ohne jeden Hinweis. NumPy
+verlangt, dass die Formen ausdrücklich zusammenpassen, und gleicht nur
+Achsen der Länge eins an. Wer in R mit Vektoren unterschiedlicher Länge
+rechnet, sollte die Längen vorher mit `stopifnot` festschreiben.
+
+> Die Multiplikation eines Vektors der Länge sechs mit einem der Länge zwei
+> ergibt in R ohne Hinweis `10 200 30 400 50 600`; NumPy bricht mit einem
+> `ValueError` ab. Bei Länge vier warnt R, rechnet aber dennoch.
+
+### Beispiel 3: Coercion und die Textspalte
+
+#### Frage und Datenlage
+
+Welchen Typ erhält ein Vektor aus Wahrheitswert, Zahl und Text? Und was
+passiert beim Einlesen einer CSV-Datei, in der ein fehlender Wert als Strich
+eingetragen ist (`1.5`, `-`, `2.0`)?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-rg-r
+class(c(TRUE, FALSE))
+class(c(TRUE, 3))
+class(c(TRUE, 3, "drei"))
+c(TRUE, 3, "drei")
+
+csv_text <- "id,wert\n1,1.5\n2,-\n3,2.0"
+roh <- read.csv(text = csv_text)
+class(roh$wert)
+roh$wert
+
+zahlen <- suppressWarnings(as.numeric(roh$wert))
+zahlen
+sum(zahlen, na.rm = TRUE)
+
+sauber <- read.csv(text = csv_text, na.strings = "-")
+class(sauber$wert)
+```
+
+##### Python
+
+```{python}
+#| label: b3-rg-py
+print(pd.Series([1, 2, "3"]).dtype)
+
+csv_text = "id,wert\n1,1.5\n2,-\n3,2.0\n"
+roh = pd.read_csv(io.StringIO(csv_text))
+print(roh["wert"].dtype, roh["wert"].tolist())
+
+zahlen = pd.to_numeric(roh["wert"], errors="coerce")
+print(zahlen.tolist(), zahlen.sum())
+
+sauber = pd.read_csv(io.StringIO(csv_text), na_values="-")
+print(sauber["wert"].dtype)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | R | Python | Erklärung |
+|---|---|---|---|
+| logisch und logisch | `logical` | | |
+| logisch und Zahl | `numeric` | | `TRUE` wird zu 1. |
+| dazu ein Text | `character`, Inhalt `"TRUE" "3" "drei"` | gemischte Series: `object` | Alles wird Text, auch die 3 und das `TRUE`. pandas hält gemischte Werte als allgemeine Objekte. |
+| Spalte mit Strich | `character`, `"1.5" "-" "2.0"` | Textspalte, `['1.5', '-', '2.0']` | Der eine Strich macht die ganze Spalte zu Text. Rechnen ist damit nicht mehr möglich. |
+| umgewandelt | `1.5 NA 2.0` | `[1.5, nan, 2.0]` | `as.numeric` beziehungsweise `to_numeric(errors="coerce")` machen aus dem Strich einen fehlenden Wert. |
+| Summe | 3.5 | 3.5 | Ohne den fehlenden Wert. |
+| mit Angabe beim Import | `numeric` | `float64` | Der bessere Weg: dem Import sagen, was "fehlend" bedeutet. |
+
+#### Interpretation und Ergebnissatz
+
+Coercion ist eine Regel und kein Fehler, und deshalb meldet sie sich nicht.
+Die Spalte sieht in der Vorschau richtig aus, und der Fehler zeigt sich erst,
+wenn eine Rechnung scheitert oder ein Mittelwert fehlt. Die Abhilfe gehört an
+den Anfang: fehlende Werte beim Import deklarieren (`na.strings`,
+`na_values`) und danach die Typen mit `str()` beziehungsweise `df.dtypes`
+kontrollieren.
+
+> Ein einziger Strich in der Spalte `wert` machte beim Einlesen die ganze
+> Spalte zu Text. Mit `na.strings = "-"` beziehungsweise `na_values="-"` wird
+> sie als Zahl gelesen, und die Summe der beiden gültigen Werte beträgt 3.5.
+
+### Beispiel 4: Faktoren und ihre Stufen
+
+#### Frage und Datenlage
+
+Fünf Umfrageantworten (`ja, nein, ja, ja, nein`) auf die Antwortliste ja,
+nein, weiss nicht. Dann Schulnoten `5, 3, 4` als Faktor und eine
+Bewertungsskala von schlecht bis ausgezeichnet.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-rg-r
+antworten <- c("ja", "nein", "ja", "ja", "nein")
+als_faktor <- factor(antworten, levels = c("ja", "nein", "weiss nicht"))
+levels(als_faktor)
+table(als_faktor)
+table(factor(antworten))
+
+noten <- factor(c(5, 3, 4))
+as.numeric(noten)                    # die internen Codes
+as.numeric(as.character(noten))      # die Werte
+
+skala <- factor(c("gut", "schlecht", "ausgezeichnet", "gut"),
+                levels = c("schlecht", "gut", "ausgezeichnet"), ordered = TRUE)
+sort(skala)
+skala > "schlecht"
+```
+
+##### Python
+
+```{python}
+#| label: b4-rg-py
+antworten = ["ja", "nein", "ja", "ja", "nein"]
+kat = pd.Categorical(antworten, categories=["ja", "nein", "weiss nicht"])
+print(kat.categories.tolist())
+print(pd.Series(kat).value_counts(sort=False).to_dict())
+print(pd.Series(antworten).value_counts().to_dict())
+
+noten = pd.Categorical([5, 3, 4])
+print(noten.categories.tolist(), noten.codes.tolist())
+
+skala = pd.Categorical(["gut", "schlecht", "ausgezeichnet", "gut"],
+                       categories=["schlecht", "gut", "ausgezeichnet"],
+                       ordered=True)
+print(list(skala.sort_values()))
+print((skala > "schlecht").tolist())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | R | Python | Erklärung |
+|---|---|---|---|
+| Stufen | ja, nein, weiss nicht | dieselben | wie vorgegeben |
+| Häufigkeiten mit Stufen | ja 3, nein 2, **weiss nicht 0** | `{'ja': 3, 'nein': 2, 'weiss nicht': 0}` | Die unbesetzte Stufe bleibt sichtbar. Für eine Umfrage ist das die vollständige Information. |
+| Häufigkeiten ohne Vorgabe | ja 3, nein 2 | `{'ja': 3, 'nein': 2}` | Was niemand gewählt hat, existiert nicht. |
+| `as.numeric(noten)` | **3 1 2** | Codes **`[2, 0, 1]`** | Die internen Codes, also die Position in der sortierten Stufenliste 3, 4, 5. Die Note 5 steht an dritter Stelle. pandas zählt ab null. |
+| über `as.character` | 5 3 4 | | der sichere Weg zurück zu den Werten |
+| geordnet sortiert | schlecht, gut, gut, ausgezeichnet | dieselbe Folge | Nach den Stufen, nicht alphabetisch; alphabetisch stünde ausgezeichnet vorne. |
+| `> "schlecht"` | `TRUE FALSE TRUE TRUE` | `[True, False, True, True]` | Vergleiche sind nur bei geordneten Faktoren sinnvoll. |
+
+#### Interpretation und Ergebnissatz
+
+Die Stufen sind keine Beschriftung, sondern Teil der Daten. Sie bestimmen,
+welche Kategorien in Tabellen erscheinen, in welcher Reihenfolge Balken in
+einem Diagramm stehen und welche Stufe in einem Regressionsmodell als
+Referenz dient, siehe [multiple lineare Regression](../statistik/regression/multiple-lineare-regression.qmd).
+Die Faktor-Falle mit `as.numeric` ist die häufigste stille Fehlerquelle: Die
+Rechnung läuft, nur mit den Codes 3, 1, 2 statt mit den Noten 5, 3, 4.
+
+> Mit vorgegebenen Stufen weist die Tabelle `weiss nicht` mit 0 aus, ohne
+> Vorgabe fehlt die Stufe. `as.numeric` auf dem Notenfaktor liefert die Codes
+> 3, 1, 2 statt der Noten 5, 3, 4; richtig ist `as.numeric(as.character())`.
+
+### Beispiel 5: Der Data Frame im Alltag
+
+#### Frage und Datenlage
+
+Fünf Beobachtungen mit Kennnummer, Messwert (`2.5, 3.1, 4.0, 2.8, 3.6`) und
+Gruppe (`A, B, A, B, A`). Struktur ansehen, Kennzahlen, Zeilen der Gruppe A
+auswählen, Mittelwert je Gruppe.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-rg-r
+df <- data.frame(
+  id     = 1:5,
+  wert   = c(2.5, 3.1, 4.0, 2.8, 3.6),
+  gruppe = factor(c("A", "B", "A", "B", "A"))
+)
+str(df)
+summary(df$wert)
+round(sd(df$wert), 3)
+
+df[df$gruppe == "A", ]
+tapply(df$wert, df$gruppe, mean)
+```
+
+##### Python
+
+```{python}
+#| label: b5-rg-py
+df = pd.DataFrame({
+    "id":     [1, 2, 3, 4, 5],
+    "wert":   [2.5, 3.1, 4.0, 2.8, 3.6],
+    "gruppe": pd.Categorical(["A", "B", "A", "B", "A"]),
+})
+print(df.shape)
+print(df.dtypes)
+print(df["wert"].describe().round(3))
+
+print(df[df["gruppe"] == "A"])
+print(df.groupby("gruppe", observed=True)["wert"].mean().round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | R | Python | Erklärung |
+|---|---|---|---|
+| Umfang | `5 obs. of 3 variables` | `(5, 3)` | Zeilen und Spalten. Die erste Kontrolle nach jedem Import. |
+| Typ `id` | `int` | `int64` | `1:5` erzeugt in R ganze Zahlen. |
+| Typ `wert` | `num` | `float64` | |
+| Typ `gruppe` | `Factor w/ 2 levels "A","B": 1 2 1 2 1` | `category` | R zeigt die Stufen und die internen Codes. |
+| Minimum, Maximum | 2.5, 4.0 | 2.5, 4.0 | |
+| Quartile | 2.8, 3.1, 3.6 | 25 %, 50 %, 75 %: 2.8, 3.1, 3.6 | Beide rechnen die Quantile nach derselben Voreinstellung. |
+| Mittelwert | 3.2 | 3.2 | |
+| Standardabweichung | 0.604 | 0.604 | Nur `describe` zeigt sie von selbst, in R braucht es `sd()`. |
+| Zeilen der Gruppe A | id 1, 3, 5 | Index 0, 2, 4 | Dieselben Zeilen; pandas zeigt den Index ab null, R die Zeilennamen ab eins. |
+| Mittel je Gruppe | A 3.366667, B 2.950000 | A 3.3667, B 2.95 | (2.5 + 4.0 + 3.6) / 3 und (3.1 + 2.8) / 2 |
+
+#### Interpretation und Ergebnissatz
+
+`str()` in R und `df.dtypes` in Python sind die Befehle, die nach jedem
+Import zuerst kommen: Sie zeigen, ob die Zeilenzahl plausibel ist und ob jede
+Spalte den erwarteten Typ hat. Die Kennzahlen danach verteilen sich
+verschieden: `summary` bringt Quartile und Mittelwert, `describe` zusätzlich
+Anzahl und Standardabweichung. Was diese Kennzahlen bedeuten, steht unter
+[Lage- und Streuungsmasse](../statistik/grundlagen/lage-streuungsmasse.qmd).
+
+> Die fünf Messwerte reichen von 2.5 bis 4.0 bei einem Mittelwert von 3.2 und
+> einer Standardabweichung von 0.604. Gruppe A liegt im Mittel bei 3.37,
+> Gruppe B bei 2.95.
+
+### Beispiel 6: Liste und Matrix
+
+#### Frage und Datenlage
+
+Ein Ergebnis mit Text, drei Zahlen und einer Anzahl soll zusammengehalten
+werden, das passt in keine Tabelle. Danach eine Matrix aus den Zahlen `1` bis
+`6` mit zwei Zeilen: in welcher Reihenfolge wird sie gefüllt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b6-rg-r
+ergebnis <- list(methode = "Beispiel", werte = c(1.2, 3.4, 5.6), n = 3)
+str(ergebnis)
+ergebnis$werte
+
+m <- matrix(1:6, nrow = 2)
+m
+dim(m)
+matrix(1:6, nrow = 2, byrow = TRUE)
+```
+
+##### Python
+
+```{python}
+#| label: b6-rg-py
+ergebnis = {"methode": "Beispiel", "werte": [1.2, 3.4, 5.6], "n": 3}
+print(ergebnis["werte"], len(ergebnis))
+
+print(np.arange(1, 7).reshape(2, 3))
+print(np.arange(1, 7).reshape(2, 3).shape)
+print(np.arange(1, 7).reshape(2, 3, order="F"))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | R | Python | Erklärung |
+|---|---|---|---|
+| Ergebnis | `List of 3` mit `chr`, `num [1:3]`, `num` | Dictionary mit drei Einträgen | Beliebige Objekte unter Namen. |
+| `ergebnis$werte` | 1.2 3.4 5.6 | `[1.2, 3.4, 5.6]` | |
+| Matrix, Voreinstellung | Zeilen `1 3 5` und `2 4 6` | Zeilen `[1 2 3]` und `[4 5 6]` | **R füllt spaltenweise, NumPy zeilenweise.** Derselbe Aufruf ergibt verschiedene Matrizen. |
+| Dimension | 2 3 | `(2, 3)` | |
+| umgestellt | `byrow = TRUE`: `1 2 3`, `4 5 6` | `order="F"`: `1 3 5`, `2 4 6` | Mit diesen Argumenten füllt jede Sprache wie die andere. `F` steht für Fortran, das wie R spaltenweise speichert. |
+
+#### Interpretation und Ergebnissatz
+
+Die Liste ist die Struktur, in der R fast alle Ergebnisse zurückgibt: Das
+Resultat von `t.test()` oder `lm()` ist eine Liste mit Klassenattribut. Die
+Matrix-Reihenfolge ist die Stelle, an der beim Übertragen von Code zwischen
+den Sprachen am leichtesten ein Fehler entsteht, der keine Meldung erzeugt:
+Beide Matrizen sind gültig, nur ist die eine die umsortierte andere.
+
+> Die Liste hält Text, drei Messwerte und eine Anzahl unter einem Namen
+> zusammen. `matrix(1:6, nrow = 2)` füllt spaltenweise und ergibt die erste
+> Zeile `1 3 5`; `reshape(2, 3)` in NumPy füllt zeilenweise und ergibt `1 2 3`.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Was liefert `c(2, 4, 6) * c(10, 20, 30)`?
@@ -139,446 +589,74 @@ Was liefert `c(2, 4, 6) * c(10, 20, 30)`?
 - [ ] Die Zahl 280, also das Skalarprodukt ~ R fasst die beiden nicht als
       mathematische Vektoren auf. Für das Skalarprodukt gäbe es `%*%`.
 - [x] Den Vektor `20 80 180` ~ Richtig. Multipliziert wird paarweise, erstes
-      mit erstem und so weiter. Fast jede Operation in R arbeitet Position für
-      Position.
-- [ ] Einen Fehler wegen fehlender Schleife ~ Genau die ist nicht nötig. Die
-      elementweise Rechnung ist in R der Normalfall.
+      mit erstem und so weiter.
+- [ ] Einen Fehler wegen fehlender Schleife ~ Genau die ist nicht nötig.
 :::
 
 ::: {.quiz}
 Bei den Werten `12, 45, 7, 31` ergibt `mean(werte > 20)` den Wert 0.5. Was
 sagt diese Zahl inhaltlich?
 
-- [ ] Der Mittelwert der Messwerte beträgt 0.5 ~ Gemittelt wird nicht über die
-      Messwerte, sondern über das Ergebnis des Vergleichs.
-- [x] Die Hälfte der Messwerte liegt über 20 ~ Richtig. Der Vergleich liefert
-      Wahrheitswerte, und deren Mittelwert ist der Anteil der wahren Fälle.
-      Dasselbe wie `sum(...)`, nur durch die Anzahl geteilt.
+- [ ] Der Mittelwert der Messwerte beträgt 0.5 ~ Gemittelt wird nicht über
+      die Messwerte, sondern über das Ergebnis des Vergleichs.
+- [x] Die Hälfte der Messwerte liegt über 20 ~ Richtig. Der Mittelwert von
+      Wahrheitswerten ist der Anteil der wahren Fälle.
 - [ ] Es gibt 0.5 Werte über 20 ~ Eine Anzahl kann nicht gebrochen sein. Für
       die Anzahl müsste `sum` statt `mean` stehen.
 :::
 
-### Recycling: bequem, bis es weh tut
-
-Was passiert, wenn zwei Vektoren unterschiedlich lang sind? R bricht nicht ab,
-sondern wiederholt den kürzeren so oft, bis er zum längeren passt. Bei
-`werte / 10` ist das der Grund, warum die einzelne 10 auf alle vier Werte
-angewendet wird.
-
-Das ist die bequeme Seite. Die unbequeme zeigt sich, sobald die Längen
-unbeabsichtigt nicht zusammenpassen:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: recycling-r
-lang <- c(1, 2, 3, 4, 5, 6)
-kurz <- c(10, 100)
-
-lang * kurz     # kurz wird zu 10, 100, 10, 100, 10, 100 aufgefuellt
-```
-
-## Python
-
-```{python}
-#| label: recycling-py
-lang = np.array([1, 2, 3, 4, 5, 6])
-kurz = np.array([10, 100])
-
-try:
-    lang * kurz
-except ValueError as fehler:
-    print("NumPy bricht ab:", fehler)
-```
-:::
-
-Beide Ergebnisse sind lehrreich. R liefert klaglos sechs Zahlen, obwohl die
-Absicht vermutlich eine andere war. NumPy verweigert die Rechnung, weil die
-Formen nicht zusammenpassen. Die Regel, nach der NumPy Formen doch angleicht,
-heisst Broadcasting und ist enger gefasst als das Recycling in R: Sie greift
-nur, wenn eine der beteiligten Achsen die Länge eins hat.
-
-Für R heisst das praktisch, dass eine Kontrolle vor der Rechnung lohnt, wo die
-Längen nicht offensichtlich gleich sind:
-
-```{r}
-#| label: recycling-pruefung
-length(lang)
-length(kurz)
-# stopifnot bricht ab, sobald die Annahme nicht mehr stimmt:
-stopifnot(length(lang) == 6)
-```
-
-### Ein Vektor, ein Typ
-
-Eine Spalte, die plötzlich Text enthält statt Zahlen, gehört zu den häufigsten
-Stolpersteinen beim Einlesen von Daten. Die Ursache liegt fast immer in einer
-Regel, die R still anwendet: Ein Vektor trägt genau einen Typ. Treffen
-verschiedene Typen aufeinander, vereinheitlicht R sie zum allgemeineren, statt
-einen Fehler zu melden. Dieser Vorgang heisst Coercion.
-
-Die Rangfolge lässt sich in drei Schritten nachvollziehen:
-
-```{r}
-#| label: coercion-r
-class(c(TRUE, FALSE))          # logisch
-class(c(TRUE, 3))              # logisch trifft Zahl  -> Zahl
-class(c(TRUE, 3, "drei"))      # Zahl trifft Text     -> Text
-```
-
-Im letzten Fall ist aus der 3 die Zeichenkette `"3"` geworden. Rechnen lässt
-sich damit nicht mehr, und genau das merkt man oft erst mehrere Schritte
-später:
-
-```{r}
-#| label: coercion-folge
-gemischt <- c(1, 2, "3")
-gemischt
-sum(as.numeric(gemischt))      # erst nach ausdruecklicher Umwandlung
-```
-
-Ein einziger auffälliger Eintrag in einer CSV-Spalte, etwa ein Strich für einen
-fehlenden Wert, reicht also aus, um die ganze Spalte in Text zu verwandeln.
-Deshalb steht in [Data Wrangling](../daten/data-wrangling.qmd) die Kontrolle der Spaltentypen direkt hinter
-dem Import.
-
 ::: {.quiz}
-Welchen Wert hat das dritte Element von `c(1, 2, TRUE)`?
+`c(1, 2, 3, 4, 5, 6) * c(10, 100)` läuft in R ohne Warnung. Heisst das, die
+Rechnung ist richtig?
 
-- [x] Die Zahl 1 ~ Richtig. Ein Vektor trägt nur einen Typ, und Zahlen sind
-      allgemeiner als Wahrheitswerte. `TRUE` wird deshalb zu 1, der Vektor
-      lautet `1 2 1`.
-- [ ] Der Text `"TRUE"` ~ Zu Text wird erst umgewandelt, wenn ein Textwert
-      beteiligt ist. Hier gibt es keinen.
-- [ ] `TRUE`, der Vektor bleibt gemischt ~ Gemischte Typen sind in einem Vektor
-      nicht möglich. Genau das unterscheidet ihn von einer Liste.
+- [ ] Ja, sonst hätte R gewarnt ~ R warnt nur, wenn die Längen nicht in einem
+      Vielfachen aufgehen. 6 ist ein Vielfaches von 2.
+- [x] Nein, R wiederholt den kurzen Vektor still, ob das gemeint war oder
+      nicht ~ Richtig. NumPy würde hier abbrechen. In R schützt nur eine
+      ausdrückliche Kontrolle der Längen.
+- [ ] Nein, R hat das Skalarprodukt gebildet ~ Es rechnet elementweise mit
+      Wiederholung.
 :::
 
 ::: {.quiz}
-Eine eingelesene Spalte enthält `"1.234"`, gemeint war die Zahl 1234.
-`as.numeric` meldet keinen Fehler. Warum ist das besonders unangenehm?
+Eine eingelesene Spalte `wert` hat den Typ `character`, obwohl sie Zahlen
+enthält. Was ist die wahrscheinlichste Ursache?
 
-- [ ] Weil die Umwandlung fehlschlägt und `NA` liefert ~ Sie schlägt gerade
-      nicht fehl. Ein `NA` wäre auffällig gewesen.
-- [x] Weil 1.234 eine gültige Zahl ist und die Rechnung stillschweigend um den
-      Faktor 1000 danebenliegt ~ Richtig. R liest den Punkt als
-      Dezimaltrennzeichen. Die Ursache liegt im Import, nicht in der
-      Umwandlung.
-- [ ] Weil R den Punkt nicht kennt ~ R kennt ihn sehr wohl, nur eben als
-      Dezimaltrennzeichen und nicht als Tausendertrennung.
-:::
-
-### Faktoren: Kategorien mit Gedächtnis
-
-Kategoriale Merkmale wie Standort, Gerätetyp oder Antwortstufen liessen sich
-als Text speichern. Damit ginge aber verloren, welche Ausprägungen überhaupt
-möglich sind. Eine Umfrage mit den Antwortmöglichkeiten ja, nein und weiss
-nicht bleibt vollständig zu berichten, auch wenn niemand die dritte gewählt
-hat. Text kann das nicht abbilden, weil er nur enthält, was tatsächlich
-vorkommt.
-
-Der Faktor löst das, indem er die möglichen Stufen als eigene Eigenschaft
-mitführt:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: faktor-r
-antworten <- c("ja", "nein", "ja", "ja", "nein")
-
-als_faktor <- factor(antworten, levels = c("ja", "nein", "weiss nicht"))
-levels(als_faktor)
-table(als_faktor)          # die unbesetzte Stufe erscheint mit 0
-```
-
-## Python
-
-```{python}
-#| label: faktor-py
-antworten = ["ja", "nein", "ja", "ja", "nein"]
-
-als_kategorie = pd.Categorical(antworten,
-                               categories=["ja", "nein", "weiss nicht"])
-print(als_kategorie.categories.tolist())
-print(pd.Series(als_kategorie).value_counts())
-```
-:::
-
-Der Unterschied wird in der Darstellung sichtbar. In @fig-faktor-r steht links
-die vollständige Skala mit allen drei Antwortmöglichkeiten, rechts nur das, was
-zufällig in den Daten vorkommt:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: fig-faktor-r
-#| fig-cap: "Dieselben fünf Antworten. Links mit vorgegebenen Stufen, rechts mit Stufen aus den Daten."
-#| fig-height: 3.2
-ohne_vorgabe <- factor(antworten)
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-barplot(table(als_faktor), col = "grey75", ylim = c(0, 3),
-        main = "levels vorgegeben", ylab = "Anzahl")
-barplot(table(ohne_vorgabe), col = "grey75", ylim = c(0, 3),
-        main = "levels aus den Daten")
-```
-
-## Python
-
-```{python}
-#| label: fig-faktor-py
-#| fig-cap: "Dieselbe Gegenüberstellung mit pandas und matplotlib."
-# reindex mit dem Kategorienobjekt statt mit einer Stringliste:
-# so kann der Index nicht am Typ vorbeilaufen
-mit = (pd.Series(als_kategorie).value_counts()
-         .reindex(als_kategorie.categories).fillna(0))
-ohne = pd.Series(antworten).value_counts()
-
-fig, (a, b) = plt.subplots(1, 2, sharey=True, figsize=(7, 3.2))
-a.bar(list(mit.index), mit.values, color="0.75")
-a.set_title("categories vorgegeben")
-a.set_ylabel("Anzahl")
-b.bar(list(ohne.index), ohne.values, color="0.75")
-b.set_title("categories aus den Daten")
-fig.tight_layout()
-plt.show()
-```
-:::
-
-Dieselbe Eigenschaft steuert später die Reihenfolge in Diagrammen und die
-Referenzkategorie in Modellen. Eine Bewertungsskala von schlecht bis
-ausgezeichnet gehört inhaltlich in dieser Reihenfolge und nicht alphabetisch;
-wer die Stufen setzt, bestimmt sie.
-
-::: {.note-box}
-Häufige Falle: Zahlen, die als Faktor gespeichert sind, lassen sich nicht ohne
-Weiteres zurückrechnen. `as.numeric` liefert dann die internen Codes 1, 2, 3
-statt der ursprünglichen Werte. Der sichere Weg führt über
-`as.numeric(as.character(x))`.
-:::
-
-::: {.quiz}
-In @fig-faktor-r erscheint links die Stufe `weiss nicht` mit dem Wert null,
-obwohl niemand so geantwortet hat. Warum ist das gewollt?
-
-- [x] Weil die möglichen Stufen zum Faktor gehören und nicht aus den Daten
-      abgeleitet werden ~ Richtig. Eine Antwortmöglichkeit bleibt Teil der
-      Skala, auch wenn sie niemand gewählt hat. Für die Auswertung einer
-      Umfrage ist genau das die vollständige Information.
-- [ ] Weil `table` immer alle Werte von null an zählt ~ `table` zählt über die
-      bekannten Stufen. Bei Text gäbe es diese Stufe gar nicht.
-- [ ] Es ist ein Darstellungsfehler ~ Rechts im selben Bild fehlt die Stufe,
-      und genau der Unterschied ist gemeint.
+- [x] Mindestens ein Eintrag ist kein gültiger Zahlentext, etwa ein Strich für
+      einen fehlenden Wert ~ Richtig. Ein Vektor trägt nur einen Typ, und ein
+      Texteintrag macht die ganze Spalte zu Text. Abhilfe: `na.strings` beim
+      Import.
+- [ ] R liest Zahlen aus CSV-Dateien immer als Text ~ Ohne störenden Eintrag
+      erkennt `read.csv` Zahlen richtig.
+- [ ] Die Datei hat das falsche Encoding ~ Das verdirbt Umlaute, macht aber
+      keine Zahlen zu Text.
 :::
 
 ::: {.quiz}
 `noten <- factor(c(5, 3, 4))`. Was gibt `as.numeric(noten)` zurück?
 
-- [ ] `5 3 4`, die ursprünglichen Werte ~ Das wäre erwartbar und ist gerade
-      nicht der Fall. Dafür braucht es den Umweg `as.numeric(as.character(x))`.
-- [x] `3 1 2`, die internen Codes ~ Richtig. Der Faktor speichert nicht die
-      Zahlen, sondern die Position in der sortierten Stufenliste 3, 4, 5. Die 5
-      steht an dritter Stelle.
+- [ ] `5 3 4`, die ursprünglichen Werte ~ Dafür braucht es den Umweg
+      `as.numeric(as.character(x))`.
+- [x] `3 1 2`, die internen Codes ~ Richtig. Der Faktor speichert die
+      Position in der sortierten Stufenliste 3, 4, 5. Die 5 steht an dritter
+      Stelle.
 - [ ] `1 2 3` in der Reihenfolge des Auftretens ~ Sortiert wird aufsteigend,
-      nicht nach Auftreten. Sonst wäre die 5 die Eins.
-:::
-
-### Der Data Frame als Arbeitsstruktur
-
-Ein einzelner Vektor beschreibt ein Merkmal. Daten bestehen aber aus mehreren
-Merkmalen zu denselben Objekten, und die haben selten denselben Typ: eine
-Kennnummer, eine Messgrösse, eine Kategorie. Genau dafür gibt es den Data
-Frame, eine Sammlung gleich langer Vektoren nebeneinander.
-
-Die Konvention dahinter begleitet den ganzen Studiengang: Jede Zeile ist eine
-Beobachtung, jede Spalte ein Merkmal.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: dataframe-r
-df <- data.frame(
-  id     = 1:5,
-  wert   = c(2.5, 3.1, 4.0, 2.8, 3.6),
-  gruppe = factor(c("A", "B", "A", "B", "A"))
-)
-
-str(df)      # Struktur: Spalten, Typen, erste Werte
-```
-
-## Python
-
-```{python}
-#| label: dataframe-py
-df = pd.DataFrame({
-    "id":     [1, 2, 3, 4, 5],
-    "wert":   [2.5, 3.1, 4.0, 2.8, 3.6],
-    "gruppe": pd.Categorical(["A", "B", "A", "B", "A"]),
-})
-
-df.info()
-```
-:::
-
-`str` ist der Befehl, den ich nach jedem Import als Erstes aufrufe. Er zeigt in
-einer Ausgabe, ob die Zeilenzahl plausibel ist und ob jede Spalte den erwarteten
-Typ hat. Die zweite Routineprüfung liefert eine Übersicht der Werte:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: summary-r
-summary(df)
-```
-
-## Python
-
-```{python}
-#| label: summary-py
-df.describe(include="all")
-```
-:::
-
-An der Ausgabe fällt auf, dass numerische und kategoriale Spalten verschieden
-zusammengefasst werden. Für Zahlen erscheinen Lage und Streubereich, für den
-Faktor die Häufigkeiten je Stufe. Was diese Kennzahlen bedeuten, ist Thema von
-[Lage- und Streuungsmasse](../statistik/grundlagen/lage-streuungsmasse.qmd).
-
-Einzelne Spalten und Zeilen lassen sich gezielt ansprechen:
-
-```{r}
-#| label: auswahl-r
-df$wert                 # eine Spalte als Vektor
-df[df$gruppe == "A", ]  # alle Zeilen der Gruppe A, alle Spalten
-mean(df$wert[df$gruppe == "A"])
-```
-
-Der zweite Ausdruck zeigt das Muster, auf dem die spätere Datenaufbereitung
-aufbaut: Innen steht eine Bedingung, die für jede Zeile wahr oder falsch ist,
-aussen wird damit ausgewählt. Das Komma trennt Zeilen von Spalten, der leere
-Platz dahinter bedeutet alle Spalten.
-
-::: {.quiz}
-Warum müssen alle Spalten eines Data Frames gleich lang sein, obwohl sie
-verschiedene Typen tragen dürfen?
-
-- [x] Weil jede Zeile eine Beobachtung ist und sonst die Zuordnung verloren
-      ginge ~ Richtig. Fehlte in einer Spalte ein Wert, wäre unklar, zu welcher
-      Beobachtung die übrigen gehören. Deshalb steht dort `NA` statt nichts.
-- [ ] Weil R nur rechteckige Daten speichern kann ~ Kann es nicht nur; eine
-      Liste nimmt beliebig lange Elemente auf. Der Data Frame verlangt es aus
-      inhaltlichem Grund.
-- [ ] Aus Gründen der Geschwindigkeit ~ Der Grund ist die Bedeutung der Zeile,
-      nicht die Verarbeitung.
+      nicht nach Auftreten.
 :::
 
 ::: {.quiz}
-Was ist der Unterschied zwischen `df[2, ]` und `df[, 2]`?
+Ein Skript baut eine Matrix mit `matrix(werte, nrow = 2)` und wird nach
+Python als `np.array(werte).reshape(2, -1)` übertragen. Worauf ist zu achten?
 
-- [x] Das erste liefert eine Beobachtung, das zweite ein Merkmal ~ Richtig. Vor
-      dem Komma stehen Zeilen, dahinter Spalten. `df[2, ]` ist die zweite
-      Zeile, `df[, 2]` die zweite Spalte über alle Zeilen.
-- [ ] Beide liefern dasselbe, das Komma ist Formsache ~ Die Position des Kommas
-      entscheidet, und die Ergebnisse haben verschiedene Formen.
-- [ ] Das zweite ist ungültig ~ Beide sind gültig. Ein leerer Platz bedeutet
-      alle Elemente dieser Richtung.
+- [x] R füllt spaltenweise, NumPy zeilenweise; die Matrizen unterscheiden
+      sich ~ Richtig. Mit `order="F"` in NumPy oder `byrow = TRUE` in R
+      stimmen sie überein. Ohne diese Angabe entsteht kein Fehler, nur eine
+      andere Matrix.
+- [ ] Nichts, beide füllen gleich ~ Beispiel 6 zeigt die Zeilen `1 3 5`
+      gegen `1 2 3`.
+- [ ] `-1` ist in NumPy ungültig ~ `-1` heisst "so viele wie nötig" und ist
+      gültig.
 :::
-
-### Wenn die Tabelle nicht passt: Liste und Matrix
-
-Nicht alles lässt sich als Tabelle darstellen. Das Ergebnis eines statistischen
-Tests etwa besteht aus einer Prüfgrösse, einem p-Wert, Freiheitsgraden und
-einem Beschreibungstext, alles von unterschiedlicher Länge. Dafür gibt es die
-Liste, die beliebige Objekte unter einem Namen sammelt. Der Data Frame ist
-genau genommen ein Sonderfall davon, nämlich eine Liste gleich langer Spalten.
-
-```{r}
-#| label: liste-r
-ergebnis <- list(
-  methode = "Beispiel",
-  werte   = c(1.2, 3.4, 5.6),
-  n       = 3
-)
-
-ergebnis$werte
-str(ergebnis)
-```
-
-Die Matrix ist das Gegenstück für rein numerische Daten mit Zeilen und Spalten,
-etwa eine Korrelationsmatrix. Sie trägt nur einen Typ und eignet sich deshalb
-für Rechnungen, nicht für gemischte Datensätze.
-
-```{r}
-#| label: matrix-r
-m <- matrix(1:6, nrow = 2)
-m
-dim(m)
-```
-
-## Typische Aufgaben
-
-**Einen Data Frame ansehen**
-
-```r
-str(df)          # Struktur mit Typen
-summary(df)      # Kennzahlen je Spalte
-head(df, 10)
-nrow(df); ncol(df); names(df)
-```
-
-**Zeilen und Spalten auswählen**
-
-```r
-df[df$alter > 40, c("name", "miete")]     # Basis-R
-subset(df, alter > 40, select = c(name, miete))
-dplyr::filter(df, alter > 40) |> dplyr::select(name, miete)
-```
-
-**Spalte anlegen und umbenennen**
-
-```r
-df$preis_pro_qm <- df$miete / df$flaeche
-names(df)[names(df) == "miete"] <- "kaltmiete"
-```
-
-**Über Gruppen zusammenfassen**
-
-```r
-aggregate(miete ~ lage, data = df, FUN = mean)          # Basis-R
-tapply(df$miete, df$lage, mean)
-```
-
-**Faktoren in den Griff bekommen**
-
-```r
-df$lage <- factor(df$lage, levels = c("Rand", "Mitte", "Zentrum"))
-levels(df$lage)
-droplevels(df$lage)          # nicht mehr belegte Stufen entfernen
-as.numeric(as.character(f))  # Zahlen aus einem Faktor zurueckholen
-```
-
-Der direkte Weg `as.numeric(f)` liefert die Stufennummern, nicht die Werte. Das
-ist die häufigste stille Fehlerquelle im Umgang mit Faktoren.
-
-**Fehlende Werte**
-
-```r
-sum(is.na(df$miete))
-mean(df$miete, na.rm = TRUE)
-df[complete.cases(df), ]
-```
-
-**Statt einer Schleife**
-
-```r
-sapply(df[sapply(df, is.numeric)], mean, na.rm = TRUE)
-vapply(werte, function(x) x^2, numeric(1))
-```
 
 ## Verlinkte Ressourcen
 
