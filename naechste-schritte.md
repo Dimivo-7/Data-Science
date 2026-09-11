@@ -114,7 +114,38 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `statistik/` (50 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
 | `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
-| `programmierung/`, `daten/`, `ki/`, `datenbanken/`, `werkzeuge/` | unverändert, keine Beispiele |
+| `programmierung/` (9 Seiten + Fragen) | **umgebaut** (11.09.2026), `stand: entwurf`; Ausgaben gegen den Text geprüft, `fertig` nach dem letzten Build-Abgleich |
+| `daten/`, `ki/`, `datenbanken/`, `werkzeuge/` | unverändert, keine Beispiele |
+
+### Der Programmierbereich ist umgebaut
+
+Alle neun Werkzeugseiten haben jetzt die Beispiel-Reiter, jede mit R- und
+Python-Tab auf denselben festen Daten. Die alten Seiten zogen auf fünf Seiten
+Zufallszahlen getrennt in R und Python; das ist beseitigt. Tragende Befunde:
+
+| Seite | Befund |
+|---|---|
+| Python-Grundlagen | `b = a` teilt die Liste, R kopiert; `werte[-1]` bedeutet in R das Gegenteil |
+| Funktionen und Module | R ergänzt `ein=` zu `einheit=`; der zweite Import bleibt stumm; `__name__` ist im Dokument `__main__` (die alte Fassung behauptete das Gegenteil) |
+| Objektorientierung | Dataclass mit `order=True` sortiert 1.5 cm vor 3.0 mm |
+| Fehlerbehandlung und Dateien | Latin-1 liest still `GrÃ¶sse`; JSON macht aus Schlüssel 7 den Text `'7'` |
+| R-Grundlagen | 6 mal 2 recycelt ohne Warnung; `as.numeric(factor(c(5,3,4)))` gibt 3 1 2 |
+| NumPy und SciPy | `m - colMeans(m)` zentriert in R still falsch; `uint8` 200+100 = 44 |
+| pandas | pandas 3: Kettenzuweisung wirkungslos; `groupby` verwirft NaN-Schlüssel; doppelter Join-Schlüssel 24 auf 36 Zeilen |
+| Pakete und Umgebungen | eigene `random.py` verdeckt die Standardbibliothek; `"2.10.0" > "2.9.0"` ist falsch |
+| Reproduzierbarkeit | Seed 42 in R und Python ergibt verschiedene Folgen, Lehmer identische |
+
+Neue Stolpersteine in `build-fehler.md`: Rückgabewerte von `write()` an `_`
+zuweisen. Weitere Erfahrungen dieses Umbaus:
+
+- **Inline-R** (`` `r ...` ``) wertet knitr überall im Fliesstext aus. Soll
+  er als Beispiel sichtbar bleiben, gehört er in einen ````` ````{verbatim} `````-Block.
+- **Plattformabhängige Zahlen** (Dateigrösse mit `\n`, Fehlerposition)
+  nicht unter Windows vorrechnen und in den Text schreiben: Der Build läuft
+  unter Linux.
+- **Zeitmessungen** nie als Zahl in den Text; sie schwanken je Lauf.
+- Die Build-Umgebung hat Python 3.12, pandas 3.0.5, NumPy 2.5.3. Ein
+  Wegwerf-venv mit denselben Versionen rechnet lokal identisch.
 
 ### Der Visualisierungsbereich ist abgeschlossen
 
@@ -146,10 +177,13 @@ Jede Behauptung hat eine Kennzahl. Die tragenden Beispiele:
 
 ### Danach
 
-Die fünf verbleibenden Bereiche (37 Seiten) haben kein einziges `### Beispiel`
-und stehen alle auf `entwurf`. Reihenfolge nach vorhandener Substanz:
-`programmierung/` (112 Code-Chunks), `daten/`, `datenbanken/`, `werkzeuge/`,
-`ki/` (gar kein Code).
+Die vier verbleibenden Bereiche haben kein einziges `### Beispiel` und stehen
+alle auf `entwurf`. Reihenfolge nach vorhandener Substanz: `daten/`,
+`datenbanken/`, `werkzeuge/`, `ki/` (gar kein Code).
+
+Nebenbefund: Die Visualisierungsseiten (etwa `matplotlib.qmd`) enthalten noch
+Gedankenstriche (`—`), die nach `instruction.md` Abschnitt 4 nicht vorkommen
+sollen. Mechanisch ersetzbar, aber jede Stelle braucht einen eigenen Satzbau.
 
 ## Der Lehmer-Generator als Standardweg für Beispieldaten
 
