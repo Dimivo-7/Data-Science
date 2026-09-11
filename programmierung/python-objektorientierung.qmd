@@ -1,77 +1,196 @@
 ---
 title: "Objektorientierung in Python"
 description: "Klassen, Instanzen, Vererbung und wann sich der Aufwand lohnt."
-categories: ["Programmiergrundlagen", "Python"]
+categories: ["Programmiergrundlagen", "Python", "R"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
 stand: entwurf
 order: 30
 ---
 
-```{r}
-#| label: setup-r
-#| include: false
-set.seed(42)
-```
-
 ```{python}
 #| label: setup-python
 #| include: false
-import numpy as np
-rng = np.random.default_rng(42)
+from dataclasses import dataclass, field
 ```
 
 ## Kernideen
 
-- Klasse als Bauplan, Instanz als Exemplar
-- `__init__`, Instanz- und Klassenattribute
-- Methoden und die Rolle von `self`
-- Vererbung und Überschreiben
-- Dunder-Methoden wie `__str__` und `__len__`
-- Wann sich der Aufwand lohnt und wann nicht
+- Eine **Klasse** ist der Bauplan, eine **Instanz** ein Exemplar davon. Sie
+  bündelt Daten und die Operationen darauf.
+- `__init__` legt beim Erzeugen fest, was vorhanden sein muss. `self` ist das
+  Exemplar, auf dem eine Methode gerade arbeitet.
+- **Klassenattribute** gelten für alle Exemplare, **Instanzattribute** je
+  Exemplar. Ein veränderliches Klassenattribut wird geteilt.
+- **Dunder-Methoden** wie `__str__`, `__len__` und `__lt__` fügen eigene
+  Klassen in die Sprache ein: `print`, `len` und `sorted` funktionieren dann.
+- **Vererbung** formuliert nur den Unterschied. Eine geerbte Methode ruft die
+  überschriebene Version auf, wenn sie `self.methode()` benutzt.
+- In der Datenarbeit lohnt eine Klasse erst, wenn **mehrere Methoden einen
+  Zustand teilen**. Sonst ist eine Funktion klarer.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** [Python-Grundlagen](python-grundlagen.qmd) für Dictionaries, die hier als Vergleich
-dienen, und [Funktionen und Module in Python](python-funktionen-module.qmd) für Funktionen und Namensräume. Eine Methode ist
+**Vorwissen:** [Python-Grundlagen](python-grundlagen.qmd) für Dictionaries und
+die Verweissemantik, [Funktionen und Module in Python](python-funktionen-module.qmd)
+für Funktionen, Closures und den veränderlichen Defaultwert. Eine Methode ist
 nichts anderes als eine Funktion, die zu einem Objekt gehört.
 :::
 
 ### Das Problem, bevor die Lösung kommt
 
-Angenommen, mehrere Messreihen sind zu verwalten. Mit den bisherigen Mitteln
-entstehen ein Dictionary je Reihe und ein Satz Funktionen daneben:
+Mehrere Messreihen sollen verwaltet werden. Mit den bisherigen Mitteln entsteht
+ein Dictionary je Reihe und ein Satz Funktionen daneben. Das funktioniert und
+hat drei Schwächen: Nichts hindert daran, ein Dictionary ohne den Schlüssel
+`werte` zu übergeben, der Fehler fällt erst beim Aufruf auf. Die Funktionen
+liegen irgendwo im Modul und sind nicht als zusammengehörig erkennbar. Und wer
+eine Reihe von Hand baut, kann Schlüssel vergessen oder vertippen. Eine Klasse
+bündelt Daten und Operationen und prüft beim Erzeugen, ob alles da ist.
+
+### Aufbau einer Klasse
+
+```python
+class Messreihe:
+    einheit = "mm"                  # Klassenattribut
+
+    def __init__(self, name, werte):
+        self.name = name            # Instanzattribute
+        self.werte = list(werte)
+
+    def mittel(self):               # Methode
+        return sum(self.werte) / len(self.werte)
+```
+
+| Teil | Bedeutung |
+|---|---|
+| `class Messreihe:` | definiert den Bauplan; Klassennamen schreibt man in CamelCase |
+| `einheit = "mm"` | Klassenattribut, einmal für alle Exemplare |
+| `__init__` | läuft beim Erzeugen mit `Messreihe(...)` und legt die Instanzattribute an |
+| `self` | das Exemplar selbst; steht als erster Parameter jeder Methode |
+| `self.werte = list(werte)` | eine eigene Kopie, damit eine übergebene Liste nicht von aussen verändert wird |
+| `m.mittel()` | wird intern zu `Messreihe.mittel(m)`; deshalb fehlt `self` im Aufruf |
+
+### Die wichtigsten Dunder-Methoden
+
+Dunder steht für "double underscore". Diese Methoden ruft man nicht selbst
+auf; Python ruft sie, wenn eine eingebaute Funktion oder ein Operator auf das
+Objekt trifft.
+
+| Methode | ausgelöst durch | Zweck |
+|---|---|---|
+| `__init__` | `Klasse(...)` | Exemplar einrichten |
+| `__str__` | `print(x)`, `str(x)` | lesbare Darstellung für Menschen |
+| `__repr__` | Anzeige in Listen, Konsole | eindeutige Darstellung für Entwickler, idealerweise gültiger Code |
+| `__len__` | `len(x)` | Anzahl |
+| `__eq__`, `__lt__` | `==`, `<`, damit auch `sorted`, `max` | Vergleich |
+| `__getitem__` | `x[i]` | Indexzugriff |
+
+Für reine Datenbehälter erzeugt der Dekorator `@dataclass` `__init__`,
+`__repr__` und `__eq__` automatisch, mit `order=True` auch die Vergleiche.
+
+### Vererbung, sparsam eingesetzt
+
+Eine abgeleitete Klasse `class B(A):` übernimmt alles aus `A` und formuliert
+nur den Unterschied. `super().__init__(...)` ruft die Einrichtung der
+Basisklasse auf; ohne diesen Aufruf fehlen deren Attribute. Die Reihenfolge,
+in der Python eine Methode sucht, heisst **MRO** (method resolution order) und
+steht in `Klasse.__mro__`.
+
+So elegant das ist, so schnell wird es überstrapaziert. Eine tiefe Hierarchie
+ist meist schwerer zu verstehen als eine flache Struktur, in der Objekte
+einander **enthalten** statt beerben (Komposition). Die Prüffrage lautet, ob
+wirklich eine ist-ein-Beziehung vorliegt.
+
+### Der Vergleich zu R
+
+R kennt mehrere Objektsysteme, und keines gleicht dem von Python ganz.
+
+| System | Idee | Methode gehört zu | Semantik |
+|---|---|---|---|
+| S3 | Liste mit Klassenattribut, `UseMethod` | der generischen Funktion: `mittel(x)` | Kopie beim Ändern |
+| S4 | formale Klassen mit `setClass`, `setMethod` | der generischen Funktion | Kopie beim Ändern |
+| Reference Classes | `setRefClass`, Felder und Methoden | dem Objekt: `x$methode()` | **Verweis**, wie Python |
+| Python | `class` | dem Objekt: `x.methode()` | Verweis |
+
+Der Unterschied ist mehr als Syntax. In Python gehört die Methode zum Objekt.
+In S3 und S4 gehört sie zur generischen Funktion, die anhand der Klasse ihres
+Arguments entscheidet, welche Umsetzung greift. Deshalb heisst es dort
+`mittel(m)` und nicht `m.mittel()`, und deshalb kann man in R einer
+bestehenden Klasse eine neue Methode geben, ohne sie anzufassen, etwa
+`print.messreihe`.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R (S3) | Python |
+|---|---|---|
+| Klasse anlegen | `structure(list(...), class = "k")` | `class K:` mit `__init__` |
+| Methode definieren | `mittel.k <- function(x, ...)` plus `UseMethod` | `def mittel(self):` in der Klasse |
+| Druckausgabe | `print.k <- function(x, ...)` | `def __str__(self):` |
+| erben | `class(obj) <- c("kind", "k")` | `class Kind(K):` |
+| Basisversion aufrufen | `NextMethod()` | `super().methode()` |
+| Typ prüfen | `inherits(x, "k")` | `isinstance(x, K)` |
+| Attribute ansehen | `unclass(x)`, `str(x)` | `vars(x)` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Vom Dictionary zur Klasse
+
+#### Frage und Datenlage
+
+Zwei Messreihen, Drossel `2, 4, 6` und Ventil `1.5, 1.7, 9`. Was passiert, wenn
+eine Reihe als Dictionary einen falsch geschriebenen Schlüssel hat, und was,
+wenn eine Klasse ein Pflichtattribut nicht bekommt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-oo-r
+messreihe <- function(name, werte) {
+  structure(list(name = name, werte = werte), class = "messreihe")
+}
+mittel <- function(x, ...) UseMethod("mittel")
+mittel.messreihe <- function(x, ...) mean(x$werte)
+
+drossel <- messreihe("Drossel", c(2, 4, 6))
+ventil  <- messreihe("Ventil",  c(1.5, 1.7, 9))
+
+c(mittel(drossel), diff(range(ventil$werte)))
+class(drossel)
+unclass(drossel)
+inherits(tryCatch(messreihe("Pumpe"), error = function(e) e), "error")
+```
+
+##### Python
 
 ```{python}
-#| label: ohne-klasse-py
-reihe = {"name": "Drossel", "werte": [2.0, 4.0, 6.0], "einheit": "mm"}
+#| label: b1-oo-py
+# Ohne Klasse: Dictionary und lose Funktion
+reihe = {"name": "Drossel", "werte": [2.0, 4.0, 6.0]}
 
 def mittel(r):
     return sum(r["werte"]) / len(r["werte"])
 
 print(mittel(reihe))
-```
+kaputt = {"name": "Ventil", "wert": [1.5, 1.7, 9.0]}     # Tippfehler
+try:
+    mittel(kaputt)
+except KeyError as fehler:
+    print(type(fehler).__name__, fehler)
 
-Das funktioniert und hat drei Schwächen. Nichts hindert daran, ein Dictionary
-ohne den Schlüssel `werte` an `mittel` zu übergeben; der Fehler fällt erst
-beim Aufruf auf. Die Funktionen liegen irgendwo im Modul und sind nicht als
-zusammengehörig erkennbar. Und wer eine Reihe von Hand baut, kann Schlüssel
-vergessen oder vertippen.
-
-Eine Klasse bündelt die Daten und die Operationen darauf zu einer Einheit und
-legt beim Erzeugen fest, was vorhanden sein muss.
-
-### Klasse, Instanz, self
-
-```{python}
-#| label: klasse-py
+# Mit Klasse
 class Messreihe:
-    einheit = "mm"                       # Klassenattribut, einmal fuer alle
+    einheit = "mm"
 
     def __init__(self, name, werte):
-        self.name = name                 # Instanzattribute, je Exemplar
-        self.werte = werte
+        self.name = name
+        self.werte = list(werte)
 
     def mittel(self):
         return sum(self.werte) / len(self.werte)
@@ -80,48 +199,194 @@ class Messreihe:
         return max(self.werte) - min(self.werte)
 
 drossel = Messreihe("Drossel", [2.0, 4.0, 6.0])
-ventil  = Messreihe("Ventil",  [1.5, 1.7, 9.0])
-
+ventil = Messreihe("Ventil", [1.5, 1.7, 9.0])
 print(drossel.mittel(), ventil.spannweite())
+print(Messreihe.mittel(drossel))          # dasselbe, self ausdruecklich
+try:
+    Messreihe("Pumpe")
+except TypeError as fehler:
+    print(type(fehler).__name__)
+print(vars(drossel))
+print(type(drossel).__name__, isinstance(drossel, Messreihe))
 ```
 
-Die Klasse ist der Bauplan, jedes erzeugte Objekt eine Instanz. `__init__`
-läuft beim Erzeugen und legt die Instanzattribute an. `self` ist der Verweis
-auf das Exemplar, auf dem eine Methode gerade arbeitet, und steht deshalb als
-erster Parameter jeder Methode.
+:::
 
-Der Unterschied zwischen Klassen- und Instanzattribut wird gerne übersehen und
-lässt sich zeigen:
+#### Output Zeile für Zeile
+
+| Zeile | Python | R | Erklärung |
+|---|---|---|---|
+| Mittel der Drossel | 4.0 | 4 | Beide Wege rechnen richtig, solange die Daten stimmen. |
+| Dictionary mit Tippfehler | **`KeyError 'werte'`** | | Der Fehler zeigt sich erst **beim Rechnen**, nicht beim Anlegen der Reihe, und nennt den fehlenden Schlüssel, nicht den falschen. |
+| Spannweite des Ventils | 7.5 | 7.5 | 9.0 minus 1.5. |
+| `Messreihe.mittel(drossel)` | 4.0 | | Der Aufruf über die Klasse zeigt, was `drossel.mittel()` intern tut: `self` ist `drossel`. |
+| Reihe ohne Werte | **`TypeError`** | `TRUE` (Fehler) | `__init__` verlangt `werte`, das Anlegen scheitert **sofort**. In R erzwingt die Konstruktorfunktion dasselbe. |
+| `vars(drossel)` | `{'name': 'Drossel', 'werte': [2.0, 4.0, 6.0]}` | `unclass()` zeigt `$name` und `$werte` | Die Instanzattribute. `einheit` fehlt, denn es gehört der Klasse. |
+| Typ | `Messreihe True` | `"messreihe"` | In R ist die Klasse nur ein Attribut der Liste; `unclass` entfernt es. |
+
+#### Interpretation und Ergebnissatz
+
+Die Klasse verschiebt den Fehler nach vorn: vom Rechnen zum Anlegen. Das ist
+ihr eigentlicher Nutzen in der Datenarbeit. Ein Dictionary mit Tippfehler kann
+lange durch ein Programm wandern, bevor es auffällt; ein Objekt ohne
+Pflichtattribut entsteht gar nicht erst.
+
+> Der Mittelwert der Drossel beträgt 4.0, die Spannweite des Ventils 7.5. Ein
+> Dictionary mit falsch geschriebenem Schlüssel scheitert erst beim Rechnen
+> mit `KeyError 'werte'`, eine Klasse ohne Pflichtattribut bereits beim
+> Anlegen mit einem `TypeError`.
+
+### Beispiel 2: Klassenattribut, Instanzattribut und geteilter Zustand
+
+#### Frage und Datenlage
+
+Die Einheit ist als Klassenattribut hinterlegt. Was passiert, wenn man sie an
+der Klasse und dann an einem einzelnen Exemplar ändert? Und was, wenn ein
+Klassenattribut eine Liste ist?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-oo-r
+# Reference Class: Verweissemantik wie in Python
+Protokoll <- setRefClass("Protokoll",
+  fields = list(eintraege = "character"),
+  methods = list(notiere = function(text) {
+    eintraege <<- c(eintraege, text)
+    invisible(.self)
+  }))
+
+q1 <- Protokoll$new()
+q2 <- Protokoll$new()
+q1$notiere("Start")
+list(q1 = q1$eintraege, q2 = q2$eintraege)
+
+a <- q1                      # kein neues Objekt
+a$notiere("Stopp")
+q1$eintraege
+
+# S3-Liste zum Vergleich: Kopie beim Aendern
+s3 <- list(eintraege = "Start")
+s3b <- s3
+s3b$eintraege <- c(s3b$eintraege, "Stopp")
+s3$eintraege
+```
+
+##### Python
 
 ```{python}
-#| label: attribute-py
-print(drossel.einheit, ventil.einheit)     # beide teilen sich den Wert
-
-Messreihe.einheit = "cm"                    # Aenderung an der Klasse
-print(drossel.einheit, ventil.einheit)     # wirkt auf alle
-
-drossel.einheit = "µm"                      # nur fuer dieses Exemplar
+#| label: b2-oo-py
 print(drossel.einheit, ventil.einheit)
+
+Messreihe.einheit = "cm"                  # an der Klasse
+print(drossel.einheit, ventil.einheit)
+
+drossel.einheit = "µm"                    # nur an diesem Exemplar
+print(drossel.einheit, ventil.einheit, Messreihe.einheit)
+print("einheit" in vars(drossel), "einheit" in vars(ventil))
+
+# Veraenderliches Klassenattribut: dieselbe Falle wie der Default []
+class Protokoll:
+    eintraege = []
+
+    def notiere(self, text):
+        self.eintraege.append(text)
+
+p1, p2 = Protokoll(), Protokoll()
+p1.notiere("Start")
+print(p2.eintraege, p1.eintraege is p2.eintraege)
+
+class ProtokollRichtig:
+    def __init__(self):
+        self.eintraege = []
+
+    def notiere(self, text):
+        self.eintraege.append(text)
+
+q1, q2 = ProtokollRichtig(), ProtokollRichtig()
+q1.notiere("Start")
+print(q1.eintraege, q2.eintraege)
+
+a = q1                                    # kein neues Objekt
+a.notiere("Stopp")
+print(q1.eintraege)
 ```
 
-Für Konstanten ist das Klassenattribut richtig, für alles Zustandsbehaftete das
-Instanzattribut. Ein veränderliches Klassenattribut, etwa eine Liste, ist
-dieselbe Falle wie der veränderliche Defaultwert aus [Funktionen und Module in Python](python-funktionen-module.qmd).
+:::
 
-### Dunder-Methoden
+#### Output Zeile für Zeile
 
-Mit besonderen Methodennamen fügt sich eine eigene Klasse in die Sprache ein.
-Wer `__str__` definiert, bestimmt, was `print` ausgibt; wer `__len__` definiert,
-macht `len()` anwendbar.
+| Schritt | Python | Erklärung |
+|---|---|---|
+| Ausgangslage | `mm mm` | Beide Exemplare haben kein eigenes `einheit` und lesen das der Klasse. |
+| Klasse auf cm | `cm cm` | Die Änderung an der Klasse wirkt auf **alle** Exemplare, die kein eigenes Attribut haben. |
+| `drossel.einheit = "µm"` | `µm cm cm` | Die Zuweisung an ein Exemplar legt ein **neues Instanzattribut** an, das das Klassenattribut verdeckt. Klasse und Ventil bleiben bei cm. |
+| wer hat ein eigenes | `True False` | Nur `drossel` hat `einheit` jetzt in `vars()`. |
+| Liste als Klassenattribut | `['Start'] True` | `p2` hat nichts notiert und sieht trotzdem `Start`: Beide Exemplare teilen **eine** Liste. |
+| Liste in `__init__` | `['Start'] []` | Jedes Exemplar hat seine eigene Liste. |
+| `a = q1`, dann über `a` notiert | `['Start', 'Stopp']` | Eine Zuweisung kopiert kein Objekt, auch keines aus einer eigenen Klasse. |
+
+| Schritt | R | Erklärung |
+|---|---|---|
+| zwei Reference-Class-Objekte | `q1` hat `"Start"`, `q2` ist `character(0)` | Felder sind je Exemplar getrennt. |
+| über `a <- q1` notiert | `"Start" "Stopp"` | Reference Classes haben Verweissemantik: `a` und `q1` sind dasselbe Objekt, wie in Python. |
+| S3-Liste kopiert und geändert | `"Start"` | Eine gewöhnliche Liste wird beim Ändern kopiert; das Original bleibt. |
+
+#### Interpretation und Ergebnissatz
+
+Die Regel ist dieselbe wie beim veränderlichen Defaultwert: Was einmal für
+alle entsteht, wird von allen geteilt. Für Konstanten wie eine Einheit oder
+einen Grenzwert ist das Klassenattribut richtig, für alles, was sich im Lauf
+ändert, das Instanzattribut in `__init__`. R verhält sich bei S3 und S4 wie
+bei Vektoren und kopiert; nur Reference Classes (und das Paket R6) folgen der
+Python-Logik.
+
+> Die Zuweisung `drossel.einheit = "µm"` legt ein Instanzattribut an und lässt
+> Klasse und Ventil bei cm. Eine Liste als Klassenattribut wird dagegen von
+> allen Exemplaren geteilt: `p2` zeigt `['Start']`, obwohl nur `p1` notiert hat.
+
+### Beispiel 3: Dunder-Methoden und Dataclasses
+
+#### Frage und Datenlage
+
+Vier Reihen (Drossel, Ventil, Pumpe `5`, Filter `3, 3.4`) sollen lesbar
+gedruckt, gezählt und nach Mittelwert sortiert werden. Danach dasselbe mit
+einer Dataclass für Einzelmessungen mit Einheit.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-oo-r
+print.messreihe <- function(x, ...) {
+  cat(x$name, ": ", format(round(mittel(x), 2), nsmall = 2),
+      " (n=", length(x$werte), ")\n", sep = "")
+  invisible(x)
+}
+
+drossel
+ventil
+
+reihen <- list(drossel, ventil, messreihe("Pumpe", 5),
+               messreihe("Filter", c(3, 3.4)))
+sapply(reihen[order(sapply(reihen, mittel))], function(r) r$name)
+```
+
+##### Python
 
 ```{python}
-#| label: dunder-py
-class Messreihe:
-    einheit = "mm"
-
+#| label: b3-oo-py
+class Reihe:
     def __init__(self, name, werte):
         self.name = name
-        self.werte = werte
+        self.werte = list(werte)
 
     def mittel(self):
         return sum(self.werte) / len(self.werte)
@@ -130,205 +395,332 @@ class Messreihe:
         return len(self.werte)
 
     def __str__(self):
-        return f"{self.name}: {self.mittel():.2f} {self.einheit} (n={len(self)})"
+        return f"{self.name}: {self.mittel():.2f} (n={len(self)})"
 
-m = Messreihe("Drossel", [2.0, 4.0, 6.0])
-print(m)
-print(len(m))
+    def __repr__(self):
+        return f"Reihe({self.name!r}, {self.werte!r})"
+
+    def __lt__(self, andere):
+        return self.mittel() < andere.mittel()
+
+print("object at" in str(Messreihe("Drossel", [2.0])))   # ohne __str__
+
+reihen = [Reihe("Drossel", [2.0, 4.0, 6.0]), Reihe("Ventil", [1.5, 1.7, 9.0]),
+          Reihe("Pumpe", [5.0]), Reihe("Filter", [3.0, 3.4])]
+print(reihen[0])
+print(len(reihen[1]))
+print(reihen[2:])                          # Listen zeigen __repr__
+print([r.name for r in sorted(reihen)])
+print(max(reihen))
+
+@dataclass(order=True)
+class Messung:
+    wert: float
+    einheit: str = field(default="mm", compare=False)
+
+messungen = [Messung(4.2), Messung(1.5, "cm"), Messung(3.0)]
+print(sorted(messungen))
+print(Messung(2.0) == Messung(2.0, "cm"))
 ```
 
-Ohne `__str__` gäbe `print` nur die Speicheradresse aus. Mit ihr verhält sich
-das eigene Objekt wie ein eingebauter Typ, und genau das ist der Zweck.
+:::
+
+#### Output Zeile für Zeile
+
+| Aufruf | Ausgabe | ausgelöst | Erklärung |
+|---|---|---|---|
+| `str()` ohne `__str__` | `True` für "object at" | | Ohne eigene Methode zeigt Python nur Klasse und Speicheradresse. |
+| `print(reihen[0])` | `Drossel: 4.00 (n=3)` | `__str__` | lesbare Darstellung |
+| `len(reihen[1])` | 3 | `__len__` | |
+| `print(reihen[2:])` | `[Reihe('Pumpe', [5.0]), Reihe('Filter', [3.0, 3.4])]` | `__repr__` | Eine Liste zeigt ihre Elemente immer mit `__repr__`, nie mit `__str__`. Die Ausgabe ist gültiger Python-Code. |
+| `sorted(reihen)` | Filter, Drossel, Ventil, Pumpe | `__lt__` | Mittelwerte 3.2, 4.0, 4.07, 5.0. `sorted` braucht nur den Kleiner-Vergleich. |
+| `max(reihen)` | `Pumpe: 5.00 (n=1)` | `__lt__`, dann `__str__` | |
+| R: `drossel`, `ventil` | `Drossel: 4.00 (n=3)`, `Ventil: 4.07 (n=3)` | `print.messreihe` | Die automatische Anzeige ruft die Druckmethode der Klasse auf. |
+| R: sortiert | Filter, Drossel, Ventil, Pumpe | `order()` | R sortiert über die berechneten Mittelwerte, nicht über die Objekte. |
+| Dataclass sortiert | `[Messung(wert=1.5, einheit='cm'), Messung(wert=3.0, einheit='mm'), Messung(wert=4.2, einheit='mm')]` | erzeugtes `__lt__` | **Falsch sortiert**: 1.5 cm sind 15 mm und gehören ans Ende. |
+| `Messung(2.0) == Messung(2.0, "cm")` | **`True`** | erzeugtes `__eq__` | 2 mm gelten als gleich 2 cm, weil `einheit` mit `compare=False` vom Vergleich ausgenommen ist. |
+
+#### Interpretation und Ergebnissatz
+
+Mit vier kurzen Methoden verhält sich die eigene Klasse wie ein eingebauter
+Typ: `print`, `len`, `sorted` und `max` funktionieren ohne Sonderbehandlung.
+Die Dataclass spart diesen Code, vergleicht aber stur Feld für Feld. Sobald
+ein Feld eine Einheit oder einen Massstab trägt, ist das automatische `__lt__`
+**fachlich falsch**, obwohl es fehlerfrei läuft. Dann gehört entweder eine
+Umrechnung in eine gemeinsame Einheit in `__post_init__` oder ein eigenes
+`__lt__`.
+
+> Nach Mittelwert sortiert stehen die Reihen in der Folge Filter (3.2),
+> Drossel (4.0), Ventil (4.07) und Pumpe (5.0). Die Dataclass sortiert 1.5 cm
+> vor 3.0 mm und hält 2 mm für gleich 2 cm, weil die Einheit vom Vergleich
+> ausgenommen ist.
+
+### Beispiel 4: Vererbung und super()
+
+#### Frage und Datenlage
+
+Eine gewichtete Messreihe soll alles von der gewöhnlichen übernehmen und nur
+den Mittelwert anders berechnen. Drossel `2, 4, 6` mit Gewichten `1, 1, 3`.
+Was druckt `print`, obwohl `__str__` nur in der Basisklasse steht? Und was
+passiert ohne `super().__init__`?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-oo-r
+gewichtet <- function(name, werte, gewichte) {
+  obj <- messreihe(name, werte)
+  obj$gewichte <- gewichte
+  class(obj) <- c("gewichtet", class(obj))
+  obj
+}
+mittel.gewichtet <- function(x, ...) weighted.mean(x$werte, x$gewichte)
+
+g <- gewichtet("Drossel", c(2, 4, 6), c(1, 1, 3))
+g                                   # print.messreihe, aber mittel.gewichtet
+c(mittel(g), mittel.messreihe(g))
+class(g)
+inherits(g, "messreihe")
+```
+
+##### Python
+
+```{python}
+#| label: b4-oo-py
+class GewichteteReihe(Reihe):
+    def __init__(self, name, werte, gewichte):
+        super().__init__(name, werte)       # den Teil, den die Basis erledigt
+        self.gewichte = list(gewichte)
+
+    def mittel(self):                        # ueberschreibt die Basisversion
+        return (sum(w * g for w, g in zip(self.werte, self.gewichte))
+                / sum(self.gewichte))
+
+g = GewichteteReihe("Drossel", [2.0, 4.0, 6.0], [1, 1, 3])
+print(g)
+print(g.mittel(), Reihe.mittel(g))
+print(isinstance(g, Reihe), isinstance(reihen[0], GewichteteReihe))
+print([k.__name__ for k in GewichteteReihe.__mro__])
+
+class OhneSuper(Reihe):
+    def __init__(self, name, werte, gewichte):
+        self.gewichte = list(gewichte)       # super() vergessen
+
+try:
+    print(OhneSuper("X", [1.0], [1]))
+except AttributeError as fehler:
+    print(type(fehler).__name__)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Python | R | Erklärung |
+|---|---|---|---|
+| `print(g)` | `Drossel: 4.80 (n=3)` | `Drossel: 4.80 (n=3)` | Die Druckmethode stammt aus der Basisklasse, ruft aber `self.mittel()` beziehungsweise `mittel(x)` auf, und das findet die **überschriebene** Version. |
+| gewichtetes Mittel | 4.8 | 4.8 | (1·2 + 1·4 + 3·6) / 5 = 24 / 5. |
+| Basisversion ausdrücklich | 4.0 | 4.0 | `Reihe.mittel(g)` beziehungsweise `mittel.messreihe(g)` umgeht die Überschreibung. |
+| `isinstance` | `True False` | `inherits` → `TRUE` | Eine gewichtete Reihe **ist eine** Reihe, umgekehrt nicht. |
+| MRO / `class(g)` | `['GewichteteReihe', 'Reihe', 'object']` | `"gewichtet" "messreihe"` | Die Suchreihenfolge für Methoden. In R ist sie schlicht der Klassenvektor. |
+| ohne `super().__init__` | **`AttributeError`** | | `__str__` ruft `mittel()` auf, das `self.werte` braucht, und das wurde nie angelegt. |
+
+#### Interpretation und Ergebnissatz
+
+Dass eine geerbte Methode die überschriebene Version aufruft, heisst
+**dynamische Bindung** und ist der eigentliche Nutzen der Vererbung: Die
+Basisklasse legt den Ablauf fest, die abgeleitete tauscht einen Baustein aus.
+S3 in R erreicht dasselbe über die Klassenreihenfolge im Vektor. Der
+vergessene `super()`-Aufruf ist der häufigste Fehler dabei, und er zeigt sich
+nicht beim Anlegen, sondern erst beim ersten Zugriff auf ein fehlendes
+Attribut.
+
+> Die gewichtete Reihe liefert einen Mittelwert von 4.8 statt 4.0, und auch
+> das geerbte `print` zeigt 4.80, weil es `self.mittel()` aufruft. Ohne
+> `super().__init__` fehlt das Attribut `werte`, und der erste Zugriff endet
+> mit einem `AttributeError`.
+
+### Beispiel 5: Wann sich eine Klasse lohnt
+
+#### Frage und Datenlage
+
+Messwerte `2, 4, 6, 1.5, 1.7, 9` treffen einzeln ein, und nach jedem Wert soll
+der laufende Mittelwert bereitstehen, ohne alle bisherigen Werte zu speichern.
+Hier gibt es einen **Zustand**, der zwischen den Aufrufen erhalten bleiben
+muss. Zum Vergleich steht die Lösung als Closure.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-oo-r
+laufmittel <- function() {
+  n <- 0
+  m <- 0
+  function(wert) {
+    n <<- n + 1
+    m <<- m + (wert - m) / n
+    m
+  }
+}
+neu <- laufmittel()
+round(sapply(c(2, 4, 6, 1.5, 1.7, 9), neu), 3)
+```
+
+##### Python
+
+```{python}
+#| label: b5-oo-py
+class Laufmittel:
+    def __init__(self):
+        self.n = 0
+        self.mittel = 0.0
+
+    def neu(self, wert):
+        self.n += 1
+        self.mittel += (wert - self.mittel) / self.n
+        return self.mittel
+
+werte = [2.0, 4.0, 6.0, 1.5, 1.7, 9.0]
+lm = Laufmittel()
+print([round(lm.neu(w), 3) for w in werte])
+print(lm.n, round(lm.mittel, 4), round(sum(werte) / len(werte), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| nach Wert | laufender Mittelwert |
+|---|---|
+| 2 | 2.000 |
+| 4 | 3.000 |
+| 6 | 4.000 |
+| 1.5 | 3.375 |
+| 1.7 | 3.040 |
+| 9 | 4.033 |
+
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| `lm.n` | 6 | Anzahl verarbeiteter Werte, im Objekt gespeichert |
+| `lm.mittel` | 4.0333 | laufender Mittelwert nach dem letzten Wert |
+| direkt gerechnet | 4.0333 | Kontrolle: Die Aktualisierung `m + (x − m) / n` liefert exakt den gewöhnlichen Mittelwert, ohne die Werte aufzubewahren. |
+
+R löst dieselbe Aufgabe mit einer Closure, wie auf der Seite
+[Funktionen und Module](python-funktionen-module.qmd) der Zähler: `n` und `m`
+leben in der Umgebung der inneren Funktion weiter.
+
+#### Interpretation und Ergebnissatz
+
+Closure und Klasse leisten hier dasselbe. Die Klasse gewinnt, sobald
+**mehrere Operationen denselben Zustand teilen**: zurücksetzen, die Anzahl
+abfragen, eine Varianz mitführen, den Stand speichern. Mit einer Closure wird
+das schnell unübersichtlich, mit einer Klasse ist es eine weitere Methode.
+Umgekehrt gilt: Wer eine Klasse schreibt, deren Objekt nur einmal erzeugt und
+deren Methoden nacheinander je einmal aufgerufen werden, hat eine Funktion
+umständlich verpackt. Für die eigentliche Analyse bleibt ein DataFrame plus
+Funktionen meist die klarere Wahl, siehe [pandas](pandas.qmd).
+
+> Nach sechs Werten steht der laufende Mittelwert bei 4.0333 und stimmt mit
+> dem direkt berechneten Mittelwert überein, ohne dass die Werte gespeichert
+> werden. Eine Klasse lohnt sich hier, weil ein Zustand über viele Aufrufe
+> erhalten bleiben muss; in R leistet eine Closure dasselbe.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Warum steht `self` in der Definition einer Methode, aber nicht im Aufruf
 `m.mittel()`?
 
 - [x] Python setzt beim Aufruf das Objekt automatisch als erstes Argument ein ~
-      Richtig. `m.mittel()` wird intern zu `Messreihe.mittel(m)`. Sichtbar wird
-      der Mechanismus, wenn man die Methode über die Klasse aufruft.
-- [ ] `self` ist ein Schlüsselwort und wird ignoriert ~ Es ist ein gewöhnlicher
-      Parametername; die Bezeichnung ist nur Konvention.
+      Richtig. `m.mittel()` wird intern zu `Messreihe.mittel(m)`, wie
+      Beispiel 1 mit derselben Ausgabe 4.0 zeigt.
+- [ ] `self` ist ein Schlüsselwort und wird ignoriert ~ Es ist ein
+      gewöhnlicher Parametername; die Bezeichnung ist nur Konvention.
 - [ ] Der Aufruf ist unvollständig und funktioniert nur zufällig ~ Er ist die
       übliche und vorgesehene Schreibweise.
 :::
 
 ::: {.quiz}
-Was wäre die Folge, wenn `werte = []` als Klassenattribut statt in `__init__`
-stünde?
+Was wäre die Folge, wenn `eintraege = []` als Klassenattribut statt in
+`__init__` stünde?
 
-- [ ] Nichts, es ist dieselbe Zuweisung an anderer Stelle ~ Der Ort entscheidet,
-      ob das Objekt einmal für alle oder je Exemplar entsteht.
+- [ ] Nichts, es ist dieselbe Zuweisung an anderer Stelle ~ Der Ort
+      entscheidet, ob das Objekt einmal für alle oder je Exemplar entsteht.
 - [x] Alle Instanzen teilten sich dieselbe Liste ~ Richtig. Ein `append` in
-      einem Objekt wäre in allen anderen sichtbar, und neue Objekte kämen
-      bereits gefüllt zur Welt. Es ist derselbe Fehler wie der veränderliche
-      Defaultwert bei Funktionen.
+      einem Objekt wäre in allen anderen sichtbar, wie `p2` in Beispiel 2
+      zeigt. Es ist derselbe Fehler wie der veränderliche Defaultwert bei
+      Funktionen.
 - [ ] Die Klasse liesse sich nicht mehr instanziieren ~ Sie liesse sich
       problemlos instanziieren, und genau das macht den Fehler unauffällig.
 :::
 
-### Vererbung, sparsam eingesetzt
+::: {.quiz}
+`print(liste_von_reihen)` zeigt `[Reihe('Pumpe', [5.0]), ...]` statt der
+schönen Ausgabe aus `__str__`. Warum?
 
-Vererbung erlaubt es, eine Klasse als Spezialisierung einer anderen zu
-schreiben und nur die Unterschiede zu formulieren:
-
-```{python}
-#| label: vererbung-py
-class GewichteteMessreihe(Messreihe):
-    def __init__(self, name, werte, gewichte):
-        super().__init__(name, werte)      # der Teil, den die Basis erledigt
-        self.gewichte = gewichte
-
-    def mittel(self):                       # ueberschreibt die Basisversion
-        return sum(w * g for w, g in zip(self.werte, self.gewichte)) / sum(self.gewichte)
-
-g = GewichteteMessreihe("Drossel", [2.0, 4.0, 6.0], [1, 1, 3])
-print(g)            # __str__ und __len__ stammen aus der Basisklasse
-print(g.mittel())   # mittel kommt aus der abgeleiteten
-```
-
-Die Ausgabe zeigt beides: Die geerbten Methoden funktionieren unverändert, und
-`__str__` verwendet automatisch die überschriebene Berechnung, weil es
-`self.mittel()` aufruft.
-
-So elegant das ist, so schnell wird es überstrapaziert. Eine tiefe Hierarchie
-ist meist schwerer zu verstehen als eine flache Struktur, in der Objekte
-einander enthalten statt beerben. Die Prüffrage lautet, ob wirklich eine
-ist-ein-Beziehung vorliegt.
-
-### Der Vergleich zu R
-
-R kennt mehrere Objektsysteme. S4 kommt der Sichtweise aus Python am nächsten,
-trennt aber Klassendefinition und Methode:
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: s4-r
-setClass("Messreihe",
-         representation(name = "character", werte = "numeric"))
-
-setGeneric("mittel", function(obj) standardGeneric("mittel"))
-setMethod("mittel", "Messreihe", function(obj) mean(obj@werte))
-
-m <- new("Messreihe", name = "Drossel", werte = c(2, 4, 6))
-mittel(m)
-```
-
-## Python
-
-```{python}
-#| label: klasse2-py
-class Kurz:
-    def __init__(self, name, werte):
-        self.name, self.werte = name, werte
-
-    def mittel(self):
-        return sum(self.werte) / len(self.werte)
-
-print(Kurz("Drossel", [2, 4, 6]).mittel())
-```
-:::
-
-Der Unterschied ist mehr als Syntax. In Python gehört die Methode zum Objekt
-und wird darauf aufgerufen. In R gehört sie zur generischen Funktion, die
-anhand der Klasse ihres Arguments entscheidet, welche Umsetzung greift. Deshalb
-heisst es dort `mittel(m)` und nicht `m.mittel()`.
-
-### Wann sich der Aufwand lohnt
-
-Für die Datenarbeit gilt eine einfache Leitlinie. Der Analyseteil bleibt
-funktional und tabellenorientiert: Ein DataFrame plus Funktionen darauf ist
-klarer als eine eigene Klasse. Objektorientiert wird es dort, wo etwas
-wiederverwendbar gekapselt werden soll und einen Zustand mitführt, etwa ein
-Datenbankzugriff, ein Modellwrapper oder eine Stufe in einer
-Verarbeitungskette.
-
-::: {.note-box}
-Wer eine Klasse schreibt, deren Objekte nur einmal erzeugt und deren Methoden
-nacheinander genau einmal aufgerufen werden, hat eine Funktion umständlich
-verpackt. Das ist das häufigste Muster für unnötige Objektorientierung.
+- [x] Container zeigen ihre Elemente mit `__repr__`, nicht mit `__str__` ~
+      Richtig. `__str__` greift nur, wenn das Objekt selbst gedruckt wird.
+      Deshalb lohnt es sich, beide zu definieren.
+- [ ] `__str__` ist fehlerhaft definiert ~ Beim Drucken eines einzelnen
+      Objekts funktioniert es ja.
+- [ ] Listen können keine eigenen Objekte enthalten ~ Sie enthalten sie, sie
+      zeigen sie nur anders an.
 :::
 
 ::: {.quiz}
-Wozu dient `super().__init__(...)` in einer abgeleiteten Klasse?
+Eine Dataclass mit `order=True` hat die Felder `wert` und `einheit` (mit
+`compare=False`). Sie sortiert `Messung(1.5, "cm")` vor `Messung(3.0, "mm")`.
+Was ist das Problem?
 
-- [x] Es ruft die Initialisierung der Basisklasse auf, damit deren Attribute
-      gesetzt werden ~ Richtig. Ohne diesen Aufruf hätte das Objekt weder
-      `name` noch `werte`, und jede geerbte Methode liefe ins Leere.
-- [ ] Es macht die Klasse überhaupt erst ableitbar ~ Ableitbar ist sie durch
-      die Angabe in der Klammer der Klassendefinition.
-- [ ] Es kopiert die Methoden der Basisklasse ~ Kopiert wird nichts, die
-      Methoden werden bei Bedarf dort gesucht.
+- [ ] Die Dataclass hat einen Fehler ~ Sie tut genau, was angegeben ist:
+      nach `wert` vergleichen.
+- [x] Der erzeugte Vergleich kennt die Bedeutung der Einheit nicht ~ Richtig.
+      1.5 cm sind 15 mm. Abhilfe: in `__post_init__` in eine gemeinsame
+      Einheit umrechnen oder `__lt__` selbst schreiben.
+- [ ] `compare=False` sollte `True` sein ~ Dann würde zusätzlich die Einheit
+      als Text verglichen, was ebenso wenig fachlich richtig ist.
 :::
 
 ::: {.quiz}
-`__str__` steht nur in der Basisklasse, gibt bei einem abgeleiteten Objekt aber
-den gewichteten Mittelwert aus. Wie kommt das?
+`__str__` steht nur in der Basisklasse, gibt bei einem abgeleiteten Objekt
+aber den gewichteten Mittelwert aus. Wie kommt das?
 
-- [x] `__str__` ruft `self.mittel()` auf, und `self` ist das abgeleitete Objekt ~
-      Richtig. Python sucht die Methode dort zuerst und findet die
-      überschriebene Version. Dieses Verhalten heisst dynamische Bindung und ist
-      der eigentliche Nutzen der Vererbung.
+- [x] `__str__` ruft `self.mittel()` auf, und `self` ist das abgeleitete
+      Objekt ~ Richtig. Python sucht die Methode entlang der MRO und findet
+      zuerst die überschriebene Version. Dieses Verhalten heisst dynamische
+      Bindung.
 - [ ] Die abgeleitete Klasse hat `__str__` stillschweigend überschrieben ~ Sie
       definiert es gar nicht, sondern erbt es unverändert.
 - [ ] Es ist ein Zufall der Reihenfolge ~ Das Verhalten ist festgelegt und
       verlässlich.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+Eine Klasse `Auswertung` hat `__init__(self, df)` und eine einzige Methode
+`rechne()`, die einmal aufgerufen wird. Was ist davon zu halten?
 
-**Klasse mit Konstruktor und lesbarer Darstellung**
-
-```python
-class Messung:
-    def __init__(self, wert, einheit):
-        self.wert = wert
-        self.einheit = einheit
-
-    def __repr__(self):
-        return f"Messung({self.wert}, {self.einheit})"
-```
-
-**Objekte vergleichbar und sortierbar machen**
-
-```python
-from dataclasses import dataclass, field
-
-@dataclass(order=True)
-class Messung:
-    wert: float
-    einheit: str = field(compare=False)
-```
-
-**Von einer Klasse erben und den Konstruktor erweitern**
-
-```python
-class GewichteteMessung(Messung):
-    def __init__(self, wert, einheit, gewicht):
-        super().__init__(wert, einheit)
-        self.gewicht = gewicht
-```
-
-**Prüfen, was ein Objekt ist und kann**
-
-```python
-isinstance(m, Messung)
-hasattr(m, "wert")
-vars(m)
-```
-
-**Dasselbe in R, wo Klassen anders gedacht sind**
-
-```r
-messung <- function(wert, einheit) {
-  structure(list(wert = wert, einheit = einheit), class = "messung")
-}
-print.messung <- function(x, ...) cat("Messung:", x$wert, x$einheit, "\n")
-```
+- [ ] Gut, Klassen sind immer strukturierter als Funktionen ~ Struktur ohne
+      Zustand ist nur Verpackung.
+- [x] Eine Funktion `rechne(df)` wäre klarer ~ Richtig. Eine Klasse lohnt
+      sich, wenn mehrere Methoden einen Zustand teilen, wie beim laufenden
+      Mittelwert in Beispiel 5, nicht für einen einzelnen Rechenschritt.
+- [ ] Die Klasse ist falsch, weil `df` nicht in `__init__` gehört ~ Technisch
+      ist das zulässig.
+:::
 
 ## Verlinkte Ressourcen
 
 - [Klassen im Python-Tutorial](https://docs.python.org/3/tutorial/classes.html)
 - [Übersicht der Dunder-Methoden](https://docs.python.org/3/reference/datamodel.html)
+- [Dataclasses](https://docs.python.org/3/library/dataclasses.html)
+- [Objektsysteme in R, Advanced R](https://adv-r.hadley.nz/oo.html)
