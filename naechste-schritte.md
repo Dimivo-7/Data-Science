@@ -107,28 +107,53 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 
 ## Als Nächstes
 
-Der inhaltliche Aufbau ist abgeschlossen, und seit dem 11.09.2026 stehen
-alle 50 Seiten auf `stand: fertig`. Der Entwurfshinweis erscheint damit
-weder auf den Seiten noch als Badge auf den Übersichtskarten.
+### Laufende Arbeit: der Bereich `visualisierung/`
 
-**Der Massstab dafür:** Jede Zahl im Fliesstext ist gegen die tatsächliche
-Chunk-Ausgabe im `_freeze` geprüft — maschinell mit `pruefe-zahlen.py`, nicht
-aus dem Gedächtnis. Vor jeder weiteren Umstellung auf `fertig` das Skript
-laufen lassen.
+Der Statistikteil ist fertig (50 Seiten, alle auf `stand: fertig`, Zahlen
+maschinell gegen den Freeze geprüft). Seit dem 11.09.2026 läuft derselbe Umbau
+im Visualisierungsbereich: Theorie ausserhalb des Tabsets, `## Beispiele` mit
+fünf Beispielen in R **und** Python, sechs Verständnisfragen.
 
-Seit dem 11.09.2026 stehen **alle 50 Seiten** auf `fertig`.
+**Fertig (3 von 11):**
 
-Offen ist nur noch:
+| Seite | Beispiele |
+|---|---|
+| `wahrnehmung-kodierung.qmd` | Länge gegen Winkel, Fläche und Radius, ein Akzent gegen fünf, zwölf Serien, gemeinsame gegen getrennte Skala |
+| `irrefuehrende-darstellungen.qmd` | abgeschnittene Achse, zweite y-Achse, gewählter Ausschnitt, Simpson, Prozent gegen Prozentpunkte |
+| `diagrammtyp-waehlen.qmd` | Boxplot verbirgt die Form, Überplottung, alphabetische Sortierung, gestapelt gegen gruppiert, Balken ohne Unsicherheit |
 
-1. **Nichts Inhaltliches mehr offen.** Die Querverweise sind am 11.09.2026 in
-   beide Richtungen gelegt: zehn Seiten verweisen jetzt auf die zwei neuen
-   (`pruefverteilungen.qmd` aus Tests und Inferenz, `lineare-algebra-pca.qmd`
-   aus den multivariaten Seiten). Alle 810 internen `.qmd`-Links im Repo
-   lösen auf.
-2. **`statistik/fragen.qmd` und `verfahren-waehlen.qmd`** enthalten keinen
-   Code und damit keine prüfbaren Zahlen. Sie stehen auf `fertig`, weil es
-   dort nichts gegen eine Ausgabe zu halten gibt — nicht, weil das Skript sie
-   geprüft hätte.
+**Noch offen (8):** `zielbild-audience.qmd` (order 10), `ggplot2.qmd` (40),
+`matplotlib.qmd` (50), `seaborn-plotly.qmd` (60), `farbe.qmd` (70),
+`dashboards-interaktivitaet.qmd` (90), `fragen.qmd` (95),
+`storytelling.qmd` (100).
+
+**Der Massstab für diesen Bereich:** Bei Visualisierung ist die Ausgabe ein
+Bild, nicht eine Zahl. Trotzdem bekommt **jede Behauptung eine Kennzahl** —
+sonst bleibt die Seite Meinung. Bewährte Muster: Anteile (Akzentfläche,
+verdeckte Punkte), Winkel- und Längenverhältnisse, Verzerrungsfaktoren,
+Rangkorrelationen, Steigungen, Kreuzungszahlen.
+
+**Ideen für die offenen Seiten:**
+
+- `farbe.qmd`: sRGB nach Lab von Hand umrechnen und die paarweisen
+  Farbabstände einer Palette messen; Graustufentest als Luminanzvergleich;
+  Simulation von Farbfehlsichtigkeit
+- `ggplot2.qmd` / `matplotlib.qmd` / `seaborn-plotly.qmd`: Werkzeugseiten —
+  hier sind Beispiele eher Rezepte; der Vergleich derselben Grafik in beiden
+  Sprachen ist die eigentliche Aussage
+- `zielbild-audience.qmd` und `storytelling.qmd`: am wenigsten rechenbar;
+  Kandidaten sind der Fünf-Sekunden-Test als Zählung der Bildelemente und die
+  Frage, ob der Titel von den Daten gedeckt ist
+- `dashboards-interaktivitaet.qmd`: Ladezeit und Zahl der Klicks bis zur
+  Antwort als Kennzahlen
+
+### Danach
+
+1. **Weitere Bereiche ohne Beispiele:** `programmierung/` (10 Seiten),
+   `daten/` (6), `ki/` (10), `datenbanken/` (8), `werkzeuge/` (3). Alle
+   stehen auf `entwurf` und haben kein einziges `### Beispiel`.
+2. **`stand: fertig`** je Seite erst setzen, wenn `pruefe-zahlen.py` sie ohne
+   Befund meldet.
 
 ## Der Lehmer-Generator als Standardweg für Beispieldaten
 
