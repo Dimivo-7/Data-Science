@@ -1,94 +1,261 @@
 ---
 title: "Funktionen und Module in Python"
 description: "Eigene Funktionen, Gültigkeitsbereiche, Import und Modulstruktur."
-categories: ["Programmiergrundlagen", "Python"]
+categories: ["Programmiergrundlagen", "Python", "R"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
 stand: entwurf
 order: 20
 ---
 
-```{r}
-#| label: setup-r
-#| include: false
-set.seed(42)
-```
-
 ```{python}
 #| label: setup-python
 #| include: false
-import numpy as np
-rng = np.random.default_rng(42)
+import pathlib
+import runpy
+import sys
+import tempfile
 ```
 
 ## Kernideen
 
-- Positions-, Schlüsselwort- und Defaultparameter
-- Die Falle veränderlicher Defaultwerte
-- `*args` und `**kwargs`
-- Gültigkeitsbereiche und Namensräume
-- Funktionen als Objekte, `lambda`, `map` und `filter`
-- Modul, Import, `if __name__ == "__main__"`
+- Parameter werden über die **Position** oder den **Namen** zugeordnet;
+  Defaultwerte machen sie optional.
+- Ein Defaultwert wird **einmal bei der Definition** ausgewertet. Ein
+  veränderlicher Default wird deshalb von allen Aufrufen geteilt.
+- `*args` und `**kwargs` sammeln beliebig viele Argumente ein und packen sie
+  beim Aufruf wieder aus. Das Gegenstück in R ist `...`.
+- Gelesen wird von innen nach aussen, geschrieben wird **immer lokal**, ausser
+  mit `global` oder `nonlocal`.
+- Funktionen sind Objekte: Man kann sie übergeben, speichern und aus anderen
+  Funktionen zurückgeben.
+- Jede `.py`-Datei ist ein **Modul**. `if __name__ == "__main__":` trennt den
+  ausführbaren Teil vom importierbaren.
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** [Python-Grundlagen](python-grundlagen.qmd), insbesondere der
-Unterschied zwischen veränderlichen und unveränderlichen Objekten. Er erklärt
-die wichtigste Falle dieses Themas.
+Unterschied zwischen veränderlichen und unveränderlichen Objekten und die
+Tatsache, dass ein Name nur ein Verweis ist. Beides erklärt die wichtigste
+Falle dieses Themas. Weiter geht es mit
+[Objektorientierung in Python](python-objektorientierung.qmd).
 :::
 
 ### Wann eine Funktion fällig ist
 
-Die Faustregel ist simpel: Sobald dieselbe Folge von Schritten ein zweites Mal
-auftaucht, gehört sie in eine Funktion. Der Grund ist weniger das Tippen als
-die Korrektur. Steht eine Berechnung dreimal im Skript und stellt sich als
-falsch heraus, muss man alle drei Stellen finden. Steht sie einmal, genügt eine
-Änderung.
+Die Faustregel: Sobald dieselbe Folge von Schritten ein zweites Mal auftaucht,
+gehört sie in eine Funktion. Der Grund ist weniger das Tippen als die
+Korrektur. Steht eine Berechnung dreimal im Skript und stellt sich als falsch
+heraus, muss man alle drei Stellen finden. Steht sie einmal, genügt eine
+Änderung. Der zweite Grund ist die Benennung: Eine Funktion mit einem guten
+Namen macht aus fünf Zeilen eine, die sagt, was passiert.
 
-Der zweite Grund ist die Benennung. Eine Funktion mit einem guten Namen macht
-aus fünf Zeilen Code eine Zeile, die sagt, was passiert.
+### Aufbau einer Funktion
 
-### Parameter und ihre Reihenfolge
+```python
+def kennzahlen(werte, runden=2, einheit="mm"):
+    """Mittelwert als Text mit Einheit."""
+    mittel = sum(werte) / len(werte)
+    return f"{round(mittel, runden)} {einheit}"
+```
+
+| Teil | Bedeutung |
+|---|---|
+| `def` | leitet die Definition ein |
+| `werte` | Pflichtparameter, muss beim Aufruf angegeben werden |
+| `runden=2` | Parameter mit Defaultwert, darf fehlen |
+| Docstring | die Zeichenkette direkt unter `def`, erscheint in `help(kennzahlen)` |
+| `return` | gibt den Wert zurück; fehlt es, liefert die Funktion `None` |
+
+In R entspricht das `kennzahlen <- function(werte, runden = 2, einheit = "mm")`.
+Dort ist der **letzte ausgewertete Ausdruck** der Rückgabewert, ein `return()`
+braucht es nur für einen vorzeitigen Ausstieg.
+
+### Wie Argumente zugeordnet werden
+
+Python ordnet zuerst nach Position, dann nach Namen zu. Nach dem ersten
+benannten Argument darf kein unbenanntes mehr folgen. Ein Name, der in der
+Definition nicht vorkommt, ist ein Fehler. R ist hier grosszügiger: Es
+akzeptiert **abgekürzte** Namen, solange sie eindeutig sind (partial matching).
+Das spart Tipparbeit und ist eine Fehlerquelle, sobald eine Funktion einen
+zweiten Parameter mit demselben Anfang bekommt.
+
+### Die Falle mit veränderlichen Defaultwerten
+
+Der Defaultwert wird beim Ausführen der `def`-Zeile erzeugt und an die
+Funktion gehängt, nicht bei jedem Aufruf neu. Solange er unveränderlich ist
+(Zahl, Text, Tupel, `None`), merkt man davon nichts. Ist er eine Liste oder ein
+Dictionary, teilen sich alle Aufrufe dasselbe Objekt. Der richtige Weg
+verwendet `None` als Signal und legt das Objekt im Funktionsrumpf an. R kennt
+die Falle nicht, weil dort Defaults bei jedem Aufruf neu ausgewertet werden.
+
+### Namensräume
+
+Python sucht einen Namen in vier Schichten, von innen nach aussen: **L**okal,
+**E**inschliessende Funktion, **G**lobal (Modul), **B**uilt-in. Das heisst
+LEGB-Regel; R nennt dasselbe Prinzip lexical scoping.
+
+Lesen folgt dieser Kette. **Schreiben** legt ohne ausdrückliche Erklärung
+immer einen lokalen Namen an. Wer einen äusseren Namen verändern will,
+erklärt ihn mit `global` (Modulebene) oder `nonlocal` (einschliessende
+Funktion). In R übernimmt `<<-` beide Rollen.
+
+### Funktionen sind Objekte
+
+Eine Funktion lässt sich einer Variablen zuweisen, an eine andere Funktion
+übergeben und aus einer zurückgeben. Darauf beruhen `map`, `filter` und das
+Argument `key` beim Sortieren. `lambda` ist eine Kurzschreibweise für eine
+namenlose Funktion mit einem einzigen Ausdruck; für alles Längere ist eine
+benannte Funktion lesbarer, und für die meisten `map`-Aufrufe ist eine
+Comprehension die klarere Wahl.
+
+### Vom Skript zum Modul
+
+Sobald eine Datei wächst, lohnt die Aufteilung. Jede `.py`-Datei ist ein Modul
+und kann importiert werden. Beim Import wird die Datei **einmal von oben nach
+unten ausgeführt**; Definitionen entstehen, aber auch jeder Aufruf auf
+oberster Ebene läuft. Der Block
+
+```python
+if __name__ == "__main__":
+    main()
+```
+
+schützt davor: `__name__` ist `"__main__"`, wenn die Datei direkt gestartet
+wird, und der Modulname, wenn sie importiert wird.
+
+::: {.note-box}
+Für die Datenarbeit hat sich diese Aufteilung bewährt: Funktionen in ein Modul,
+das versioniert und getestet wird, und ein Notebook oder Quarto-Dokument, das
+diese Funktionen aufruft und die Erzählung liefert. So bleibt die Logik
+prüfbar und das Dokument lesbar.
+:::
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| Funktion mit Default | `f <- function(x, k = 2) x * k` | `def f(x, k=2): return x * k` |
+| beliebig viele Argumente | `function(...)` | `def f(*args, **kwargs):` |
+| Argumente aus einer Liste übergeben | `do.call(f, liste)` | `f(*liste)`, `f(**dictionary)` |
+| namenlose Funktion | `function(x) x^2`, kurz `\(x) x^2` | `lambda x: x ** 2` |
+| auf jedes Element anwenden | `sapply(x, f)` | `[f(v) for v in x]`, `map(f, x)` |
+| äusseren Namen ändern | `<<-` | `global`, `nonlocal` |
+| eigenen Code laden | `source("werkzeuge.R")` | `from werkzeuge import f` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Position, Name und Default
+
+#### Frage und Datenlage
+
+Drei Messwerte `12.34, 15.67, 11.02` sollen als Mittelwert mit Einheit
+ausgegeben werden, einmal mit allen Defaults, dann mit geänderter Rundung,
+geänderter Einheit, vertauschter Reihenfolge und einem abgekürzten Namen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-fm-r
+kennzahlen <- function(werte, runden = 2, einheit = "mm") {
+  paste(round(mean(werte), runden), einheit)
+}
+w <- c(12.34, 15.67, 11.02)
+
+kennzahlen(w)
+kennzahlen(w, 1)
+kennzahlen(w, einheit = "cm")
+kennzahlen(einheit = "cm", werte = w, runden = 0)
+kennzahlen(w, ein = "cm")      # abgekuerzter Name wird akzeptiert
+```
+
+##### Python
 
 ```{python}
-#| label: parameter-py
+#| label: b1-fm-py
 def kennzahlen(werte, runden=2, einheit="mm"):
     mittel = sum(werte) / len(werte)
     return f"{round(mittel, runden)} {einheit}"
 
-print(kennzahlen([12.34, 15.67, 11.02]))          # nur das Noetige
-print(kennzahlen([12.34, 15.67, 11.02], 1))       # nach Position
-print(kennzahlen([12.34, 15.67, 11.02], einheit="cm"))   # nach Name
+w = [12.34, 15.67, 11.02]
+
+print(kennzahlen(w))
+print(kennzahlen(w, 1))
+print(kennzahlen(w, einheit="cm"))
+print(kennzahlen(einheit="cm", werte=w, runden=0))
+try:
+    kennzahlen(w, ein="cm")
+except TypeError as fehler:
+    print(type(fehler).__name__)
 ```
 
-Positionsparameter werden über die Reihenfolge zugeordnet, Schlüsselwort-
-parameter über den Namen. Der Aufruf mit Namen ist bei mehr als zwei Argumenten
-fast immer die bessere Wahl, weil er sich ohne Blick auf die Definition lesen
-lässt.
+:::
 
-### Die Falle mit veränderlichen Defaultwerten
+#### Output Zeile für Zeile
 
-Diese Stelle kostet erfahrungsgemäss einmal im Leben einen halben Tag. Der
-Defaultwert wird **einmal** bei der Definition ausgewertet, nicht bei jedem
-Aufruf. Ist er veränderlich, teilen sich alle Aufrufe dasselbe Objekt:
+| Aufruf | Python | R | Erklärung |
+|---|---|---|---|
+| alle Defaults | `13.01 mm` | `13.01 mm` | Mittelwert 13.01, zwei Stellen, Einheit mm. |
+| `runden` als zweite Position | `13.0 mm` | **`13 mm`** | Nach Position zugeordnet. Python schreibt eine gerundete Gleitkommazahl als `13.0`, R lässt die Null weg. |
+| `einheit` nach Name | `13.01 cm` | `13.01 cm` | `runden` bleibt beim Default, obwohl es in der Definition davor steht. |
+| alles benannt, Reihenfolge vertauscht | `13.0 cm` | `13 cm` | Mit Namen spielt die Reihenfolge keine Rolle. |
+| `ein="cm"` | **`TypeError`** | **`13.01 cm`** | Python kennt keinen Parameter `ein`. R ergänzt den eindeutigen Anfang zu `einheit`. |
+
+#### Interpretation und Ergebnissatz
+
+Benannte Argumente machen einen Aufruf ohne Blick auf die Definition lesbar
+und unabhängig von der Reihenfolge. Bei mehr als zwei Argumenten sind sie
+fast immer die bessere Wahl. Das partial matching in R ist bequem, aber
+zerbrechlich: Bekäme die Funktion einen Parameter `einzeln`, wäre `ein`
+mehrdeutig und der Aufruf bräche ab.
+
+> Der Mittelwert der drei Messwerte beträgt 13.01 mm. Ein unbekannter
+> Argumentname wie `ein` löst in Python einen `TypeError` aus, während R ihn
+> stillschweigend zu `einheit` ergänzt.
+
+### Beispiel 2: Der geteilte Defaultwert
+
+#### Frage und Datenlage
+
+Eine Funktion soll einen Wert an eine Liste anhängen und die Liste
+zurückgeben. Fehlt die Liste, soll eine neue beginnen. Was geschieht bei drei
+Aufrufen hintereinander?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-fm-r
+sammeln <- function(wert, bisher = c()) c(bisher, wert)
+
+sammeln(1)
+sammeln(2)
+sammeln(3)
+```
+
+##### Python
 
 ```{python}
-#| label: default-falle-py
+#| label: b2-fm-py
 def sammeln_falsch(wert, bisher=[]):
     bisher.append(wert)
     return bisher
 
 print(sammeln_falsch(1))
-print(sammeln_falsch(2))     # erwartet [2], kommt aber [1, 2]
+print(sammeln_falsch(2))
 print(sammeln_falsch(3))
-```
+print(sammeln_falsch.__defaults__)     # dort haengt die geteilte Liste
 
-Der richtige Weg verwendet `None` als Signal und legt das Objekt im
-Funktionsrumpf an:
-
-```{python}
-#| label: default-richtig-py
 def sammeln(wert, bisher=None):
     if bisher is None:
         bisher = []
@@ -99,37 +266,391 @@ print(sammeln(1))
 print(sammeln(2))
 ```
 
-::: {.note-box}
-Merkregel: Als Defaultwert taugen nur unveränderliche Objekte, also Zahlen,
-Zeichenketten, Tupel, `True`, `False` und `None`. Alles andere gehört in den
-Rumpf.
 :::
 
-### Beliebig viele Argumente
+#### Output Zeile für Zeile
 
-`*args` sammelt weitere Positionsargumente in einem Tupel, `**kwargs` weitere
-Schlüsselwortargumente in einem Dictionary. Gebraucht wird das vor allem beim
-Durchreichen an eine andere Funktion:
+| Aufruf | erwartet | Python falsch | Python richtig | R |
+|---|---|---|---|---|
+| erster | `[1]` | `[1]` | `[1]` | `1` |
+| zweiter | `[2]` | **`[1, 2]`** | `[2]` | `2` |
+| dritter | `[3]` | **`[1, 2, 3]`** | | `3` |
+| `__defaults__` | | `([1, 2, 3],)` | | |
+
+`__defaults__` ist das Tupel der Defaultwerte, das an der Funktion hängt. Nach
+drei Aufrufen steht darin die gefüllte Liste: Der Default ist kein Rezept für
+eine neue Liste, sondern **eine** Liste, die bei jedem Aufruf weiterwächst.
+
+#### Interpretation und Ergebnissatz
+
+Der Fehler ist tückisch, weil der erste Aufruf richtig aussieht und Tests mit
+einem einzigen Aufruf ihn nie finden. Die Merkregel lautet: Als Defaultwert
+taugen nur unveränderliche Objekte; alles andere entsteht im Rumpf nach dem
+Muster `if bisher is None: bisher = []`. Dieselbe Falle gibt es bei
+veränderlichen Klassenattributen, siehe
+[Objektorientierung](python-objektorientierung.qmd).
+
+> Mit dem Default `bisher=[]` liefert der dritte Aufruf `[1, 2, 3]` statt
+> `[3]`, weil die Liste bei der Definition einmal erzeugt und dann geteilt
+> wird. Mit `None` als Default und einer neuen Liste im Rumpf liefert jeder
+> Aufruf eine eigene Liste; in R tritt das Problem nicht auf.
+
+### Beispiel 3: Beliebig viele Argumente
+
+#### Frage und Datenlage
+
+Eine Hilfsfunktion soll eine beliebige andere Funktion aufrufen und vorher
+protokollieren, womit. Dazu eine Summe über beliebig viele Zahlen und der
+umgekehrte Weg: Argumente aus einer Liste und einem Dictionary übergeben.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-fm-r
+protokolliert <- function(funktion, ...) {
+  argumente <- list(...)
+  cat("rufe mit", length(argumente), "Argumenten:", names(argumente), "\n")
+  funktion(...)
+}
+protokolliert(kennzahlen, c(1, 2, 3), einheit = "kg")
+
+summe_aller <- function(...) sum(...)
+c(summe_aller(1, 2, 3), summe_aller())
+
+optionen <- list(runden = 0, einheit = "g")
+do.call(kennzahlen, c(list(c(1.26, 2.5)), optionen))
+```
+
+##### Python
 
 ```{python}
-#| label: args-py
+#| label: b3-fm-py
 def protokolliert(funktion, *args, **kwargs):
     print(f"rufe {funktion.__name__} mit {args} und {kwargs}")
     return funktion(*args, **kwargs)
 
-protokolliert(kennzahlen, [1.0, 2.0, 3.0], einheit="kg")
+print(protokolliert(kennzahlen, [1.0, 2.0, 3.0], einheit="kg"))
+
+def summe_aller(*zahlen):
+    return sum(zahlen)
+
+print(summe_aller(1, 2, 3), summe_aller())
+
+teile = [4, 5]
+print(summe_aller(*teile))            # Liste auspacken
+optionen = {"runden": 0, "einheit": "g"}
+print(kennzahlen([1.26, 2.5], **optionen))   # Dictionary auspacken
 ```
 
-Der Stern erfüllt hier zwei Rollen: In der Definition sammelt er ein, im Aufruf
-packt er wieder aus.
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Python | R | Erklärung |
+|---|---|---|---|
+| Protokoll | `([1.0, 2.0, 3.0],)` und `{'einheit': 'kg'}` | 2 Argumente, Namen `""` und `einheit` | Python trennt in ein Tupel der unbenannten und ein Dictionary der benannten Argumente. R hält beides in einer Liste, unbenannte haben einen leeren Namen. |
+| Ergebnis | `2.0 kg` | `2 kg` | Die Argumente kommen unverändert bei `kennzahlen` an. |
+| Summe von 1, 2, 3 | 6 | 6 | |
+| Summe ohne Argumente | 0 | 0 | Leeres Tupel beziehungsweise leere Argumentliste; die Summe von nichts ist 0. |
+| `summe_aller(*teile)` | 9 | | Der Stern im **Aufruf** packt die Liste in einzelne Argumente aus. |
+| `**optionen` | `2.0 g` | `2 g` (über `do.call`) | Mittelwert 1.88, auf null Stellen gerundet. R braucht `do.call`, um eine Liste als Argumente zu übergeben. |
+
+#### Interpretation und Ergebnissatz
+
+Der Stern hat zwei Rollen: In der **Definition** sammelt er ein, im **Aufruf**
+packt er aus. Gerechtfertigt ist `*args` beim Durchreichen an eine andere
+Funktion, deren Signatur man nicht wiederholen will, und bei beliebig vielen
+gleichartigen Werten. Verdächtig wird es, wenn damit verdeckt wird, dass eine
+Funktion zu viele verschiedene Dinge tut.
+
+> `protokolliert` erhält ein unbenanntes Argument im Tupel `args` und die
+> Einheit im Dictionary `kwargs` und reicht beide unverändert weiter; das
+> Ergebnis ist `2.0 kg`. Mit `*` und `**` im Aufruf lassen sich umgekehrt
+> Listen und Dictionaries als Argumente übergeben.
+
+### Beispiel 4: Namensräume und Closures
+
+#### Frage und Datenlage
+
+Ein globaler Zähler steht auf 0. Welche Funktionen können ihn lesen, welche
+verändern? Und wie baut man einen Zähler, der seinen Stand zwischen zwei
+Aufrufen behält, ohne einen globalen Namen zu benutzen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-fm-r
+zaehler <- 0
+liest_nur <- function() zaehler + 1
+schreibt_lokal <- function() { zaehler <- 99; zaehler }
+erhoehe_lokal <- function() { zaehler <- zaehler + 1; zaehler }
+c(liest_nur(), schreibt_lokal(), erhoehe_lokal(), zaehler)
+
+erhoehe_global <- function() zaehler <<- zaehler + 1
+erhoehe_global()
+zaehler
+
+zaehler_fabrik <- function() {
+  stand <- 0
+  function() { stand <<- stand + 1; stand }
+}
+z <- zaehler_fabrik()
+c(z(), z(), z())
+z2 <- zaehler_fabrik()
+z2()
+```
+
+##### Python
+
+```{python}
+#| label: b4-fm-py
+zaehler = 0
+
+def liest_nur():
+    return zaehler + 1
+
+def schreibt_lokal():
+    zaehler = 99
+    return zaehler
+
+print([liest_nur(), schreibt_lokal(), zaehler])
+
+def erhoehe_falsch():
+    zaehler += 1          # liest und schreibt: Python haelt zaehler fuer lokal
+    return zaehler
+
+try:
+    erhoehe_falsch()
+except UnboundLocalError as fehler:
+    print(type(fehler).__name__)
+
+def erhoehe_global():
+    global zaehler
+    zaehler += 1
+
+erhoehe_global()
+print(zaehler)
+
+def zaehler_fabrik():
+    stand = 0
+    def weiter():
+        nonlocal stand
+        stand += 1
+        return stand
+    return weiter
+
+z = zaehler_fabrik()
+print([z(), z(), z()])
+z2 = zaehler_fabrik()
+print(z2())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Funktion | Python | R | Erklärung |
+|---|---|---|---|
+| `liest_nur()` | 1 | 1 | Der äussere Zähler wird gelesen. |
+| `schreibt_lokal()` | 99 | 99 | Die Zuweisung legt einen **neuen lokalen** Namen an. |
+| `zaehler` danach | 0 | 0 | Der äussere Zähler ist unverändert. |
+| `zaehler += 1` ohne Erklärung | **`UnboundLocalError`** | **1**, äusserer bleibt 0 | Python entscheidet beim Übersetzen: Wird ein Name in der Funktion zugewiesen, ist er dort lokal, auch beim Lesen davor. R liest den äusseren Wert und legt dann einen lokalen an. |
+| mit `global` bzw. `<<-` | 1 | 1 | Jetzt wird der äussere Zähler verändert. |
+| `z()` dreimal | `[1, 2, 3]` | `1 2 3` | Die innere Funktion behält `stand` aus ihrer Entstehungsumgebung. |
+| neuer Zähler `z2()` | 1 | 1 | Jeder Aufruf der Fabrik erzeugt einen eigenen Stand. |
+
+Die innere Funktion samt der Umgebung, aus der sie ihre Namen bezieht, heisst
+**Closure**. Sie ist die saubere Alternative zum globalen Zähler: Der Zustand
+ist gekapselt, und zwei Zähler kommen sich nicht in die Quere.
+
+#### Interpretation und Ergebnissatz
+
+Beide Sprachen lesen von innen nach aussen und schreiben lokal. Der
+Unterschied liegt im Mischfall: R erlaubt, einen äusseren Wert zu lesen und
+unter demselben Namen lokal abzulegen, Python verbietet es mit einem
+`UnboundLocalError`. Versteckte Seiteneffekte sind die häufigste Ursache
+schwer auffindbarer Fehler; beide Sprachen machen sie zum Sonderfall, der
+ausdrücklich erklärt werden muss.
+
+> Ohne `global` legt eine Zuweisung in der Funktion einen lokalen Namen an,
+> und der äussere Zähler bleibt bei 0; `zaehler += 1` scheitert in Python mit
+> einem `UnboundLocalError`. Eine Closure mit `nonlocal` zählt 1, 2, 3 und
+> hält ihren Stand getrennt von jedem weiteren Zähler.
+
+### Beispiel 5: Funktionen als Argumente
+
+#### Frage und Datenlage
+
+Drei Messreihen (Drossel `2, 4, 6`, Ventil `1.6, 1.7, 9.3`, Pumpe `5`). Gesucht
+sind je Reihe Mittelwert und Anzahl, die Reihen sortiert nach Mittelwert, nur
+die Reihen mit mehr als einem Wert, und für das Ventil Minimum, Maximum und
+Mittelwert in einem Durchgang.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-fm-r
+messungen <- list(Drossel = c(2, 4, 6), Ventil = c(1.6, 1.7, 9.3), Pumpe = 5)
+
+sapply(messungen, mean)
+sapply(messungen, length)
+names(sort(sapply(messungen, mean)))
+names(Filter(function(w) length(w) > 1, messungen))
+sapply(list(min = min, max = max, mittel = mean),
+       function(f) f(messungen$Ventil))
+```
+
+##### Python
+
+```{python}
+#| label: b5-fm-py
+messungen = {"Drossel": [2.0, 4.0, 6.0], "Ventil": [1.6, 1.7, 9.3],
+             "Pumpe": [5.0]}
+
+def mittel(werte):
+    return sum(werte) / len(werte)
+
+print({name: round(mittel(werte), 2) for name, werte in messungen.items()})
+print(list(map(len, messungen.values())))
+print(sorted(messungen, key=lambda name: mittel(messungen[name])))
+print(list(filter(lambda name: len(messungen[name]) > 1, messungen)))
+print([round(f(messungen["Ventil"]), 2) for f in (min, max, mittel)])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Aufgabe | Python | R | Ergebnis |
+|---|---|---|---|
+| Mittelwert je Reihe | Dictionary-Comprehension | `sapply(messungen, mean)` | Drossel 4.0, Ventil 4.2, Pumpe 5.0 |
+| Anzahl je Reihe | `map(len, ...)` | `sapply(messungen, length)` | 3, 3, 1 |
+| nach Mittelwert sortiert | `sorted(..., key=...)` | `sort()` und `names()` | Drossel, Ventil, Pumpe |
+| mehr als ein Wert | `filter(lambda ...)` | `Filter(function ...)` | Drossel, Ventil |
+| drei Funktionen auf eine Reihe | Schleife über `(min, max, mittel)` | `sapply` über eine Liste von Funktionen | 1.6, 9.3, 4.2 |
+
+`key=` erwartet eine Funktion, die aus jedem Element den Sortierwert macht.
+Hier ist das Element der Name der Reihe, und die Lambda-Funktion schlägt dazu
+den Mittelwert nach. `map` und `filter` liefern in Python keine Liste, sondern
+einen Iterator; erst `list()` holt die Werte ab.
+
+#### Interpretation und Ergebnissatz
+
+Die letzte Zeile zeigt den Kern: `min`, `max` und `mittel` stehen in einem
+Tupel wie gewöhnliche Werte, und die Schleife ruft jede davon auf. Das Ventil
+hat mit 1.6 bis 9.3 die grösste Spannweite, aber mit 4.2 nur den mittleren
+Mittelwert, ein Hinweis auf einen Ausreisser, den ein einzelner Mittelwert
+verbergen würde.
+
+> Nach Mittelwert sortiert stehen die Reihen in der Folge Drossel (4.0),
+> Ventil (4.2), Pumpe (5.0); nur Drossel und Ventil haben mehr als einen
+> Wert. Weil Funktionen Objekte sind, lassen sich Minimum (1.6), Maximum (9.3)
+> und Mittelwert (4.2) des Ventils in einem Durchgang berechnen.
+
+### Beispiel 6: Ein eigenes Modul importieren
+
+#### Frage und Datenlage
+
+Eine Datei `kennzahlen_modul.py` enthält eine Funktion, eine Ausgabe auf
+oberster Ebene und einen Testaufruf im `__main__`-Block. Was läuft beim
+Import, was beim zweiten Import, was beim direkten Start? Die Datei wird in
+einem temporären Ordner angelegt, damit das Beispiel ohne Vorbereitung läuft.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b6-fm-r
+datei <- tempfile(fileext = ".R")
+writeLines(c("mittel_modul <- function(werte) sum(werte) / length(werte)",
+             "cat('Datei wird ausgefuehrt\\n')"), datei)
+
+modul <- new.env()
+sys.source(datei, envir = modul)
+modul$mittel_modul(c(2, 4, 6))
+exists("mittel_modul")       # nicht im globalen Namensraum gelandet
+```
+
+##### Python
+
+```{python}
+#| label: b6-fm-py
+ordner = pathlib.Path(tempfile.mkdtemp())
+pfad = ordner / "kennzahlen_modul.py"
+pfad.write_text(
+    "def mittel(werte):\n"
+    "    return sum(werte) / len(werte)\n\n"
+    "print('Modul wird ausgefuehrt, __name__ =', __name__)\n\n"
+    "if __name__ == '__main__':\n"
+    "    print('Testaufruf:', mittel([1, 2, 3]))\n",
+    encoding="utf-8")
+sys.path.insert(0, str(ordner))
+
+import kennzahlen_modul                  # erster Import
+print(kennzahlen_modul.mittel([2, 4, 6]))
+
+import kennzahlen_modul                  # zweiter Import
+print("zweiter Import ohne Ausgabe")
+
+_ = runpy.run_path(str(pfad), run_name="__main__")   # wie ein direkter Start
+print(__name__)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Ausgabe | Erklärung |
+|---|---|---|
+| erster Import | `Modul wird ausgefuehrt, __name__ = kennzahlen_modul` | Die Datei läuft einmal ganz durch. `__name__` ist der Modulname, der Testaufruf im `__main__`-Block bleibt aus. |
+| Funktion aus dem Modul | `4.0` | Zugriff über `modul.funktion`. |
+| zweiter Import | nichts | Python merkt sich geladene Module in `sys.modules` und führt die Datei nicht erneut aus. Wer eine geänderte Datei neu laden will, braucht `importlib.reload`. |
+| direkter Start | `__name__ = __main__` und `Testaufruf: 2.0` | Jetzt ist die Datei das Hauptprogramm, und der geschützte Block läuft. |
+| `__name__` im Dokument | `__main__` | Auch der Code dieser Seite läuft als Hauptprogramm, deshalb steht hier `__main__`. |
+| R: `sys.source` | `Datei wird ausgefuehrt` | Auch in R läuft die Datei beim Laden ganz durch. |
+| R: Funktion aus der Umgebung | `4` | `sys.source` führt die Datei in einer eigenen Umgebung aus, die als Modul dient. |
+| R: `exists("mittel_modul")` | `FALSE` | Die Funktion ist nicht in den globalen Namensraum gelangt. Ein schlichtes `source()` hätte sie dort abgelegt. |
+
+#### Interpretation und Ergebnissatz
+
+Der Import ist kein reines "Definitionen holen": Er führt die Datei aus.
+Alles, was auf oberster Ebene steht, läuft mit, einmal je Sitzung. Genau
+deshalb gehören Testaufrufe, Dateizugriffe und Ausgaben in den
+`__main__`-Block oder in eine Funktion `main()`. R hat keinen solchen
+Mechanismus; dort trennt man Funktionsdateien und Auswertungsskripte, oder
+man schreibt ein Paket.
+
+> Beim ersten Import lief die Datei einmal durch und meldete `__name__ =
+> kennzahlen_modul`, der Testaufruf blieb aus; der zweite Import blieb stumm.
+> Erst beim direkten Start war `__name__` gleich `__main__`, und der
+> geschützte Block gab `Testaufruf: 2.0` aus.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Eine Funktion ist als `def sammeln(wert, bisher=[])` definiert. Der erste
 Aufruf liefert `[1]`, der zweite `[1, 2]`. Warum?
 
 - [x] Der Defaultwert wurde einmal bei der Definition erzeugt und wird geteilt ~
-      Richtig. Die leere Liste hängt seither an der Funktion, und jeder Aufruf
-      ohne zweites Argument hängt daran weiter an.
+      Richtig. Die leere Liste hängt seither an der Funktion, sichtbar in
+      `__defaults__`, und jeder Aufruf ohne zweites Argument hängt daran an.
 - [ ] Python merkt sich die vorherigen Aufrufe ~ Einen solchen Mechanismus gibt
       es nicht. Es liegt allein am geteilten Objekt.
 - [ ] Die Funktion ruft sich selbst auf ~ Jeder Aufruf ist unabhängig, nur das
@@ -149,134 +670,18 @@ Wann ist `*args` gerechtfertigt und wann ein Zeichen für unklares Design?
       eine Verdopplung, die bei jeder Änderung nachgezogen werden müsste.
 :::
 
-### Namensräume
+::: {.quiz}
+In einer Funktion steht `zaehler += 1`, und `zaehler` ist nur global
+definiert. Python meldet `UnboundLocalError`. Warum?
 
-Innerhalb einer Funktion angelegte Namen sind lokal und verschwinden mit dem
-Aufruf. Gelesen wird von innen nach aussen; geschrieben wird ohne
-ausdrückliche Erklärung immer lokal.
-
-```{python}
-#| label: namensraum-py
-zaehler = 0
-
-def liest_nur():
-    return zaehler + 1        # aeusserer Wert wird gelesen
-
-def schreibt_lokal():
-    zaehler = 99              # legt einen NEUEN lokalen Namen an
-    return zaehler
-
-print(liest_nur(), schreibt_lokal(), zaehler)
-```
-
-Der äussere Zähler bleibt unverändert, obwohl die zweite Funktion ihm scheinbar
-etwas zuweist. Das ist gewollt: Versteckte Seiteneffekte sind die häufigste
-Ursache schwer auffindbarer Fehler, und Python macht sie zum Sonderfall statt
-zum Normalfall.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: namensraum-r
-zaehler <- 0
-
-liest_nur <- function() zaehler + 1
-schreibt_lokal <- function() { zaehler <- 99; zaehler }
-
-c(liest_nur(), schreibt_lokal(), zaehler)
-```
-
-## Python
-
-```{python}
-#| label: namensraum2-py
-zaehler = 0
-
-def liest_nur():
-    return zaehler + 1
-
-def schreibt_lokal():
-    zaehler = 99
-    return zaehler
-
-print([liest_nur(), schreibt_lokal(), zaehler])
-```
-:::
-
-Beide Sprachen verhalten sich hier gleich. In R heisst der Mechanismus lexical
-scoping, in Python LEGB-Regel, gemeint ist dasselbe.
-
-### Funktionen sind Objekte
-
-Eine Funktion lässt sich einer Variablen zuweisen, an eine andere Funktion
-übergeben und aus einer zurückgeben. Darauf beruhen `map`, `filter` und das
-Argument `key` beim Sortieren.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: funktional-r
-messungen <- list(c(1, 2, 3), c(10, 20), c(5))
-
-sapply(messungen, mean)                 # Funktion als Argument
-sapply(messungen, length)
-
-leute <- list(list(name = "Ada", jahr = 1815),
-              list(name = "Alan", jahr = 1912))
-sapply(leute, function(p) p$name)
-```
-
-## Python
-
-```{python}
-#| label: funktional-py
-messungen = [[1, 2, 3], [10, 20], [5]]
-
-print([sum(m) / len(m) for m in messungen])
-print(list(map(len, messungen)))
-
-leute = [{"name": "Ada", "jahr": 1815}, {"name": "Alan", "jahr": 1912}]
-print(sorted(leute, key=lambda p: p["jahr"])[0]["name"])
-```
-:::
-
-`lambda` ist eine Kurzschreibweise für eine namenlose Funktion mit einem
-einzigen Ausdruck. Für alles Längere ist eine benannte Funktion lesbarer, und
-für die meisten `map`-Aufrufe ist eine Comprehension die klarere Wahl.
-
-### Vom Skript zum Modul
-
-Sobald eine Datei wächst, lohnt die Aufteilung. Jede `.py`-Datei ist ein Modul
-und kann importiert werden. Der Block am Ende trennt den ausführbaren Teil vom
-importierbaren:
-
-```python
-# datei: kennzahlen.py
-
-def mittel(werte):
-    return sum(werte) / len(werte)
-
-if __name__ == "__main__":
-    # laeuft nur beim direkten Aufruf, nicht beim Import
-    print(mittel([1, 2, 3]))
-```
-
-Ohne diesen Block würde beim Import der Testcode mitlaufen. Der Name
-`__main__` wird nur gesetzt, wenn die Datei direkt gestartet wird; beim Import
-steht dort der Modulname.
-
-```{python}
-#| label: name-py
-print(__name__)      # in diesem Dokument nicht "__main__"
-```
-
-::: {.note-box}
-Für die Datenarbeit hat sich diese Aufteilung bewährt: Funktionen in ein Modul,
-das versioniert und getestet wird, und ein Notebook, das diese Funktionen
-aufruft und die Erzählung liefert. So bleibt die Logik prüfbar und das
-Dokument lesbar.
+- [x] Weil `zaehler` in der Funktion zugewiesen wird und damit lokal ist, auch
+      beim Lesen davor ~ Richtig. Python entscheidet für die ganze Funktion,
+      ob ein Name lokal ist. Abhilfe: `global zaehler`, oder besser den Wert
+      als Argument übergeben und zurückgeben.
+- [ ] Weil globale Namen in Funktionen nicht lesbar sind ~ Lesen geht, wie
+      `liest_nur()` in Beispiel 4 zeigt.
+- [ ] Weil `+=` für ganze Zahlen nicht definiert ist ~ Ist es; das Problem ist
+      der Gültigkeitsbereich.
 :::
 
 ::: {.quiz}
@@ -284,16 +689,30 @@ Ein Skript enthält Testaufrufe am Dateiende und wird von einer anderen Datei
 importiert. Was passiert ohne `if __name__ == "__main__"`?
 
 - [x] Die Testaufrufe laufen beim Import mit ~ Richtig. Beim Import wird der
-      gesamte Dateiinhalt ausgeführt. Das kostet Zeit, erzeugt unerwünschte
-      Ausgaben und kann im schlimmsten Fall Dateien überschreiben.
+      gesamte Dateiinhalt ausgeführt, wie die Ausgabe in Beispiel 6 zeigt.
+      Das kostet Zeit, erzeugt unerwünschte Ausgaben und kann im schlimmsten
+      Fall Dateien überschreiben.
 - [ ] Nichts, Funktionen werden beim Import nur definiert ~ Definitionen ja,
       aber Aufrufe auf oberster Ebene werden ausgeführt.
 - [ ] Der Import schlägt fehl ~ Er gelingt, nur eben mit Nebenwirkungen.
 :::
 
 ::: {.quiz}
-Warum ist `sorted(leute, key=lambda p: p["jahr"])` einer eigenen Sortierschleife
-vorzuziehen?
+Eine Moduldatei wird geändert und im laufenden Notebook erneut mit `import`
+geladen. Die Änderung wirkt nicht. Warum?
+
+- [ ] Die Datei wurde nicht gespeichert ~ Möglich, aber nicht der typische
+      Grund.
+- [x] Ein zweiter `import` lädt aus dem Zwischenspeicher `sys.modules` und
+      liest die Datei nicht neu ~ Richtig. Abhilfe ist `importlib.reload(modul)`
+      oder ein Neustart des Kernels, der ohnehin der sicherere Weg ist.
+- [ ] Python erlaubt nur einen Import pro Sitzung ~ Weitere Importe sind
+      erlaubt, sie tun nur nichts.
+:::
+
+::: {.quiz}
+Warum ist `sorted(leute, key=lambda p: p["jahr"])` einer eigenen
+Sortierschleife vorzuziehen?
 
 - [ ] Weil Lambda-Ausdrücke schneller sind ~ Der Gewinn liegt nicht am Lambda,
       sondern an der geprüften Sortierfunktion dahinter.
@@ -304,87 +723,8 @@ vorzuziehen?
       hier unnötig.
 :::
 
-## Typische Aufgaben
-
-**Funktion mit optionalem Argument**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-skaliere <- function(x, faktor = 2) x * faktor
-```
-
-## Python
-
-```python
-def skaliere(x, faktor=2):
-    return x * faktor
-```
-
-:::
-
-**Beliebig viele Argumente entgegennehmen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-protokolliere <- function(...) print(list(...))
-```
-
-## Python
-
-```python
-def protokolliere(*werte, **optionen):
-    print(werte, optionen)
-```
-
-:::
-
-**Den veränderlichen Defaultwert vermeiden**
-
-```python
-def anhaengen(wert, ziel=None):
-    if ziel is None:
-        ziel = []
-    ziel.append(wert)
-    return ziel
-```
-
-**Eine Funktion aus eigenem Code verwenden**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-source("werkzeuge.R")
-skaliere(3)
-```
-
-## Python
-
-```python
-from werkzeuge import skaliere
-skaliere(3)
-```
-
-:::
-
-**Ein Skript sowohl ausführbar als auch importierbar halten**
-
-```python
-def main():
-    ...
-
-if __name__ == "__main__":
-    main()
-```
-
 ## Verlinkte Ressourcen
 
 - [Funktionen im Python-Tutorial](https://docs.python.org/3/tutorial/controlflow.html)
 - [Module im Python-Tutorial](https://docs.python.org/3/tutorial/modules.html)
+- [Gültigkeitsbereiche und Namensräume](https://docs.python.org/3/tutorial/classes.html#python-scopes-and-namespaces)
