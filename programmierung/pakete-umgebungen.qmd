@@ -8,299 +8,464 @@ stand: entwurf
 order: 80
 ---
 
-```{r}
-#| label: setup-r
-#| include: false
-set.seed(42)
-```
-
 ```{python}
 #| label: setup-python
 #| include: false
-import sys, importlib.metadata
+import importlib.metadata as md
+import importlib.util
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 ```
 
 ## Kernideen
 
-- Modul, Paket, Distribution
-- Import und Namensauflösung
-- Paketquellen: PyPI, conda-Kanäle
-- Virtuelle Umgebung als Projektisolation
-- Abhängigkeiten festhalten und wiederherstellen
+- **Modul** ist eine Datei, **Paket** ein Verzeichnis von Modulen,
+  **Distribution** das, was installiert wird. Installations- und Importname
+  können verschieden sein: `scikit-learn` gegen `sklearn`.
+- Python sucht Module in der Reihenfolge von `sys.path`, und der Ordner des
+  Skripts steht vorn. Eine eigene `random.py` **verdeckt** die
+  Standardbibliothek. In R verdeckt das zuletzt geladene Paket gleichnamige
+  Funktionen.
+- Eine **virtuelle Umgebung** ist ein eigenes Verzeichnis mit eigenem
+  Interpreter und eigenen Paketen für genau ein Projekt.
+- Versionen werden **festgehalten** (`requirements.txt`, `renv.lock`) und
+  anderswo wiederhergestellt. Versioniert wird die Liste, nicht der Ordner.
+- Versionsnummern sind keine Zeichenketten: Als Text ist `"2.10.0"` kleiner
+  als `"2.9.0"`.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** [Funktionen und Module in Python](python-funktionen-module.qmd), weil ein Paket nichts
-anderes ist als eine geordnete Sammlung von Modulen. Diese Seite ist die
-Voraussetzung für alles Weitere, denn NumPy, Pandas und Matplotlib müssen
-irgendwo herkommen.
+**Vorwissen:** [Funktionen und Module in Python](python-funktionen-module.qmd),
+weil ein Paket eine geordnete Sammlung von Modulen ist und der Import dort
+erklärt wird. Wie man mit festgehaltener Umgebung ganze Auswertungen
+wiederholbar macht, steht unter [Reproduzierbarkeit](reproduzierbarkeit.qmd);
+der Schritt darüber hinaus sind Container, siehe
+[Docker](../werkzeuge/docker-virtualisierung.qmd).
 :::
 
 ### Das Problem, das virtuelle Umgebungen lösen
 
-Zwei Projekte, beide brauchen dieselbe Bibliothek, aber in verschiedenen
-Versionen. Das ältere läuft nur mit der alten, das neue nutzt eine Funktion,
-die es erst in der neuen gibt. Wird global installiert, gibt es nur einen
-Stand, und eines der beiden Projekte ist immer kaputt.
+Zwei Projekte brauchen dieselbe Bibliothek in verschiedenen Versionen. Wird
+global installiert, gibt es nur einen Stand, und eines der beiden Projekte
+ist immer kaputt. Die zweite Hälfte des Problems zeigt sich später: Eine
+Auswertung, die vor einem Jahr lief, liefert heute andere Zahlen oder bricht
+ab, weil eine Bibliothek ihr Verhalten geändert hat. Die Sammlung hier hat
+das selbst erlebt: pingouin hat zwischen zwei Builds seine Spaltennamen
+geändert.
 
-Die zweite Hälfte des Problems zeigt sich später: Eine Auswertung, die vor
-einem Jahr lief, liefert heute andere Zahlen oder bricht ab, weil eine
-Bibliothek ihr Verhalten geändert hat. Ohne festgehaltene Versionen ist eine
-Analyse nur so lange nachvollziehbar, bis jemand etwas aktualisiert.
+Eine virtuelle Umgebung löst beides: ein Verzeichnis mit eigenem Interpreter
+und eigenen Paketen, das zu genau einem Projekt gehört, plus eine Liste der
+Versionen, aus der es sich neu erzeugen lässt.
 
-Eine virtuelle Umgebung ist die Antwort auf beides: ein eigenes Verzeichnis mit
-eigenem Interpreter und eigenen Paketen, das zu genau einem Projekt gehört.
+### Die Befehle
 
-### Modul, Paket, Distribution
-
-Drei Begriffe, die im Alltag durcheinandergehen und Verwirrung stiften, sobald
-eine Installation nicht klappt.
-
-| Begriff | was es ist | Beispiel |
-|---|---|---|
-| Modul | eine `.py`-Datei | `json` |
-| Paket | ein Verzeichnis von Modulen | `numpy` |
-| Distribution | das, was installiert wird | `scikit-learn` |
-
-Der Fallstrick: Der Name, unter dem installiert wird, muss nicht dem
-Importnamen entsprechen. Installiert wird `scikit-learn`, importiert wird
-`sklearn`. Wer nach dem Importnamen sucht, findet das Paket nicht.
-
-```{python}
-#| label: import-namen-py
-import json                       # Modul der Standardbibliothek
-import numpy as np                # Paket, mit Alias importiert
-from pathlib import Path          # nur ein Name aus einem Modul
-
-print(json.__name__, np.__version__, Path.__name__)
-```
-
-Der Alias `np` ist Konvention, keine Vorschrift. Er hat sich durchgesetzt, weil
-NumPy-Code sonst unlesbar wird, und man sollte ihn deshalb nicht abwandeln.
-
-### Wo Python nachschaut
-
-Ein Import durchsucht eine Liste von Verzeichnissen in fester Reihenfolge. Das
-erklärt den häufigsten Anfängerfehler:
-
-```{python}
-#| label: pfad-py
-print(sys.executable)          # welcher Interpreter laeuft gerade
-for eintrag in sys.path[:4]:
-    print(" ", eintrag or "(aktuelles Verzeichnis)")
-```
-
-Das aktuelle Verzeichnis steht vorne. Eine eigene Datei namens `random.py` im
-Projektordner verdeckt deshalb das gleichnamige Modul der Standardbibliothek,
-und die Fehlermeldung deutet auf alles Mögliche, nur nicht auf den wahren
-Grund.
-
-::: {.note-box}
-Regel: Eigene Dateien nie so benennen wie ein Paket, das man verwendet. Also
-kein `numpy.py`, kein `json.py`, kein `random.py` im Projektordner.
-:::
-
-### Umgebung anlegen und benutzen
-
-Diese Befehle laufen in der Shell, nicht im Interpreter, und sind deshalb als
-reines Listing gesetzt:
+Diese Befehle laufen in der Shell, nicht im Interpreter:
 
 ```bash
 python -m venv .venv                 # Umgebung im Projektordner anlegen
-
 .venv\Scripts\activate               # aktivieren unter Windows
 source .venv/bin/activate            # aktivieren unter Linux und macOS
-
-pip install numpy pandas matplotlib
-pip list                             # was ist drin
-deactivate                           # wieder verlassen
-```
-
-Ob die Aktivierung gewirkt hat, verrät der Interpreterpfad. Er zeigt nach dem
-Aktivieren in den Projektordner statt auf die systemweite Installation:
-
-```{python}
-#| label: interpreter-py
-print(sys.executable)
-print("Version:", sys.version.split()[0])
-```
-
-::: {.note-box}
-Das Verzeichnis `.venv` gehört in `.gitignore`. Versioniert wird die Liste der
-Abhängigkeiten, nicht ihr installierter Inhalt. Sie ist klein, lesbar und
-erzeugt die Umgebung anderswo neu; das Verzeichnis selbst wäre gross,
-plattformabhängig und im Diff wertlos.
-:::
-
-### Abhängigkeiten festhalten
-
-Der eigentliche Zweck ist Reproduzierbarkeit. Was installiert ist, lässt sich
-auslesen und später wiederherstellen:
-
-```bash
-pip freeze > requirements.txt        # was ist installiert, mit Versionen
-pip install -r requirements.txt      # anderswo dasselbe herstellen
-```
-
-Der Unterschied zwischen zwei Schreibweisen entscheidet darüber, wie
-verlässlich das ist:
-
-| Zeile in der Datei | Bedeutung | wann sinnvoll |
-|---|---|---|
-| `pandas` | irgendeine Version | fast nie |
-| `pandas>=2.0` | mindestens diese | Bibliotheken, die andere einbinden |
-| `pandas==2.2.1` | genau diese | Auswertungen, die reproduzierbar bleiben sollen |
-
-Für eine grössere Arbeit oder eine Analyse, die in einem Jahr noch dieselben
-Zahlen liefern soll, ist die dritte Zeile die richtige.
-
-```{python}
-#| label: versionen-py
-for paket in ["numpy", "pandas", "matplotlib"]:
-    print(f"{paket}=={importlib.metadata.version(paket)}")
-```
-
-Diese Ausgabe stammt aus der Umgebung, die diese Website baut. Genau solche
-Zeilen gehören in die Abhängigkeitsliste.
-
-### pip oder conda
-
-Beide installieren Pakete, unterscheiden sich aber im Umfang.
-
-**pip** installiert aus PyPI und kümmert sich um Python-Pakete. Für die
-allermeisten Fälle genügt es, und es ist ohne Zusatzinstallation vorhanden.
-
-**conda**, meist über Anaconda, verwaltet zusätzlich nicht-pythonische
-Bestandteile, etwa kompilierte numerische Bibliotheken. Bei Paketen, die gegen
-C- oder Fortran-Code gebaut sind, erspart das früher regelmässig
-Übersetzungsprobleme. Heute liefert PyPI für gängige Pakete fertige Binärdateien
-mit, wodurch dieser Vorteil kleiner geworden ist.
-
-::: {.note-box}
-Beide in derselben Umgebung zu mischen ist eine bekannte Quelle kaputter
-Installationen, weil jedes Werkzeug nur seine eigene Buchführung kennt. Pro
-Projekt eines wählen und dabei bleiben.
-:::
-
-### Das Gegenstück in R
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: renv-r
-# renv erfuellt denselben Zweck: Isolation je Projekt
-# renv::init()                # Projektbibliothek anlegen
-# install.packages("dplyr")
-# renv::snapshot()            # Versionen in renv.lock festhalten
-# renv::restore()             # Umgebung anderswo wiederherstellen
-
-# Was gerade geladen ist, samt Versionen
-head(as.data.frame(installed.packages()[, c("Package", "Version")]), 4)
-```
-
-## Python
-
-```{python}
-#| label: pip-list-py
-import importlib.metadata as md
-
-pakete = sorted((d.metadata["Name"], d.version)
-                for d in md.distributions())[:4]
-for name, version in pakete:
-    print(f"{name:20s} {version}")
-```
-:::
-
-Die Entsprechung ist eng: `renv.lock` ist die `requirements.txt` von R,
-`renv::restore()` das Gegenstück zu `pip install -r`. Wer eines kennt, versteht
-das andere sofort.
-
-::: {.quiz}
-Warum gehört `.venv` in `.gitignore`, `requirements.txt` aber ins Repository?
-
-- [x] Das Verzeichnis lässt sich aus der Liste jederzeit neu erzeugen, die Liste
-      nicht aus dem Verzeichnis ~ Richtig. Der Ordner enthält hunderte Megabyte
-      plattformabhängiger Dateien, die Liste ist die eigentliche Information:
-      klein, lesbar und Teil des Codes.
-- [ ] Weil Git keine Binärdateien verträgt ~ Git verträgt sie durchaus, nur
-      wächst das Repository unnötig und der Inhalt taugt auf einem anderen
-      Betriebssystem ohnehin nicht.
-- [ ] Weil `.venv` geheime Daten enthält ~ Geheimnisse gehören ohnehin nicht ins
-      Repository, aber das ist hier nicht der Grund.
-:::
-
-::: {.quiz}
-Eine Auswertung lief letztes Jahr und bricht heute ab. Was ist der erste
-Verdacht?
-
-- [x] Eine Bibliothek wurde zwischenzeitlich aktualisiert und verhält sich anders
-      ~ Richtig. Verhindert hätte es eine virtuelle Umgebung mit festgeschriebenen
-      Versionen, aus der sich genau derselbe Stand wiederherstellen lässt.
-- [ ] Die Daten haben sich geändert ~ Möglich, aber dann bräche meist die
-      Auswertung inhaltlich und nicht die Ausführung.
-- [ ] Python selbst ist inkompatibel geworden ~ Die Sprache bleibt über Jahre
-      stabil; die Bewegung steckt fast immer in den Paketen.
-:::
-
-## Typische Aufgaben
-
-**Umgebung anlegen, aktivieren, wieder verlassen**
-
-```bash
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install numpy pandas
+pip freeze > requirements.txt        # Stand festhalten
+pip install -r requirements.txt      # Stand anderswo herstellen
 deactivate
 ```
 
-**Abhängigkeiten festhalten und andernorts wiederherstellen**
-
-```bash
-pip install pandas statsmodels
-pip freeze > requirements.txt
-pip install -r requirements.txt
-```
-
-**Dasselbe mit conda**
-
-```bash
-conda create -n projekt python=3.12 pandas
-conda activate projekt
-conda env export --from-history > environment.yml
-```
-
-**Das Gegenstück in R**
-
 ```r
 renv::init()          # Projektbibliothek anlegen
+install.packages("dplyr")
 renv::snapshot()      # Stand in renv.lock festhalten
 renv::restore()       # Stand aus renv.lock wiederherstellen
 ```
 
-**Nachsehen, woher ein Paket tatsächlich kommt**
+| Aufgabe | Python mit pip | Python mit conda | R mit renv |
+|---|---|---|---|
+| Umgebung anlegen | `python -m venv .venv` | `conda create -n projekt python=3.12` | `renv::init()` |
+| aktivieren | `source .venv/bin/activate` | `conda activate projekt` | beim Öffnen des Projekts automatisch |
+| Stand festhalten | `pip freeze > requirements.txt` | `conda env export --from-history > environment.yml` | `renv::snapshot()` |
+| wiederherstellen | `pip install -r requirements.txt` | `conda env create -f environment.yml` | `renv::restore()` |
+| was zu versionieren ist | `requirements.txt` | `environment.yml` | `renv.lock` |
+| was **nicht** | `.venv/` | der Umgebungsordner | `renv/library/` |
+
+Das Verzeichnis der Umgebung gehört in `.gitignore`. Es ist gross,
+plattformabhängig und lässt sich aus der Liste jederzeit neu erzeugen; die
+Liste ist klein, lesbar und die eigentliche Information.
+
+### pip oder conda
+
+**pip** installiert aus PyPI und kümmert sich um Python-Pakete. Für die
+allermeisten Fälle genügt es. **conda** verwaltet zusätzlich
+nicht-pythonische Bestandteile, etwa kompilierte numerische Bibliotheken.
+Seit PyPI für gängige Pakete fertige Binärdateien mitliefert, ist dieser
+Vorteil kleiner geworden. Beide in derselben Umgebung zu mischen ist eine
+bekannte Quelle kaputter Installationen, weil jedes Werkzeug nur seine eigene
+Buchführung kennt: pro Projekt eines wählen.
+
+### Versionsangaben
+
+| Zeile in `requirements.txt` | Bedeutung | wann sinnvoll |
+|---|---|---|
+| `pandas` | irgendeine Version | fast nie |
+| `pandas>=2.0` | mindestens diese | Bibliotheken, die andere einbinden |
+| `pandas~=2.2` | mindestens 2.2, aber unter 3 | Fehlerbehebungen ja, grosse Sprünge nein |
+| `pandas==2.2.1` | genau diese | Auswertungen, die reproduzierbar bleiben sollen |
+
+Eine Hauptversion (die erste Zahl) darf nach verbreiteter Konvention
+Bestehendes brechen. Deshalb ist `<3` oder `~=2.2` für Bibliotheken ein
+vernünftiger Kompromiss, `==` für eine abgeschlossene Auswertung.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| ist ein Paket vorhanden? | `requireNamespace("x", quietly = TRUE)` | `importlib.util.find_spec("x") is not None` |
+| installierte Version | `packageVersion("dplyr")` | `importlib.metadata.version("pandas")` |
+| welcher Interpreter läuft | `R.home()`, `R.version.string` | `sys.executable`, `sys.version` |
+| wo wird gesucht | `.libPaths()` | `sys.path` |
+| woher kommt eine Funktion | `find("filter")` | `modul.__file__` |
+| Funktion eines bestimmten Pakets | `stats::filter()` | `import modul` und `modul.funktion()` |
+| Stand für den Bericht | `sessionInfo()` | `pip freeze` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Installationsname und Importname
+
+#### Frage und Datenlage
+
+Drei Pakete der Build-Umgebung dieser Seite: scikit-learn, pandas und SciPy.
+Unter welchem Namen sind sie installiert, unter welchem werden sie importiert,
+und wie findet man den einen aus dem anderen?
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
-```r
-find.package("dplyr")
-.libPaths()
+```{r}
+#| label: b1-pu-r
+requireNamespace("survival", quietly = TRUE)
+requireNamespace("gibt.es.nicht", quietly = TRUE)
+"survival" %in% rownames(installed.packages())
 ```
 
-## Python
+##### Python
 
-```python
-import pandas
-pandas.__file__
-pandas.__version__
+```{python}
+#| label: b1-pu-py
+for verteilung, modul in [("scikit-learn", "sklearn"), ("pandas", "pandas"),
+                          ("scipy", "scipy")]:
+    try:
+        md.version(verteilung)
+        installiert = True
+    except md.PackageNotFoundError:
+        installiert = False
+    importierbar = importlib.util.find_spec(modul) is not None
+    print(f"{verteilung:13s} {modul:9s} {installiert} {importierbar}")
+
+print(importlib.util.find_spec("scikit_learn"))
+print(md.packages_distributions().get("sklearn"))
 ```
 
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Ausgabe | Erklärung |
+|---|---|---|
+| scikit-learn | installiert `True`, als `sklearn` importierbar `True` | Installiert wird `scikit-learn`, importiert wird `sklearn`. |
+| pandas, scipy | beides `True` | Hier sind die Namen gleich, der Normalfall. |
+| `find_spec("scikit_learn")` | `None` | Unter dem Installationsnamen gibt es kein Modul. |
+| `packages_distributions()` | `['scikit-learn']` | Der Weg zurück: Welche Distribution liefert das Modul `sklearn`? |
+| R: vorhandenes Paket | `TRUE` | |
+| R: fehlendes Paket | `FALSE` | `requireNamespace` prüft, ohne abzubrechen, anders als `library()`. |
+| R: Liste der installierten | `TRUE` | In R sind Installations- und Ladename immer gleich. |
+
+#### Interpretation und Ergebnissatz
+
+Wer `pip install sklearn` tippt, bekommt heute eine Fehlermeldung, früher
+sogar ein leeres Platzhalterpaket. Wer nach dem Importnamen sucht, findet
+das Paket in `pip list` nicht. Die Unterscheidung klingt pedantisch und
+spart bei jeder gescheiterten Installation Zeit. In R stellt sich die Frage
+nicht.
+
+> scikit-learn ist unter diesem Namen installiert und wird als `sklearn`
+> importiert; unter dem Installationsnamen findet Python kein Modul. In R
+> sind Installations- und Ladename identisch, und `requireNamespace` prüft
+> das Vorhandensein, ohne abzubrechen.
+
+### Beispiel 2: Verdeckte Namen
+
+#### Frage und Datenlage
+
+Im Ordner einer Auswertung liegt eine eigene Datei `random.py`. Das Skript
+`auswertung.py` im selben Ordner importiert `random` und prüft, ob es
+`randint` gibt. Beide Dateien werden in einem temporären Ordner angelegt, das
+Skript läuft als eigener Prozess. In R der verwandte Fall: dplyr und stats
+haben beide eine Funktion `filter`.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-pu-r
+library(dplyr)
+find("filter")
+environmentName(environment(filter))
+
+as.numeric(stats::filter(1:4, rep(1 / 2, 2)))    # gleitender Durchschnitt
+nrow(dplyr::filter(data.frame(x = 1:4), x > 2))  # Zeilen auswaehlen
+```
+
+##### Python
+
+```{python}
+#| label: b2-pu-py
+ordner = pathlib.Path(tempfile.mkdtemp())
+_ = (ordner / "random.py").write_text(
+    "print('eigene random.py geladen')\n", encoding="utf-8")
+_ = (ordner / "auswertung.py").write_text(
+    "import random\nprint(hasattr(random, 'randint'))\n", encoding="utf-8")
+
+lauf = subprocess.run([sys.executable, "auswertung.py"], cwd=ordner,
+                      capture_output=True, text=True)
+print(lauf.stdout.strip().splitlines())
+
+(ordner / "random.py").unlink()            # eigene Datei entfernen
+lauf = subprocess.run([sys.executable, "auswertung.py"], cwd=ordner,
+                      capture_output=True, text=True)
+print(lauf.stdout.strip().splitlines())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Lauf | Ausgabe | Erklärung |
+|---|---|---|
+| mit eigener `random.py` | `eigene random.py geladen`, dann `False` | Der Ordner des Skripts steht vorn in `sys.path`. Python findet die eigene Datei zuerst, und die hat kein `randint`. |
+| ohne eigene Datei | `True` | Jetzt wird das Modul der Standardbibliothek gefunden. |
+| R: `find("filter")` | `"package:dplyr" "package:stats"` | Beide Pakete haben `filter`. Gesucht wird in dieser Reihenfolge, das zuletzt geladene steht vorn. |
+| R: aktive Fassung | `"dplyr"` | Ein blosses `filter()` meint jetzt die dplyr-Funktion. |
+| R: `stats::filter` | 1.5 2.5 3.5 NA | ein gleitender Durchschnitt über zwei Werte, etwas völlig anderes |
+| R: `dplyr::filter` | 2 | Zeilen mit x > 2 |
+
+Beim Laden meldet R die Verdeckung mit `The following objects are masked from
+'package:stats': filter, lag`. Diese Sammlung blendet solche Meldungen aus;
+im eigenen Code sollte man sie lesen.
+
+#### Interpretation und Ergebnissatz
+
+In einem echten Projekt wäre die Fehlermeldung nicht so freundlich wie hier.
+Sie lautete etwa `module 'random' has no attribute 'randint'` und deutete auf
+alles Mögliche, nur nicht auf die eigene Datei. Die Regel: eigene Dateien nie
+so benennen wie ein verwendetes Modul, also kein `random.py`, `json.py`,
+`numpy.py`, `pandas.py`. In R hilft die ausdrückliche Schreibweise
+`paket::funktion()` überall dort, wo zwei geladene Pakete denselben Namen
+verwenden.
+
+> Mit einer eigenen `random.py` im Projektordner lud Python diese Datei statt
+> der Standardbibliothek, und `randint` fehlte; nach dem Entfernen war es
+> wieder vorhanden. In R verdeckt dplyr die gleichnamige Funktion aus stats,
+> die mit `stats::filter` weiterhin erreichbar ist.
+
+### Beispiel 3: Versionen vergleichen und einschränken
+
+#### Frage und Datenlage
+
+Ist Version 2.10.0 neuer als 2.9.0? Und welche der Versionen 2.2.1, 2.2.3,
+2.9.0 und 3.0.5 erfüllen die Angaben `==2.2.1`, `>=2.0`, `~=2.2` und `<3`?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-pu-r
+"2.10.0" > "2.9.0"                        # als Text
+package_version("2.10.0") > "2.9.0"       # als Version
+packageVersion("dplyr") >= "1.1.0"
+```
+
+##### Python
+
+```{python}
+#| label: b3-pu-py
+print("2.10.0" > "2.9.0")                 # als Text
+print(Version("2.10.0") > Version("2.9.0"))
+
+kandidaten = ["2.2.1", "2.2.3", "2.9.0", "3.0.5"]
+for regel in ["==2.2.1", ">=2.0", "~=2.2", "<3"]:
+    print(f"{regel:8s}", [v for v in kandidaten if SpecifierSet(regel).contains(v)])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Vergleich | Python | R | Erklärung |
+|---|---|---|---|
+| `"2.10.0" > "2.9.0"` | **`False`** | **`FALSE`** | Zeichen für Zeichen verglichen: `1` kommt vor `9`. |
+| als Version | `True` | `TRUE` | `Version` und `package_version` vergleichen Zahl für Zahl: 10 > 9. |
+| dplyr mindestens 1.1.0 | | `TRUE` | Der übliche Weg, eine Mindestversion im Code zu prüfen. |
+
+| Angabe | erfüllt von | Erklärung |
+|---|---|---|
+| `==2.2.1` | 2.2.1 | genau eine |
+| `>=2.0` | alle vier | auch 3.0.5, mit möglicherweise brechenden Änderungen |
+| `~=2.2` | 2.2.1, 2.2.3, 2.9.0 | "kompatibel": mindestens 2.2, aber dieselbe Hauptversion |
+| `<3` | 2.2.1, 2.2.3, 2.9.0 | hier dieselbe Menge wie `~=2.2` |
+
+#### Interpretation und Ergebnissatz
+
+Wer Versionen als Text vergleicht, hält die neuere für die ältere, sobald
+eine Stelle zweistellig wird. Die Angabe in der Abhängigkeitsliste ist eine
+Abwägung: `==` macht die Auswertung wiederholbar und schliesst
+Sicherheitsupdates aus, `>=` lässt alles zu, auch den nächsten grossen
+Sprung. Für eine abgeschlossene Analyse gehört `==` hinein, für laufende
+Arbeit `~=`.
+
+> Als Zeichenkette gilt `"2.10.0"` in beiden Sprachen als kleiner als
+> `"2.9.0"`, als Versionsobjekt korrekt als grösser. Die Angabe `~=2.2` lässt
+> 2.2.1, 2.2.3 und 2.9.0 zu und schliesst 3.0.5 aus.
+
+### Beispiel 4: Den Stand der Umgebung festhalten
+
+#### Frage und Datenlage
+
+Welche Versionen lagen vor, als diese Seite gebaut wurde? Das ist die
+Information, die an das Ende jedes Berichts gehört.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-pu-r
+R.version.string
+sapply(c("dplyr", "ggplot2", "survival"), function(p) as.character(packageVersion(p)))
+```
+
+##### Python
+
+```{python}
+#| label: b4-pu-py
+print(sys.version.split()[0])
+for paket in ["numpy", "pandas", "scipy", "statsmodels"]:
+    print(f"{paket}=={md.version(paket)}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Bedeutung |
+|---|---|
+| R-Version | Sprache und Datum der Veröffentlichung |
+| Paketversionen in R | benannter Vektor, ein Eintrag je Paket |
+| Python-Version | Interpreter, mit dem die Chunks liefen |
+| `paket==version` | genau das Format einer `requirements.txt`; die Zeilen lassen sich so übernehmen |
+
+Die Zahlen selbst stehen in der Ausgabe und nicht hier im Text, weil sie sich
+mit jedem Build ändern können. Diese Seite wird mit gespeicherten
+Ergebnissen gebaut: Die Ausgabe zeigt den Stand beim letzten Neuberechnen der
+Seite.
+
+#### Interpretation und Ergebnissatz
+
+Ohne diese Angaben ist eine Auswertung nicht nachprüfbar, denn dieselbe
+Zeile Code kann mit einer anderen Paketversion eine andere Zahl liefern. Der
+vollständige Weg ist `sessionInfo()` in R und `pip freeze` in Python; für einen
+Bericht genügen meist die Pakete, die tatsächlich gerechnet haben.
+
+> Die Ausgabe dokumentiert die R- und Python-Version sowie die Versionen der
+> verwendeten Pakete zum Zeitpunkt der Berechnung. Im Format `paket==version`
+> lassen sich die Zeilen unmittelbar in eine `requirements.txt` übernehmen.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Warum gehört `.venv` in `.gitignore`, `requirements.txt` aber ins Repository?
+
+- [x] Das Verzeichnis lässt sich aus der Liste jederzeit neu erzeugen, die
+      Liste nicht aus dem Verzeichnis ~ Richtig. Der Ordner enthält hunderte
+      Megabyte plattformabhängiger Dateien, die Liste ist die eigentliche
+      Information.
+- [ ] Weil Git keine Binärdateien verträgt ~ Git verträgt sie, nur wächst das
+      Repository unnötig und der Inhalt taugt auf einem anderen System nicht.
+- [ ] Weil `.venv` geheime Daten enthält ~ Das ist nicht der Grund.
+:::
+
+::: {.quiz}
+`import sklearn` scheitert, `pip list` zeigt aber `scikit-learn`. Was ist
+wahrscheinlich?
+
+- [x] Das Paket wurde in eine andere Umgebung installiert als die, in der das
+      Skript läuft ~ Richtig. Installations- und Importname unterscheiden
+      sich zwar, aber `pip list` zeigt die Distribution korrekt. Die Probe:
+      `sys.executable` im Skript mit dem `pip` in der Shell vergleichen.
+- [ ] Der Importname ist falsch ~ `sklearn` ist der richtige Importname.
+- [ ] scikit-learn lässt sich nur mit conda importieren ~ Es funktioniert mit
+      pip genauso.
+:::
+
+::: {.quiz}
+Ein Skript im Projektordner meldet `module 'random' has no attribute
+'randint'`. Was ist die erste Vermutung?
+
+- [x] Eine eigene Datei `random.py` verdeckt die Standardbibliothek ~
+      Richtig. Der Ordner des Skripts steht vorn in `sys.path`, wie
+      Beispiel 2 zeigt. Umbenennen, und einen eventuell entstandenen Ordner
+      `__pycache__` löschen.
+- [ ] `randint` wurde aus Python entfernt ~ Es gehört seit jeher zur
+      Standardbibliothek.
+- [ ] Die Umgebung ist nicht aktiviert ~ `random` ist in jeder Umgebung
+      vorhanden.
+:::
+
+::: {.quiz}
+In einem R-Skript liefert `filter(df, x > 2)` plötzlich eine Fehlermeldung
+über eine Zeitreihe. Was ist passiert?
+
+- [x] dplyr ist nicht geladen, und `filter` meint die Funktion aus stats ~
+      Richtig. Nach `library(dplyr)` verdeckt dplyr die stats-Funktion; fehlt
+      das Laden, greift die andere. `dplyr::filter()` ist eindeutig.
+- [ ] Der Data Frame ist beschädigt ~ Die Daten sind nicht beteiligt.
+- [ ] `filter` ist in R veraltet ~ Beide Fassungen sind aktuell.
+:::
+
+::: {.quiz}
+Eine Abhängigkeitsliste enthält `pandas>=2.0`. Nach einer Neuinstallation
+bricht die Auswertung ab. Was hätte `~=2.2` geändert?
+
+- [x] Es hätte pandas 3 ausgeschlossen, das die Auswertung bricht ~ Richtig.
+      `~=2.2` erlaubt Fehlerbehebungen innerhalb der Hauptversion 2, aber
+      keinen Sprung auf 3, der nach Konvention Bestehendes ändern darf.
+- [ ] Nichts, beide Angaben sind gleichwertig ~ `>=2.0` lässt auch 3.0.5 zu,
+      wie Beispiel 3 zeigt.
+- [ ] Es hätte die Installation beschleunigt ~ Um Geschwindigkeit geht es
+      nicht.
 :::
 
 ## Verlinkte Ressourcen
 
 - [venv in der Python-Dokumentation](https://docs.python.org/3/library/venv.html)
-- [Module und Pakete im Python-Tutorial](https://docs.python.org/3/tutorial/modules.html)
+- [Versionsangaben nach PEP 440](https://peps.python.org/pep-0440/)
 - [renv für R](https://rstudio.github.io/renv/)
