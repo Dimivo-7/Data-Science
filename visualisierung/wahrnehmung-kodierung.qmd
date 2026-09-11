@@ -1,7 +1,7 @@
 ---
 title: "Wahrnehmung und Kodierung"
 description: "Welche visuellen Kanäle genau abgelesen werden und welche nicht."
-categories: ["Wahrnehmung", "Visualisierung", "R"]
+categories: ["Wahrnehmung", "Visualisierung", "R", "Python"]
 quelle: ["DAVI"]
 seitentyp: konzept
 stand: entwurf
@@ -14,16 +14,67 @@ order: 20
 library(ggplot2)
 
 theme_set(theme_minimal(base_size = 12))
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalmatrix <- function(saat, zeilen, spalten) {
+  matrix(qnorm(lehmer(saat, zeilen * spalten)), nrow = zeilen, byrow = TRUE)
+}
+
+akzent <- "#b2182b"
+neutral <- "grey78"
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+np.set_printoptions(suppress=True)
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+AKZENT = "#b2182b"
+NEUTRAL = "#c7c7c7"
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalmatrix(saat, zeilen, spalten):
+    return stats.norm.ppf(lehmer(saat, zeilen * spalten)).reshape(zeilen, spalten)
 ```
 
 ## Kernideen
 
-- Visuelle Kanäle sind unterschiedlich genau ablesbar, und die Rangfolge ist bekannt
-- Position auf gemeinsamer Skala schlägt alles andere
-- Die wichtigste Variable bekommt den genauesten Kanal
-- Einige Merkmale werden vorbewusst erfasst, in weniger als einer Viertelsekunde
-- Hervorhebung wirkt nur durch Kontrast, und Kontrast nur, wenn er selten ist
-- Was keine Daten darstellt, konkurriert mit dem, was Daten darstellt
+- Visuelle Kanäle sind unterschiedlich genau ablesbar, und die Rangfolge ist
+  bekannt.
+- **Position auf gemeinsamer Skala schlägt alles andere.** Die wichtigste
+  Variable bekommt den genauesten Kanal.
+- Fläche wird nicht nur ungenau, sondern **systematisch zu klein** geschätzt —
+  und wer den Radius statt der Fläche kodiert, verstärkt den Fehler noch.
+- Einige Merkmale werden vorbewusst erfasst, in weniger als einer
+  Viertelsekunde. **Hervorhebung wirkt nur durch Kontrast, und Kontrast nur,
+  wenn er selten ist.**
+- Farbton unterscheidet Kategorien, er kodiert keine Mengen.
+- Was keine Daten darstellt, konkurriert mit dem, was Daten darstellt.
 
 ## Erklärung
 
@@ -55,29 +106,21 @@ Daraus folgt die praktisch wichtigste Regel der ganzen Visualisierung: **Die
 Variable, auf die es ankommt, bekommt Position.** Alles andere sind
 Zusatzkanäle.
 
-Der Vergleich zwischen Balken und Torte zeigt den Unterschied unmittelbar. Es
-sind dieselben fünf Zahlen:
+### Warum Fläche doppelt gefährlich ist
 
-```{r}
-#| label: fig-kanaele-r
-#| fig-cap: "Dieselben Anteile als Länge und als Winkel. Links ist die Reihenfolge auf einen Blick lesbar, rechts nicht."
-#| fig-height: 3.4
-anteile <- data.frame(
-  kategorie = c("A", "B", "C", "D", "E"),
-  wert = c(23, 21, 19, 19, 18)
-)
+Bei der Fläche kommen zwei Fehler zusammen, und sie verstärken einander.
 
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-barplot(anteile$wert, names.arg = anteile$kategorie, col = "grey70",
-        ylab = "Anteil in Prozent", main = "Länge")
-pie(anteile$wert, labels = anteile$kategorie, col = grey.colors(5),
-    main = "Winkel")
-par(mfrow = c(1, 1))
-```
+Der erste ist ein **Wahrnehmungsfehler**: Eine Fläche wird nicht proportional
+zu ihrer Grösse geschätzt, sondern ungefähr mit einem Exponenten um 0.7. Eine
+achtmal so grosse Fläche wirkt nur gut viermal so gross.
 
-Links ist sofort erkennbar, dass A am grössten und E am kleinsten ist. Rechts
-sind C und D nicht zu unterscheiden, und die Reihenfolge von B und C ist
-Ratesache. Die Zahlen sind identisch.
+Der zweite ist ein **Konstruktionsfehler**: Wer den **Radius** proportional zum
+Wert setzt statt der Fläche, quadriert den Unterschied. Aus achtmal so viel
+wird eine 64-mal so grosse Fläche.
+
+Die beiden Fehler zeigen in entgegengesetzte Richtungen, heben sich aber nicht
+auf — sie machen die Grafik nur unvorhersehbar falsch. Beispiel 2 rechnet es
+durch.
 
 ### Was das Auge vorbewusst erfasst
 
@@ -85,26 +128,10 @@ Bestimmte Merkmale werden in unter einer Viertelsekunde erfasst, ohne dass man
 suchen muss. Dazu gehören Farbe, Grösse, Ausrichtung, Umschliessung und
 räumliche Lage. Genau diese Merkmale eignen sich zum Hervorheben.
 
-Die Bedingung ist Seltenheit. Ein roter Balken unter zwanzig grauen springt ins
-Auge; fünf rote Balken unter fünfzehn grauen sind nur noch bunt.
-
-```{r}
-#| label: fig-hervorhebung-r
-#| fig-cap: "Links ein Akzent unter vielen grauen Balken, rechts fünf Akzente. Rechts hebt nichts mehr hervor."
-#| fig-height: 3.2
-werte <- c(12, 15, 9, 22, 14, 11, 17, 13, 19, 10)
-eine <- c(rep("grau", 3), "akzent", rep("grau", 6))
-viele <- c("akzent", "grau", "akzent", "akzent", "grau", "akzent", "grau", "akzent", "grau", "grau")
-farben <- function(x) ifelse(x == "akzent", "#b2182b", "grey80")
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-barplot(werte, col = farben(eine), main = "ein Akzent", ylab = "Wert")
-barplot(werte, col = farben(viele), main = "fünf Akzente", ylab = "Wert")
-par(mfrow = c(1, 1))
-```
-
-Daraus folgt eine einfache Arbeitsregel: alles grau, und genau das eine, worum
-es geht, farbig. Mehr dazu unter [Farbe](farbe.qmd).
+Die Bedingung ist **Seltenheit**. Ein roter Balken unter zwanzig grauen springt
+ins Auge; fünf rote Balken unter fünfzehn grauen sind nur noch bunt. Daraus
+folgt die Arbeitsregel: alles grau, und genau das eine, worum es geht, farbig.
+Mehr dazu unter [Farbe](farbe.qmd).
 
 ### Was keine Daten zeigt, stört
 
@@ -116,7 +143,8 @@ Streichkandidaten, in dieser Reihenfolge:
 - dreidimensionale Effekte, Schatten, Farbverläufe in Flächen
 - dichte Gitternetze, dicke Rahmen, Hintergrundfüllungen
 - Legenden, wenn die Serien direkt beschriftet werden können
-- doppelte Information: Werte an den Balken und Achsenbeschriftung und Legende
+- doppelte Information: Werte an den Balken **und** Achsenbeschriftung **und**
+  Legende
 
 Nicht streichen: Achsenbeschriftung mit Einheit, Datenquelle, und den Titel mit
 der Aussage. Sparsamkeit, die den Kontext entfernt, macht die Grafik
@@ -128,8 +156,631 @@ Wer die Kanalrangfolge kennt, trifft drei Entscheidungen fast automatisch:
 
 1. **Vergleich von Mengen:** Balken, weil Länge auf gemeinsamer Skala.
 2. **Zusammenhang zweier Grössen:** Streudiagramm, weil Position zweimal.
-3. **Viele Kategorien:** nicht Farbe, sondern Position, etwa als sortierter
-   Balken oder als kleine Teilgrafiken nebeneinander.
+3. **Viele Kategorien:** nicht Farbe, sondern Position — sortierte Balken oder
+   kleine Teilgrafiken nebeneinander.
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Länge gegen Winkel
+
+#### Frage und Datenlage
+
+Fünf Kategorien mit den Anteilen 23, 21, 19, 19 und 18 Prozent. Dieselben fünf
+Zahlen einmal als Balken und einmal als Torte — und die Frage, wie gross die
+Unterschiede im jeweiligen Kanal überhaupt sind.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-wk-r
+#| fig-cap: "Beispiel 1: dieselben Anteile als Länge und als Winkel."
+#| fig-height: 3.4
+kategorie <- c("A", "B", "C", "D", "E")
+wert <- c(23, 21, 19, 19, 18)
+grad <- wert / sum(wert) * 360
+
+round(rbind(wert = wert, grad = grad), 1)
+
+# Alle Paare: Wie gross ist der Unterschied im Winkel?
+paare <- t(combn(5, 2))
+vergleich <- data.frame(
+  paar = paste0(kategorie[paare[, 1]], "-", kategorie[paare[, 2]]),
+  punkte = abs(wert[paare[, 1]] - wert[paare[, 2]]),
+  grad = round(abs(grad[paare[, 1]] - grad[paare[, 2]]), 1))
+vergleich[order(vergleich$grad), ]
+
+c(paare_unter_10_grad = sum(vergleich$grad < 10), paare_gesamt = nrow(vergleich))
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+barplot(wert, names.arg = kategorie, col = neutral,
+        ylab = "Anteil in Prozent", main = "Länge")
+pie(wert, labels = kategorie, col = grey.colors(5), main = "Winkel")
+par(mfrow = c(1, 1))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-wk-py
+#| fig-cap: "Beispiel 1: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.4
+import itertools
+
+kategorie = list("ABCDE")
+wert = np.array([23., 21., 19., 19., 18.])
+grad = wert / wert.sum() * 360
+
+print(pd.DataFrame({"wert": wert, "grad": grad}, index=kategorie).round(1).T)
+
+zeilen = [{"paar": f"{kategorie[i]}-{kategorie[j]}",
+           "punkte": abs(wert[i] - wert[j]),
+           "grad": round(abs(grad[i] - grad[j]), 1)}
+          for i, j in itertools.combinations(range(5), 2)]
+vergleich = pd.DataFrame(zeilen).sort_values("grad")
+print(vergleich.to_string(index=False))
+
+print({"paare_unter_10_grad": int((vergleich["grad"] < 10).sum()),
+       "paare_gesamt": len(vergleich)})
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+achsen[0].bar(kategorie, wert, color=NEUTRAL)
+achsen[0].set_ylabel("Anteil in Prozent")
+achsen[0].set_title("Länge")
+achsen[1].pie(wert, labels=kategorie,
+              colors=[str(g) for g in np.linspace(0.3, 0.85, 5)])
+achsen[1].set_title("Winkel")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kategorie | A | B | C | D | E |
+|---|---|---|---|---|---|
+| Anteil in Prozent | 23 | 21 | 19 | 19 | 18 |
+| Segment in Grad | 82.8 | 75.6 | 68.4 | 68.4 | 64.8 |
+
+Die zehn Paarvergleiche, nach Winkeldifferenz sortiert:
+
+| Paar | C-D | C-E | D-E | A-B | B-C | B-D | B-E | A-C | A-D | A-E |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Prozentpunkte | 0 | 1 | 1 | 2 | 2 | 2 | 3 | 4 | 4 | 5 |
+| **Grad** | **0.0** | **3.6** | **3.6** | **7.2** | **7.2** | **7.2** | **10.8** | **14.4** | **14.4** | **18.0** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| **Sechs von zehn** Paaren unterscheiden sich um weniger als 10 Grad | Bei einem Vollkreis von 360 Grad. Das ist die Grössenordnung, ab der ein Winkelvergleich zur Ratesache wird — und das ist keine Meinung, sondern die Geometrie der Grafik. |
+| Der grösste Unterschied im Datensatz sind **5 Prozentpunkte** | Und selbst der ist als Winkel nur 18 Grad, also ein Zwanzigstel des Kreises. |
+| C und D sind **exakt gleich** | In beiden Grafiken. Im Balkendiagramm sieht man das sofort, in der Torte muss man es raten. |
+| Im Balkendiagramm ist die Reihenfolge ablesbar | Weil alle Balken auf derselben Grundlinie beginnen: Position auf gemeinsamer Skala, Rang 1 der Tabelle. |
+| In der Torte beginnt jedes Segment woanders | Deshalb bleibt nur der Winkel, Rang 4 — und bei Segmenten, die nicht nebeneinander liegen, zusätzlich der Vergleich über den Kreis hinweg. |
+
+::: {.note-box}
+**Wann eine Torte trotzdem geht:** wenn es um **einen** Anteil gegen den Rest
+geht und der Unterschied gross ist — 70 gegen 30 liest jeder. Bei fünf
+ähnlichen Anteilen ist sie die schlechteste verfügbare Wahl.
+
+Die ehrliche Alternative bei Anteilen, die sich zu 100 addieren, ist der
+**sortierte Balken** mit direkt angeschriebenen Werten.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Von zehn Paarvergleichen unterscheiden sich sechs um weniger als 10 von 360
+> Grad, der grösste Unterschied beträgt 18 Grad. Als Balkenlänge auf
+> gemeinsamer Grundlinie sind dieselben Unterschiede unmittelbar ablesbar.
+
+### Beispiel 2: Der doppelte Fehler der Fläche
+
+#### Frage und Datenlage
+
+Vier Werte im Verhältnis 1 : 2 : 4 : 8, dargestellt als Kreise. Einmal wird
+der **Radius** proportional zum Wert gesetzt, einmal die **Fläche**. Dazu die
+Frage, wie gross der Unterschied am Ende wahrgenommen wird.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2-wk-r
+#| fig-cap: "Beispiel 2: links Radius proportional zum Wert, rechts Fläche proportional zum Wert."
+#| fig-height: 3.2
+wert <- c(1, 2, 4, 8)
+
+radius_falsch <- wert / wert[1]          # Radius = Wert
+radius_richtig <- sqrt(wert / wert[1])   # Fläche = Wert
+
+round(rbind(wert = wert,
+            radius_falsch = radius_falsch,
+            flaeche_falsch = radius_falsch^2,
+            radius_richtig = radius_richtig,
+            flaeche_richtig = radius_richtig^2), 3)
+
+# Wahrnehmung: Flaeche wirkt ungefaehr mit dem Exponenten 0.7
+round(c(echter_unterschied = 8,
+        flaeche_korrekt_kodiert = 8,
+        davon_wahrgenommen = 8^0.7,
+        flaeche_bei_radiuskodierung = 64,
+        davon_wahrgenommen = 64^0.7), 2)
+
+par(mfrow = c(1, 2), mar = c(2, 2, 3, 1))
+for (nm in c("Radius = Wert", "Fläche = Wert")) {
+  r <- if (nm == "Radius = Wert") radius_falsch else radius_richtig
+  symbols(seq_along(wert), rep(0, 4), circles = r, inches = 0.42,
+          bg = neutral, fg = "white", xlab = "", ylab = "", axes = FALSE,
+          main = nm, ylim = c(-1, 1))
+  text(seq_along(wert), -0.85, labels = wert)
+}
+par(mfrow = c(1, 1))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-wk-py
+#| fig-cap: "Beispiel 2: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+wert = np.array([1., 2., 4., 8.])
+
+radius_falsch = wert / wert[0]
+radius_richtig = np.sqrt(wert / wert[0])
+
+print(pd.DataFrame({"wert": wert,
+                    "radius_falsch": radius_falsch,
+                    "flaeche_falsch": radius_falsch ** 2,
+                    "radius_richtig": radius_richtig,
+                    "flaeche_richtig": radius_richtig ** 2}).round(3).T)
+
+print({"echter_unterschied": 8,
+       "flaeche_korrekt_kodiert": 8,
+       "davon_wahrgenommen": round(8 ** 0.7, 2),
+       "flaeche_bei_radiuskodierung": 64,
+       "davon_wahrgenommen_2": round(64 ** 0.7, 2)})
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+for achse, (titel, r) in zip(achsen, [("Radius = Wert", radius_falsch),
+                                      ("Fläche = Wert", radius_richtig)]):
+    # In matplotlib ist s die FLAECHE des Punktes, nicht der Radius.
+    achse.scatter(np.arange(1, 5), np.zeros(4), s=(r * 26) ** 2,
+                  color=NEUTRAL, edgecolor="white")
+    for x, w in zip(np.arange(1, 5), wert):
+        achse.text(x, -0.85, str(int(w)), ha="center")
+    achse.set_title(titel)
+    achse.set_ylim(-1, 1)
+    achse.axis("off")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Wert | 1 | 2 | 4 | 8 |
+|---|---|---|---|---|
+| Radius bei **Radius = Wert** | 1 | 2 | 4 | **8** |
+| ergibt eine Fläche von | 1 | 4 | 16 | **64** |
+| Radius bei **Fläche = Wert** | 1 | 1.414 | 2 | **2.828** |
+| ergibt eine Fläche von | 1 | 2 | 4 | **8** |
+
+| Kette | Faktor |
+|---|---|
+| echter Unterschied in den Daten | **8** |
+| Fläche bei korrekter Kodierung | 8 → wahrgenommen als **4.29** |
+| Fläche bei Radiuskodierung | 64 → wahrgenommen als **18.38** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Radius proportional zum Wert erzeugt eine **64-fache Fläche** | Aus achtmal so viel. Der Fehler ist nicht klein, er ist quadratisch — und je grösser die Spannweite der Daten, desto schlimmer. |
+| Der richtige Radius ist die **Wurzel** | 2.828 statt 8 für den grössten Wert. Das sieht nach zu wenig aus, ist aber die korrekte Fläche. |
+| Selbst korrekt kodiert wirken **8-fach nur wie 4.3-fach** | Wegen des Exponenten um 0.7. Fläche untertreibt also grundsätzlich — auch wenn alles richtig gemacht ist. |
+| Die beiden Fehler heben sich **nicht** auf | Untertreibung um den Faktor 0.7 im Exponenten, Übertreibung durch Quadrieren: Unter dem Strich bleiben statt 8 wahrgenommene 18.4. **Falsch in die andere Richtung ist nicht richtig.** |
+| In matplotlib ist `s` die **Fläche** | In `symbols()` von R dagegen der Radius. Wer die Sprache wechselt und die Formel mitnimmt, baut den Fehler ein. |
+
+::: {.warning-box}
+**Die Regel in einem Satz:** Wenn Fläche sein muss, dann Radius gleich Wurzel
+des Werts — und eine **Legende mit zwei bis drei Referenzkreisen**, weil ohne
+sie niemand die Grösse in eine Zahl zurückübersetzen kann.
+
+Besser ist meistens, die Fläche gar nicht zu brauchen. Fläche ist der Kanal
+für die **dritte** Variable, wenn die zwei Positionen schon vergeben sind —
+nie für die Hauptaussage.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Wird der Radius proportional zum Wert gesetzt, erscheint ein achtfacher
+> Unterschied als 64-fache Fläche und wirkt wie das 18.4-Fache. Korrekt über
+> die Wurzel kodiert entsteht die achtfache Fläche, die wegen des
+> Wahrnehmungsexponenten von rund 0.7 wie das 4.3-Fache wirkt.
+
+### Beispiel 3: Ein Akzent gegen fünf
+
+#### Frage und Datenlage
+
+Zehn Balken. Einmal ist einer hervorgehoben, einmal fünf. Dieselben Daten,
+dieselbe Farbe — nur die Häufigkeit des Akzents ändert sich.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-wk-r
+#| fig-cap: "Beispiel 3: ein Akzent unter zehn Balken, und fünf."
+#| fig-height: 3.2
+werte <- c(12, 15, 9, 22, 14, 11, 17, 13, 19, 10)
+eine <- c(FALSE, FALSE, FALSE, TRUE, rep(FALSE, 6))
+viele <- c(TRUE, FALSE, TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE)
+
+for (nm in c("eine", "viele")) {
+  maske <- get(nm)
+  cat(sprintf("%-6s %d von %d Balken, %.1f Prozent der Balkenfläche\n",
+              nm, sum(maske), length(werte),
+              sum(werte[maske]) / sum(werte) * 100))
+}
+c(hoechster_balken = which.max(werte), sein_wert = max(werte))
+
+par(mfrow = c(1, 2), mar = c(3, 4, 3, 1))
+barplot(werte, col = ifelse(eine, akzent, neutral),
+        main = "ein Akzent", ylab = "Wert", border = NA)
+barplot(werte, col = ifelse(viele, akzent, neutral),
+        main = "fünf Akzente", ylab = "Wert", border = NA)
+par(mfrow = c(1, 1))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-wk-py
+#| fig-cap: "Beispiel 3: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.2
+werte = np.array([12, 15, 9, 22, 14, 11, 17, 13, 19, 10], dtype=float)
+eine = np.zeros(10, bool); eine[3] = True
+viele = np.zeros(10, bool); viele[[0, 2, 3, 5, 7]] = True
+
+for nm, maske in [("eine", eine), ("viele", viele)]:
+    print(f"{nm:<6} {maske.sum()} von {len(werte)} Balken,"
+          f" {werte[maske].sum() / werte.sum() * 100:.1f} Prozent der Balkenfläche")
+print({"hoechster_balken": int(np.argmax(werte)) + 1, "sein_wert": werte.max()})
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.2))
+for achse, (titel, maske) in zip(achsen, [("ein Akzent", eine),
+                                          ("fünf Akzente", viele)]):
+    achse.bar(np.arange(1, 11), werte,
+              color=np.where(maske, AKZENT, NEUTRAL))
+    achse.set_title(titel)
+    achse.set_ylabel("Wert")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Variante | hervorgehobene Balken | Anteil der Balkenfläche |
+|---|---|---|
+| ein Akzent | 1 von 10 | **15.5 Prozent** |
+| fünf Akzente | 5 von 10 | **47.2 Prozent** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Links findet das Auge den roten Balken **ohne zu suchen** | Farbe ist ein vorbewusst erfasstes Merkmal — aber nur, solange sie die Ausnahme ist. |
+| Rechts entstehen **zwei Gruppen** statt einer Ausnahme | Bei 47 Prozent hervorgehobener Fläche ist Rot keine Betonung mehr, sondern eine zweite Kategorie. Das Auge liest "rote und graue Balken", nicht "dieser eine". |
+| Der Akzent liegt zufällig auf dem **höchsten** Balken (Nr. 4 mit 22) | Links verstärken sich Position und Farbe. Läge der Akzent auf dem niedrigsten, wäre er schwächer — Hervorhebung arbeitet gegen die Position an, nicht mit ihr. |
+| Die Daten sind in beiden Grafiken **identisch** | Es ändert sich nur, worauf gezeigt wird. **Hervorhebung ist eine Aussage, keine Dekoration.** |
+
+::: {.note-box}
+**Wenn wirklich fünf Balken wichtig sind,** ist Farbe das falsche Werkzeug.
+Dann gilt:
+
+| Situation | Mittel |
+|---|---|
+| eine Ausnahme zeigen | Akzentfarbe |
+| zwei Gruppen vergleichen | **sortieren** und räumlich trennen, oder facettieren |
+| Rangfolge zeigen | sortieren, Farbe weglassen |
+| mehrere Ausnahmen benennen | direkt beschriften statt einfärben |
+
+Die Faustregel: **Akzentfläche unter etwa einem Fünftel.** Darüber wird aus
+Betonung eine Gruppierung.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Ein hervorgehobener Balken macht 15.5 Prozent der Balkenfläche aus und wird
+> als Ausnahme gelesen; fünf hervorgehobene machen 47.2 Prozent aus und werden
+> als zweite Gruppe gelesen. Die Daten sind in beiden Fällen dieselben.
+
+### Beispiel 4: Zwölf Serien in Farbe oder in Position
+
+#### Frage und Datenlage
+
+Zwölf Zeitreihen über 24 Monate. Einmal alle in einer Grafik mit zwölf Farben,
+einmal als zwölf kleine Teilgrafiken. Gemessen wird, wie oft sich die Linien
+kreuzen — denn jede Kreuzung ist eine Stelle, an der das Auge die Spur
+verlieren kann.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-wk-r
+#| fig-cap: "Beispiel 4: zwölf Serien als Spaghetti-Diagramm."
+#| fig-height: 3.4
+n_serien <- 12; n_zeit <- 24
+Z <- normalmatrix(9090, n_serien, n_zeit)
+start <- seq(40, 90, length.out = n_serien)
+reihen <- start + t(apply(Z * 4, 1, cumsum))
+
+kreuzungen <- 0
+for (i in 1:(n_serien - 1)) {
+  for (j in (i + 1):n_serien) {
+    d <- reihen[i, ] - reihen[j, ]
+    kreuzungen <- kreuzungen + sum(sign(d[-n_zeit]) * sign(d[-1]) < 0)
+  }
+}
+c(serien = n_serien, paare = choose(n_serien, 2), kreuzungen = kreuzungen)
+round(c(kleinster_wert = min(reihen), groesster_wert = max(reihen)), 1)
+c(rang_gleich_geblieben = sum(order(reihen[, 1]) == order(reihen[, n_zeit])),
+  von = n_serien)
+
+matplot(t(reihen), type = "l", lty = 1, lwd = 1.4,
+        col = rainbow(n_serien), xlab = "Monat", ylab = "Wert")
+```
+
+```{r}
+#| label: fig-b4b-wk-r
+#| fig-cap: "Beispiel 4: dieselben zwölf Serien als kleine Teilgrafiken."
+#| fig-height: 3.8
+lang <- data.frame(
+  serie = factor(rep(sprintf("S%02d", 1:n_serien), each = n_zeit)),
+  monat = rep(1:n_zeit, times = n_serien),
+  wert = as.vector(t(reihen)))
+
+ggplot(lang, aes(monat, wert)) +
+  geom_line(linewidth = 0.5) +
+  facet_wrap(~ serie, ncol = 4) +
+  labs(x = "Monat", y = "Wert")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-wk-py
+#| fig-cap: "Beispiel 4: dasselbe Spaghetti-Diagramm in Python."
+#| fig-height: 3.4
+n_serien, n_zeit = 12, 24
+Z = normalmatrix(9090, n_serien, n_zeit)
+start = np.linspace(40, 90, n_serien)
+reihen = start[:, None] + np.cumsum(Z * 4, axis=1)
+
+kreuzungen = 0
+for i in range(n_serien - 1):
+    for j in range(i + 1, n_serien):
+        d = reihen[i] - reihen[j]
+        kreuzungen += int(np.sum(np.sign(d[:-1]) * np.sign(d[1:]) < 0))
+print({"serien": n_serien, "paare": n_serien * (n_serien - 1) // 2,
+       "kreuzungen": kreuzungen})
+print({"kleinster_wert": round(float(reihen.min()), 1),
+       "groesster_wert": round(float(reihen.max()), 1)})
+print({"rang_gleich_geblieben":
+       int((np.argsort(reihen[:, 0]) == np.argsort(reihen[:, -1])).sum()),
+       "von": n_serien})
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+for k in range(n_serien):
+    achse.plot(np.arange(1, n_zeit + 1), reihen[k], lw=1.4,
+               color=plt.cm.hsv(k / n_serien))
+achse.set_xlabel("Monat")
+achse.set_ylabel("Wert")
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: fig-b4b-wk-py
+#| fig-cap: "Beispiel 4: dieselben Serien als kleine Teilgrafiken."
+#| fig-height: 3.8
+fig, achsen = plt.subplots(3, 4, figsize=(7, 3.8), sharex=True, sharey=True)
+for k, achse in enumerate(achsen.ravel()):
+    achse.plot(np.arange(1, n_zeit + 1), reihen[k], lw=0.9, color="black")
+    achse.set_title(f"S{k + 1:02d}", fontsize=9)
+for achse in achsen[-1]:
+    achse.set_xlabel("Monat")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert |
+|---|---|
+| Serien | 12 |
+| mögliche Paare | 66 |
+| **Kreuzungen insgesamt** | **79** |
+| Wertebereich | 27.6 bis 113.9 |
+| Serien mit unverändertem Rang von Monat 1 zu Monat 24 | **5 von 12** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| **79 Kreuzungen** auf 24 Monate | Im Schnitt mehr als drei pro Zeitschritt. An jeder Kreuzung muss das Auge die Linie über den Farbton wiederfinden — den ungenauesten Kanal der ganzen Tabelle. |
+| Zwölf Farben sind **mehr, als unterscheidbar sind** | Übliche Empfehlungen enden bei sieben bis neun. Der Regenbogenverlauf macht es zusätzlich schwer, weil benachbarte Farbtöne sich kaum trennen. |
+| Nur **5 von 12** Serien behalten ihren Rang | Die Reihenfolge am Anfang sagt also wenig über die am Ende — genau die Information, die das Spaghetti-Diagramm verspricht und nicht liefert. |
+| Die Teilgrafiken beantworten eine **andere** Frage gut | "Wie verläuft Serie 7?" ist dort sofort beantwortet, "welche Serie ist im Monat 18 die höchste?" dagegen nicht mehr. **Kleine Teilgrafiken tauschen den Vergleich gegen den Verlauf.** |
+| Beide Grafiken zeigen dieselben Zahlen | Der Unterschied liegt allein im Kanal: Farbton gegen Position auf getrennten Skalen, Rang 7 gegen Rang 2. |
+
+::: {.note-box}
+**Der dritte Weg, der meistens der beste ist:** alle Serien grau zeichnen und
+**eine** hervorheben — das Spaghetti-Diagramm als Hintergrund, der den
+Wertebereich zeigt, plus ein Akzent für die Serie, um die es geht. Damit ist
+sowohl die Einordnung als auch der Verlauf lesbar, und man braucht nur zwei
+Farben statt zwölf.
+
+Das ist dieselbe Regel wie in Beispiel 3, nur auf Linien angewandt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Zwölf Serien über 24 Monate kreuzen sich 79-mal; nur 5 von 12 behalten ihren
+> Rang von Anfang bis Ende. Im Spaghetti-Diagramm muss jede Kreuzung über den
+> Farbton aufgelöst werden, in kleinen Teilgrafiken entfällt das Problem — um
+> den Preis, dass der direkte Vergleich zwischen den Serien verloren geht.
+
+### Beispiel 5: Gemeinsame oder getrennte Skala
+
+#### Frage und Datenlage
+
+Zwei Filialen über zwölf Monate. Die eine liegt bei rund 98, die andere bei
+rund 33 — ein Faktor 3. Was passiert, wenn beide Teilgrafiken ihre **eigene**
+y-Achse bekommen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-wk-r
+#| fig-cap: "Beispiel 5: gemeinsame Skala für beide Filialen."
+#| fig-height: 2.6
+Z <- normalmatrix(4040, 2, 12)
+gross <- 100 + Z[1, ] * 6
+klein <- 30 + Z[2, ] * 6
+
+round(rbind(gross = c(mittel = mean(gross), spanne = diff(range(gross)),
+                      min = min(gross), max = max(gross)),
+            klein = c(mittel = mean(klein), spanne = diff(range(klein)),
+                      min = min(klein), max = max(klein))), 1)
+round(c(verhaeltnis_der_mittel = mean(gross) / mean(klein),
+        verhaeltnis_der_spannen = diff(range(gross)) / diff(range(klein))), 2)
+
+lang <- data.frame(
+  filiale = rep(c("Zentrum", "Aussenstelle"), each = 12),
+  monat = rep(1:12, 2),
+  umsatz = c(gross, klein))
+
+ggplot(lang, aes(monat, umsatz)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ filiale) +
+  expand_limits(y = 0) +
+  labs(x = "Monat", y = "Umsatz", subtitle = "gemeinsame Skala")
+```
+
+```{r}
+#| label: fig-b5b-wk-r
+#| fig-cap: "Beispiel 5: dieselben Daten mit je eigener y-Achse."
+#| fig-height: 2.4
+ggplot(lang, aes(monat, umsatz)) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~ filiale, scales = "free_y") +
+  labs(x = "Monat", y = "Umsatz", subtitle = "je eigene Skala")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-wk-py
+#| fig-cap: "Beispiel 5: dieselbe Gegenüberstellung in Python."
+#| fig-height: 4.4
+Z = normalmatrix(4040, 2, 12)
+gross = 100 + Z[0] * 6
+klein = 30 + Z[1] * 6
+
+
+def kennzahlen(x):
+    return {"mittel": x.mean(), "spanne": x.max() - x.min(),
+            "min": x.min(), "max": x.max()}
+
+
+print(pd.DataFrame({"gross": kennzahlen(gross),
+                    "klein": kennzahlen(klein)}).round(1).T)
+print({"verhaeltnis_der_mittel": round(float(gross.mean() / klein.mean()), 2),
+       "verhaeltnis_der_spannen":
+           round(float((gross.max() - gross.min()) / (klein.max() - klein.min())), 2)})
+
+monat = np.arange(1, 13)
+fig, achsen = plt.subplots(2, 2, figsize=(7, 4.4))
+for spalte, (name, reihe) in enumerate([("Zentrum", gross),
+                                        ("Aussenstelle", klein)]):
+    achsen[0, spalte].plot(monat, reihe, lw=1.2, color="black")
+    achsen[0, spalte].set_ylim(0, 120)          # gemeinsame Skala
+    achsen[0, spalte].set_title(name, fontsize=10)
+    achsen[1, spalte].plot(monat, reihe, lw=1.2, color="black")
+    achsen[1, spalte].set_xlabel("Monat")
+achsen[0, 0].set_ylabel("gemeinsame Skala")
+achsen[1, 0].set_ylabel("je eigene Skala")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Filiale | Mittel | Spanne | Minimum | Maximum |
+|---|---|---|---|---|
+| Zentrum | **98.3** | 20.8 | 88.9 | 109.7 |
+| Aussenstelle | **32.9** | **29.3** | 19.7 | 49.0 |
+
+| Verhältnis | Wert |
+|---|---|
+| der Mittelwerte | **2.99** |
+| der Spannen | **0.71** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Das Zentrum setzt **dreimal** so viel um | 98.3 gegen 32.9. Auf der gemeinsamen Skala sieht man das sofort. |
+| Auf getrennten Skalen ist dieser Faktor **unsichtbar** | Beide Kurven füllen ihr Feld gleich aus. Wer die Achsenbeschriftung nicht liest — und das tut kaum jemand zuerst — sieht zwei gleich grosse Filialen. |
+| Die Aussenstelle schwankt **absolut stärker** | Spanne 29.3 gegen 20.8, Verhältnis 0.71. Das ist der eigentlich interessante Befund: Die kleinere Filiale ist die unruhigere. |
+| Und **dieser** Befund wird nur auf getrennten Skalen sichtbar | Auf der gemeinsamen Skala verschwindet die Schwankung der Aussenstelle optisch neben dem Niveauunterschied. |
+| Beide Darstellungen sind also richtig | Und beide unvollständig. **Die Skalenfrage ist keine Formfrage, sondern die Frage, welche Aussage die Grafik machen soll.** |
+
+::: {.warning-box}
+**Die Entscheidungsregel:**
+
+| Die Aussage lautet … | Skala |
+|---|---|
+| "A ist grösser als B" | **gemeinsam** — sonst ist die Aussage nicht zu sehen |
+| "beide folgen demselben Muster" | **getrennt** — sonst verschwindet das kleine Muster |
+| beides | zwei Grafiken, oder indexiert auf den Startwert = 100 |
+
+Getrennte Skalen sind nicht verboten, aber sie sind eine **Behauptung**: "Der
+Niveauunterschied ist hier nicht das Thema." Wer das nicht meint, muss die
+Achse teilen. Die verwandte, deutlich schlimmere Variante ist die zweite
+y-Achse — siehe
+[irreführende Darstellungen](irrefuehrende-darstellungen.qmd).
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Das Zentrum setzt mit 98.3 rund dreimal so viel um wie die Aussenstelle mit
+> 32.9, schwankt aber absolut weniger (Spanne 20.8 gegen 29.3). Die gemeinsame
+> Skala zeigt den Niveauunterschied und verbirgt die Schwankung, die getrennte
+> Skala genau umgekehrt.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 In einem Streudiagramm sollen zusätzlich Umsatz und Region dargestellt werden.
@@ -152,10 +803,64 @@ Problem?
       Akzentfarbe bliebe das Problem.
 - [x] Kontrast wirkt nur, wenn er selten ist ~ Richtig. Bei sechs von zwanzig
       hervorgehobenen Balken erfasst das Auge keine Ausnahme mehr, sondern zwei
-      Gruppen. Wer sechs zeigen muss, sortiert stattdessen und trennt die
-      Gruppen räumlich.
+      Gruppen. Im Beispiel machten fünf von zehn Akzenten 47 Prozent der
+      Balkenfläche aus. Wer sechs zeigen muss, sortiert stattdessen und trennt
+      die Gruppen räumlich.
 - [ ] Balken eignen sich nicht für Hervorhebung ~ Sie eignen sich gut, solange
       der Akzent die Ausnahme bleibt.
+:::
+
+::: {.quiz}
+Eine Blasengrafik soll Werte von 1 bis 8 zeigen. Wie gross muss der Radius der
+grössten Blase sein, wenn die kleinste den Radius 1 hat?
+
+- [x] Wurzel aus 8, also rund 2.83 ~ Richtig, denn die Fläche soll
+      proportional zum Wert sein und wächst mit dem Quadrat des Radius. Mit
+      Radius 8 entstünde die 64-fache Fläche.
+- [ ] 8, damit das Verhältnis stimmt ~ Das setzt den Radius proportional zum
+      Wert und erzeugt eine 64-fache statt achtfache Fläche.
+- [ ] 4, also die Hälfte ~ Dann wäre die Fläche 16-fach statt achtfach.
+:::
+
+::: {.quiz}
+Warum wirkt selbst eine korrekt kodierte Fläche zu klein?
+
+- [x] Flächen werden ungefähr mit dem Exponenten 0.7 wahrgenommen ~ Richtig.
+      Eine achtfache Fläche wirkt wie das 4.3-Fache. Deshalb braucht eine
+      Blasengrafik eine Legende mit Referenzkreisen.
+- [ ] Weil die Blasen sich überlappen ~ Das ist ein weiteres Problem, erklärt
+      aber die systematische Untertreibung nicht.
+- [ ] Weil der Bildschirm zu klein ist ~ Der Effekt ist unabhängig von der
+      Darstellungsgrösse.
+:::
+
+::: {.quiz}
+Zwölf Zeitreihen in einer Grafik kreuzten sich 79-mal. Warum ist das ein
+Problem?
+
+- [x] An jeder Kreuzung muss die Linie über den Farbton wiedergefunden werden ~
+      Richtig, und Farbton ist der ungenaueste Kanal. Zwölf Farben liegen
+      zudem über dem, was sich unterscheiden lässt.
+- [ ] Weil sich Linien grundsätzlich nicht kreuzen dürfen ~ Bei zwei oder drei
+      Serien sind Kreuzungen unproblematisch und oft gerade die Aussage.
+- [ ] Weil die Daten zu verrauscht sind ~ Dieselben Daten sind in kleinen
+      Teilgrafiken gut lesbar; das Problem liegt in der Darstellung.
+:::
+
+::: {.quiz}
+Zwei Filialen, eine mit Mittel 98.3, eine mit 32.9. In getrennten y-Achsen
+gezeichnet füllen beide Kurven ihr Feld gleich aus. Was ist davon zu halten?
+
+- [x] Das ist zulässig, aber eine Behauptung: Der Niveauunterschied sei nicht
+      das Thema ~ Richtig. Getrennte Skalen zeigen das Muster der kleinen
+      Reihe — im Beispiel schwankte die kleinere Filiale mit 29.3 sogar
+      absolut stärker als die grosse mit 20.8. Wer den Faktor 3 zeigen will,
+      braucht eine gemeinsame Skala.
+- [ ] Das ist immer irreführend ~ Dann bliebe das Muster der kleinen Reihe
+      unsichtbar; beide Darstellungen beantworten verschiedene Fragen.
+- [ ] Das ist unproblematisch, die Achsen sind ja beschriftet ~ Die
+      Beschriftung steht da, wird aber typischerweise erst nach dem
+      Gesamteindruck gelesen.
 :::
 
 ## Verlinkte Ressourcen
@@ -163,3 +868,5 @@ Problem?
 - [Claus Wilke: Fundamentals of Data Visualization, Kapitel zu Aesthetics](https://clauswilke.com/dataviz/aesthetic-mapping.html)
 - [Cleveland und McGill: Graphical Perception](https://www.jstor.org/stable/2288400)
 - [Tufte: The Visual Display of Quantitative Information](https://www.edwardtufte.com/tufte/books_vdqi)
+- [Diagrammtyp wählen](diagrammtyp-waehlen.qmd) — die Kanalrangfolge angewandt
+- [Farbe](farbe.qmd) — Paletten, Kontrast und der Graustufentest
