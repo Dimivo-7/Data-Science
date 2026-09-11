@@ -488,6 +488,11 @@ _ = achse.set_title("Titel")
 findet alle Stellen auf einen Schlag. Derselbe Fehler trat zuvor mit
 `stats.probplot()` auf `qq-plots.qmd` auf; er gehoert zur selben Familie.
 
+**Nachtrag 2026-09-11:** Auch `pfad.write_text(...)` und `datei.write(...)`
+geben die Anzahl geschriebener Zeichen zurueck. Auf
+`python-funktionen-module.qmd` stand deshalb eine verirrte `181` in der
+Ausgabe. Dieselbe Regel: an `_` zuweisen.
+
 ---
 
 ### 2026-09-11 — Benannte Werte in c() erzeugen zusammengesetzte Namen
