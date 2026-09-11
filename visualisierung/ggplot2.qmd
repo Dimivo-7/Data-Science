@@ -1,7 +1,7 @@
 ---
 title: "ggplot2"
 description: "Grammatik der Grafik, Ebenen, Skalen und Facetten in R."
-categories: ["ggplot2", "Visualisierung", "R"]
+categories: ["ggplot2", "Visualisierung", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: werkzeug
 stand: entwurf
@@ -15,18 +15,29 @@ library(ggplot2)
 library(dplyr)
 
 theme_set(theme_minimal(base_size = 12))
-set.seed(42)
 
-# Arbeitsdatensatz fuer die ganze Seite: Verbrauch haengt von Laufzeit und Typ ab
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# Arbeitsdatensatz fuer die ganze Seite. Deterministisch erzeugt, damit die
+# R- und die Python-Fassung dieselben 180 Maschinen zeigen.
+n <- 180
+u <- matrix(lehmer(4242, 2 * n), ncol = 2, byrow = TRUE)
 maschinen <- data.frame(
-  laufzeit = round(runif(180, 2, 22), 1),
-  typ      = rep(c("Fräse", "Presse", "Drehbank"), each = 60),
-  standort = rep(rep(c("Bern", "Chur"), each = 30), times = 3)
-)
+  laufzeit = round(2 + 20 * u[, 1], 1),
+  typ = factor(rep(c("Fräse", "Presse", "Drehbank"), each = 60),
+               levels = c("Drehbank", "Fräse", "Presse")),
+  standort = rep(rep(c("Bern", "Chur"), each = 30), times = 3))
 maschinen$verbrauch <- round(
   8 + 2.4 * maschinen$laufzeit +
-    ifelse(maschinen$typ == "Presse", 14, 0) +
-    rnorm(180, 0, 5), 1)
+    ifelse(maschinen$typ == "Presse", 14, 0) + qnorm(u[, 2]) * 5, 1)
 ```
 
 ```{python}
@@ -36,17 +47,29 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy import stats
 
 plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
                      "savefig.dpi": 288, "figure.dpi": 288})
 sns.set_theme(style="whitegrid", font_scale=0.9)
-rng = np.random.default_rng(42)
 
-laufzeit = np.round(rng.uniform(2, 22, 180), 1)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+n = 180
+u = lehmer(4242, 2 * n).reshape(n, 2)
+laufzeit = np.round(2 + 20 * u[:, 0], 1)
 typ = np.repeat(["Fräse", "Presse", "Drehbank"], 60)
 standort = np.tile(np.repeat(["Bern", "Chur"], 30), 3)
 verbrauch = np.round(8 + 2.4 * laufzeit + np.where(typ == "Presse", 14, 0)
-                     + rng.normal(0, 5, 180), 1)
+                     + stats.norm.ppf(u[:, 1]) * 5, 1)
 
 maschinen = pd.DataFrame({"laufzeit": laufzeit, "typ": typ,
                           "standort": standort, "verbrauch": verbrauch})
@@ -54,19 +77,25 @@ maschinen = pd.DataFrame({"laufzeit": laufzeit, "typ": typ,
 
 ## Kernideen
 
-- Grammatik: Daten, Aesthetics, Geome, Skalen, Facetten
-- Zuordnung im `aes()` gegenüber festem Wert
-- Geome für Verteilung, Zusammenhang und Vergleich
-- Facetten statt vieler Einzelgrafiken
-- Skalen und die Frage nach dem Nullpunkt
-- Beschriftung und Theme
+- **Grammatik statt Diagrammtypen:** Daten, Aesthetics, Geome, Skalen,
+  Facetten — frei kombinierbar.
+- Eine Angabe **innerhalb** von `aes()` wird aus den Daten abgeleitet,
+  **ausserhalb** ist sie ein fester Wert. Das ist der häufigste Anfängerfehler.
+- Geome folgen der Fragestellung und dem Skalenniveau, nicht dem Geschmack.
+- **Facetten statt Farbe**, sobald mehr als drei oder vier Gruppen im Spiel
+  sind — und mit gemeinsamen Achsen, sonst sind die Teilbilder nicht
+  vergleichbar.
+- Die Skala ist Teil der Aussage, nicht ein Darstellungsdetail.
+- Beschriftung ist kein Nachtrag.
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** [Data Wrangling](../daten/data-wrangling.qmd), weil ggplot2 einen
-aufgeräumten Data Frame im langen Format erwartet, und [Skalenniveaus](../statistik/grundlagen/skalenniveaus.qmd),
-weil das Messniveau bestimmt, welche Darstellung überhaupt zulässig ist.
+aufgeräumten Data Frame im langen Format erwartet, und
+[Skalenniveaus](../statistik/grundlagen/skalenniveaus.qmd), weil das Messniveau
+bestimmt, welche Darstellung überhaupt zulässig ist. Die Wahl selbst steht
+unter [Diagrammtyp wählen](diagrammtyp-waehlen.qmd).
 :::
 
 ### Warum nicht einfach ein Diagrammtyp
@@ -90,101 +119,17 @@ Drei Bausteine genügen für den Anfang:
 | Aesthetics, `aes()` | Welche Variable auf welche visuelle Eigenschaft abgebildet wird |
 | Geom | Mit welchen Objekten gezeichnet wird |
 
-### Der Aufbau in drei Schritten
+Dazu kommen Skalen, Facetten, Statistiken und das Theme. Der Aufbau ist immer
+derselbe:
 
-Die drei Bausteine lassen sich einzeln hinzufügen, und dabei sieht man, was
-jeder beiträgt. Zuerst nur Daten und Zuordnung, ohne Geom:
-
-```{r}
-#| label: fig-schritt1-r
-#| fig-cap: "Nur Daten und Zuordnung. Die Achsen stehen, gezeichnet ist nichts."
-#| fig-height: 3
-ggplot(maschinen, aes(x = laufzeit, y = verbrauch))
+```r
+ggplot(daten, aes(x, y)) +      # Daten und Zuordnung
+  geom_point() +                # womit gezeichnet wird
+  scale_y_continuous(...) +     # wie Werte in Positionen übersetzt werden
+  facet_wrap(~ gruppe) +        # Aufteilung in Teilbilder
+  labs(title = "…") +           # Beschriftung
+  theme_minimal()               # Aussehen
 ```
-
-Die Achsen sind da, samt Wertebereich, denn ggplot2 weiss bereits, welche
-Variablen wohin gehören. Es fehlt die Anweisung, womit gezeichnet werden soll:
-
-```{r}
-#| label: fig-schritt2-r
-#| fig-cap: "Mit einem Geom entsteht die Grafik."
-#| fig-height: 3
-ggplot(maschinen, aes(x = laufzeit, y = verbrauch)) +
-  geom_point(alpha = 0.6)
-```
-
-Weitere Schichten kommen mit `+` dazu. Jede sieht dieselben Daten und dieselbe
-Zuordnung:
-
-```{r}
-#| label: fig-schritt3-r
-#| fig-cap: "Zweites Geom auf denselben Daten, hier eine Ausgleichsgerade."
-#| fig-height: 3
-ggplot(maschinen, aes(x = laufzeit, y = verbrauch)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", formula = y ~ x, se = TRUE)
-```
-
-### Zuordnen oder festlegen
-
-Hier entsteht der häufigste Anfängerfehler. Eine Angabe **innerhalb** von
-`aes()` wird aus den Daten abgeleitet, bekommt eine Skala und eine Legende.
-Dieselbe Angabe **ausserhalb** ist ein fester Wert für alle Objekte.
-
-```{r}
-#| label: fig-aes-r
-#| fig-cap: "Links Farbe aus den Daten mit Legende, rechts eine feste Farbe ohne Legende."
-#| fig-height: 3
-p_zuordnung <- ggplot(maschinen, aes(laufzeit, verbrauch, colour = typ)) +
-  geom_point(alpha = 0.7) +
-  labs(title = "colour im aes()", colour = NULL) +
-  theme(legend.position = "bottom")
-
-p_festlegung <- ggplot(maschinen, aes(laufzeit, verbrauch)) +
-  geom_point(colour = "grey40", alpha = 0.7) +
-  labs(title = "colour ausserhalb")
-
-p_zuordnung
-```
-
-```{r}
-#| label: fig-aes2-r
-#| fig-cap: "Dieselben Daten mit fester Farbe. Ohne Zuordnung gibt es nichts zu erklären, also auch keine Legende."
-#| fig-height: 3
-p_festlegung
-```
-
-Die Regel lässt sich merken: Wer eine Legende braucht, gehört ins `aes()`.
-Wer nur eine hübschere Farbe will, gehört nach aussen. Ein `colour = "blau"`
-im `aes()` erzeugt übrigens keine blauen Punkte, sondern eine Legende mit dem
-einen Eintrag blau, weil ggplot2 den Text als Datenwert auffasst.
-
-::: {.quiz}
-`geom_point(aes(size = 3))` erzeugt eine Legende mit dem einzigen Eintrag 3.
-Warum?
-
-- [x] Alles im `aes()` gilt als Zuordnung, also wird die 3 als Variable mit
-      einem Wert behandelt ~ Richtig. Gemeint war eine feste Grösse, und die
-      gehört ausserhalb: `geom_point(size = 3)`.
-- [ ] Die Zahl 3 ist als Grösse ungültig ~ Sie ist gültig, nur am falschen
-      Ort geschrieben.
-- [ ] ggplot2 zeigt immer eine Legende ~ Ohne Zuordnung gibt es nichts zu
-      erklären, also auch keine Legende. In @fig-aes2-r ist genau das zu
-      sehen.
-:::
-
-::: {.quiz}
-Wann gehört `alpha` ins `aes()` und wann nach aussen?
-
-- [ ] Immer ins `aes()`, es ist eine visuelle Eigenschaft ~ Visuell ist auch
-      eine feste Farbe. Entscheidend ist, ob der Wert aus den Daten kommt.
-- [x] Ins `aes()` nur, wenn die Durchsichtigkeit etwas über die Daten aussagt ~
-      Richtig, etwa eine Messunsicherheit oder ein Gewicht. Dient sie nur dazu,
-      überlappende Punkte sichtbar zu machen, ist sie Gestaltung und gehört
-      nach aussen.
-- [ ] Immer nach aussen, `alpha` kann nicht zugeordnet werden ~ Zuordnen lässt
-      es sich sehr wohl, es ist nur selten gemeint.
-:::
 
 ### Geome nach Fragestellung
 
@@ -199,275 +144,708 @@ Welches Geom passt, hängt daran, was gezeigt werden soll und welches
 | Wie häufig ist eine Kategorie? | `geom_bar`, `geom_col` | ein kategoriales |
 | Wie verläuft etwas über die Zeit? | `geom_line` | Zeit und ein metrisches |
 
-::: panel-tabset
-## R
+`geom_bar` zählt selbst, `geom_col` nimmt fertige Werte — das ist die
+Verwechslung, die am häufigsten zu einer leeren Grafik führt.
+
+### Der Datensatz dieser Seite
+
+180 Maschinen mit Laufzeit in Stunden, Typ, Standort und Stromverbrauch. Der
+Verbrauch hängt konstruktionsgemäss von der Laufzeit ab, und Pressen brauchen
+zusätzlich 14 Einheiten. Die Daten sind deterministisch erzeugt, damit die
+R- und die Python-Fassung **dieselben** 180 Maschinen zeigen.
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Der Aufbau in drei Schritten
+
+#### Frage und Datenlage
+
+Was trägt jeder Baustein bei? Dazu wird die Grafik in drei Schritten gebaut:
+erst nur die Daten, dann die Zuordnung, dann das Geom.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: fig-geome-r
-#| fig-cap: "Gruppenvergleich: Boxplot je Maschinentyp."
-#| fig-height: 3.2
-ggplot(maschinen, aes(typ, verbrauch)) +
-  geom_boxplot(fill = "grey90", width = 0.5) +
-  labs(x = NULL, y = "Verbrauch")
+#| label: b1-gg-daten-r
+str(maschinen)
+round(c(laufzeit_min = min(maschinen$laufzeit),
+        laufzeit_max = max(maschinen$laufzeit),
+        verbrauch_min = min(maschinen$verbrauch),
+        verbrauch_max = max(maschinen$verbrauch),
+        korrelation = cor(maschinen$laufzeit, maschinen$verbrauch)), 3)
 ```
 
-## Python
+```{r}
+#| label: fig-b1a-gg-r
+#| fig-cap: "Schritt 1: nur Daten und Zuordnung. Die Achsen stehen, gezeichnet ist nichts."
+#| fig-height: 2.6
+ggplot(maschinen, aes(x = laufzeit, y = verbrauch))
+```
+
+```{r}
+#| label: fig-b1b-gg-r
+#| fig-cap: "Schritt 2: ein Geom kommt dazu."
+#| fig-height: 2.6
+ggplot(maschinen, aes(x = laufzeit, y = verbrauch)) +
+  geom_point(alpha = 0.5)
+```
+
+```{r}
+#| label: fig-b1c-gg-r
+#| fig-cap: "Schritt 3: eine zweite Ebene darüber."
+#| fig-height: 2.6
+ggplot(maschinen, aes(x = laufzeit, y = verbrauch)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, colour = "#b2182b")
+```
+
+##### Python
 
 ```{python}
-#| label: fig-geome-py
-#| fig-cap: "Derselbe Gruppenvergleich mit seaborn."
-fig, ax = plt.subplots(figsize=(7, 3.2))
-sns.boxplot(data=maschinen, x="typ", y="verbrauch", color="0.9", width=0.5, ax=ax)
-ax.set_xlabel("")
-ax.set_ylabel("Verbrauch")
-plt.show()
+#| label: b1-gg-daten-py
+print(maschinen.dtypes)
+print({"laufzeit_min": round(float(maschinen["laufzeit"].min()), 3),
+       "laufzeit_max": round(float(maschinen["laufzeit"].max()), 3),
+       "verbrauch_min": round(float(maschinen["verbrauch"].min()), 3),
+       "verbrauch_max": round(float(maschinen["verbrauch"].max()), 3),
+       "korrelation": round(float(maschinen["laufzeit"].corr(maschinen["verbrauch"])), 3)})
 ```
-:::
-
-### Facetten statt vieler Einzelbilder
-
-Sobald eine dritte Variable ins Spiel kommt, wird es eng. Man könnte sie über
-die Farbe abbilden, aber bei mehr als drei oder vier Gruppen wird das
-unübersichtlich. Facetten teilen die Grafik stattdessen in Teilbilder auf.
-
-Der entscheidende Vorteil gegenüber mehreren getrennten Grafiken sind die
-gemeinsamen Achsen: Nur dadurch sind die Teilbilder direkt vergleichbar.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: fig-facetten-r
-#| fig-cap: "Ein Teilbild je Maschinentyp, mit gemeinsamen Achsen."
-#| fig-height: 3.2
-ggplot(maschinen, aes(laufzeit, verbrauch)) +
-  geom_point(alpha = 0.6, size = 1.4) +
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, colour = "black") +
-  facet_wrap(~ typ) +
-  labs(x = "Laufzeit (h)", y = "Verbrauch (l)")
-```
-
-## Python
 
 ```{python}
-#| label: fig-facetten-py
-#| fig-cap: "Dieselbe Aufteilung als seaborn-Gitter."
-g = sns.lmplot(data=maschinen, x="laufzeit", y="verbrauch", col="typ",
-               height=2.8, aspect=0.85, ci=None,
-               scatter_kws={"alpha": 0.6, "s": 14},
-               line_kws={"color": "black"})
-g.set_axis_labels("Laufzeit (h)", "Verbrauch (l)")
+#| label: fig-b1-gg-py
+#| fig-cap: "Dieselben drei Schritte in matplotlib — hier gibt es keine leere Zwischenstufe."
+#| fig-height: 2.8
+fig, achse = plt.subplots(figsize=(7, 2.8))
+_ = achse.scatter(maschinen["laufzeit"], maschinen["verbrauch"], s=14, alpha=0.5,
+                  color="0.3")
+k, d = np.polyfit(maschinen["laufzeit"], maschinen["verbrauch"], 1)
+gitter = np.linspace(maschinen["laufzeit"].min(), maschinen["laufzeit"].max(), 2)
+_ = achse.plot(gitter, k * gitter + d, lw=2, color="#b2182b")
+_ = achse.set_xlabel("laufzeit")
+_ = achse.set_ylabel("verbrauch")
+plt.tight_layout()
 plt.show()
-```
-:::
-
-An dieser Abbildung ist die Presse sofort als der Typ mit dem höheren
-Grundverbrauch zu erkennen, während die Steigung in allen drei Teilbildern
-ähnlich verläuft. Genau solche Aussagen sind der Zweck der Facettierung.
-
-::: {.quiz}
-Wann ist Farbe der Facettierung vorzuziehen?
-
-- [x] Bei wenigen Gruppen, wenn der direkte Vergleich im selben
-      Koordinatensystem zählt ~ Richtig. Überlagerte Punktwolken lassen kleine
-      Unterschiede besser erkennen als nebeneinanderliegende Teilbilder, etwa
-      bei zwei bis vier Gruppen.
-- [ ] Immer, Facetten brauchen zu viel Platz ~ Ab etwa fünf Gruppen wird die
-      Farbe unübersichtlich, und dann sind Facetten wie in @fig-facetten-r die
-      bessere Wahl.
-- [ ] Nie, Facetten sind grundsätzlich klarer ~ Sie zerlegen den direkten
-      Vergleich in getrennte Bilder, was nicht immer gewollt ist.
-:::
-
-::: {.quiz}
-Was geht verloren, wenn man in `facet_wrap` die Achsen mit `scales = "free"`
-freigibt?
-
-- [x] Die Vergleichbarkeit zwischen den Teilbildern ~ Richtig. Jedes bekommt
-      seinen eigenen Wertebereich, und zwei Kurven mit sehr verschiedenen
-      Niveaus sehen dann gleich steil aus.
-- [ ] Nichts, die Daten bleiben dieselben ~ Die Daten schon, die Aussage des
-      Bildes nicht.
-- [ ] Die Facettierung selbst ~ Sie bleibt bestehen, nur die gemeinsame Skala
-      entfällt.
-:::
-
-### Skalen: wo die Aussage entsteht
-
-Die Skala übersetzt Datenwerte in Positionen und Farben. Diese Übersetzung ist
-kein Darstellungsdetail, sondern Teil der Aussage. Am deutlichsten zeigt sich
-das beim Nullpunkt einer Balkengrafik:
-
-```{r}
-#| label: fig-nullpunkt-r
-#| fig-cap: "Dieselben drei Mittelwerte. Links mit Nullpunkt, rechts ohne."
-#| fig-height: 3.2
-mittel <- maschinen |>
-  group_by(typ) |>
-  summarise(mittel = mean(verbrauch), .groups = "drop")
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-barplot(mittel$mittel, names.arg = mittel$typ, col = "grey75",
-        ylim = c(0, 90), main = "mit Nullpunkt", ylab = "Verbrauch")
-barplot(mittel$mittel, names.arg = mittel$typ, col = "grey75",
-        ylim = c(40, 90), xpd = FALSE, main = "abgeschnitten")
+print({"steigung": round(float(k), 3), "achsenabschnitt": round(float(d), 2)})
 ```
 
-Rechts wirkt der Unterschied dramatisch, links angemessen. Beide Bilder zeigen
-dieselben Zahlen. Bei Balken, deren Länge die Grösse abbildet, gehört die
-Nulllinie dazu; bei einer Linie, die einen Verlauf zeigt, ist ein
-Ausschnitt legitim und oft nötig.
-
-### Beschriftung ist kein Nachtrag
-
-Eine Grafik ohne Achsenbeschriftung ist unvollständig. Der Titel sollte die
-Aussage benennen und nicht den Diagrammtyp wiederholen; wer stattdessen
-Streudiagramm Verbrauch gegen Laufzeit schreibt, verschenkt die eine Zeile, die
-alle lesen.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: fig-fertig-r
-#| fig-cap: "Dieselbe Grafik, fertig beschriftet."
-ggplot(maschinen, aes(laufzeit, verbrauch, colour = typ)) +
-  geom_point(alpha = 0.65, size = 1.6) +
-  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, linewidth = 0.7) +
-  labs(
-    title    = "Die Presse verbraucht unabhängig von der Laufzeit rund 14 l mehr",
-    subtitle = "180 Ablesungen an drei Maschinentypen",
-    x = "Laufzeit (h)", y = "Verbrauch (l)", colour = "Typ",
-    caption  = "Simulierte Daten"
-  ) +
-  theme(legend.position = "bottom")
-```
-
-## Python
-
-```{python}
-#| label: fig-fertig-py
-#| fig-cap: "Dieselbe Beschriftung mit seaborn und matplotlib."
-fig, ax = plt.subplots()
-sns.scatterplot(data=maschinen, x="laufzeit", y="verbrauch", hue="typ",
-                alpha=0.65, s=22, ax=ax)
-for name, teil in maschinen.groupby("typ"):
-    k = np.polyfit(teil["laufzeit"], teil["verbrauch"], 1)
-    xs = np.linspace(teil["laufzeit"].min(), teil["laufzeit"].max(), 2)
-    ax.plot(xs, np.polyval(k, xs), linewidth=1)
-
-ax.set_title("Die Presse verbraucht unabhängig von der Laufzeit rund 14 l mehr")
-ax.set_xlabel("Laufzeit (h)")
-ax.set_ylabel("Verbrauch (l)")
-ax.legend(title="Typ", loc="upper left")
-plt.show()
-```
 :::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert |
+|---|---|
+| Beobachtungen | 180 |
+| Laufzeit | **2.0 bis 22.0** Stunden |
+| Verbrauch | **6.1 bis 78.1** |
+| Korrelation Laufzeit / Verbrauch | **0.852** |
+| Ausgleichsgerade | Steigung **2.358**, Achsenabschnitt **13.35** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Der erste Aufruf zeichnet **nichts** | Nur die Achsen. Daten und Zuordnung stehen fest, aber ohne Geom gibt es keine Objekte. Das ist kein Fehler, sondern die Grammatik: **Zuordnung und Darstellung sind getrennt.** |
+| Erst `geom_point()` bringt Punkte | Dieselbe Zuordnung könnte mit `geom_line()` Linien ergeben oder mit `geom_hex()` Sechsecke — ohne dass sich an `aes()` etwas ändert. |
+| Die zweite Ebene liegt **darüber** | `geom_smooth()` wird addiert, nicht ersetzt. Die Reihenfolge im Code ist die Reihenfolge im Bild. |
+| Die geschätzte Steigung beträgt **2.358** | Konstruiert waren 2.4. Die Abweichung kommt daher, dass die Pressen ihre zusätzlichen 14 Einheiten unabhängig von der Laufzeit haben und die Gerade das ausgleicht. |
+| In matplotlib gibt es die leere Zwischenstufe **nicht** | Dort erzeugt `plt.subplots()` die Achsen und jeder Zeichenbefehl fügt direkt Objekte hinzu. Der Unterschied ist nicht kosmetisch: In ggplot2 ist die Zuordnung ein eigenes Objekt, das wiederverwendet werden kann. |
 
 ::: {.note-box}
-Der Vergleich zu [matplotlib](matplotlib.qmd) fällt hier deutlich aus.
-ggplot2 leitet die Grafik aus der Zuordnung ab, Matplotlib zeichnet Elemente.
-seaborn liegt dazwischen und übernimmt für die Standardfälle die Rolle, die in
-R ggplot2 spielt.
+**Was daraus folgt, wenn man in ggplot2 denkt:** Die Frage lautet nicht "welches
+Diagramm", sondern zweimal getrennt:
+
+1. Welche Variable kommt auf welchen Kanal? (`aes`)
+2. Womit wird gezeichnet? (`geom`)
+
+Diese Trennung ist derselbe Gedanke wie die Kanalrangfolge unter
+[Wahrnehmung und Kodierung](wahrnehmung-kodierung.qmd) — nur als Code.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Der Datensatz umfasst 180 Maschinen mit Laufzeiten von 2.0 bis 22.0 Stunden
+> und Verbrauchswerten von 6.1 bis 78.1; die Korrelation beträgt 0.852. Ohne
+> Geom zeichnet ggplot2 nur die Achsen — Zuordnung und Darstellung sind
+> getrennte Bausteine.
+
+### Beispiel 2: Zuordnen oder festlegen
+
+#### Frage und Datenlage
+
+`colour = "blue"` innerhalb und ausserhalb von `aes()` — derselbe Text, zwei
+völlig verschiedene Ergebnisse. Das ist der häufigste Anfängerfehler.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b2a-gg-r
+#| fig-cap: "Innerhalb von aes(): 'blue' wird als Datenwert behandelt."
+#| fig-height: 2.6
+ggplot(maschinen, aes(laufzeit, verbrauch, colour = "blue")) +
+  geom_point(alpha = 0.6)
+```
+
+```{r}
+#| label: fig-b2b-gg-r
+#| fig-cap: "Ausserhalb von aes(): ein fester Wert für alle Punkte."
+#| fig-height: 2.6
+ggplot(maschinen, aes(laufzeit, verbrauch)) +
+  geom_point(colour = "blue", alpha = 0.6)
+```
+
+```{r}
+#| label: fig-b2c-gg-r
+#| fig-cap: "Sinnvoll zugeordnet: eine echte Variable auf die Farbe."
+#| fig-height: 2.8
+ggplot(maschinen, aes(laufzeit, verbrauch, colour = typ)) +
+  geom_point(alpha = 0.6) +
+  scale_colour_manual(values = c(Drehbank = "#0072B2", Fräse = "#009E73",
+                                 Presse = "#D55E00"))
+```
+
+```{r}
+#| label: b2-gg-zahlen-r
+zusammenfassung <- maschinen |>
+  group_by(typ) |>
+  summarise(anzahl = n(), mittel = mean(verbrauch), sd = sd(verbrauch)) |>
+  as.data.frame()
+zusammenfassung$mittel <- round(zusammenfassung$mittel, 2)
+zusammenfassung$sd <- round(zusammenfassung$sd, 2)
+zusammenfassung
+```
+
+##### Python
+
+```{python}
+#| label: fig-b2-gg-py
+#| fig-cap: "In matplotlib ist der Unterschied explizit: c= nimmt Daten, color= einen festen Wert."
+#| fig-height: 2.8
+farben = {"Drehbank": "#0072B2", "Fräse": "#009E73", "Presse": "#D55E00"}
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 2.8))
+_ = achsen[0].scatter(maschinen["laufzeit"], maschinen["verbrauch"],
+                      s=14, alpha=0.6, color="blue")
+_ = achsen[0].set_title("fester Wert: color=", fontsize=10)
+for name, teil in maschinen.groupby("typ"):
+    _ = achsen[1].scatter(teil["laufzeit"], teil["verbrauch"], s=14, alpha=0.6,
+                          color=farben[name], label=name)
+_ = achsen[1].legend(fontsize=7, frameon=False)
+_ = achsen[1].set_title("zugeordnet: je Gruppe", fontsize=10)
+for achse in achsen:
+    _ = achse.set_xlabel("laufzeit")
+    _ = achse.set_ylabel("verbrauch")
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: b2-gg-zahlen-py
+print(maschinen.groupby("typ")["verbrauch"]
+      .agg(anzahl="count", mittel="mean", sd="std").round(2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Typ | Anzahl | Mittel | SD |
+|---|---|---|---|
+| Drehbank | 60 | **37.58** | 15.35 |
+| Fräse | 60 | **38.10** | 15.23 |
+| **Presse** | 60 | **48.65** | 13.68 |
+
+| Beobachtung | Erklärung |
+|---|---|
+| `colour = "blue"` **innerhalb** von `aes()` ergibt rote Punkte und eine Legende | ggplot2 behandelt `"blue"` als **Datenwert**: eine Variable, die für alle 180 Zeilen denselben Wert hat. Sie bekommt eine Skala, und die erste Farbe der Standardpalette ist Rot. |
+| **Ausserhalb** wird es ein fester Wert | Blaue Punkte, keine Legende. Nichts wird aus den Daten abgeleitet. |
+| Die Faustregel steht in einem Satz | **Steht rechts vom `=` ein Spaltenname, gehört es in `aes()`; steht dort ein fester Wert, gehört es nach draussen.** |
+| Sinnvoll zugeordnet zeigt die Farbe den Typ | Und dann trägt sie Information: Die Pressen liegen mit einem Mittel von 48.65 rund 10 Einheiten über den anderen beiden, die mit 37.58 und 38.10 fast gleich sind. |
+| In matplotlib gibt es diesen Fehler **nicht** | Dort sind `color=` (fest) und `c=` (aus Daten) verschiedene Argumente. Dafür muss man dort je Gruppe selbst schleifen — ggplot2 nimmt einem das ab. |
+
+::: {.warning-box}
+**Woran man den Fehler im Bild erkennt:** Es erscheint eine Legende, die man
+nicht bestellt hat, mit genau einem Eintrag, der den Namen der Farbe trägt.
+Zweiter Hinweis: Die Farbe ist nicht die, die man geschrieben hat.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Innerhalb von `aes()` wird `colour = "blue"` als Datenwert behandelt und
+> erzeugt eine Legende mit einem Eintrag; ausserhalb ist es ein fester Wert.
+> Sinnvoll zugeordnet zeigt die Farbe den Maschinentyp: Pressen verbrauchen im
+> Mittel 48.65 gegenüber 37.58 und 38.10 bei den anderen beiden Typen.
+
+### Beispiel 3: Geome nach Fragestellung
+
+#### Frage und Datenlage
+
+Derselbe Datensatz, vier Fragen, vier Geome. Jedes beantwortet genau eine und
+verbirgt die anderen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-gg-r
+#| fig-cap: "Beispiel 3: Histogramm, Streudiagramm, Boxplot und Balken."
+#| fig-height: 2.4
+p1 <- ggplot(maschinen, aes(verbrauch)) +
+  geom_histogram(bins = 25, fill = "grey70", colour = "white") +
+  labs(subtitle = "Wie ist der Verbrauch verteilt?")
+
+p2 <- ggplot(maschinen, aes(laufzeit, verbrauch)) +
+  geom_point(alpha = 0.4) +
+  labs(subtitle = "Wie hängen Laufzeit und Verbrauch zusammen?")
+
+p3 <- ggplot(maschinen, aes(typ, verbrauch)) +
+  geom_boxplot(fill = "grey85") +
+  labs(subtitle = "Wie unterscheiden sich die Typen?")
+
+p4 <- ggplot(maschinen, aes(standort)) +
+  geom_bar(fill = "grey70") +
+  labs(subtitle = "Wie viele Maschinen je Standort?")
+
+# Ohne Zusatzpaket: die vier Grafiken nacheinander
+print(p1); print(p2); print(p3); print(p4)
+```
+
+```{r}
+#| label: b3-gg-zahlen-r
+round(c(median_verbrauch = median(maschinen$verbrauch),
+        schiefe = mean((maschinen$verbrauch - mean(maschinen$verbrauch))^3) /
+          sd(maschinen$verbrauch)^3), 3)
+table(maschinen$standort)
+round(tapply(maschinen$verbrauch, maschinen$typ, median), 2)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-gg-py
+#| fig-cap: "Beispiel 3: dieselben vier Fragen in seaborn."
+#| fig-height: 4.6
+fig, achsen = plt.subplots(2, 2, figsize=(7, 4.6))
+_ = sns.histplot(maschinen["verbrauch"], bins=25, color="0.7",
+                 ax=achsen[0, 0])
+_ = achsen[0, 0].set_title("Wie ist der Verbrauch verteilt?", fontsize=9)
+_ = sns.scatterplot(data=maschinen, x="laufzeit", y="verbrauch", alpha=0.4,
+                    color="0.3", ax=achsen[0, 1])
+_ = achsen[0, 1].set_title("Wie hängen Laufzeit und Verbrauch zusammen?",
+                           fontsize=9)
+_ = sns.boxplot(data=maschinen, x="typ", y="verbrauch", color="0.85",
+                ax=achsen[1, 0])
+_ = achsen[1, 0].set_title("Wie unterscheiden sich die Typen?", fontsize=9)
+_ = sns.countplot(data=maschinen, x="standort", color="0.7", ax=achsen[1, 1])
+_ = achsen[1, 1].set_title("Wie viele Maschinen je Standort?", fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: b3-gg-zahlen-py
+print({"median_verbrauch": round(float(maschinen["verbrauch"].median()), 3),
+       "schiefe": round(float(stats.skew(maschinen["verbrauch"])), 3)})
+print(maschinen["standort"].value_counts().sort_index())
+print(maschinen.groupby("typ")["verbrauch"].median().round(2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kennzahl | Wert |
+|---|---|
+| Median Verbrauch | **41.45** |
+| Schiefe | **0.033** |
+| Maschinen je Standort | Bern **90**, Chur **90** |
+
+| Typ | Median Verbrauch |
+|---|---|
+| Drehbank | **36.45** |
+| Fräse | **37.00** |
+| Presse | **48.55** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Das Histogramm zeigt eine nahezu symmetrische Verteilung | Schiefe 0.033, Median 41.45 bei einem Mittelwert von 41.44. Es ist aber eine **Mischung** aus drei Typen — das Histogramm zeigt nur die Summe. |
+| Das Streudiagramm zeigt den Zusammenhang | Und nicht die Gruppen. Dass die Pressen systematisch höher liegen, ist dort als Verbreiterung der Wolke sichtbar, nicht als Struktur. |
+| Der Boxplot zeigt die Gruppen | Und nicht den Zusammenhang mit der Laufzeit. Mediane 36.45, 37.00 und 48.55. |
+| Der Balken zählt selbst | `geom_bar` braucht kein `y`: 90 und 90. Wer bereits fertige Werte hat, nimmt `geom_col` — die Verwechslung ist die häufigste Ursache für eine unerwartet leere Grafik. |
+| Keines der vier Bilder ist **falsch** | Jedes beantwortet seine Frage und verschweigt die anderen. **Das Geom ist die Frage, nicht die Dekoration.** |
+
+::: {.note-box}
+**Mehrere ggplot-Objekte nebeneinander** brauchen ein Zusatzpaket (`patchwork`,
+`cowplot` oder `gridExtra`). Steht keines zur Verfügung — wie in dieser
+Sammlung —, gibt man die Grafiken einfach nacheinander aus. In matplotlib
+löst `plt.subplots(2, 2)` dasselbe ohne Zusatz.
+
+Das ist einer der wenigen Punkte, an denen matplotlib bequemer ist als ggplot2.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Dieselben 180 Maschinen beantworten vier Fragen mit vier Geomen: eine fast
+> symmetrische Gesamtverteilung (Median 41.45, Schiefe 0.033), einen klaren
+> Zusammenhang mit der Laufzeit, Typunterschiede mit Medianen von 36.45 bis
+> 48.55 und eine gleichmässige Verteilung von 90 zu 90 auf die Standorte.
+
+### Beispiel 4: Facetten statt Farbe
+
+#### Frage und Datenlage
+
+Der Zusammenhang zwischen Laufzeit und Verbrauch, aufgeteilt nach Typ und
+Standort. Einmal über Farbe, einmal über Facetten — und die Frage, welche der
+beiden die sechs Gruppen lesbar macht.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4a-gg-r
+#| fig-cap: "Sechs Gruppen über Farbe und Form."
+#| fig-height: 3
+ggplot(maschinen, aes(laufzeit, verbrauch, colour = typ, shape = standort)) +
+  geom_point(alpha = 0.7)
+```
+
+```{r}
+#| label: fig-b4b-gg-r
+#| fig-cap: "Dieselben sechs Gruppen als Facetten, mit gemeinsamen Achsen."
+#| fig-height: 3.4
+ggplot(maschinen, aes(laufzeit, verbrauch)) +
+  geom_point(alpha = 0.5, size = 1.2) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE,
+              colour = "#b2182b", linewidth = 0.8) +
+  facet_grid(standort ~ typ) +
+  labs(x = "Laufzeit in Stunden", y = "Verbrauch")
+```
+
+```{r}
+#| label: b4-gg-zahlen-r
+steigungen <- sapply(levels(maschinen$typ), function(tp) {
+  teil <- maschinen[maschinen$typ == tp, ]
+  unname(coef(lm(verbrauch ~ laufzeit, data = teil))[2])
+})
+round(steigungen, 3)
+round(c(gesamt = unname(coef(lm(verbrauch ~ laufzeit, data = maschinen))[2])), 3)
+round(with(maschinen, tapply(verbrauch, list(typ, standort), mean)), 2)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-gg-py
+#| fig-cap: "Beispiel 4: dieselben Facetten in seaborn."
+#| fig-height: 3.4
+gitter = sns.FacetGrid(maschinen, row="standort", col="typ", height=1.5,
+                       aspect=1.5)
+_ = gitter.map_dataframe(sns.regplot, x="laufzeit", y="verbrauch",
+                         scatter_kws={"s": 8, "alpha": 0.5, "color": "0.3"},
+                         line_kws={"color": "#b2182b", "linewidth": 1},
+                         ci=None)
+_ = gitter.set_axis_labels("Laufzeit in Stunden", "Verbrauch")
+plt.show()
+```
+
+```{python}
+#| label: b4-gg-zahlen-py
+steigungen = {tp: round(float(np.polyfit(teil["laufzeit"], teil["verbrauch"], 1)[0]), 3)
+              for tp, teil in maschinen.groupby("typ")}
+print(steigungen)
+print({"gesamt": round(float(np.polyfit(maschinen["laufzeit"],
+                                        maschinen["verbrauch"], 1)[0]), 3)})
+print(maschinen.pivot_table(index="typ", columns="standort",
+                            values="verbrauch", aggfunc="mean").round(2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Typ | Steigung je Stunde |
+|---|---|
+| Drehbank | **2.384** |
+| Fräse | **2.457** |
+| Presse | **2.534** |
+| **gesamt** | **2.358** |
+
+Mittlerer Verbrauch je Typ und Standort:
+
+| | Bern | Chur |
+|---|---|---|
+| Drehbank | 37.04 | 38.13 |
+| Fräse | **42.83** | **33.36** |
+| Presse | 49.02 | 48.27 |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Sechs Gruppen über Farbe **und** Form sind kaum zu trennen | Drei Farben mal zwei Formen, und die Punkte überlagern sich. Das Auge muss zwei Kanäle gleichzeitig auflösen, beide vom unteren Ende der Rangfolge. |
+| Die Facetten geben jeder Gruppe **eigene Fläche** | Position statt Farbe, Rang 2 statt Rang 7 — siehe [Wahrnehmung und Kodierung](wahrnehmung-kodierung.qmd). |
+| Die gemeinsamen Achsen sind der **Punkt** | Ohne sie wären die sechs Teilbilder sechs getrennte Grafiken. `facet_grid` setzt sie von sich aus gemeinsam; `scales = "free"` würde sie freigeben und die Vergleichbarkeit zerstören. |
+| Die Steigungen sind in allen Typen **fast gleich** | 2.384, 2.457, 2.534 — konstruiert waren 2.4. Die Facetten zeigen das auf einen Blick. |
+| Die Gesamtsteigung ist mit **2.358 kleiner** als jede einzelne | Weil die Pressen ihren Zuschlag unabhängig von der Laufzeit haben und die gemeinsame Gerade dadurch flacher wird. Ein kleiner Verwandter des [Simpson-Paradox](irrefuehrende-darstellungen.qmd). |
+| Ein Unterschied fällt erst in der Tabelle auf | Fräsen in Bern liegen bei 42.83, in Chur bei 33.36 — fast zehn Einheiten. Bei den anderen Typen ist der Standortunterschied unter 1.1. |
+
+::: {.note-box}
+**`facet_wrap` gegen `facet_grid`:**
+
+| Funktion | Aufteilung | Wann |
+|---|---|---|
+| `facet_wrap(~ a)` | eine Variable, umgebrochen | viele Stufen einer Variablen |
+| `facet_grid(a ~ b)` | Zeilen mal Spalten | zwei Variablen, vollständige Kreuztabelle |
+| `facet_grid(. ~ b)` | nur Spalten | wie `facet_wrap`, aber in einer Reihe |
+
+In Python heisst das `sns.FacetGrid(row=, col=)` oder `sns.relplot(...)`.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> In allen drei Maschinentypen steigt der Verbrauch mit 2.384 bis 2.534 je
+> Stunde fast gleich stark, während die gemeinsame Gerade mit 2.358 flacher
+> ausfällt. Die Facetten mit gemeinsamen Achsen machen das sichtbar; über Farbe
+> und Form kodiert sind die sechs Gruppen nicht mehr zu trennen.
+
+### Beispiel 5: Skalen, Nullpunkt und Beschriftung
+
+#### Frage und Datenlage
+
+Die mittleren Verbrauchswerte je Typ als Balken — einmal mit Achse ab null,
+einmal ab 35. Dazu die fertige Fassung mit Beschriftung, wie sie in einen
+Bericht gehört.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5a-gg-r
+#| fig-cap: "Links Achse ab null, rechts ab 35 — dieselben drei Zahlen."
+#| fig-height: 2.8
+mittel <- maschinen |>
+  group_by(typ) |>
+  summarise(verbrauch = mean(verbrauch)) |>
+  as.data.frame()
+mittel$verbrauch <- round(mittel$verbrauch, 2)
+mittel
+
+laengen <- mittel$verbrauch - 35
+round(c(echtes_verhaeltnis = max(mittel$verbrauch) / min(mittel$verbrauch),
+        ab_35_dargestellt = max(laengen) / min(laengen),
+        verzerrung = (max(laengen) / min(laengen)) /
+          (max(mittel$verbrauch) / min(mittel$verbrauch))), 2)
+
+ggplot(mittel, aes(typ, verbrauch)) +
+  geom_col(fill = "grey70") +
+  coord_cartesian(ylim = c(35, 50)) +
+  labs(subtitle = "Achse ab 35 — die Unterschiede wirken dreifach")
+```
+
+```{r}
+#| label: fig-b5b-gg-r
+#| fig-cap: "Die Fassung für den Bericht: Achse ab null, Akzent, Beschriftung."
+#| fig-height: 3
+ggplot(mittel, aes(reorder(typ, verbrauch), verbrauch)) +
+  geom_col(aes(fill = typ == "Presse"), width = 0.65) +
+  geom_text(aes(label = sprintf("%.1f", verbrauch)), hjust = -0.15, size = 3.4) +
+  scale_fill_manual(values = c(`FALSE` = "#c7c7c7", `TRUE` = "#b2182b"),
+                    guide = "none") +
+  scale_y_continuous(limits = c(0, 55), expand = c(0, 0)) +
+  coord_flip() +
+  labs(title = "Pressen verbrauchen rund ein Viertel mehr Strom",
+       subtitle = "Mittlerer Verbrauch je Maschinentyp, 180 Maschinen",
+       x = NULL, y = "Verbrauch in Kilowattstunden",
+       caption = "Quelle: Betriebsdatenerfassung, Stand 2026") +
+  theme(panel.grid.major.y = element_blank())
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-gg-py
+#| fig-cap: "Beispiel 5: dieselbe Gegenüberstellung in matplotlib."
+#| fig-height: 2.8
+mittel = maschinen.groupby("typ")["verbrauch"].mean().round(2)
+print(mittel)
+
+laengen = mittel - 35
+print({"echtes_verhaeltnis": round(float(mittel.max() / mittel.min()), 2),
+       "ab_35_dargestellt": round(float(laengen.max() / laengen.min()), 2),
+       "verzerrung": round(float((laengen.max() / laengen.min())
+                                 / (mittel.max() / mittel.min())), 2)})
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 2.8))
+_ = achsen[0].bar(mittel.index, mittel.to_numpy(), color="0.7")
+_ = achsen[0].set_ylim(0, 55)
+_ = achsen[0].set_title("Achse ab null", fontsize=10)
+_ = achsen[1].bar(mittel.index, mittel.to_numpy(), color="0.7")
+_ = achsen[1].set_ylim(35, 50)
+_ = achsen[1].set_title("Achse ab 35", fontsize=10)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| label: fig-b5b-gg-py
+#| fig-cap: "Die Fassung für den Bericht in matplotlib."
+#| fig-height: 3
+sortiert = mittel.sort_values()
+farben = ["#b2182b" if name == "Presse" else "#c7c7c7" for name in sortiert.index]
+
+fig, achse = plt.subplots(figsize=(7, 3))
+_ = achse.barh(sortiert.index, sortiert.to_numpy(), color=farben, height=0.65)
+for y, wert in enumerate(sortiert.to_numpy()):
+    _ = achse.text(wert + 0.8, y, f"{wert:.1f}", va="center", fontsize=9)
+_ = achse.set_xlim(0, 55)
+_ = achse.set_title("Pressen verbrauchen rund ein Viertel mehr Strom")
+_ = achse.set_xlabel("Verbrauch in Kilowattstunden")
+_ = achse.grid(axis="y", visible=False)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Typ | mittlerer Verbrauch |
+|---|---|
+| Drehbank | **37.58** |
+| Fräse | **38.10** |
+| **Presse** | **48.65** |
+
+| Kennzahl | Wert |
+|---|---|
+| echtes Verhältnis Presse zu Drehbank | **1.29** |
+| als Balkenlänge bei Achse ab 35 | **4.20** |
+| **Verzerrung** | **3.24-fach** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Pressen verbrauchen **29 Prozent** mehr als Drehbänke | 48.65 gegen 37.58. Das ist der Befund, und er ist deutlich genug. |
+| Ab 35 gezeichnet sieht es nach **Faktor 4.2** aus | Eine Übertreibung um das 3.24-Fache. `coord_cartesian(ylim = …)` macht das mit einer Zeile — deshalb passiert es so leicht. |
+| `coord_cartesian` schneidet, `scale_y_continuous(limits =)` **wirft weg** | Der Unterschied ist wichtig: Letzteres entfernt Datenpunkte vor der Berechnung und verändert damit Glättungslinien und Statistiken. |
+| Die Berichtsfassung sortiert, betont und beschriftet | `reorder()` sortiert nach Wert, eine Akzentfarbe hebt die Pressen heraus, `geom_text` schreibt die Zahlen an — und der Titel nennt die Aussage statt des Diagrammtyps. |
+| `expand = c(0, 0)` entfernt den Rand unter null | Sonst schwebt der Balken sichtbar über der Achse, was den Nullpunkt wieder unklar macht. |
+
+::: {.note-box}
+**Die Beschriftungsteile, die `labs()` kennt:**
+
+| Argument | Inhalt |
+|---|---|
+| `title` | die Aussage in einem Satz |
+| `subtitle` | Datengrundlage, Zeitraum, Fallzahl |
+| `x`, `y` | Merkmal und Einheit; `NULL` blendet aus, wenn die Kategorien selbsterklärend sind |
+| `caption` | Quelle und Stand |
+
+Vier Zeilen, die aus einer Ausgabe eine Abbildung machen. Mehr dazu unter
+[Storytelling](storytelling.qmd).
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Pressen verbrauchen im Mittel 48.65 gegenüber 37.58 bei Drehbänken, also das
+> 1.29-Fache. Mit einer Achse ab 35 erscheinen die Balken im Verhältnis 4.20 —
+> eine Verzerrung um den Faktor 3.24.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+`ggplot(daten, aes(x, y))` allein zeichnet nichts. Warum?
+
+- [x] Ohne Geom gibt es keine Objekte, nur Achsen ~ Richtig. Zuordnung und
+      Darstellung sind in der Grammatik getrennt: `aes()` legt fest, welche
+      Variable auf welchen Kanal kommt, das Geom, womit gezeichnet wird.
+- [ ] Die Daten sind falsch formatiert ~ Bei falschem Format käme eine
+      Fehlermeldung, keine leere Grafik mit korrekten Achsen.
+- [ ] Es fehlt ein `print()` ~ In einem Quarto-Chunk wird das Objekt automatisch
+      ausgegeben.
 :::
 
 ::: {.quiz}
-Ein Titel lautet Streudiagramm Verbrauch gegen Laufzeit. Was ist daran
-verschenkt?
+`geom_point(aes(colour = "blue"))` erzeugt rote Punkte und eine Legende. Warum?
 
-- [ ] Nichts, er beschreibt die Grafik korrekt ~ Korrekt ja, aber er wiederholt
-      nur, was ohnehin zu sehen ist.
-- [x] Er nennt den Diagrammtyp statt der Erkenntnis ~ Richtig. Der Titel ist
-      die einzige Zeile, die fast jeder liest. In @fig-fertig-r steht deshalb
-      die Aussage darin und nicht die Bauform.
-- [ ] Er ist zu kurz ~ Die Länge ist nicht das Problem, der Inhalt schon.
+- [x] Innerhalb von `aes()` wird "blue" als Datenwert behandelt ~ Richtig. Es
+      entsteht eine Variable mit einem einzigen Wert, die eine Skala und eine
+      Legende bekommt; die erste Farbe der Standardpalette ist rot. Fester Wert
+      gehört ausserhalb von `aes()`.
+- [ ] "blue" ist kein gültiger Farbname ~ Er ist gültig; nur steht er an der
+      falschen Stelle.
+- [ ] Die Standardpalette ist falsch eingestellt ~ Sie verhält sich wie
+      vorgesehen.
 :::
 
 ::: {.quiz}
-Wann darf die senkrechte Achse den Nullpunkt weglassen? @fig-nullpunkt-r zeigt
-den Vergleich.
+Wann nimmt man `geom_col` statt `geom_bar`?
 
-- [ ] Immer, wenn der interessante Bereich sonst zu klein wirkt ~ Genau diese
-      Begründung führt zu irreführenden Balkendiagrammen.
-- [x] Bei Linien, die einen Verlauf zeigen, besonders bei Grössen ohne
-      sinnvollen Nullpunkt ~ Richtig, etwa bei Temperatur. Bei Balken nicht,
-      weil dort die Länge die Grösse abbildet und ein abgeschnittener
-      Nullpunkt die Verhältnisse verzerrt.
-- [ ] Nie, der Nullpunkt gehört immer dazu ~ Bei einem Temperaturverlauf wäre
-      das Bild dann leer im interessanten Bereich.
+- [x] Wenn die Werte bereits berechnet vorliegen ~ Richtig. `geom_bar` zählt
+      selbst und braucht nur ein `x`; `geom_col` nimmt fertige `y`-Werte. Die
+      Verwechslung ist die häufigste Ursache für eine unerwartet leere Grafik.
+- [ ] Wenn die Balken waagrecht sein sollen ~ Dafür ist `coord_flip()` oder ein
+      Tausch der Zuordnung zuständig.
+- [ ] `geom_col` ist die neuere Schreibweise für dasselbe ~ Die beiden tun
+      Verschiedenes.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+Sechs Gruppen sollen in einem Streudiagramm unterschieden werden. Farbe plus
+Form oder Facetten?
 
-**Grundgerüst und die häufigsten Geome**
+- [x] Facetten, weil sie Position statt Farbe verwenden ~ Richtig. Position auf
+      getrennten Skalen ist Rang 2 der Kanalrangfolge, Farbton Rang 7. Wichtig
+      sind dabei die gemeinsamen Achsen, sonst sind die Teilbilder nicht
+      vergleichbar.
+- [ ] Farbe plus Form, das spart Platz ~ Platz wird gespart, Lesbarkeit
+      verloren: Das Auge muss zwei schwache Kanäle gleichzeitig auflösen.
+- [ ] Beides zusammen, das ist am sichersten ~ Doppelte Kodierung derselben
+      Information ist sinnvoll, hier geht es aber um zwei verschiedene
+      Variablen.
+:::
 
-```r
-ggplot(df, aes(x = flaeche, y = miete)) +
-  geom_point(alpha = 0.6)                    # Streudiagramm
+::: {.quiz}
+Die mittleren Verbrauchswerte 37.58, 38.10 und 48.65 werden mit einer Achse ab
+35 gezeichnet. Wie stark verzerrt das?
 
-ggplot(df, aes(x = miete)) +
-  geom_histogram(bins = 30)                  # Histogramm
+- [x] Um das 3.24-Fache: aus Verhältnis 1.29 wird 4.20 ~ Richtig. Bei Balken
+      kodiert die Länge die Menge, deshalb muss die Achse bei null beginnen.
+- [ ] Gar nicht, solange die Achse beschriftet ist ~ Die Beschriftung stimmt,
+      der Eindruck nicht.
+- [ ] Um das Doppelte ~ Die Rechnung ergibt 4.20 geteilt durch 1.29.
+:::
 
-ggplot(df, aes(x = lage, y = miete)) +
-  geom_boxplot()                             # Gruppenvergleich
+::: {.quiz}
+Worin unterscheiden sich `coord_cartesian(ylim = …)` und
+`scale_y_continuous(limits = …)`?
 
-ggplot(df, aes(x = datum, y = wert)) +
-  geom_line()                                # Verlauf
-```
-
-**Eine Gruppe farblich unterscheiden**
-
-```r
-ggplot(df, aes(x = flaeche, y = miete, colour = lage)) +
-  geom_point() +
-  scale_colour_viridis_d()
-```
-
-**Trendlinie ergänzen**
-
-```r
-ggplot(df, aes(x = flaeche, y = miete)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = TRUE)
-```
-
-**In Teilgrafiken aufteilen**
-
-```r
-ggplot(df, aes(x = flaeche, y = miete)) +
-  geom_point() +
-  facet_wrap(~ lage, ncol = 2)
-```
-
-**Beschriftung, Achsen und Thema**
-
-```r
-... +
-  labs(title = "Miete nach Fläche", x = "Fläche (m²)", y = "Miete (CHF)",
-       caption = "eigene Daten") +
-  scale_y_continuous(limits = c(0, NA), labels = scales::comma) +
-  theme_minimal(base_size = 12)
-```
-
-**Balken aus bereits gezählten Werten**
-
-```r
-ggplot(haeufigkeiten, aes(x = reorder(kategorie, anzahl), y = anzahl)) +
-  geom_col() +
-  coord_flip()
-```
-
-`geom_bar()` zählt selbst, `geom_col()` nimmt die Höhe aus den Daten. Die
-Verwechslung der beiden ist der häufigste Fehler beim Balkendiagramm.
-
-**Speichern**
-
-```r
-ggsave("abbildung.png", width = 7, height = 4.2, dpi = 300)
-```
+- [x] `coord_cartesian` zoomt, `scale_y_continuous` entfernt Datenpunkte ~
+      Richtig. Beim zweiten werden Werte ausserhalb der Grenzen vor der
+      Berechnung verworfen, was Glättungslinien und Statistiken verändert.
+- [ ] Sie sind gleichwertig ~ Optisch oft ähnlich, im Ergebnis nicht.
+- [ ] `coord_cartesian` funktioniert nur bei Balken ~ Es funktioniert bei jedem
+      Geom.
+:::
 
 ## Verlinkte Ressourcen
 
-- [ggplot2-Referenz](https://ggplot2.tidyverse.org/)
-- [Kapitel zur Datenvisualisierung in R for Data Science](https://r4ds.hadley.nz/data-visualize)
-- [seaborn-Dokumentation](https://seaborn.pydata.org/)
+- [ggplot2: Referenz aller Geome](https://ggplot2.tidyverse.org/reference/)
+- [R for Data Science, Kapitel zur Visualisierung](https://r4ds.hadley.nz/data-visualize)
+- [Diagrammtyp wählen](diagrammtyp-waehlen.qmd) — welche Grafik die Aufgabe löst
+- [matplotlib](matplotlib.qmd) — dieselben Aufgaben in Python
+- [Storytelling](storytelling.qmd) — Beschriftung und Betonung
