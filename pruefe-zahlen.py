@@ -67,7 +67,12 @@ def passt(zahl_text, werte):
     """
     stellen = len(zahl_text.split(".")[1])
     ziel = round(float(zahl_text), stellen)
-    for faktor in (1.0, 0.01, 100.0):
+    # Prozentumrechnung nur bei wenigen Nachkommastellen zulassen. Sonst
+    # findet sich fuer eine sechsstellige Zahl fast immer irgendein Wert im
+    # Freeze, der mal 100 zufaellig passt -- und ein echter Tippfehler
+    # (0.531723 statt 0.531727) bleibt unentdeckt.
+    faktoren = (1.0, 0.01, 100.0) if stellen <= 3 else (1.0,)
+    for faktor in faktoren:
         for wert in werte:
             try:
                 if round(abs(wert) * faktor, stellen) == ziel:

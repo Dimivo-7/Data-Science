@@ -405,3 +405,18 @@ python pruefe-zahlen.py statistik/tests     # ein Verzeichnis
 
 **Ergebnis des ersten vollstaendigen Laufs:** 47 von 47 gebauten Seiten ohne
 Befund. Vor jedem `stand: fertig` laufen lassen.
+
+**Das Skript ersetzt das Lesen der Ausgabe nicht.** Beim Durchsehen der Seite
+`lineare-algebra-pca.qmd` fanden sich zwei Fehler, die es nicht melden konnte:
+
+1. **Haeufige Werte.** In der Tabelle stand fuer die Scherung die Spur `1.00`,
+   richtig ist `2.00`. Beide Zahlen kommen in der Ausgabe irgendwo vor, also
+   gibt es keinen Treffer zu melden. Werte mit wenigen Stellen muss man
+   weiterhin von Hand abgleichen.
+2. **Die Prozentregel als Hintertuer.** `0.531723` statt `0.531727` blieb
+   unentdeckt, weil irgendein anderer Wert mal 100 zufaellig passte. Behoben:
+   Die Umrechnung mit 100 ist jetzt nur noch bis drei Nachkommastellen
+   erlaubt.
+
+**Reihenfolge, die sich bewaehrt hat:** erst `zeige-ausgaben.py` lesen, dann
+`pruefe-zahlen.py` als Netz darunter.

@@ -108,7 +108,7 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 ## Als Nächstes
 
 Der inhaltliche Aufbau ist abgeschlossen, und seit dem 11.09.2026 stehen
-49 der 50 Seiten auf `stand: fertig`. Der Entwurfshinweis erscheint damit
+alle 50 Seiten auf `stand: fertig`. Der Entwurfshinweis erscheint damit
 weder auf den Seiten noch als Badge auf den Übersichtskarten.
 
 **Der Massstab dafür:** Jede Zahl im Fliesstext ist gegen die tatsächliche
@@ -116,14 +116,14 @@ Chunk-Ausgabe im `_freeze` geprüft — maschinell mit `pruefe-zahlen.py`, nicht
 aus dem Gedächtnis. Vor jeder weiteren Umstellung auf `fertig` das Skript
 laufen lassen.
 
+Seit dem 11.09.2026 stehen **alle 50 Seiten** auf `fertig`.
+
 Offen ist nur noch:
 
-1. **`lineare-algebra-pca.qmd`** steht auf `entwurf`, bis der erste Build
-   durch ist und `pruefe-zahlen.py` die Seite ohne Befund meldet.
-2. **Querverweise in der Gegenrichtung.** Die neuen Seiten verlinken auf
+1. **Querverweise in der Gegenrichtung.** Die neuen Seiten verlinken auf
    `hauptkomponentenanalyse.qmd`, `multiple-lineare-regression.qmd` und
    `multiples-testen.qmd`; umgekehrt fehlt der Verweis teilweise.
-3. **`statistik/fragen.qmd` und `verfahren-waehlen.qmd`** enthalten keinen
+2. **`statistik/fragen.qmd` und `verfahren-waehlen.qmd`** enthalten keinen
    Code und damit keine prüfbaren Zahlen. Sie stehen auf `fertig`, weil es
    dort nichts gegen eine Ausgabe zu halten gibt — nicht, weil das Skript sie
    geprüft hätte.
