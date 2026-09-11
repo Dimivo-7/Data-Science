@@ -1,126 +1,604 @@
 ---
 title: "Fehlerbehandlung und Dateizugriff"
 description: "Exceptions gezielt abfangen, Dateien lesen und schreiben."
-categories: ["Programmiergrundlagen", "Python", "Tooling"]
+categories: ["Programmiergrundlagen", "Python", "R", "Tooling"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
 stand: entwurf
 order: 40
 ---
 
-```{r}
-#| label: setup-r
-#| include: false
-set.seed(42)
-```
-
 ```{python}
 #| label: setup-python
 #| include: false
-import tempfile, pathlib, json
+import datetime
+import io
+import json
+import pathlib
+import pickle
+import tempfile
+
+import pandas as pd
+
 arbeitsordner = pathlib.Path(tempfile.mkdtemp())
 ```
 
 ## Kernideen
 
-- `try` / `except` / `else` / `finally`
-- Exception-Typen und eigene Exceptions
-- Dateizugriff mit `open` und `with`
-- Text- gegenüber Binärmodus, Encoding
-- Serialisierung: JSON, CSV, Pickle
+- Eine Funktion liefert ein brauchbares Ergebnis **oder bricht ab**. Wer den
+  Fehler behandeln will, tut es an einer Stelle mit `try` und `except`.
+- **Nur den erwarteten Fehlertyp fangen.** `except Exception` verschluckt
+  auch Defekte im eigenen Code.
+- `else` läuft nur bei Erfolg, `finally` **immer**, auch nach einem `return`.
+- Eigene Fehler sind Klassen, die von einem passenden eingebauten Fehler
+  erben.
+- Dateien öffnet man mit `with`, damit sie auch im Fehlerfall geschlossen
+  werden, und immer mit `encoding="utf-8"`.
+- JSON ist sprachneutral und verliert Typen, Pickle und `saveRDS` behalten sie
+  und sind an ihre Sprache gebunden.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** [Funktionen und Module in Python](python-funktionen-module.qmd) für Funktionen, deren
-Fehlerverhalten hier zum Thema wird, und [Objektorientierung in Python](python-objektorientierung.qmd), falls eigene
-Exception-Klassen definiert werden sollen; sie sind gewöhnliche Klassen.
+**Vorwissen:** [Funktionen und Module in Python](python-funktionen-module.qmd)
+für Funktionen, deren Fehlerverhalten hier zum Thema wird, und
+[Objektorientierung in Python](python-objektorientierung.qmd) für eigene
+Fehlerklassen; sie sind gewöhnliche Klassen mit Vererbung. Wie Tabellen
+eingelesen werden, steht unter [pandas](pandas.qmd).
 :::
 
 ### Fehler als Ausnahme statt als Rückgabewert
 
-Manche Sprachen melden Fehler über einen besonderen Rückgabewert. Das führt
-dazu, dass nach jedem Aufruf geprüft werden muss, und dass eine vergessene
-Prüfung stillschweigend mit falschen Werten weiterrechnet.
+Manche Sprachen melden Fehler über einen besonderen Rückgabewert. Dann muss
+nach jedem Aufruf nachgesehen werden, und eine vergessene Kontrolle rechnet
+stillschweigend mit falschen Werten weiter. Python geht den anderen Weg:
+Eine Funktion liefert entweder ein sinnvolles Ergebnis oder wirft eine
+**Exception**. Der Aufrufer darf sich auf das Ergebnis verlassen.
 
-Python geht den anderen Weg. Eine Funktion liefert entweder ein sinnvolles
-Ergebnis oder bricht ab. Der Aufrufer darf sich auf das Ergebnis verlassen,
-und wer den Fehler behandeln will, tut es an einer Stelle:
+R steht dazwischen. Schwere Fehler brechen ab (`stop()`), viele Probleme
+erzeugen aber nur eine **Warnung** und liefern `NA`. Wer in R sauber arbeiten
+will, muss deshalb Warnungen ernst nehmen; wer von R kommt, muss sich in
+Python daran gewöhnen, dass dieselbe Situation einen Abbruch erzeugt.
 
-```{python}
-#| label: exception-py
-def zu_zahl(text):
-    return int(text)
+### Die vier Bestandteile
 
-for eingabe in ["42", "keine Angabe"]:
-    try:
-        print(zu_zahl(eingabe))
-    except ValueError as fehler:
-        print(f"nicht verwertbar: {fehler}")
+```python
+try:
+    wert = int(text)           # was scheitern kann, und nur das
+except ValueError as fehler:
+    wert = None                # Behandlung des erwarteten Fehlers
+else:
+    wert = wert * 2            # was vom Gelingen abhängt
+finally:
+    datei.close()              # Aufräumen, in jedem Fall
 ```
 
-Die Fehlermeldung kommt vom Interpreter und ist genauer als alles, was man
-selbst formulieren würde. Sie mitzugeben, statt sie durch eigenen Text zu
-ersetzen, spart später Zeit bei der Suche.
+| Teil | wann er läuft | wofür | R-Gegenstück in `tryCatch()` |
+|---|---|---|---|
+| `try` | immer | der Code, der scheitern kann | der erste Ausdruck |
+| `except Typ` | nur bei passendem Fehler | Behandlung | `error = function(e)`, `warning = function(w)` |
+| `else` | nur wenn nichts geworfen wurde | Folgecode | keines, steht einfach im Ausdruck |
+| `finally` | in jedem Fall | Aufräumen | `finally = ...` |
 
-### Nicht zu breit fangen
+Im `try` soll **möglichst wenig** stehen. Alles darin ist Kandidat für den
+`except`-Zweig; steht dort auch Folgecode, könnte dessen Fehler versehentlich
+als der erwartete behandelt werden. Dafür gibt es `else`.
 
-Ein `except` ohne Typangabe fängt alles, auch Tippfehler im eigenen Code. Der
-Fehler verschwindet dann in einer harmlos aussehenden Meldung, statt sich zu
-zeigen.
+### Die Fehlerhierarchie
+
+Fehler sind Klassen und erben voneinander. `except ValueError` fängt auch
+jeden Fehler, der von `ValueError` abgeleitet ist. Die häufigsten:
+
+| Fehler | typischer Anlass |
+|---|---|
+| `ValueError` | richtiger Typ, falscher Inhalt: `int("x")` |
+| `TypeError` | falscher Typ: `100 / "text"` |
+| `KeyError`, `IndexError` | fehlender Schlüssel, Index jenseits des Endes |
+| `ZeroDivisionError` | Division durch null |
+| `FileNotFoundError` | Datei fehlt; erbt von `OSError` |
+| `UnicodeDecodeError` | Datei mit falschem Encoding gelesen; erbt von `ValueError` |
+
+Einen eigenen Fehler löst man mit `raise` aus, etwa
+`raise ValueError(f"n muss positiv sein, war {n}")`. Die Meldung nennt den
+tatsächlichen Wert; das spart später die Suche.
+
+### Dateien, Modi und Encoding
+
+| Modus | bedeutet |
+|---|---|
+| `"r"` | lesen, Voreinstellung |
+| `"w"` | schreiben, **überschreibt** eine vorhandene Datei |
+| `"a"` | anhängen |
+| `"x"` | neu anlegen, scheitert, wenn die Datei existiert |
+| `"b"` dazu | binär, etwa `"rb"`, `"wb"`: Bytes statt Text, kein Encoding |
+
+Der `with`-Block schliesst die Datei auch dann, wenn im Block ein Fehler
+auftritt. Ohne Encoding-Angabe verwendet Python die Voreinstellung des
+Betriebssystems, und die ist unter Windows eine andere als unter Linux.
+Deshalb gilt ohne Ausnahme: `encoding="utf-8"` angeben, beim Schreiben wie
+beim Lesen.
+
+::: {.note-box}
+**Zeilenenden.** Im Textmodus schreibt Python ein `\n` unter Linux als ein
+Byte, unter Windows als zwei (`\r\n`). Dieselbe Datei ist deshalb je nach
+System verschieden gross. Wer das nicht will, öffnet mit `newline="\n"`.
+:::
+
+### Serialisierung: drei Formate, drei Zwecke
+
+| Format | speichert | lesbar für | Grenze |
+|---|---|---|---|
+| JSON | Zahlen, Text, Wahrheitswerte, Listen, Dictionaries | Mensch und andere Sprachen | keine Tupel, keine Datumstypen, Schlüssel nur als Text |
+| CSV | Tabellen | Mensch und Tabellenkalkulation | verliert jede Typinformation |
+| Pickle, `saveRDS` | fast beliebige Objekte der Sprache | nur dieselbe Sprache | Pickle aus fremder Quelle ist unsicher |
+
+::: {.note-box}
+Pickle darf **niemals** aus unbekannter Quelle geladen werden. Beim Laden wird
+Code ausgeführt, eine präparierte Datei kann also beliebige Befehle absetzen.
+Für eigene Zwischenstände ist es in Ordnung, für den Austausch nicht.
+:::
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| erwarteten Fehler abfangen | `tryCatch(ausdruck, error = function(e) NA)` | `try: ... except ValueError: ...` |
+| Warnung abfangen | `tryCatch(..., warning = function(w) ...)` | `warnings.catch_warnings()` |
+| Fehler auslösen | `stop("Meldung")` | `raise ValueError("Meldung")` |
+| Meldung eines Fehlers | `conditionMessage(e)` | `str(fehler)` |
+| Text lesen | `readLines(pfad, encoding = "UTF-8")` | `pathlib.Path(pfad).read_text(encoding="utf-8")` |
+| Text schreiben | `writeLines(zeilen, pfad)` | `with open(pfad, "w", encoding="utf-8") as f:` |
+| nicht überschreiben | `if (!file.exists(pfad)) writeLines(...)` | Modus `"x"` |
+| JSON | `jsonlite::write_json()`, `read_json()` | `json.dump()`, `json.load()` |
+| sprachgebundene Sicherung | `saveRDS()`, `readRDS()` | `pickle.dump()`, `pickle.load()` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Eingaben verwerten
+
+#### Frage und Datenlage
+
+Fünf Eingaben aus einem Formular: `"42"`, `"3.5"`, `"keine Angabe"`, eine
+leere Zeichenkette und `"1e3"`. Sie sollen in Zahlen verwandelt werden, nicht
+verwertbare Einträge als fehlend, und danach soll der Mittelwert der gültigen
+Werte stehen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-ex-r
+eingaben <- c("42", "3.5", "keine Angabe", "", "1e3")
+
+tryCatch(as.numeric("keine Angabe"),
+         warning = function(w) conditionMessage(w))
+
+werte <- suppressWarnings(as.numeric(eingaben))
+werte
+c(gueltig = sum(!is.na(werte)), mittel = mean(werte, na.rm = TRUE))
+```
+
+##### Python
 
 ```{python}
-#| label: zu-breit-py
+#| label: b1-ex-py
+eingaben = ["42", "3.5", "keine Angabe", "", "1e3"]
+werte = []
+for eingabe in eingaben:
+    try:
+        werte.append(float(eingabe))
+    except ValueError as fehler:
+        print(f"nicht verwertbar: {fehler}")
+        werte.append(float("nan"))
+
+print(werte)
+gueltig = [w for w in werte if w == w]     # nan ist sich selbst nicht gleich
+print(len(gueltig), sum(gueltig) / len(gueltig))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Eingabe | Python | R | Erklärung |
+|---|---|---|---|
+| `"42"` | 42.0 | 42 | |
+| `"3.5"` | 3.5 | 3.5 | |
+| `"keine Angabe"` | **`ValueError`**, gefangen, dann `nan` | `NA` mit **Warnung** | Python bricht ab, R warnt und rechnet weiter. Die Warnung lautet `NAs introduced by coercion`. |
+| `""` | `ValueError`, dann `nan` | `NA` | Auch die leere Eingabe ist keine Zahl. |
+| `"1e3"` | 1000.0 | 1000 | Die wissenschaftliche Schreibweise verstehen beide. |
+| gültige Werte | 3 | 3 | |
+| Mittelwert | 348.5 | 348.5 | (42 + 3.5 + 1000) / 3 |
+
+Die Python-Meldung `could not convert string to float: 'keine Angabe'` nennt
+den tatsächlichen Wert. Das ist der Grund, sie auszugeben statt eines eigenen
+Textes. Der Trick `w == w` sortiert `nan` aus, weil `nan` sich selbst nicht
+gleich ist; lesbarer ist `math.isnan(w)`.
+
+#### Interpretation und Ergebnissatz
+
+Das Ergebnis ist in beiden Sprachen dasselbe, der Weg dorthin nicht. In R
+muss man die Warnung bemerken, sonst verschwinden Eingaben still als `NA`. Das
+`suppressWarnings` ist hier nur vertretbar, weil die Warnung unmittelbar
+davor ausgewertet wurde. Der Mittelwert von 348.5 zeigt nebenbei, was ein
+einzelner grosser Wert anrichtet; ob `1e3` ein Tippfehler war, beantwortet
+keine Fehlerbehandlung.
+
+> Von fünf Eingaben waren drei als Zahl verwertbar, ihr Mittelwert beträgt
+> 348.5. Die beiden anderen führen in Python zu einem `ValueError`, der
+> gefangen und als fehlender Wert eingetragen wird; R liefert `NA` und eine
+> Warnung.
+
+### Beispiel 2: Zu breit gefangen
+
+#### Frage und Datenlage
+
+Zwei Fassungen einer Division von 100 durch einen Wert: eine fängt jeden
+Fehler, eine nur die Division durch null. Aufgerufen mit 4, mit 0 und mit dem
+Text `"text"`, der einen Defekt weiter oben im Programm anzeigt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-ex-r
+c(100 / 4, 100 / 0, -100 / 0, 0 / 0)
+
+riskant <- function(wert) tryCatch(100 / wert, error = function(e) NULL)
+is.null(riskant("text"))
+tryCatch(100 / "text", error = function(e) conditionMessage(e))
+```
+
+##### Python
+
+```{python}
+#| label: b2-ex-py
 def riskant(wert):
     try:
         return 100 / wert
     except Exception:
-        return None          # verdeckt jeden Fehler, auch den eigenen
+        return None                  # verdeckt jeden Fehler
 
 def genau(wert):
     try:
         return 100 / wert
     except ZeroDivisionError:
-        return float("inf")  # nur der eine erwartete Fall
+        return float("inf")          # nur der erwartete Fall
 
-print(riskant(0), genau(0))
-print(riskant("text"))       # gibt None, obwohl hier ein Typfehler vorliegt
+print(riskant(4), riskant(0), riskant("text"))
+print(genau(4), genau(0))
+try:
+    genau("text")
+except TypeError as fehler:
+    print(type(fehler).__name__, fehler)
 ```
 
-Der letzte Aufruf ist das Problem: Ein Typfehler, der auf einen Fehler weiter
-oben hinweist, wird zu einem harmlosen `None`. Die genaue Variante hätte ihn
-durchgelassen und damit sichtbar gemacht.
+:::
 
-Vier Bestandteile stehen zur Verfügung, jeder mit einem klaren Zweck:
+#### Output Zeile für Zeile
 
-| Teil | wann er läuft | wofür |
-|---|---|---|
-| `try` | immer | der Code, der scheitern kann |
-| `except` | nur bei passendem Fehler | Behandlung |
-| `else` | nur wenn nichts geworfen wurde | was vom Gelingen abhängt |
-| `finally` | in jedem Fall | Aufräumen |
+| Aufruf | `riskant` | `genau` | R | Erklärung |
+|---|---|---|---|---|
+| 4 | 25.0 | 25.0 | 25 | |
+| 0 | `None` | `inf` | **`Inf`** | Python wirft `ZeroDivisionError`. R rechnet nach dem Gleitkommastandard: `100 / 0` ist `Inf`, `-100 / 0` ist `-Inf`, `0 / 0` ist `NaN`, alles ohne Fehler. |
+| `"text"` | **`None`** | **`TypeError`** | Fehler `non-numeric argument to binary operator` | Der Defekt ist ein falscher Typ. `riskant` macht ihn unsichtbar, `genau` lässt ihn durch. |
+
+Die Meldung von `genau("text")` lautet `unsupported operand type(s) for /:
+'int' and 'str'` und zeigt sofort, wo das Problem liegt: Ein Text ist dort
+angekommen, wo eine Zahl erwartet wurde.
+
+#### Interpretation und Ergebnissatz
+
+`riskant` gibt für die Division durch null und für den Typfehler dasselbe
+zurück, `None`. Wer später ein `None` findet, kann nicht mehr sagen, ob ein
+erwarteter Grenzfall oder ein Programmfehler dahintersteckt. Die genaue
+Fassung trennt beides: Den erwarteten Fall behandelt sie, den unerwarteten
+lässt sie laut scheitern. R braucht für die Division gar keine Behandlung,
+muss dafür aber `Inf` und `NaN` in späteren Rechnungen im Blick behalten.
+
+> Die breite Fassung liefert für `"text"` stillschweigend `None` und verdeckt
+> damit einen Typfehler; die genaue Fassung fängt nur `ZeroDivisionError` und
+> meldet den Typfehler. In R ergibt `100 / 0` ohne Fehler `Inf`.
+
+### Beispiel 3: Ablauf und eigene Fehler
+
+#### Frage und Datenlage
+
+In welcher Reihenfolge laufen `try`, `except`, `else` und `finally`, wenn die
+Eingabe gültig beziehungsweise ungültig ist, und läuft `finally` auch nach
+einem `return`? Danach ein eigener Fehler `Messfehler` für negative Werte,
+angewendet auf `4, -1, 9`.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-ex-r
+tryCatch(stop("kaputt"),
+         error = function(e) "gefangen",
+         finally = cat("finally laeuft\n"))
+
+messfehler <- function(x) {
+  structure(class = c("messfehler", "error", "condition"),
+            list(message = paste("negativer Wert:", x), call = NULL))
+}
+pruefe_wert <- function(x) {
+  if (x < 0) stop(messfehler(x))
+  sqrt(x)
+}
+sapply(c(4, -1, 9),
+       function(x) tryCatch(pruefe_wert(x), messfehler = function(e) NA))
+tryCatch(pruefe_wert(-1), messfehler = function(e) conditionMessage(e))
+```
+
+##### Python
 
 ```{python}
-#| label: try-voll-py
-def lies_zahl(text):
+#| label: b3-ex-py
+def lies_zahl(text, protokoll):
     try:
+        protokoll.append("try")
         wert = int(text)
     except ValueError:
+        protokoll.append("except")
         return None
     else:
-        return wert * 2          # nur bei Erfolg
+        protokoll.append("else")
+        return wert * 2
     finally:
-        pass                     # hier stuende das Aufraeumen
+        protokoll.append("finally")
 
-print(lies_zahl("21"), lies_zahl("x"))
+for eingabe in ["21", "x"]:
+    schritte = []
+    ergebnis = lies_zahl(eingabe, schritte)
+    print(eingabe, ergebnis, schritte)
+
+class Messfehler(ValueError):
+    pass
+
+def pruefe_wert(x):
+    if x < 0:
+        raise Messfehler(f"negativer Wert: {x}")
+    return x ** 0.5
+
+ergebnisse = []
+for x in [4, -1, 9]:
+    try:
+        ergebnisse.append(pruefe_wert(x))
+    except Messfehler as fehler:
+        print(fehler)
+        ergebnisse.append(None)
+print(ergebnisse)
+print(issubclass(Messfehler, ValueError))
 ```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Eingabe | Ergebnis | durchlaufene Teile | Erklärung |
+|---|---|---|---|
+| `"21"` | 42 | `try`, `else`, `finally` | `else` gibt 42 zurück, und **trotzdem** läuft danach `finally`. |
+| `"x"` | `None` | `try`, `except`, `finally` | Auch nach dem `return` im `except` läuft `finally`. |
+
+| Zeile | Python | R | Erklärung |
+|---|---|---|---|
+| `finally` in R | | `finally laeuft`, dann `"gefangen"` | Der `finally`-Teil läuft nach dem Handler, noch bevor der Wert angezeigt wird. |
+| Meldung des eigenen Fehlers | `negativer Wert: -1` | `"negativer Wert: -1"` | |
+| Ergebnisse für 4, −1, 9 | `[2.0, None, 3.0]` | `2 NA 3` | Die Schleife läuft weiter; nur der eine Wert fehlt. |
+| `issubclass(Messfehler, ValueError)` | `True` | | Wer allgemein `ValueError` fängt, fängt auch den eigenen Fehler. In R übernimmt der Klassenvektor `c("messfehler", "error", "condition")` dieselbe Rolle. |
+
+#### Interpretation und Ergebnissatz
+
+`finally` ist der Ort für alles, was unabhängig vom Ausgang geschehen muss:
+eine Datei schliessen, eine Verbindung trennen, einen Zeitstempel protokollieren.
+Ein eigener Fehlertyp macht die Behandlung genau: Der Aufrufer fängt
+`Messfehler` und weiss, dass ein unplausibler Messwert gemeint ist und kein
+Programmfehler. Weil er von `ValueError` erbt, funktioniert zugleich jeder
+Code, der schon vorher `ValueError` gefangen hat.
+
+> `finally` lief in beiden Fällen, auch nach einem `return`. Der eigene
+> `Messfehler` meldete `negativer Wert: -1`, die Auswertung lief weiter und
+> lieferte `[2.0, None, 3.0]`; als Unterklasse von `ValueError` wird er auch
+> von allgemeineren Handlern erfasst.
+
+### Beispiel 4: Datei schreiben, lesen und das Encoding
+
+#### Frage und Datenlage
+
+Drei Zeilen mit Name und Wert, eine davon mit Umlaut und Mikrozeichen
+(`Grösse;12 µm`), werden in eine Textdatei geschrieben und wieder gelesen. Was
+passiert beim Lesen mit falschem Encoding?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-ex-r
+pfad <- tempfile(fileext = ".txt")
+writeLines(c("Drossel;12.4", "Ventil;9.8", "Grösse;12 µm"), pfad)
+file.size(pfad)
+
+zeilen <- readLines(pfad, encoding = "UTF-8")
+sapply(strsplit(zeilen, ";"), `[`, 1)
+c(zeichen = nchar(zeilen[3]), bytes = nchar(zeilen[3], type = "bytes"))
+
+verbindung <- file(pfad, encoding = "latin1")
+readLines(verbindung)[3]
+```
+
+##### Python
+
+```{python}
+#| label: b4-ex-py
+pfad = arbeitsordner / "messung.txt"
+with open(pfad, "w", encoding="utf-8") as datei:
+    datei.write("Drossel;12.4\nVentil;9.8\nGrösse;12 µm\n")
+print(pfad.stat().st_size)
+
+with open(pfad, encoding="utf-8") as datei:
+    for zeile in datei:
+        name, wert = zeile.rstrip("\n").split(";")
+        print(f"{name:10s}|{wert}")
+print(datei.closed)
+
+text = pfad.read_text(encoding="utf-8")
+print(len(text), len(text.encode("utf-8")))
+
+print(pfad.read_text(encoding="latin-1").splitlines()[2])
+try:
+    pfad.read_text(encoding="ascii")
+except UnicodeDecodeError as fehler:
+    print(type(fehler).__name__)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Ausgabe | Erklärung |
+|---|---|---|
+| Dateigrösse | 39 Byte | 37 Zeichen, aber `ö` und `µ` brauchen in UTF-8 je zwei Byte. Unter Windows wären es 42, weil jedes der drei `\n` als `\r\n` geschrieben wird. |
+| gelesene Zeilen | `Drossel`, `Ventil`, `Grösse` mit ihren Werten | `rstrip("\n")` entfernt den Zeilenumbruch, `split(";")` trennt Name und Wert. |
+| `datei.closed` | `True` | Nach dem `with`-Block ist die Datei geschlossen, ohne `close()`. |
+| Zeichen und Bytes | 37 und 39 | `len` zählt Zeichen, die kodierte Fassung Bytes. |
+| R: Zeichen und Bytes der dritten Zeile | 12 und 14 | Dieselbe Differenz von zwei Byte für `ö` und `µ`. |
+| mit Latin-1 gelesen | **`GrÃ¶sse;12 Âµm`** | Kein Fehler, sondern Kauderwelsch: Jedes Zwei-Byte-Zeichen wird als zwei Latin-1-Zeichen gelesen. In R mit `file(..., encoding = "latin1")` genauso. |
+| mit ASCII gelesen | **`UnicodeDecodeError`** | ASCII kennt keine Bytes über 127 und bricht ab. |
+
+#### Interpretation und Ergebnissatz
+
+Das falsche Encoding ist gefährlicher, wenn es **keinen** Fehler auslöst.
+Latin-1 kann jede Bytefolge lesen, deshalb entsteht still ein verdorbener
+Text, der vielleicht erst in einem Bericht auffällt. Die Merkmale `Ã¶` für
+`ö` und `Âµ` für `µ` sind das Erkennungszeichen: Eine UTF-8-Datei wurde als
+Latin-1 gelesen. Die Abhilfe ist die ausdrückliche Angabe `encoding="utf-8"`
+auf beiden Seiten.
+
+> Die Datei umfasst 37 Zeichen und unter Linux 39 Byte, weil `ö` und `µ` in
+> UTF-8 je zwei Byte belegen. Mit Latin-1 gelesen wird aus `Grösse;12 µm`
+> ohne Fehlermeldung `GrÃ¶sse;12 Âµm`, mit ASCII bricht das Lesen mit einem
+> `UnicodeDecodeError` ab.
+
+### Beispiel 5: JSON, Pickle und CSV im Rücktransport
+
+#### Frage und Datenlage
+
+Eine Konfiguration mit Zahl, Wahrheitswert, Liste, Tupel und einem
+ganzzahligen Schlüssel wird als JSON und als Pickle gespeichert und wieder
+gelesen. Kommt dasselbe zurück? Dazu eine CSV-Datei mit Kennungen `007` und
+`012`.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-ex-r
+konfig <- list(schwelle = 12.5, aktiv = TRUE, orte = c("Bern", "Chur"),
+               bereich = c(0, 100))
+
+text <- jsonlite::toJSON(konfig, auto_unbox = TRUE)
+text
+zurueck <- jsonlite::fromJSON(text)
+str(zurueck)
+identical(zurueck, konfig)
+
+pfad <- tempfile(fileext = ".rds")
+saveRDS(konfig, pfad)
+identical(readRDS(pfad), konfig)
+
+csv_text <- "id,wert\n007,1.5\n012,2.0"
+read.csv(text = csv_text)$id
+read.csv(text = csv_text, colClasses = c(id = "character"))$id
+```
+
+##### Python
+
+```{python}
+#| label: b5-ex-py
+konfig = {"schwelle": 12.5, "aktiv": True, "orte": ["Bern", "Chur"],
+          "bereich": (0, 100), 7: "sieben"}
+
+text = json.dumps(konfig, ensure_ascii=False)
+print(text)
+zurueck = json.loads(text)
+print(zurueck == konfig, zurueck["bereich"], repr(list(zurueck)[-1]))
+
+try:
+    json.dumps({"zeitpunkt": datetime.date(2026, 3, 1)})
+except TypeError as fehler:
+    print(type(fehler).__name__)
+print(json.dumps({"zeitpunkt": datetime.date(2026, 3, 1).isoformat()}))
+
+pfad = arbeitsordner / "zwischenstand.pkl"
+with open(pfad, "wb") as datei:                  # Binaermodus
+    pickle.dump(konfig, datei)
+with open(pfad, "rb") as datei:
+    print(pickle.load(datei) == konfig)
+
+csv_text = "id,wert\n007,1.5\n012,2.0\n"
+print(pd.read_csv(io.StringIO(csv_text))["id"].tolist())
+print(pd.read_csv(io.StringIO(csv_text), dtype={"id": str})["id"].tolist())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Python | R | Erklärung |
+|---|---|---|---|
+| JSON-Text | `{"schwelle": 12.5, "aktiv": true, ...}` | `{"schwelle":12.5,"aktiv":true,...}` | `True` wird zu `true`, beide Sprachen schreiben dasselbe Format. |
+| Tupel `(0, 100)` | wird zu `[0, 100]` | | JSON kennt nur Listen. |
+| Schlüssel `7` | wird zu `'7'` | | JSON-Schlüssel sind immer Text. |
+| gleich nach dem Rücktransport? | **`False`** | **`FALSE`** | In Python wegen Tupel und Schlüssel. In R, weil `fromJSON` den Bereich `0, 100` als ganze Zahlen (`int`) zurückliest, die vorher Gleitkommazahlen (`num`) waren. |
+| Datum | `TypeError`, als Text `"2026-03-01"` gespeichert | | Der übliche Ausweg ist das ISO-Format als Zeichenkette. |
+| Pickle, `saveRDS` | `True` | `TRUE` | Das sprachgebundene Format bringt das Objekt unverändert zurück. |
+| CSV ohne Typangabe | `[7, 12]` | `7 12` | Die Kennungen werden als Zahlen erkannt, die führenden Nullen sind weg. |
+| CSV mit Typangabe | `['007', '012']` | `"007" "012"` | `dtype={"id": str}` beziehungsweise `colClasses` hält sie als Text. |
+
+#### Interpretation und Ergebnissatz
+
+Jedes sprachneutrale Format ist ein Kompromiss: Es kann nur ausdrücken, was
+alle Sprachen verstehen, und verliert den Rest. Der Verlust ist leise; der
+Vergleich `zurueck == konfig` ist die einfachste Probe. Bei CSV ist der
+Schaden am grössten, weil gar keine Typen mitreisen und aus einer Kennung
+`007` beim Zurückschreiben die Zahl `7` wird. Für den Austausch deshalb JSON
+oder CSV mit ausdrücklichen Typen, für eigene Zwischenstände Pickle oder
+`saveRDS`.
+
+> Nach dem Rücktransport über JSON ist die Konfiguration in beiden Sprachen
+> nicht mehr identisch: Python macht aus dem Tupel eine Liste und aus dem
+> Schlüssel `7` den Text `'7'`, R aus Gleitkomma- ganze Zahlen. Pickle und
+> `saveRDS` bringen das Objekt unverändert zurück, CSV verliert ohne
+> Typangabe die führenden Nullen der Kennungen.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Warum ist `except Exception` fast immer zu breit?
 
 - [x] Es fängt auch Fehler ab, die einen Defekt im eigenen Code anzeigen ~
-      Richtig, etwa Tippfehler in Namen oder falsche Typen. Solche Fehler sollen
-      laut scheitern, statt still behandelt zu werden.
+      Richtig, etwa den Typfehler aus Beispiel 2, der als `None` endet.
+      Solche Fehler sollen laut scheitern, statt still behandelt zu werden.
 - [ ] Es ist langsamer als ein genauer Typ ~ Die Geschwindigkeit spielt keine
       Rolle.
 - [ ] Es funktioniert nur bei eingebauten Fehlern ~ Es fängt gerade alles, und
@@ -140,251 +618,61 @@ könnte?
       nichts geworfen wurde.
 :::
 
-### Dateien lesen und schreiben
+::: {.quiz}
+Eine Funktion gibt im `try` mit `return` einen Wert zurück, im `finally`
+steht `protokoll.append("finally")`. Wird der Eintrag geschrieben?
 
-Der `with`-Block ist der Normalfall, weil er die Datei auch dann schliesst,
-wenn im Block ein Fehler auftritt. Ohne ihn bleibt bei einem Abbruch ein
-offener Dateizeiger zurück.
-
-```{python}
-#| label: datei-py
-pfad = arbeitsordner / "messung.txt"
-
-with open(pfad, "w", encoding="utf-8") as f:
-    f.write("Drossel;12.4\nVentil;9.8\n")
-
-with open(pfad, encoding="utf-8") as f:
-    for zeile in f:
-        name, wert = zeile.strip().split(";")
-        print(f"{name:10s} {float(wert):6.1f}")
-```
-
-### Encoding ist keine Nebensache
-
-Der zweite Punkt kostet in gemischten Umgebungen regelmässig Zeit. Ohne Angabe
-verwendet Python die Voreinstellung des Betriebssystems, und die ist unter
-Windows eine andere als unter Linux. Umlaute werden dann beim Lesen zu
-Kauderwelsch oder lösen einen Fehler aus.
-
-```{python}
-#| label: encoding-py
-pfad = arbeitsordner / "umlaute.txt"
-pfad.write_text("Grösse: 12 µm", encoding="utf-8")
-
-# richtig gelesen
-print(pfad.read_text(encoding="utf-8"))
-
-# mit falscher Annahme
-try:
-    print(pfad.read_text(encoding="ascii"))
-except UnicodeDecodeError as fehler:
-    print("falsches Encoding:", fehler)
-```
-
-::: {.note-box}
-Regel ohne Ausnahme: `encoding="utf-8"` immer ausdrücklich angeben, beim
-Schreiben wie beim Lesen. Das kostet zwölf Zeichen und verhindert eine ganze
-Fehlerklasse, die typischerweise erst auffällt, wenn jemand anders die Datei
-öffnet.
+- [x] Ja, `finally` läuft auch nach einem `return` ~ Richtig, wie das
+      Protokoll `['try', 'else', 'finally']` in Beispiel 3 zeigt. Deshalb ist
+      `finally` der sichere Ort zum Aufräumen.
+- [ ] Nein, `return` beendet die Funktion sofort ~ Es beendet sie, aber erst
+      nach dem `finally`-Block.
+- [ ] Nur wenn ein Fehler aufgetreten ist ~ Das wäre `except`.
 :::
 
-### Serialisierung: drei Formate, drei Zwecke
+::: {.quiz}
+Eine Textdatei zeigt nach dem Einlesen `GrÃ¶sse` statt `Grösse`. Was ist
+passiert?
 
-Serialisierung heisst, ein Objekt in eine Form zu bringen, die sich speichern
-und wieder einlesen lässt.
-
-| Format | speichert | lesbar für | Grenze |
-|---|---|---|---|
-| JSON | einfache Typen | Mensch und andere Sprachen | keine eigenen Objekte, keine Datumstypen |
-| CSV | Tabellen | Mensch und Tabellenkalkulation | verliert jede Typinformation |
-| Pickle | fast beliebige Python-Objekte | nur Python | unsicher aus fremder Quelle |
-
-```{python}
-#| label: json-py
-konfig = {"schwelle": 12.5, "aktiv": True, "orte": ["Bern", "Chur"]}
-
-pfad = arbeitsordner / "konfig.json"
-with open(pfad, "w", encoding="utf-8") as f:
-    json.dump(konfig, f, ensure_ascii=False, indent=2)
-
-print(pfad.read_text(encoding="utf-8"))
-
-with open(pfad, encoding="utf-8") as f:
-    zurueck = json.load(f)
-print(zurueck == konfig)
-```
-
-Das Argument `ensure_ascii=False` sorgt dafür, dass Umlaute als Zeichen
-gespeichert werden statt als Fluchtsequenzen. Lesbarkeit ist bei
-Konfigurationsdateien der halbe Zweck.
-
-Was JSON **nicht** kann, zeigt sich bei Typen, die es nicht kennt:
-
-```{python}
-#| label: json-grenze-py
-import datetime
-
-try:
-    json.dumps({"zeitpunkt": datetime.date(2026, 3, 1)})
-except TypeError as fehler:
-    print("JSON kennt keine Datumstypen:", fehler)
-
-# ueblicher Ausweg: als Zeichenkette speichern
-print(json.dumps({"zeitpunkt": datetime.date(2026, 3, 1).isoformat()}))
-```
-
-::: {.note-box}
-Pickle darf **niemals** aus unbekannter Quelle geladen werden. Beim Laden wird
-Code ausgeführt, eine präparierte Datei kann also beliebige Befehle absetzen.
-Für eigene Zwischenstände ist es in Ordnung, für Austausch nicht.
+- [x] Eine UTF-8-Datei wurde als Latin-1 gelesen ~ Richtig. Das `ö` belegt in
+      UTF-8 zwei Byte, und Latin-1 macht daraus zwei Zeichen. Abhilfe:
+      `encoding="utf-8"` beim Lesen angeben.
+- [ ] Die Datei ist beschädigt ~ Die Bytes sind in Ordnung, nur ihre Deutung
+      ist falsch.
+- [ ] Python unterstützt keine Umlaute ~ Python arbeitet intern mit Unicode;
+      das Problem entsteht erst an der Grenze zur Datei.
 :::
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: serialisierung-r
-ergebnis <- tryCatch({
-  as.numeric("nicht-zahl")
-}, warning = function(w) NA_real_)
-
-pfad <- tempfile(fileext = ".rds")
-saveRDS(list(a = 1, b = "text"), pfad)     # R-eigenes Format, wie Pickle
-str(readRDS(pfad))
-
-# JSON braucht ein Paket, ist dafuer sprachuebergreifend
-# jsonlite::write_json(list(a = 1), "konfig.json")
-```
-
-## Python
-
-```{python}
-#| label: serialisierung-py
-import pickle
-
-pfad = arbeitsordner / "zwischenstand.pkl"
-with open(pfad, "wb") as f:                 # Binaermodus!
-    pickle.dump({"a": 1, "b": "text"}, f)
-
-with open(pfad, "rb") as f:
-    print(pickle.load(f))
-```
-:::
-
-Die Entsprechung ist genau: `saveRDS` in R und Pickle in Python speichern
-sprachspezifisch und vollständig, JSON und CSV speichern sprachneutral und
-eingeschränkt. Das `b` im Modus steht für binär und ist bei Pickle Pflicht.
 
 ::: {.quiz}
 Wann ist Pickle gegenüber JSON gerechtfertigt?
 
 - [x] Für kurzlebige eigene Zwischenstände ~ Richtig, etwa ein
-      zwischengespeichertes Modellobjekt oder ein Rechenschritt, der lange
-      dauert. Sobald die Datei weitergegeben oder von einer anderen Sprache
-      gelesen werden soll, ist JSON richtig.
+      zwischengespeichertes Modellobjekt. Es bringt Tupel und ganzzahlige
+      Schlüssel unverändert zurück, JSON nicht. Sobald die Datei weitergegeben
+      oder von einer anderen Sprache gelesen werden soll, ist JSON richtig.
 - [ ] Immer, es kann mehr als JSON ~ Es kann mehr und ist dafür an Python
       gebunden und aus fremder Quelle gefährlich, weil beim Laden Code
       ausgeführt wird.
 - [ ] Nie, es ist grundsätzlich unsicher ~ Unsicher ist nur das Laden fremder
-      Dateien. Für eigene Zwischenstände ist es in Ordnung.
+      Dateien.
 :::
 
 ::: {.quiz}
 Eine CSV-Datei enthält die Spalte `id` mit Werten wie `007`. Was passiert beim
-Einlesen und Zurückschreiben?
+Einlesen ohne Typangabe und Zurückschreiben?
 
-- [x] Die führenden Nullen gehen verloren, aus `007` wird `7` ~ Richtig, sobald
-      die Spalte als Zahl erkannt wird. Beim Zurückschreiben steht dann ein
-      anderer Wert in der Datei. CSV trägt keine Typinformation, deshalb muss
-      der Typ beim Einlesen vorgegeben werden.
+- [x] Die führenden Nullen gehen verloren, aus `007` wird `7` ~ Richtig, wie
+      Beispiel 5 in beiden Sprachen zeigt. CSV trägt keine Typinformation,
+      deshalb muss der Typ beim Einlesen vorgegeben werden.
 - [ ] Nichts, Text bleibt Text ~ Ob es Text bleibt, entscheidet die
       Typerkennung, und die sieht hier eine Zahl.
-- [ ] Der Import bricht mit einem Fehler ab ~ Er gelingt klaglos, und genau das
-      macht den Fall gefährlich.
+- [ ] Der Import bricht mit einem Fehler ab ~ Er gelingt klaglos, und genau
+      das macht den Fall gefährlich.
 :::
-
-## Typische Aufgaben
-
-**Nur den erwarteten Fehler abfangen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-ergebnis <- tryCatch(
-  as.numeric(eingabe),
-  warning = function(w) NA_real_
-)
-```
-
-## Python
-
-```python
-try:
-    wert = float(eingabe)
-except ValueError:
-    wert = float("nan")
-```
-
-:::
-
-**Aufräumen, egal wie es ausgeht**
-
-```python
-with open("daten.csv", encoding="utf-8") as f:
-    zeilen = f.readlines()
-```
-
-Der `with`-Block schliesst die Datei auch dann, wenn im Rumpf ein Fehler
-auftritt. Ein eigenes `close()` ist damit überflüssig.
-
-**Zeilenweise lesen, ohne die Datei in den Speicher zu laden**
-
-```python
-with open("gross.csv", encoding="utf-8") as f:
-    for zeile in f:
-        verarbeite(zeile)
-```
-
-**Eine Datei schreiben, ohne Vorhandenes zu überschreiben**
-
-```python
-with open("bericht.txt", "x", encoding="utf-8") as f:   # x schlaegt fehl, wenn vorhanden
-    f.write(text)
-```
-
-**Struktur speichern und wieder laden**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-jsonlite::write_json(objekt, "objekt.json")
-objekt <- jsonlite::read_json("objekt.json")
-saveRDS(objekt, "objekt.rds")
-```
-
-## Python
-
-```python
-import json
-with open("objekt.json", "w", encoding="utf-8") as f:
-    json.dump(objekt, f, ensure_ascii=False, indent=2)
-```
-
-:::
-
-**Eigenen Fehler auslösen, wenn eine Annahme verletzt ist**
-
-```python
-if n <= 0:
-    raise ValueError(f"n muss positiv sein, war {n}")
-```
 
 ## Verlinkte Ressourcen
 
 - [Fehler und Ausnahmen im Python-Tutorial](https://docs.python.org/3/tutorial/errors.html)
 - [Ein- und Ausgabe im Python-Tutorial](https://docs.python.org/3/tutorial/inputoutput.html)
 - [json in der Standardbibliothek](https://docs.python.org/3/library/json.html)
+- [Bedingungen und Fehlerbehandlung in R, Advanced R](https://adv-r.hadley.nz/conditions.html)
