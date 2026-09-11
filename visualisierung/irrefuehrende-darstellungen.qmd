@@ -1,7 +1,7 @@
 ---
 title: "Irreführende Darstellungen"
 description: "Abgeschnittene Achsen, falsche Flächen und andere Verzerrungen."
-categories: ["Visualisierungsethik", "Visualisierung", "Wahrnehmung", "R"]
+categories: ["Visualisierungsethik", "Visualisierung", "Wahrnehmung", "R", "Python"]
 quelle: ["DAVI"]
 seitentyp: konzept
 stand: entwurf
@@ -14,16 +14,73 @@ order: 80
 library(ggplot2)
 
 theme_set(theme_minimal(base_size = 12))
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalmatrix <- function(saat, zeilen, spalten) {
+  matrix(qnorm(lehmer(saat, zeilen * spalten)), nrow = zeilen, byrow = TRUE)
+}
+
+steigung <- function(x, y) unname(coef(lm(y ~ x))[2])
+
+akzent <- "#b2182b"
+neutral <- "grey78"
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+np.set_printoptions(suppress=True)
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+AKZENT = "#b2182b"
+NEUTRAL = "#c7c7c7"
+
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def normalmatrix(saat, zeilen, spalten):
+    return stats.norm.ppf(lehmer(saat, zeilen * spalten)).reshape(zeilen, spalten)
+
+
+def steigung(x, y):
+    return float(np.polyfit(x, y, 1)[0])
 ```
 
 ## Kernideen
 
-- Bei Balken kodiert die Länge die Menge, also muss die Achse bei null beginnen
-- Bei Linien trägt die Steigung die Aussage, deshalb ist ein Ausschnitt dort zulässig
-- Eine zweite y-Achse macht jeden gewünschten Gleichlauf herstellbar
-- Flächen nach dem Radius zu skalieren vervierfacht den Eindruck
-- Der gewählte Zeitraum kann die Aussage stärker bestimmen als die Daten
-- Die meisten Verzerrungen entstehen aus Bequemlichkeit, nicht aus Absicht
+- Bei **Balken** kodiert die Länge die Menge, also muss die Achse bei null
+  beginnen. Bei **Linien** trägt die Steigung die Aussage, dort ist ein
+  Ausschnitt zulässig.
+- Eine **zweite y-Achse** hat zwei frei wählbare Parameter — und damit lässt
+  sich fast jeder Gleichlauf herstellen.
+- Zwei unabhängige **Irrfahrten** korrelieren erstaunlich oft stark. Der
+  Gleichlauf von Niveaus ist kein Beleg für einen Zusammenhang.
+- Der **gewählte Zeitraum** kann die Aussage stärker bestimmen als die Daten.
+- **Prozent und Prozentpunkte** sind verschiedene Dinge, und die Wahl zwischen
+  ihnen verändert die Zahl um ein Vielfaches.
+- Die meisten Verzerrungen entstehen aus Bequemlichkeit, nicht aus Absicht.
 
 ## Erklärung
 
@@ -38,71 +95,42 @@ Steigung sagt etwas anderes als die Zahl.
 Der bekannteste Fall, und der einzige, bei dem die Antwort von der Diagrammart
 abhängt.
 
-```{r}
-#| label: fig-achse-r
-#| fig-cap: "Dieselben vier Werte: links mit Achse ab null, rechts ab 90. Der Eindruck unterscheidet sich um ein Vielfaches."
-#| fig-height: 3.2
-quartale <- c("Q1", "Q2", "Q3", "Q4")
-werte <- c(96, 98, 99, 101)
-
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-barplot(werte, names.arg = quartale, col = "grey70", ylim = c(0, 110),
-        ylab = "Index", main = "Achse ab null")
-barplot(werte, names.arg = quartale, col = "grey70", ylim = c(90, 102), xpd = FALSE,
-        ylab = "Index", main = "Achse ab 90")
-par(mfrow = c(1, 1))
-```
-
-Links ist zu sehen, was der Fall ist: die Werte liegen dicht beieinander.
-Rechts sieht dieselbe Veränderung nach einer Verdreifachung aus. Der Grund ist,
-dass die Länge des Balkens die Menge kodiert; halbiert man den Balken, halbiert
-man die behauptete Menge.
+Bei einem **Balkendiagramm** kodiert die Länge des Balkens die Menge. Wer unten
+etwas wegschneidet, kürzt die Balken ungleichmässig und behauptet damit andere
+Verhältnisse, als in den Daten stehen. Beispiel 1 rechnet aus, um welchen
+Faktor.
 
 Bei einem **Liniendiagramm** ist der Ausschnitt dagegen zulässig und oft
-notwendig, weil dort nicht die Länge, sondern die Steigung die Aussage trägt.
-Eine Zeitreihe von Körpertemperaturen ab null darzustellen wäre unsinnig. Wer
-den Ausschnitt wählt, sagt es in der Achsenbeschriftung.
+notwendig, weil dort die Steigung die Aussage trägt und nicht der Abstand zur
+Grundlinie. Eine Zeitreihe von Körpertemperaturen ab null darzustellen wäre
+unsinnig. Wer den Ausschnitt wählt, sagt es in der Achsenbeschriftung.
 
 ### Die zweite y-Achse
 
 Zwei Kurven mit verschiedenen Einheiten, jede an ihrer eigenen Achse: Das ist
-die eleganteste Art, einen Zusammenhang zu behaupten, den es nicht gibt. Weil
-beide Skalen frei wählbar sind, lässt sich fast jeder Gleichlauf herstellen und
-mit einer anderen Skalierung wieder auflösen.
+die eleganteste Art, einen Zusammenhang zu behaupten, den es nicht gibt. Die
+zweite Achse hat **zwei freie Parameter**, Nullpunkt und Massstab. Mit zwei
+freien Parametern lässt sich fast jede Kurve auf jede andere legen — und mit
+einer anderen Wahl derselbe Gleichlauf wieder auflösen oder umkehren.
+
+Dazu kommt ein zweites Problem, das nichts mit der Grafik zu tun hat: Zwei
+Zeitreihen, die beide wandern, korrelieren auch dann, wenn sie nichts
+miteinander zu tun haben. Beispiel 2 beziffert, wie oft das passiert.
 
 Was stattdessen geht: zwei Teilgrafiken übereinander mit gemeinsamer Zeitachse.
-Der zeitliche Bezug bleibt, die Suggestion verschwindet. Wenn es wirklich um den
-Zusammenhang geht, ist das Streudiagramm der beiden Grössen ehrlicher, siehe
-[Korrelation](../statistik/grundlagen/korrelation.qmd).
+Der zeitliche Bezug bleibt, die Suggestion verschwindet. Wenn es wirklich um
+den Zusammenhang geht, ist das Streudiagramm der **Veränderungen** ehrlicher,
+siehe [Korrelation](../statistik/grundlagen/korrelation.qmd).
 
 ### Flächen und Radien
 
 Wird eine Menge über eine Kreisfläche dargestellt und dabei der Radius
-proportional zur Menge gesetzt, wächst die Fläche im Quadrat. Der doppelte Wert
-sieht dann viermal so gross aus.
+proportional zur Menge gesetzt, wächst die Fläche im Quadrat: Der doppelte Wert
+sieht viermal so gross aus, der achtfache 64-mal. Dasselbe gilt für
+Bildsymbole, die in beide Richtungen skaliert werden.
 
-```{r}
-#| label: fig-flaeche-r
-#| fig-cap: "Zwei Werte im Verhältnis 1 zu 2. Links korrekt über die Fläche skaliert, rechts über den Radius."
-#| fig-height: 3.2
-kreis <- function(x, y, r, farbe = "grey70") {
-  winkel <- seq(0, 2 * pi, length.out = 200)
-  polygon(x + r * cos(winkel), y + r * sin(winkel), col = farbe, border = NA)
-}
-
-par(mfrow = c(1, 2), mar = c(1, 1, 3, 1))
-plot(NA, xlim = c(0, 10), ylim = c(0, 6), axes = FALSE, xlab = "", ylab = "",
-     main = "Fläche verdoppelt (richtig)")
-kreis(2.5, 3, 1); kreis(6.5, 3, sqrt(2))
-plot(NA, xlim = c(0, 10), ylim = c(0, 6), axes = FALSE, xlab = "", ylab = "",
-     main = "Radius verdoppelt (falsch)")
-kreis(2.5, 3, 1); kreis(7, 3, 2)
-par(mfrow = c(1, 1))
-```
-
-Links stimmt der Eindruck mit dem Verhältnis überein, rechts wirkt der zweite
-Wert viermal so gross. Dasselbe gilt für Bildsymbole, die in beide Richtungen
-skaliert werden.
+Durchgerechnet ist der Fall unter
+[Wahrnehmung und Kodierung, Beispiel 2](wahrnehmung-kodierung.qmd).
 
 ### Der gewählte Ausschnitt
 
@@ -113,40 +141,21 @@ Botschaft.
 
 Die Gegenprobe ist einfach: Wie sieht dieselbe Grafik mit dem doppelten
 Zeitraum aus? Ändert sich die Aussage, gehört der längere Zeitraum in die
-Grafik oder wenigstens die Begründung für den Ausschnitt in die Bildunterschrift.
+Grafik oder wenigstens die Begründung in die Bildunterschrift.
 
 ### Aggregation, die den Effekt umdreht
 
-Wenn Gruppen zusammengefasst werden, kann der Gesamttrend in die andere Richtung
-zeigen als jede einzelne Gruppe. Das ist kein Darstellungsfehler, sondern ein
-Denkfehler, der sich in der Darstellung fortsetzt, und er heisst
-Simpson-Paradox.
+Wenn Gruppen zusammengefasst werden, kann der Gesamttrend in die andere
+Richtung zeigen als jede einzelne Gruppe. Das ist kein Darstellungsfehler,
+sondern ein Denkfehler, der sich in der Darstellung fortsetzt, und er heisst
+**Simpson-Paradox**.
 
-```{r}
-#| label: fig-simpson-r
-#| fig-cap: "Innerhalb jeder Gruppe fällt der Zusammenhang, über alle Gruppen hinweg steigt er."
-#| fig-height: 3.4
-gruppe <- rep(c("A", "B", "C"), each = 20)
-x <- c(seq(1, 4, length.out = 20), seq(4, 7, length.out = 20), seq(7, 10, length.out = 20))
-y <- c(seq(6, 4, length.out = 20), seq(9, 7, length.out = 20), seq(12, 10, length.out = 20))
+### Prozent, Prozentpunkte und die Basis
 
-par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-plot(x, y, pch = 16, col = "grey40", xlab = "x", ylab = "y",
-     main = "alle Daten zusammen")
-abline(lm(y ~ x), lwd = 2)
-plot(x, y, pch = 16, col = as.factor(gruppe), xlab = "x", ylab = "y",
-     main = "nach Gruppen getrennt")
-for (g in unique(gruppe)) {
-  idx <- gruppe == g
-  abline(lm(y[idx] ~ x[idx]), lwd = 2, col = which(unique(gruppe) == g))
-}
-par(mfrow = c(1, 1))
-```
-
-Links steigt die Gerade, rechts fällt sie in jeder Gruppe. Welche Darstellung
-richtig ist, entscheidet die Fragestellung, nicht die Grafik: Geht es um den
-Effekt innerhalb vergleichbarer Fälle, ist die getrennte Darstellung die
-richtige.
+Dieselbe Veränderung lässt sich als "ein Prozentpunkt mehr" oder als "50
+Prozent mehr" beschreiben. Beides ist richtig, und die Wahl entscheidet, wie
+gross die Sache wirkt. Eine Grafik, die nur die relative Veränderung zeigt,
+ohne die Basis zu nennen, ist unvollständig.
 
 ### Die kurze Prüfliste
 
@@ -155,8 +164,610 @@ richtige.
 - Sind Flächen nach Fläche skaliert und nicht nach Radius?
 - Ist der Zeitraum begründet, und was zeigt der doppelte?
 - Verstecken zusammengefasste Gruppen einen gegenläufigen Effekt?
+- Stehen bei Prozentangaben die **Basis** und die absolute Zahl dabei?
 - Ist die Achse nirgends umgedreht, ohne dass es dasteht?
 - Trägt der Titel eine Aussage, die die Daten hergeben?
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Um welchen Faktor die abgeschnittene Achse täuscht
+
+#### Frage und Datenlage
+
+Vier Quartalswerte: 96, 98, 99, 101. Ein Zuwachs von 5.2 Prozent. Die Frage ist
+nicht, ob das Abschneiden täuscht, sondern **um wie viel**.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-ir-r
+#| fig-cap: "Beispiel 1: dieselben vier Werte mit drei Achsenanfängen."
+#| fig-height: 3
+quartale <- c("Q1", "Q2", "Q3", "Q4")
+werte <- c(96, 98, 99, 101)
+
+round(c(echtes_verhaeltnis = max(werte) / min(werte),
+        zuwachs_prozent = (werte[4] / werte[1] - 1) * 100), 4)
+
+for (basis in c(0, 90, 95)) {
+  laengen <- werte - basis
+  cat(sprintf("Achse ab %3d: Balkenlängen %-18s Verhältnis %5.3f  Verzerrung %4.2f-fach\n",
+              basis, paste(laengen, collapse = " "),
+              max(laengen) / min(laengen),
+              (max(laengen) / min(laengen)) / (max(werte) / min(werte))))
+}
+
+par(mfrow = c(1, 3), mar = c(3, 4, 3, 1))
+for (basis in c(0, 90, 95)) {
+  barplot(werte, names.arg = quartale, col = neutral, border = NA,
+          ylim = c(basis, 102), xpd = FALSE,
+          ylab = "Index", main = paste("Achse ab", basis))
+}
+par(mfrow = c(1, 1))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-ir-py
+#| fig-cap: "Beispiel 1: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3
+quartale = ["Q1", "Q2", "Q3", "Q4"]
+werte = np.array([96., 98., 99., 101.])
+
+print({"echtes_verhaeltnis": round(float(werte.max() / werte.min()), 4),
+       "zuwachs_prozent": round(float((werte[3] / werte[0] - 1) * 100), 4)})
+
+for basis in [0, 90, 95]:
+    laengen = werte - basis
+    v = laengen.max() / laengen.min()
+    print(f"Achse ab {basis:3d}: Balkenlängen {str(laengen):<22}"
+          f" Verhältnis {v:5.3f}  Verzerrung {v / (werte.max() / werte.min()):4.2f}-fach")
+
+fig, achsen = plt.subplots(1, 3, figsize=(7, 3))
+for achse, basis in zip(achsen, [0, 90, 95]):
+    _ = achse.bar(quartale, werte - basis, bottom=basis, color=NEUTRAL)
+    _ = achse.set_ylim(basis, 102)
+    _ = achse.set_title(f"Achse ab {basis}")
+    _ = achse.set_ylabel("Index")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Achse beginnt bei | Balkenlängen | Verhältnis längster zu kürzestem | Verzerrung |
+|---|---|---|---|
+| **0** | 96, 98, 99, 101 | **1.052** | 1.00-fach |
+| **90** | 6, 8, 9, 11 | **1.833** | **1.74-fach** |
+| **95** | 1, 3, 4, 6 | **6.000** | **5.70-fach** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| In den Daten stehen **5.2 Prozent** Zuwachs | Das Verhältnis vom grössten zum kleinsten Wert ist 1.052. |
+| Ab 90 gezeichnet sieht es wie **83 Prozent** aus | Der längste Balken ist 1.83-mal so lang wie der kürzeste. Die behauptete Menge ist um den Faktor 1.74 übertrieben. |
+| Ab 95 gezeichnet wie **das Sechsfache** | Verzerrung 5.70-fach. **Je näher der Achsenanfang an den Daten liegt, desto grösser die Lüge** — und desto harmloser sieht die Entscheidung beim Erstellen aus. |
+| Die Verzerrung ist berechenbar | Sie ist das Verhältnis der beiden Verhältnisse. Man kann sie also beziffern, statt über "irreführend" zu streiten. |
+| Keine der drei Grafiken enthält eine **falsche Zahl** | Die Achse ist jedes Mal korrekt beschriftet. Die Täuschung entsteht im Kanal, nicht in den Daten. |
+
+::: {.note-box}
+**Wenn die Unterschiede wirklich klein und trotzdem wichtig sind,** gibt es
+ehrliche Auswege:
+
+| Mittel | Wirkung |
+|---|---|
+| **Liniendiagramm** mit beschriftetem Ausschnitt | Steigung trägt die Aussage, der Ausschnitt ist zulässig |
+| **Differenz zum Vorquartal** als Balken | die kleine Grösse wird zur eigentlichen Grösse, Achse ab null |
+| **Indexiert** auf Q1 = 100 | zeigt die relative Veränderung direkt |
+| Werte **anschreiben** | die Zahl steht da, unabhängig vom Eindruck |
+
+Alle vier zeigen den Unterschied deutlich, ohne die Länge zu missbrauchen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Ein Zuwachs von 5.2 Prozent erscheint bei einer Achse ab 90 als Verhältnis
+> 1.83 und bei einer Achse ab 95 als Verhältnis 6.0 — eine Übertreibung um den
+> Faktor 1.74 beziehungsweise 5.70, bei jedes Mal korrekt beschrifteter Achse.
+
+### Beispiel 2: Zwei Achsen, kein Zusammenhang
+
+#### Frage und Datenlage
+
+Zwei Reihen, die nichts miteinander zu tun haben — beide sind reine
+Irrfahrten aus getrennten Zufallsströmen. Wie oft sehen solche Paare trotzdem
+nach einem Zusammenhang aus? 500 Paare über 36 Monate geben die Antwort.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-ir-r
+N <- 500; n_zeit <- 36
+Z <- normalmatrix(2323, 2 * N, n_zeit)
+
+r_niveau <- numeric(N); r_aenderung <- numeric(N)
+for (k in seq_len(N)) {
+  a <- cumsum(Z[2 * k - 1, ]); b <- cumsum(Z[2 * k, ])
+  r_niveau[k] <- cor(a, b)
+  r_aenderung[k] <- cor(diff(a), diff(b))
+}
+
+round(c(anteil_niveau_ueber_0.5 = mean(abs(r_niveau) > 0.5),
+        anteil_niveau_ueber_0.8 = mean(abs(r_niveau) > 0.8),
+        anteil_aenderung_ueber_0.5 = mean(abs(r_aenderung) > 0.5),
+        mittleres_abs_r_niveau = mean(abs(r_niveau)),
+        mittleres_abs_r_aenderung = mean(abs(r_aenderung))), 4)
+
+k <- which.max(abs(r_niveau))
+round(c(paar = k, r_niveau = r_niveau[k], r_aenderung = r_aenderung[k]), 4)
+```
+
+```{r}
+#| label: fig-b2-ir-r
+#| fig-cap: "Beispiel 2: das auffälligste der 500 Paare, an zwei y-Achsen gezeichnet."
+#| fig-height: 3.2
+a <- 100 + cumsum(Z[2 * k - 1, ] * 2)
+b <- 50 + cumsum(Z[2 * k, ] * 1.2)
+round(c(r_der_gezeigten_reihen = cor(a, b),
+        r_der_aenderungen = cor(diff(a), diff(b))), 4)
+
+par(mar = c(4, 4, 2, 4))
+plot(a, type = "l", lwd = 2, col = "grey35", xlab = "Monat", ylab = "Reihe A")
+par(new = TRUE)
+plot(b, type = "l", lwd = 2, col = akzent, axes = FALSE, xlab = "", ylab = "")
+axis(4, col = akzent, col.axis = akzent)
+mtext("Reihe B", side = 4, line = 2.5, col = akzent)
+```
+
+##### Python
+
+```{python}
+#| label: b2-ir-py
+N, T = 500, 36
+Z = normalmatrix(2323, 2 * N, T)
+
+r_niveau = np.empty(N)
+r_aenderung = np.empty(N)
+for k in range(N):
+    a = np.cumsum(Z[2 * k]); b = np.cumsum(Z[2 * k + 1])
+    r_niveau[k] = np.corrcoef(a, b)[0, 1]
+    r_aenderung[k] = np.corrcoef(np.diff(a), np.diff(b))[0, 1]
+
+print({"anteil_niveau_ueber_0.5": round(float((abs(r_niveau) > 0.5).mean()), 4),
+       "anteil_niveau_ueber_0.8": round(float((abs(r_niveau) > 0.8).mean()), 4),
+       "anteil_aenderung_ueber_0.5": round(float((abs(r_aenderung) > 0.5).mean()), 4),
+       "mittleres_abs_r_niveau": round(float(np.abs(r_niveau).mean()), 4),
+       "mittleres_abs_r_aenderung": round(float(np.abs(r_aenderung).mean()), 4)})
+
+k = int(np.argmax(np.abs(r_niveau)))
+print({"paar": k + 1, "r_niveau": round(float(r_niveau[k]), 4),
+       "r_aenderung": round(float(r_aenderung[k]), 4)})
+```
+
+```{python}
+#| label: fig-b2-ir-py
+#| fig-cap: "Beispiel 2: dieselbe Grafik in Python."
+#| fig-height: 3.2
+a = 100 + np.cumsum(Z[2 * k] * 2)
+b = 50 + np.cumsum(Z[2 * k + 1] * 1.2)
+print({"r_der_gezeigten_reihen": round(float(np.corrcoef(a, b)[0, 1]), 4),
+       "r_der_aenderungen": round(float(np.corrcoef(np.diff(a), np.diff(b))[0, 1]), 4)})
+
+fig, achse = plt.subplots(figsize=(7, 3.2))
+_ = achse.plot(np.arange(1, T + 1), a, lw=2, color="0.35")
+_ = achse.set_xlabel("Monat")
+_ = achse.set_ylabel("Reihe A")
+zweite = achse.twinx()
+_ = zweite.plot(np.arange(1, T + 1), b, lw=2, color=AKZENT)
+_ = zweite.set_ylabel("Reihe B", color=AKZENT)
+_ = zweite.tick_params(axis="y", colors=AKZENT)
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+500 Paare unabhängiger Irrfahrten über 36 Monate:
+
+| Grösse | Wert |
+|---|---|
+| Anteil mit \|r\| > 0.5 zwischen den **Niveaus** | **40.2 Prozent** |
+| Anteil mit \|r\| > 0.8 zwischen den Niveaus | **8.0 Prozent** |
+| Anteil mit \|r\| > 0.5 zwischen den **Veränderungen** | **0.4 Prozent** |
+| mittleres \|r\| der Niveaus | **0.4211** |
+| mittleres \|r\| der Veränderungen | **0.1373** |
+
+Das auffälligste Paar (Nummer 371):
+
+| Grösse | Wert |
+|---|---|
+| Korrelation der Niveaus | **−0.9508** |
+| Korrelation der Veränderungen | **−0.1239** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| In **40 Prozent** der Fälle korrelieren die Niveaus über 0.5 | Bei Reihen, die **nachweislich** nichts miteinander zu tun haben — sie stammen aus getrennten Zufallsströmen. |
+| In **8 Prozent** der Fälle sogar über 0.8 | Das ist der Bereich, in dem eine Grafik überzeugend aussieht. Bei acht von hundert zufälligen Paaren. |
+| Bei den **Veränderungen** passiert das fast nie | 0.4 Prozent statt 40. **Der Gleichlauf steckt im Wandern, nicht im Zusammenhang.** |
+| Das gezeigte Paar hat r = **−0.9508** | Und die Veränderungen nur −0.1239. Die Grafik legt einen starken Gegenlauf nahe, von dem in den Monatsveränderungen nichts zu finden ist. |
+| Die zweite Achse macht es **sichtbar überzeugend** | Sie gleicht Niveau und Massstab aus, sodass beide Kurven denselben Raum füllen. Ohne sie läge die eine Kurve oben und die andere unten, und niemand hielte das für einen Zusammenhang. |
+
+::: {.warning-box}
+**Zwei Fehler kommen hier zusammen, und beide sind vermeidbar.**
+
+| Fehler | Prüfung |
+|---|---|
+| Niveaus wandernder Reihen korrelieren | **Veränderungen** korrelieren, nicht Niveaus — siehe [Stationarität](../statistik/zeitreihen/stationaritaet-acf-pacf.qmd) |
+| Die zweite Achse erzeugt Deckungsgleichheit | zwei Teilgrafiken übereinander mit gemeinsamer Zeitachse |
+
+Die ehrliche Grafik für die Frage "hängen die beiden zusammen?" ist das
+**Streudiagramm der Veränderungen** — dort hätte dieses Paar eine formlose
+Punktwolke ergeben.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Von 500 Paaren unabhängiger Irrfahrten über 36 Monate zeigen 40.2 Prozent
+> eine Korrelation der Niveaus über 0.5 und 8.0 Prozent über 0.8; bei den
+> Veränderungen sind es 0.4 Prozent. Das auffälligste Paar erreicht −0.95
+> zwischen den Niveaus und −0.12 zwischen den Veränderungen.
+
+### Beispiel 3: Der gewählte Ausschnitt
+
+#### Frage und Datenlage
+
+Eine Reihe über 60 Monate, die insgesamt deutlich fällt. Gesucht wird der
+Ausschnitt, der am stärksten **steigt** — und dann die Frage, was eine Grafik
+dieses Ausschnitts aussagen würde.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b3-ir-r
+#| fig-cap: "Beispiel 3: der ganze Verlauf, darin der günstigste Ausschnitt hervorgehoben."
+#| fig-height: 3.2
+t <- 0:59
+reihe <- 200 - 1.5 * t + cumsum(qnorm(lehmer(3131, 60)) * 4)
+
+round(c(gesamtsteigung = steigung(t, reihe)), 3)
+
+bestes <- list(steigung = -Inf)
+for (start in 0:47) {
+  for (laenge in c(12, 18)) {
+    idx <- (start + 1):(start + laenge)
+    s <- steigung(t[idx], reihe[idx])
+    if (s > bestes$steigung) bestes <- list(steigung = s, start = start, laenge = laenge)
+  }
+}
+round(unlist(bestes), 3)
+
+idx <- (bestes$start + 1):(bestes$start + bestes$laenge)
+round(c(ausschnitt_anfang = reihe[idx[1]],
+        ausschnitt_ende = reihe[idx[length(idx)]],
+        veraenderung_prozent = (reihe[idx[length(idx)]] / reihe[idx[1]] - 1) * 100), 1)
+round(c(gesamt_anfang = reihe[1], gesamt_ende = reihe[60],
+        veraenderung_prozent = (reihe[60] / reihe[1] - 1) * 100), 1)
+
+par(mar = c(4, 4, 2, 1))
+plot(t, reihe, type = "l", lwd = 1.6, col = "grey55", xlab = "Monat", ylab = "Wert")
+lines(t[idx], reihe[idx], lwd = 3, col = akzent)
+```
+
+##### Python
+
+```{python}
+#| label: fig-b3-ir-py
+#| fig-cap: "Beispiel 3: derselbe Verlauf in Python."
+#| fig-height: 3.2
+t = np.arange(60)
+reihe = 200 - 1.5 * t + np.cumsum(stats.norm.ppf(lehmer(3131, 60)) * 4)
+
+print({"gesamtsteigung": round(steigung(t, reihe), 3)})
+
+bestes = {"steigung": -np.inf}
+for start in range(48):
+    for laenge in (12, 18):
+        idx = slice(start, start + laenge)
+        s = steigung(t[idx], reihe[idx])
+        if s > bestes["steigung"]:
+            bestes = {"steigung": s, "start": start, "laenge": laenge}
+print({k: round(v, 3) for k, v in bestes.items()})
+
+idx = slice(bestes["start"], bestes["start"] + bestes["laenge"])
+teil = reihe[idx]
+print({"ausschnitt_anfang": round(float(teil[0]), 1),
+       "ausschnitt_ende": round(float(teil[-1]), 1),
+       "veraenderung_prozent": round(float((teil[-1] / teil[0] - 1) * 100), 1)})
+print({"gesamt_anfang": round(float(reihe[0]), 1),
+       "gesamt_ende": round(float(reihe[-1]), 1),
+       "veraenderung_prozent": round(float((reihe[-1] / reihe[0] - 1) * 100), 1)})
+
+fig, achse = plt.subplots(figsize=(7, 3.2))
+_ = achse.plot(t, reihe, lw=1.6, color="0.55")
+_ = achse.plot(t[idx], teil, lw=3, color=AKZENT)
+_ = achse.set_xlabel("Monat")
+_ = achse.set_ylabel("Wert")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Betrachtung | Steigung je Monat | Anfang | Ende | Veränderung |
+|---|---|---|---|---|
+| **ganze Reihe**, 60 Monate | **−1.257** | 192.1 | 119.9 | **−37.6 Prozent** |
+| **Ausschnitt**, Monat 35 bis 46 | **+0.522** | 123.0 | 129.5 | **+5.3 Prozent** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die Reihe verliert insgesamt **37.6 Prozent** | Die Steigung ist über 60 Monate klar negativ. |
+| Es gibt einen Zwölfmonatsausschnitt mit **+5.3 Prozent** | Und er ist nicht konstruiert, sondern einfach der beste, den die Suche findet. In verrauschten Daten gibt es ihn fast immer. |
+| Die Steigungen haben **verschiedene Vorzeichen** | −1.257 gegen +0.522. Dieselben Daten, zwei gegensätzliche Aussagen — beide mit korrekt beschrifteten Achsen. |
+| Der Ausschnitt ist **ein Fünftel** der Reihe | Zwölf von 60 Monaten. Das ist kein absurd kleiner Ausschnitt, sondern ein üblicher Berichtszeitraum. |
+| Die Suche nach dem besten Ausschnitt ist **automatisierbar** | Genau das macht sie gefährlich: Man muss nicht lügen wollen, es reicht, den Zeitraum zu wählen, der die Botschaft stützt. |
+
+::: {.note-box}
+**Die Gegenprobe, die immer funktioniert:** dieselbe Grafik mit dem doppelten
+Zeitraum zeichnen. Bleibt die Aussage, war der Ausschnitt in Ordnung. Dreht sie
+sich um, gehört der längere Zeitraum in die Grafik — zumindest als blasse
+Linie im Hintergrund, wie in der Abbildung oben.
+
+Das ist die visuelle Entsprechung zum
+[multiplen Testen](../statistik/inferenz/multiples-testen.qmd): Wer lange genug
+sucht, findet einen Ausschnitt, der die gewünschte Aussage stützt.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Die Reihe fällt über 60 Monate um 37.6 Prozent bei einer Steigung von −1.257
+> je Monat. Der günstigste Zwölfmonatsausschnitt steigt dagegen um 5.3 Prozent
+> mit einer Steigung von +0.522 — dieselben Daten, entgegengesetzte Aussage.
+
+### Beispiel 4: Das Simpson-Paradox
+
+#### Frage und Datenlage
+
+Drei Gruppen zu je 20 Beobachtungen. Innerhalb jeder Gruppe fällt der
+Zusammenhang, über alle zusammen steigt er. Die Steigungen machen es eindeutig.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b4-ir-r
+#| fig-cap: "Beispiel 4: links alle Daten zusammen, rechts nach Gruppen getrennt."
+#| fig-height: 3.4
+gruppe <- rep(c("A", "B", "C"), each = 20)
+x <- c(seq(1, 4, length.out = 20), seq(4, 7, length.out = 20),
+       seq(7, 10, length.out = 20))
+y <- c(seq(6, 4, length.out = 20), seq(9, 7, length.out = 20),
+       seq(12, 10, length.out = 20))
+
+round(c(gesamtsteigung = steigung(x, y), gesamtkorrelation = cor(x, y)), 4)
+for (g in c("A", "B", "C")) {
+  m <- gruppe == g
+  cat(sprintf("Gruppe %s: Steigung %7.4f  Korrelation %7.4f\n",
+              g, steigung(x[m], y[m]), cor(x[m], y[m])))
+}
+
+farben <- c(A = "#1b7837", B = "#762a83", C = "#b35806")
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(x, y, pch = 16, col = "grey45", xlab = "x", ylab = "y",
+     main = "alle Daten zusammen")
+abline(lm(y ~ x), lwd = 2)
+plot(x, y, pch = 16, col = farben[gruppe], xlab = "x", ylab = "y",
+     main = "nach Gruppen getrennt")
+for (g in c("A", "B", "C")) {
+  m <- gruppe == g
+  abline(lm(y[m] ~ x[m]), lwd = 2, col = farben[[g]])
+}
+par(mfrow = c(1, 1))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b4-ir-py
+#| fig-cap: "Beispiel 4: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3.4
+gruppe = np.repeat(["A", "B", "C"], 20)
+x = np.concatenate([np.linspace(1, 4, 20), np.linspace(4, 7, 20),
+                    np.linspace(7, 10, 20)])
+y = np.concatenate([np.linspace(6, 4, 20), np.linspace(9, 7, 20),
+                    np.linspace(12, 10, 20)])
+
+print({"gesamtsteigung": round(steigung(x, y), 4),
+       "gesamtkorrelation": round(float(np.corrcoef(x, y)[0, 1]), 4)})
+for g in "ABC":
+    m = gruppe == g
+    print(f"Gruppe {g}: Steigung {steigung(x[m], y[m]):7.4f}"
+          f"  Korrelation {np.corrcoef(x[m], y[m])[0, 1]:7.4f}")
+
+farben = {"A": "#1b7837", "B": "#762a83", "C": "#b35806"}
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+_ = achsen[0].scatter(x, y, s=14, color="0.45")
+k, d = np.polyfit(x, y, 1)
+_ = achsen[0].plot(x, k * x + d, lw=2, color="black")
+_ = achsen[0].set_title("alle Daten zusammen")
+for g in "ABC":
+    m = gruppe == g
+    _ = achsen[1].scatter(x[m], y[m], s=14, color=farben[g])
+    kg, dg = np.polyfit(x[m], y[m], 1)
+    _ = achsen[1].plot(x[m], kg * x[m] + dg, lw=2, color=farben[g])
+_ = achsen[1].set_title("nach Gruppen getrennt")
+for achse in achsen:
+    _ = achse.set_xlabel("x")
+    _ = achse.set_ylabel("y")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Betrachtung | Steigung | Korrelation |
+|---|---|---|
+| **alle Daten zusammen** | **+0.7977** | **+0.826** |
+| Gruppe A | **−0.6667** | **−1.000** |
+| Gruppe B | **−0.6667** | **−1.000** |
+| Gruppe C | **−0.6667** | **−1.000** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Die Gesamtsteigung ist **positiv**, jede Gruppensteigung **negativ** | +0.80 gegen dreimal −0.67. Das ist kein Rundungsartefakt und kein Zufall der Stichprobe. |
+| Die Korrelation innerhalb der Gruppen ist **exakt −1** | Die Daten sind bewusst so gebaut: In jeder Gruppe ist der Zusammenhang perfekt und fallend. |
+| Trotzdem beträgt die Gesamtkorrelation **+0.83** | Weil die Gruppen entlang der Diagonalen versetzt liegen: Gruppe C hat sowohl höhere x- als auch höhere y-Werte. |
+| Die Grafik links ist **nicht falsch** | Sie beantwortet nur eine andere Frage: "Wie hängen x und y zusammen, wenn ich die Gruppe nicht kenne?" |
+| Welche Darstellung richtig ist, entscheidet die **Fragestellung** | Geht es um den Effekt innerhalb vergleichbarer Fälle, ist die getrennte Darstellung die richtige. Geht es um die Vorhersage ohne Kenntnis der Gruppe, die gemeinsame. |
+
+::: {.note-box}
+**Woran man den Verdacht früh bemerkt:** Wenn die Punktwolke in Klumpen
+zerfällt, ist die Gruppierung meist schon zu sehen — noch bevor man weiss,
+welche Variable sie erzeugt. Das ist ein Grund, **immer zuerst das
+Streudiagramm** anzusehen und nicht nur die Korrelationszahl.
+
+Der statistische Hintergrund steht unter
+[Korrelation](../statistik/grundlagen/korrelation.qmd) und
+[multiple lineare Regression](../statistik/regression/multiple-lineare-regression.qmd);
+dort ist es dieselbe Sache unter dem Namen **Konfundierung**.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Über alle 60 Beobachtungen steigt der Zusammenhang mit einer Steigung von
+> +0.80 und einer Korrelation von +0.83; innerhalb jeder der drei Gruppen
+> fällt er mit −0.67 und einer Korrelation von exakt −1. Beide Grafiken zeigen
+> dieselben Daten und beantworten verschiedene Fragen.
+
+### Beispiel 5: Prozent, Prozentpunkte und die fehlende Basis
+
+#### Frage und Datenlage
+
+Zwei Veränderungen, die sich in der Grafik gleich gross darstellen lassen: eine
+Nebenwirkungsrate von 2 auf 3 Prozent und ein Marktanteil von 40 auf 44
+Prozent. Welche ist die grössere?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b5-ir-r
+#| fig-cap: "Beispiel 5: dieselben zwei Veränderungen, links absolut, rechts relativ."
+#| fig-height: 3
+faelle <- data.frame(
+  name = c("Nebenwirkung", "Marktanteil"),
+  vorher = c(0.02, 0.40),
+  nachher = c(0.03, 0.44))
+
+faelle$punkte <- (faelle$nachher - faelle$vorher) * 100
+faelle$relativ <- (faelle$nachher / faelle$vorher - 1) * 100
+faelle$betroffene_je_1000 <- (faelle$nachher - faelle$vorher) * 1000
+print(faelle)
+
+par(mfrow = c(1, 2), mar = c(4, 6, 3, 1))
+barplot(faelle$punkte, names.arg = faelle$name, horiz = TRUE, las = 1,
+        col = neutral, border = NA, xlab = "Prozentpunkte",
+        main = "absolut")
+barplot(faelle$relativ, names.arg = faelle$name, horiz = TRUE, las = 1,
+        col = akzent, border = NA, xlab = "Prozent",
+        main = "relativ")
+par(mfrow = c(1, 1))
+```
+
+##### Python
+
+```{python}
+#| label: fig-b5-ir-py
+#| fig-cap: "Beispiel 5: dieselbe Gegenüberstellung in Python."
+#| fig-height: 3
+faelle = pd.DataFrame({"name": ["Nebenwirkung", "Marktanteil"],
+                       "vorher": [0.02, 0.40],
+                       "nachher": [0.03, 0.44]})
+faelle["punkte"] = (faelle["nachher"] - faelle["vorher"]) * 100
+faelle["relativ"] = (faelle["nachher"] / faelle["vorher"] - 1) * 100
+faelle["betroffene_je_1000"] = (faelle["nachher"] - faelle["vorher"]) * 1000
+print(faelle.to_string(index=False))
+
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3))
+_ = achsen[0].barh(faelle["name"], faelle["punkte"], color=NEUTRAL)
+_ = achsen[0].set_xlabel("Prozentpunkte")
+_ = achsen[0].set_title("absolut")
+_ = achsen[1].barh(faelle["name"], faelle["relativ"], color=AKZENT)
+_ = achsen[1].set_xlabel("Prozent")
+_ = achsen[1].set_title("relativ")
+plt.tight_layout()
+plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Fall | vorher | nachher | Prozentpunkte | relative Zunahme | Betroffene je 1000 |
+|---|---|---|---|---|---|
+| Nebenwirkung | 2 % | 3 % | **1.0** | **+50.0 %** | **10** |
+| Marktanteil | 40 % | 44 % | **4.0** | **+10.0 %** | **40** |
+
+| Beobachtung | Erklärung |
+|---|---|
+| Absolut ist der **Marktanteil** die grössere Veränderung | 4.0 gegen 1.0 Prozentpunkte, also das Vierfache. |
+| Relativ ist die **Nebenwirkung** die grössere | +50 gegen +10 Prozent, also das Fünffache. |
+| Beide Aussagen sind **richtig** | Und sie führen zu entgegengesetzten Rangfolgen. Die linke und die rechte Grafik widersprechen sich nicht, sie messen Verschiedenes. |
+| "50 Prozent mehr Nebenwirkungen" klingt alarmierend | Betrifft aber **10 von 1000** zusätzlich. Die absolute Zahl ist diejenige, nach der man handelt. |
+| Wer nur eine der beiden Grafiken zeigt, hat **entschieden** | Ohne es zu sagen. Deshalb gehört die Basis dazu: "von 2 auf 3 Prozent" ist vollständig, "50 Prozent mehr" ist es nicht. |
+
+::: {.warning-box}
+**Die Regel für Berichte:** Immer **beides** nennen — die relative Veränderung
+**und** die absolute, mit Basis.
+
+| Formulierung | vollständig? |
+|---|---|
+| "50 Prozent mehr Nebenwirkungen" | nein — die Basis fehlt |
+| "ein Prozentpunkt mehr" | nein — die Grössenordnung fehlt |
+| "von 2 auf 3 Prozent, also 10 zusätzliche Fälle je 1000" | **ja** |
+
+Dasselbe Thema in der Statistik: [Effektstärken](../statistik/inferenz/effektstaerken.qmd)
+und [bedingte Wahrscheinlichkeit](../statistik/wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.qmd),
+wo die Basisrate über die Aussagekraft eines Tests entscheidet.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Der Anstieg von 2 auf 3 Prozent ist relativ mit +50 Prozent die grössere
+> Veränderung, absolut mit 1.0 Prozentpunkten die kleinere; beim Marktanteil
+> von 40 auf 44 Prozent ist es umgekehrt (+10 Prozent, 4.0 Prozentpunkte).
+> Beide Darstellungen sind korrekt und ergeben entgegengesetzte Rangfolgen.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Ein Liniendiagramm zeigt die Serverauslastung zwischen 68 und 74 Prozent, die
@@ -172,16 +783,70 @@ Achse beginnt bei 65. Ist das irreführend?
 :::
 
 ::: {.quiz}
+Vier Balken mit den Werten 96 bis 101 werden ab 95 gezeichnet. Wie stark ist
+der Eindruck verzerrt?
+
+- [x] Um das rund 5.7-Fache ~ Richtig. Das echte Verhältnis ist 1.052, die
+      Balkenlängen stehen dann im Verhältnis 6.0. Je näher der Achsenanfang an
+      den Daten liegt, desto grösser die Verzerrung.
+- [ ] Um das Doppelte ~ Das wäre ungefähr der Fall bei einem Achsenanfang von
+      90, dort beträgt die Verzerrung 1.74.
+- [ ] Gar nicht, die Achse ist ja beschriftet ~ Die Beschriftung ist korrekt,
+      der Kanal Länge behauptet trotzdem etwas anderes.
+:::
+
+::: {.quiz}
 Eine Infografik stellt zwei Beträge als Kreise dar, der zweite ist doppelt so
 gross im Durchmesser. Wie liest das Publikum das?
 
-- [x] Als das Vierfache, weil die Fläche quadratisch wächst ~ Richtig. Wahrnommen
-      wird die Fläche. Wer den Betrag verdoppeln will, multipliziert den Radius
-      mit der Wurzel aus zwei.
+- [x] Als das Vierfache, weil die Fläche quadratisch wächst ~ Richtig.
+      Wahrgenommen wird die Fläche. Wer den Betrag verdoppeln will,
+      multipliziert den Radius mit der Wurzel aus zwei.
 - [ ] Als das Doppelte, weil der Durchmesser verdoppelt wurde ~ Der Durchmesser
       ist nicht der Kanal, über den gelesen wird.
 - [ ] Das hängt von der Legende ab ~ Eine Legende korrigiert den optischen
       Eindruck nicht.
+:::
+
+::: {.quiz}
+Zwei Zeitreihen an zwei y-Achsen laufen auffällig im Gleichschritt. Was ist die
+erste Prüfung?
+
+- [x] Die Korrelation der Veränderungen statt der Niveaus ansehen ~ Richtig. Bei
+      500 Paaren unabhängiger Irrfahrten lag die Korrelation der Niveaus in
+      40 Prozent der Fälle über 0.5, die der Veränderungen nur in 0.4 Prozent.
+      Der Gleichlauf steckt im Wandern.
+- [ ] Prüfen, ob die Achsen beschriftet sind ~ Sie sind es typischerweise; das
+      Problem sind die zwei frei wählbaren Parameter der zweiten Achse.
+- [ ] Die Stichprobe vergrössern ~ Bei längeren Irrfahrten wird die
+      Scheinkorrelation nicht kleiner.
+:::
+
+::: {.quiz}
+Eine Reihe fällt über 60 Monate um 37.6 Prozent. Ein Bericht zeigt einen
+Zwölfmonatsausschnitt mit +5.3 Prozent. Ist die Grafik falsch?
+
+- [x] Nein, aber unvollständig — die Aussage dreht sich mit dem Ausschnitt um ~
+      Richtig. Die Zahlen und Achsen stimmen, die Botschaft steckt in der Wahl
+      des Zeitraums. Die Gegenprobe ist der doppelte Zeitraum.
+- [ ] Ja, ein solcher Ausschnitt ist immer unzulässig ~ Ein Berichtszeitraum
+      von zwölf Monaten ist üblich; entscheidend ist, ob der längere Verlauf
+      etwas anderes sagt.
+- [ ] Nein, zwölf Monate sind repräsentativ genug ~ Hier waren sie es gerade
+      nicht: die Steigungen haben verschiedene Vorzeichen.
+:::
+
+::: {.quiz}
+Eine Nebenwirkung steigt von 2 auf 3 Prozent. Wie berichtet man das
+vollständig?
+
+- [x] Von 2 auf 3 Prozent, also 10 zusätzliche Fälle je 1000 ~ Richtig,
+      relative und absolute Angabe mit Basis. "50 Prozent mehr" allein
+      verschweigt, wie klein die Basis ist.
+- [ ] 50 Prozent mehr Nebenwirkungen ~ Richtig gerechnet, aber ohne die Basis
+      nicht einzuordnen.
+- [ ] Ein Prozentpunkt mehr ~ Richtig gerechnet, verschweigt aber, dass sich
+      die Rate um die Hälfte erhöht hat.
 :::
 
 ## Verlinkte Ressourcen
@@ -189,3 +854,5 @@ gross im Durchmesser. Wie liest das Publikum das?
 - [Claus Wilke: Common pitfalls of color use und weitere Fallen](https://clauswilke.com/dataviz/)
 - [Calling Bullshit: Misleading Axes](https://www.callingbullshit.org/tools/tools_misleading_axes.html)
 - [Simpson-Paradox erklärt](https://plato.stanford.edu/entries/paradox-simpson/)
+- [Wahrnehmung und Kodierung](wahrnehmung-kodierung.qmd) — die Kanäle, die hier missbraucht werden
+- [Korrelation](../statistik/grundlagen/korrelation.qmd) — Scheinkorrelation und Konfundierung
