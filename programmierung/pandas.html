@@ -1146,14 +1146,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
   <ul class="collapse">
   <li><a href="#was-pandas-über-numpy-legt" id="toc-was-pandas-über-numpy-legt" class="nav-link" data-scroll-target="#was-pandas-über-numpy-legt">Was pandas über NumPy legt</a></li>
-  <li><a href="#auswahl-loc-und-iloc-auseinanderhalten" id="toc-auswahl-loc-und-iloc-auseinanderhalten" class="nav-link" data-scroll-target="#auswahl-loc-und-iloc-auseinanderhalten">Auswahl: loc und iloc auseinanderhalten</a></li>
-  <li><a href="#warum-kettenindizierung-warnt" id="toc-warum-kettenindizierung-warnt" class="nav-link" data-scroll-target="#warum-kettenindizierung-warnt">Warum Kettenindizierung warnt</a></li>
+  <li><a href="#die-datenlage-dieser-seite" id="toc-die-datenlage-dieser-seite" class="nav-link" data-scroll-target="#die-datenlage-dieser-seite">Die Datenlage dieser Seite</a></li>
+  <li><a href="#auswahl" id="toc-auswahl" class="nav-link" data-scroll-target="#auswahl">Auswahl</a></li>
+  <li><a href="#warum-kettenindizierung-nicht-funktioniert" id="toc-warum-kettenindizierung-nicht-funktioniert" class="nav-link" data-scroll-target="#warum-kettenindizierung-nicht-funktioniert">Warum Kettenindizierung nicht funktioniert</a></li>
   <li><a href="#fehlende-werte" id="toc-fehlende-werte" class="nav-link" data-scroll-target="#fehlende-werte">Fehlende Werte</a></li>
-  <li><a href="#gruppieren-und-zusammenfassen" id="toc-gruppieren-und-zusammenfassen" class="nav-link" data-scroll-target="#gruppieren-und-zusammenfassen">Gruppieren und zusammenfassen</a></li>
-  <li><a href="#verknüpfen-und-umformen" id="toc-verknüpfen-und-umformen" class="nav-link" data-scroll-target="#verknüpfen-und-umformen">Verknüpfen und Umformen</a></li>
-  <li><a href="#methodenketten" id="toc-methodenketten" class="nav-link" data-scroll-target="#methodenketten">Methodenketten</a></li>
+  <li><a href="#dplyr-und-pandas" id="toc-dplyr-und-pandas" class="nav-link" data-scroll-target="#dplyr-und-pandas">dplyr und pandas</a></li>
+  <li><a href="#kurz-nachgeschlagen" id="toc-kurz-nachgeschlagen" class="nav-link" data-scroll-target="#kurz-nachgeschlagen">Kurz nachgeschlagen</a></li>
   </ul></li>
-  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
+  <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
+  <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
   </ul>
 </nav>
@@ -1168,6 +1169,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="quarto-categories">
     <div class="quarto-category">pandas</div>
     <div class="quarto-category">Python</div>
+    <div class="quarto-category">R</div>
     <div class="quarto-category">Data Wrangling</div>
   </div>
   </div>
@@ -1197,187 +1199,949 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="kernideen" class="level2">
 <h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
 <ul>
-<li><code>Series</code> und <code>DataFrame</code>, die Rolle des <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span></li>
-<li>Auswahl mit <code>loc</code> und <code>iloc</code></li>
-<li><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Zwei aufeinanderfolgende Zugriffe in pandas. Das Zwischenergebnis kann eine Kopie sein, weshalb Zuweisungen darauf wirkungslos bleiben können; ein einziger loc-Zugriff vermeidet das.">Kettenindizierung</span> und warum sie warnt</li>
-<li>Fehlende Werte und wie pandas sie behandelt</li>
-<li><code>groupby</code> nach dem Muster <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Muster der Gruppenauswertung. Daten werden nach einem Schlüssel aufgeteilt, je Gruppe wird dieselbe Funktion angewendet, die Ergebnisse werden wieder zu einer Tabelle zusammengesetzt.">split-apply-combine</span></li>
-<li><code>merge</code> und <code>concat</code>, langes und breites Format</li>
+<li>Eine <strong><code>Series</code></strong> ist ein <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins.">Vektor</span> mit <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span>, ein <strong><code>DataFrame</code></strong> eine Sammlung solcher Spalten mit gemeinsamem Zeilenindex.</li>
+<li>Rechnungen zwischen <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position.">Series</span> werden <strong>nach <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> ausgerichtet</strong>, nicht nach Position. Benannte <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins.">Vektoren</span> in R rechnen nach Position.</li>
+<li><strong><code>.loc</code></strong> wählt nach Beschriftung (Grenze eingeschlossen), <strong><code>.iloc</code></strong> nach Position (Grenze ausgeschlossen). Bedingungen brauchen runde Klammern.</li>
+<li>Zeilen- und Spaltenauswahl gehören in <strong>einen</strong> <code>.loc</code>-Zugriff; <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Zwei aufeinanderfolgende Zugriffe in pandas. Das Zwischenergebnis kann eine Kopie sein, weshalb Zuweisungen darauf wirkungslos bleiben können; ein einziger loc-Zugriff vermeidet das.">Kettenindizierung</span> schreibt ins Leere.</li>
+<li>Aggregationen <strong>lassen <code>NaN</code> still weg</strong>, und <code>groupby</code> lässt Zeilen mit fehlendem Gruppenschlüssel ebenso still fallen.</li>
+<li>Nach jedem <code>merge</code> die Zeilenzahl prüfen: Ein nicht eindeutiger Schlüssel vervielfacht Zeilen und verfälscht jede Summe.</li>
 </ul>
 </section>
 <section id="erklärung" class="level2">
 <h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
 <div class="note-box">
-<p><strong>Vorwissen:</strong> <a href="../programmierung/numpy-scipy.html">NumPy und SciPy</a>, denn pandas legt eine beschriftete Ebene über NumPy-Arrays. Wer <a href="../daten/data-wrangling.html">Data Wrangling</a> kennt, findet dieselben Operationen unter anderen Namen wieder; die Tabsets stellen sie gegenüber.</p>
+<p><strong>Vorwissen:</strong> <a href="../programmierung/numpy-scipy.html">NumPy und SciPy</a>, denn pandas legt eine beschriftete Ebene über NumPy-Arrays, und <a href="../programmierung/r-grundlagen.html">R-Grundlagen</a> für den <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale.">Data Frame</span> als Vergleich. Die Arbeitsschritte selbst, also filtern, umformen und zusammenfassen, stehen mit dplyr und pandas nebeneinander unter <a href="../daten/data-wrangling.html">Data Wrangling</a>.</p>
 </div>
 <section id="was-pandas-über-numpy-legt" class="level3">
 <h3 class="anchored" data-anchor-id="was-pandas-über-numpy-legt">Was pandas über NumPy legt</h3>
-<p>Ein NumPy-Array kennt nur Positionen. Für Daten braucht man Namen: Spalten heissen <code>verbrauch</code> und nicht 2, Zeilen gehören zu einem Datum und nicht zu Position 17. Genau das ergänzt pandas.</p>
-<p>Eine <code>Series</code> ist ein <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins.">Vektor</span> mit <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span>, ein <code>DataFrame</code> eine Sammlung solcher Spalten mit gemeinsamem Zeilenindex:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>s <span class="op">=</span> pd.Series([<span class="fl">120.5</span>, <span class="fl">98.1</span>, <span class="fl">131.0</span>], index<span class="op">=</span>[<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Sion"</span>])</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(s)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Bern    120.5
-Chur     98.1
-Sion    131.0
-dtype: float64</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(s[<span class="st">"Chur"</span>])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>98.1</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(s.mean())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>116.53333333333335</code></pre>
-</div>
-</div>
-<p>Der <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> ist mehr als eine Beschriftung. Bei Rechnungen zwischen zwei <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position.">Series</span> wird nach <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> ausgerichtet, nicht nach Position:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>a <span class="op">=</span> pd.Series([<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>], index<span class="op">=</span>[<span class="st">"x"</span>, <span class="st">"y"</span>, <span class="st">"z"</span>])</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>b <span class="op">=</span> pd.Series([<span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">30</span>], index<span class="op">=</span>[<span class="st">"z"</span>, <span class="st">"y"</span>, <span class="st">"x"</span>])   <span class="co"># andere Reihenfolge</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(a <span class="op">+</span> b)          <span class="co"># x+x, y+y, z+z, nicht positionsweise</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>x    31
-y    22
-z    13
-dtype: int64</code></pre>
-</div>
-</div>
-<p>Wer das übersieht, wundert sich über unerwartete <code>NaN</code>, sobald die Indizes nicht deckungsgleich sind:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>c <span class="op">=</span> pd.Series([<span class="dv">10</span>, <span class="dv">20</span>], index<span class="op">=</span>[<span class="st">"x"</span>, <span class="st">"y"</span>])</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(a <span class="op">+</span> c)          <span class="co"># z fehlt in c -&gt; NaN</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>x    11.0
-y    22.0
-z     NaN
-dtype: float64</code></pre>
-</div>
-</div>
-<div class="note-box">
-<p>Der <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> ist der grösste konzeptionelle Unterschied zu einem R-Data-Frame, der keinen vergleichbaren Mechanismus kennt. Wo Ausrichtung nicht erwünscht ist, hilft <code>reset_index(drop=True)</code> oder das Rechnen auf <code>.to_numpy()</code>.</p>
-</div>
+<p>Ein NumPy-Array kennt nur Positionen. Für Daten braucht man Namen: Spalten heissen <code>verbrauch</code> und nicht 2, Zeilen gehören zu einem Datum und nicht zu Position 17. Genau das ergänzt pandas, und zwar über den <strong><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span></strong>.</p>
+<p>Der <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> ist mehr als eine Beschriftung. Bei jeder Rechnung zwischen zwei <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position.">Series</span> oder DataFrames sucht pandas zuerst die passenden Einträge nach <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> und rechnet dann. Fehlt ein Eintrag auf einer Seite, entsteht <code>NaN</code>. Das ist der grösste konzeptionelle Unterschied zum R-Data-Frame, der keinen vergleichbaren Mechanismus hat; dort gehen Rechnungen immer nach Position. Wo keine Ausrichtung erwünscht ist, hilft <code>reset_index(drop=True)</code> oder das Rechnen auf <code>.to_numpy()</code>.</p>
 </section>
-<section id="auswahl-loc-und-iloc-auseinanderhalten" class="level3">
-<h3 class="anchored" data-anchor-id="auswahl-loc-und-iloc-auseinanderhalten">Auswahl: loc und iloc auseinanderhalten</h3>
-<p>Zwei Zugriffsarten, und die Verwechslung ist die häufigste Fehlerquelle.</p>
+<section id="die-datenlage-dieser-seite" class="level3">
+<h3 class="anchored" data-anchor-id="die-datenlage-dieser-seite">Die Datenlage dieser Seite</h3>
+<p>24 wöchentliche Verbrauchsmessungen vom 5. Januar bis 23. März 2026, je eine für die Standorte Bern und Chur. Die Werte sind fest eingetragen, damit R und Python dieselben Zahlen zeigen.</p>
+</section>
+<section id="auswahl" class="level3">
+<h3 class="anchored" data-anchor-id="auswahl">Auswahl</h3>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Zugriff</th>
 <th>arbeitet mit</th>
 <th>obere Grenze</th>
+<th>Beispiel</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>.loc</code></td>
-<td>Beschriftungen</td>
-<td>eingeschlossen</td>
+<td><code>df["a"]</code></td>
+<td>Spaltenname</td>
+<td></td>
+<td>eine Spalte als Series</td>
 </tr>
 <tr class="even">
-<td><code>.iloc</code></td>
+<td><code>df[["a", "b"]]</code></td>
+<td>Liste von Spaltennamen</td>
+<td></td>
+<td>mehrere Spalten als DataFrame</td>
+</tr>
+<tr class="odd">
+<td><code>.loc[zeilen, spalten]</code></td>
+<td>Beschriftungen und Bedingungen</td>
+<td><strong>eingeschlossen</strong></td>
+<td><code>df.loc["b":"c", "wert"]</code></td>
+</tr>
+<tr class="even">
+<td><code>.iloc[zeilen, spalten]</code></td>
 <td>Positionen</td>
 <td>ausgeschlossen</td>
+<td><code>df.iloc[1:3, 0]</code></td>
+</tr>
+<tr class="odd">
+<td><code>.query("...")</code></td>
+<td>Bedingung als Text</td>
+<td></td>
+<td><code>df.query("wert &gt; 3")</code></td>
 </tr>
 </tbody>
 </table>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame({<span class="st">"wert"</span>: [<span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">30</span>, <span class="dv">40</span>]}, index<span class="op">=</span>[<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>, <span class="st">"d"</span>])</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df.loc[<span class="st">"b"</span>:<span class="st">"c"</span>])      <span class="co"># b und c, beide dabei</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>   wert
-b    20
-c    30</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df.iloc[<span class="dv">1</span>:<span class="dv">3</span>])         <span class="co"># Positionen 1 und 2, also b und c</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>   wert
-b    20
-c    30</code></pre>
-</div>
-</div>
-<p>Der Unterschied bei der oberen Grenze ist Absicht: Bei Beschriftungen wüsste man sonst nicht, welcher Wert der nächste wäre, den man ausschliessen soll.</p>
-<p>Für Bedingungen wird <code>.loc</code> verwendet, und zwar mit Zeilenauswahl und Spaltenauswahl in einem Zugriff:</p>
+<p>Bedingungen werden mit <code>&amp;</code> (und), <code>|</code> (oder) und <code>~</code> (nicht) verknüpft, nicht mit <code>and</code> und <code>or</code>, und <strong>jede Teilbedingung braucht runde Klammern</strong>. Der Grund ist die Rangfolge: In Python bindet <code>&amp;</code> stärker als <code>==</code> und <code>&gt;</code>. In R ist es umgekehrt, dort geht es ohne Klammern.</p>
+</section>
+<section id="warum-kettenindizierung-nicht-funktioniert" class="level3">
+<h3 class="anchored" data-anchor-id="warum-kettenindizierung-nicht-funktioniert">Warum Kettenindizierung nicht funktioniert</h3>
+<p><code>df[bedingung]["wert"] = 99</code> besteht aus zwei Zugriffen. Der erste erzeugt ein Zwischenergebnis, der zweite schreibt in dieses Zwischenergebnis, das danach verworfen wird. Seit pandas 3 gilt dafür eine feste Regel (<strong>copy on write</strong>): Jedes Zwischenergebnis verhält sich wie eine Kopie, die Zuweisung bewirkt nie etwas, und pandas warnt mit <code>ChainedAssignmentError</code>. Richtig ist ein einziger Zugriff: <code>df.loc[bedingung, "wert"] = 99</code>. In R ist die verkettete Form <code>df$wert[bedingung] &lt;- 99</code> dagegen gültig und üblich.</p>
+</section>
+<section id="fehlende-werte" class="level3">
+<h3 class="anchored" data-anchor-id="fehlende-werte">Fehlende Werte</h3>
+<p>pandas lässt <code>NaN</code> in Aggregationen weg (<code>skipna=True</code>), R gibt <code>NA</code> zurück und zwingt mit <code>na.rm = TRUE</code> zur Entscheidung. Wer in Python denselben Reflex will, zählt vor jeder Aggregation mit <code>isna().sum()</code>. Dazu kommt eine zweite, weniger bekannte Stelle: <code>groupby</code> wirft Zeilen, deren Gruppenschlüssel fehlt, ohne Hinweis hinaus. Erst <code>dropna=False</code> behält sie als eigene Gruppe.</p>
+</section>
+<section id="dplyr-und-pandas" class="level3">
+<h3 class="anchored" data-anchor-id="dplyr-und-pandas">dplyr und pandas</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>dplyr</th>
+<th>pandas</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>filter()</code></td>
+<td><code>.loc[maske]</code>, <code>.query()</code></td>
+</tr>
+<tr class="even">
+<td><code>select()</code></td>
+<td><code>df[["a", "b"]]</code></td>
+</tr>
+<tr class="odd">
+<td><code>mutate()</code></td>
+<td><code>.assign()</code></td>
+</tr>
+<tr class="even">
+<td><code>arrange()</code></td>
+<td><code>.sort_values()</code></td>
+</tr>
+<tr class="odd">
+<td><code>group_by()</code> mit <code>summarise()</code></td>
+<td><code>.groupby()</code> mit <code>.agg()</code></td>
+</tr>
+<tr class="even">
+<td><code>left_join()</code></td>
+<td><code>.merge(how="left")</code></td>
+</tr>
+<tr class="odd">
+<td><code>pivot_wider()</code></td>
+<td><code>.pivot()</code></td>
+</tr>
+<tr class="even">
+<td><code>pivot_longer()</code></td>
+<td><code>.melt()</code></td>
+</tr>
+<tr class="odd">
+<td><code>n()</code></td>
+<td><code>"size"</code></td>
+</tr>
+</tbody>
+</table>
+<p>Methodenketten funktionieren wie die <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Operator, der das Ergebnis links als erstes Argument an die Funktion rechts weitergibt, in R geschrieben als |>. Er lässt eine Verarbeitungskette in der Reihenfolge lesen, in der sie gedacht wird.">Pipe</span> in R. Runde Klammern um den ganzen Ausdruck erlauben den Zeilenumbruch, und <code>assign</code> mit einer <code>lambda</code>-Funktion greift auf den Zwischenstand zu:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>ergebnis <span class="op">=</span> (messungen</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    .query(<span class="st">"verbrauch &gt; 90"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    .assign(abweichung<span class="op">=</span><span class="kw">lambda</span> d: d[<span class="st">"verbrauch"</span>] <span class="op">-</span> d[<span class="st">"verbrauch"</span>].mean())</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    .sort_values(<span class="st">"abweichung"</span>, ascending<span class="op">=</span><span class="va">False</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="kurz-nachgeschlagen" class="level3">
+<h3 class="anchored" data-anchor-id="kurz-nachgeschlagen">Kurz nachgeschlagen</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Aufgabe</th>
+<th>R</th>
+<th>Python</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Einlesen mit Semikolon und Dezimalkomma</td>
+<td><code>read.csv2("d.csv")</code></td>
+<td><code>pd.read_csv("d.csv", sep=";", decimal=",")</code></td>
+</tr>
+<tr class="even">
+<td>erster Blick</td>
+<td><code>str(df)</code>, <code>summary(df)</code></td>
+<td><code>df.info()</code>, <code>df.describe()</code></td>
+</tr>
+<tr class="odd">
+<td>fehlende Werte je Spalte</td>
+<td><code>colSums(is.na(df))</code></td>
+<td><code>df.isna().sum()</code></td>
+</tr>
+<tr class="even">
+<td>ersetzen</td>
+<td><code>tidyr::replace_na()</code></td>
+<td><code>.fillna()</code></td>
+</tr>
+<tr class="odd">
+<td>Häufigkeiten</td>
+<td><code>table(df$x)</code>, <code>count(df, x)</code></td>
+<td><code>df["x"].value_counts()</code></td>
+</tr>
+<tr class="even">
+<td>Schlüssel eindeutig?</td>
+<td><code>anyDuplicated(df$id) == 0</code></td>
+<td><code>df["id"].is_unique</code></td>
+</tr>
+<tr class="odd">
+<td>Join mit Erwartung</td>
+<td><code>left_join(..., relationship = "many-to-one")</code></td>
+<td><code>.merge(..., validate="many_to_one")</code></td>
+</tr>
+<tr class="even">
+<td>exportieren</td>
+<td><code>write.csv(df, "e.csv", row.names = FALSE)</code></td>
+<td><code>df.to_csv("e.csv", index=False)</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="beispiele" class="level2">
+<h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-7-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-1" role="tab" aria-controls="tabset-7-1" aria-selected="true" href="">Beispiel 1: Ausrichtung nach <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span></a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-7-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-2" role="tab" aria-controls="tabset-7-2" aria-selected="false" href="">Beispiel 2: loc, iloc und Bedingungen</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-7-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-3" role="tab" aria-controls="tabset-7-3" aria-selected="false" href="">Beispiel 3: <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Zwei aufeinanderfolgende Zugriffe in pandas. Das Zwischenergebnis kann eine Kopie sein, weshalb Zuweisungen darauf wirkungslos bleiben können; ein einziger loc-Zugriff vermeidet das.">Kettenindizierung</span></a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-7-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-4" role="tab" aria-controls="tabset-7-4" aria-selected="false" href="">Beispiel 4: Fehlende Werte und fehlende Schlüssel</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-7-5-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-5" role="tab" aria-controls="tabset-7-5" aria-selected="false" href="">Beispiel 5: Gruppieren, zusammenfassen, breit machen</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-7-6-tab" data-bs-toggle="tab" data-bs-target="#tabset-7-6" role="tab" aria-controls="tabset-7-6" aria-selected="false" href="">Beispiel 6: Verknüpfen und die Zeilenzahl</a></li></ul>
+<div class="tab-content">
+<div id="tabset-7-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-7-1-tab">
+<section id="frage-und-datenlage" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage">Frage und Datenlage</h4>
+<p>Zwei Serien mit den Beschriftungen x, y, z, die zweite in umgekehrter Reihenfolge (<code>z = 10, y = 20, x = 30</code>). Was ergibt die Summe, in pandas und mit benannten <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins.">Vektoren</span> in R? Und was, wenn in der zweiten Serie z fehlt?</p>
+</section>
+<section id="rechnung" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung">Rechnung</h4>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Python</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>messungen[messungen<span class="sc">$</span>standort <span class="sc">==</span> <span class="st">"Bern"</span> <span class="sc">&amp;</span> messungen<span class="sc">$</span>verbrauch <span class="sc">&gt;</span> <span class="dv">120</span>, ] <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">x =</span> <span class="dv">1</span>, <span class="at">y =</span> <span class="dv">2</span>, <span class="at">z =</span> <span class="dv">3</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>b <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">z =</span> <span class="dv">10</span>, <span class="at">y =</span> <span class="dv">20</span>, <span class="at">x =</span> <span class="dv">30</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>a <span class="sc">+</span> b                        <span class="co"># nach Position, die Namen von a bleiben</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>       datum standort verbrauch
-1 2026-01-05     Bern     133.7
-3 2026-01-12     Bern     123.6
-5 2026-01-19     Bern     124.0</code></pre>
+<pre><code> x  y  z 
+11 22 33 </code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">subset</span>(messungen, verbrauch <span class="sc">&gt;</span> <span class="dv">130</span>, <span class="at">select =</span> <span class="fu">c</span>(datum, verbrauch)) <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">3</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>a <span class="sc">+</span> b[<span class="fu">names</span>(a)]              <span class="co"># erst ausrichten, dann rechnen</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>       datum verbrauch
-1 2026-01-05     133.7
-7 2026-01-26     135.1
-9 2026-02-02     140.2</code></pre>
+<pre><code> x  y  z 
+31 22 13 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>c2 <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">x =</span> <span class="dv">10</span>, <span class="at">y =</span> <span class="dv">20</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressWarnings</span>(a <span class="sc">+</span> c2)     <span class="co"># Recycling statt fehlender Wert</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> x  y  z 
+11 22 13 </code></pre>
 </div>
 </div>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>maske <span class="op">=</span> (messungen[<span class="st">"standort"</span>] <span class="op">==</span> <span class="st">"Bern"</span>) <span class="op">&amp;</span> (messungen[<span class="st">"verbrauch"</span>] <span class="op">&gt;</span> <span class="dv">120</span>)</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(messungen.loc[maske].head(<span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>a <span class="op">=</span> pd.Series([<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>], index<span class="op">=</span>[<span class="st">"x"</span>, <span class="st">"y"</span>, <span class="st">"z"</span>])</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>b <span class="op">=</span> pd.Series([<span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">30</span>], index<span class="op">=</span>[<span class="st">"z"</span>, <span class="st">"y"</span>, <span class="st">"x"</span>])</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>((a <span class="op">+</span> b).to_dict())                          <span class="co"># nach Index</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>       datum standort  verbrauch
-0 2026-01-11     Bern      123.0
-2 2026-01-18     Bern      127.5
-6 2026-02-01     Bern      121.3</code></pre>
+<pre><code>{'x': 31, 'y': 22, 'z': 13}</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(messungen.loc[messungen[<span class="st">"verbrauch"</span>] <span class="op">&gt;</span> <span class="dv">130</span>, [<span class="st">"datum"</span>, <span class="st">"verbrauch"</span>]].head(<span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>((a.to_numpy() <span class="op">+</span> b.to_numpy()).tolist())     <span class="co"># nach Position</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>        datum  verbrauch
-22 2026-03-29      132.2</code></pre>
+<pre><code>[11, 22, 33]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>c <span class="op">=</span> pd.Series([<span class="dv">10</span>, <span class="dv">20</span>], index<span class="op">=</span>[<span class="st">"x"</span>, <span class="st">"y"</span>])</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>((a <span class="op">+</span> c).to_dict())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'x': 11.0, 'y': 22.0, 'z': nan}</code></pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-<p>Die runden Klammern um die Teilbedingungen sind nötig, weil <code>&amp;</code> stärker bindet als der Vergleich. Ohne sie bricht der Ausdruck mit einer irreführenden Meldung ab.</p>
 </section>
-<section id="warum-kettenindizierung-warnt" class="level3">
-<h3 class="anchored" data-anchor-id="warum-kettenindizierung-warnt">Warum Kettenindizierung warnt</h3>
-<p>Zwei aufeinanderfolgende eckige Klammern erzeugen ein Zwischenergebnis, und ob das eine <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Fenster auf die Daten eines bestehenden Arrays statt einer eigenen Kopie. Änderungen wirken auf das Original; ein Slice liefert eine View, eine Auswahl per Bedingung eine Kopie.">View</span> oder eine Kopie ist, hängt von Umständen ab, die man nicht sieht. Schreiben darauf wirkt deshalb mal auf das Original und mal ins Leere:</p>
+<section id="output-zeile-für-zeile" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Rechnung</th>
+<th>pandas</th>
+<th>R</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>a + b</code></td>
+<td>x 31, y 22, <strong>z 13</strong></td>
+<td>x 11, y 22, <strong>z 33</strong></td>
+<td>pandas addiert x zu x. R addiert Position zu Position und übernimmt die Namen von <code>a</code>, obwohl dort z und x zusammengezählt wurden.</td>
+</tr>
+<tr class="even">
+<td>nach Position</td>
+<td><code>[11, 22, 33]</code></td>
+<td></td>
+<td>Über <code>.to_numpy()</code> rechnet pandas wie R.</td>
+</tr>
+<tr class="odd">
+<td>ausgerichtet in R</td>
+<td></td>
+<td>x 31, y 22, z 13</td>
+<td><code>b[names(a)]</code> sortiert <code>b</code> nach den Namen von <code>a</code>.</td>
+</tr>
+<tr class="even">
+<td>z fehlt</td>
+<td>x 11.0, y 22.0, <strong>z NaN</strong></td>
+<td>x 11, y 22, <strong>z 13</strong></td>
+<td>pandas meldet die Lücke als fehlenden Wert. R recycelt die 10 für z und warnt nur.</td>
+</tr>
+</tbody>
+</table>
+<p>Die Werte in pandas werden zu Gleitkommazahlen (<code>11.0</code>), weil <code>NaN</code> eine Gleitkommazahl ist und die ganze Serie denselben Typ tragen muss.</p>
+</section>
+<section id="interpretation-und-ergebnissatz" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz">Interpretation und Ergebnissatz</h4>
+<p>Die Ausrichtung ist der Grund, warum pandas-Code selten “danebenrechnet”, wenn zwei Tabellen verschieden sortiert sind. Sie ist zugleich der Grund für unerwartete <code>NaN</code>, sobald die Indizes nicht deckungsgleich sind. R vertraut auf die Reihenfolge; die Namen sind dort Beschriftung, keine Zuordnung.</p>
+<blockquote class="blockquote">
+<p>pandas addiert nach <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> und liefert x = 31, y = 22, z = 13, R addiert benannte <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins.">Vektoren</span> nach Position und liefert unter denselben Namen 11, 22, 33. Fehlt ein Eintrag, entsteht in pandas <code>NaN</code>, in R ein recycelter Wert.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-7-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-7-2-tab">
+<section id="frage-und-datenlage-1" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-1">Frage und Datenlage</h4>
+<p>Eine kleine Tabelle mit <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> a bis d: Was liefern <code>loc["b":"c"]</code> und <code>iloc[1:3]</code>? Dann aus den 24 Messungen alle Berner Werte über 125, und die Probe, was ohne Klammern um die Teilbedingungen passiert.</p>
+</section>
+<section id="rechnung-1" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-1">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame({<span class="st">"wert"</span>: [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>], <span class="st">"gruppe"</span>: [<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"a"</span>]})</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co"># unzuverlaessig: zwei Zugriffe hintereinander</span></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>df[df[<span class="st">"gruppe"</span>] <span class="op">==</span> <span class="st">"a"</span>][<span class="st">"wert"</span>] <span class="op">=</span> <span class="dv">99</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>messungen[messungen<span class="sc">$</span>standort <span class="sc">==</span> <span class="st">"Bern"</span> <span class="sc">&amp;</span> messungen<span class="sc">$</span>verbrauch <span class="sc">&gt;</span> <span class="dv">125</span>, ]</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>&lt;string&gt;:3: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment.
-Such chained assignment never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
-
-Try using '.loc[row_indexer, col_indexer] = value' instead, to perform the assignment in a single step.
-
-See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html#chained-assignment</code></pre>
+<pre><code>        datum standort verbrauch
+3  2026-01-12     Bern     125.4
+7  2026-01-26     Bern     130.6
+13 2026-02-16     Bern     128.9
+21 2026-03-16     Bern     133.2</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df)      <span class="co"># unveraendert, die Zuweisung ging ins Zwischenergebnis</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(<span class="fu">subset</span>(messungen, verbrauch <span class="sc">&gt;</span> <span class="dv">130</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>   wert gruppe
-0     1      a
-1     2      b
-2     3      a</code></pre>
+<pre><code>[1] 2</code></pre>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># richtig: ein einziger Zugriff</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>df.loc[df[<span class="st">"gruppe"</span>] <span class="op">==</span> <span class="st">"a"</span>, <span class="st">"wert"</span>] <span class="op">=</span> <span class="dv">99</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame({<span class="st">"wert"</span>: [<span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">30</span>, <span class="dv">40</span>]}, index<span class="op">=</span>[<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>, <span class="st">"d"</span>])</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df.loc[<span class="st">"b"</span>:<span class="st">"c"</span>, <span class="st">"wert"</span>].tolist(), df.iloc[<span class="dv">1</span>:<span class="dv">3</span>, <span class="dv">0</span>].tolist())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>   wert gruppe
-0    99      a
-1     2      b
-2    99      a</code></pre>
+<pre><code>[20, 30] [20, 30]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>maske <span class="op">=</span> (messungen[<span class="st">"standort"</span>] <span class="op">==</span> <span class="st">"Bern"</span>) <span class="op">&amp;</span> (messungen[<span class="st">"verbrauch"</span>] <span class="op">&gt;</span> <span class="dv">125</span>)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(messungen.loc[maske])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        datum standort  verbrauch
+2  2026-01-12     Bern      125.4
+6  2026-01-26     Bern      130.6
+12 2026-02-16     Bern      128.9
+20 2026-03-16     Bern      133.2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">len</span>(messungen.loc[messungen[<span class="st">"verbrauch"</span>] <span class="op">&gt;</span> <span class="dv">130</span>, [<span class="st">"datum"</span>, <span class="st">"verbrauch"</span>]]))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>2</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span>:</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>    messungen[<span class="st">"standort"</span>] <span class="op">==</span> <span class="st">"Bern"</span> <span class="op">&amp;</span> messungen[<span class="st">"verbrauch"</span>] <span class="op">&gt;</span> <span class="dv">125</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="cf">except</span> <span class="pp">TypeError</span> <span class="im">as</span> fehler:</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="bu">type</span>(fehler).<span class="va">__name__</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>TypeError</code></pre>
 </div>
 </div>
-<p>Die erste Variante hat nichts bewirkt. Genau deshalb gilt die Regel: Zeilen- und Spaltenauswahl gehören in <strong>einen</strong> <code>.loc</code>-Zugriff.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-1" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-1">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Schritt</th>
+<th>Ergebnis</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>loc["b":"c"]</code></td>
+<td><code>[20, 30]</code></td>
+<td>Beschriftungen, beide Grenzen dabei.</td>
+</tr>
+<tr class="even">
+<td><code>iloc[1:3]</code></td>
+<td><code>[20, 30]</code></td>
+<td>Positionen 1 und 2, die 3 ist ausgeschlossen. Dasselbe Ergebnis auf verschiedenem Weg.</td>
+</tr>
+<tr class="odd">
+<td>Bern über 125</td>
+<td>vier Zeilen: 125.4, 130.6, 128.9, 133.2</td>
+<td>am 12. Januar, 26. Januar, 16. Februar und 16. März</td>
+</tr>
+<tr class="even">
+<td>Zeilenbeschriftung</td>
+<td>pandas 2, 6, 12, 20; R 3, 7, 13, 21</td>
+<td>Dieselben Zeilen. pandas zählt den Index ab null, R die Zeilennamen ab eins.</td>
+</tr>
+<tr class="odd">
+<td>über 130</td>
+<td>2 Messungen</td>
+<td>130.6 und 133.2</td>
+</tr>
+<tr class="even">
+<td>ohne Klammern</td>
+<td><strong><code>TypeError</code></strong></td>
+<td>Python rechnet zuerst <code>"Bern" &amp; messungen[...]</code>, und das ist sinnlos. R braucht die Klammern nicht, weil dort <code>==</code> stärker bindet als <code>&amp;</code>.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="interpretation-und-ergebnissatz-1" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-1">Interpretation und Ergebnissatz</h4>
+<p>Die untere Grenze wird bei beiden Zugriffen gleich behandelt, die obere nicht. Das ist Absicht: Bei Beschriftungen wüsste man sonst nicht, welcher Eintrag der nächste wäre, den man ausschliessen soll. Für Bedingungen ist <code>.loc</code> der Zugriff der Wahl, weil er Zeilen und Spalten in einem Schritt nimmt.</p>
+<blockquote class="blockquote">
+<p><code>loc["b":"c"]</code> und <code>iloc[1:3]</code> liefern beide die Werte 20 und 30. In Bern lagen vier Messungen über 125, die höchste bei 133.2 am 16. März; ohne Klammern um die Teilbedingungen bricht der Ausdruck mit einem <code>TypeError</code> ab.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-7-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-7-3-tab">
+<section id="frage-und-datenlage-2" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-2">Frage und Datenlage</h4>
+<p>In einer Tabelle mit den Gruppen a, b, a soll der Wert aller Zeilen der Gruppe a auf 99 gesetzt werden, einmal mit zwei Zugriffen hintereinander und einmal mit einem einzigen <code>.loc</code>.</p>
+</section>
+<section id="rechnung-2" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-2">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">wert =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>), <span class="at">gruppe =</span> <span class="fu">c</span>(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"a"</span>))</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>wert[df<span class="sc">$</span>gruppe <span class="sc">==</span> <span class="st">"a"</span>] <span class="ot">&lt;-</span> <span class="dv">99</span>      <span class="co"># verkettet, in R gueltig</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>wert</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 99  2 99</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame({<span class="st">"wert"</span>: [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>], <span class="st">"gruppe"</span>: [<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"a"</span>]})</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> warnings.catch_warnings(record<span class="op">=</span><span class="va">True</span>) <span class="im">as</span> meldungen:</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    warnings.simplefilter(<span class="st">"always"</span>)</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>    df[df[<span class="st">"gruppe"</span>] <span class="op">==</span> <span class="st">"a"</span>][<span class="st">"wert"</span>] <span class="op">=</span> <span class="dv">99</span>          <span class="co"># zwei Zugriffe</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>([<span class="bu">type</span>(m.message).<span class="va">__name__</span> <span class="cf">for</span> m <span class="kw">in</span> meldungen])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>['SettingWithCopyWarning']</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df[<span class="st">"wert"</span>].tolist())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1, 2, 3]</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>df.loc[df[<span class="st">"gruppe"</span>] <span class="op">==</span> <span class="st">"a"</span>, <span class="st">"wert"</span>] <span class="op">=</span> <span class="dv">99</span>          <span class="co"># ein Zugriff</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df[<span class="st">"wert"</span>].tolist())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[99, 2, 99]</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-2" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-2">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variante</th>
+<th>Warnung</th>
+<th>Werte danach</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>zwei Zugriffe</td>
+<td><code>ChainedAssignmentError</code></td>
+<td><strong><code>[1, 2, 3]</code></strong></td>
+<td>Die Zuweisung traf eine Kopie, die sofort verworfen wurde. Das Original ist unverändert.</td>
+</tr>
+<tr class="even">
+<td>ein <code>.loc</code></td>
+<td>keine</td>
+<td><code>[99, 2, 99]</code></td>
+<td>Zeilen und Spalte in einem Zugriff.</td>
+</tr>
+<tr class="odd">
+<td>R verkettet</td>
+<td></td>
+<td>99 2 99</td>
+<td>In R ist <code>df$wert[...] &lt;- 99</code> eine gültige Ersetzung.</td>
+</tr>
+</tbody>
+</table>
+<p>Die Warnung wird hier eingefangen und ausgegeben, weil diese Sammlung Warnungen sonst ausblendet. Im eigenen Code sollte sie nie unterdrückt werden: Sie ist der einzige Hinweis darauf, dass eine Zuweisung nichts bewirkt hat.</p>
+</section>
+<section id="interpretation-und-ergebnissatz-2" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-2">Interpretation und Ergebnissatz</h4>
+<p>Der Fehler ist heimtückisch, weil der Code gültig aussieht und in R genau so geschrieben würde. In pandas vor Version 3 hing das Ergebnis sogar vom Fall ab, weil ein Zwischenergebnis mal eine <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Fenster auf die Daten eines bestehenden Arrays statt einer eigenen Kopie. Änderungen wirken auf das Original; ein Slice liefert eine View, eine Auswahl per Bedingung eine Kopie.">View</span> und mal eine Kopie war. Mit copy on write ist es eindeutig, aber eindeutig <strong>wirkungslos</strong>. Die Regel bleibt: Wer schreiben will, benutzt einen einzigen <code>.loc</code>-Zugriff.</p>
+<blockquote class="blockquote">
+<p>Die verkettete Zuweisung liess die Werte bei 1, 2, 3 und löste eine <code>ChainedAssignmentError</code>-Warnung aus; erst <code>df.loc[bedingung, "wert"] = 99</code> setzte beide Zeilen der Gruppe a auf 99. In R ist die verkettete Form gültig.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-7-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-7-4-tab">
+<section id="frage-und-datenlage-3" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-3">Frage und Datenlage</h4>
+<p>Vier Werte <code>1, 2, NaN, 4</code>: Welcher Mittelwert kommt heraus? Und eine Tabelle mit den Gruppen a, b, fehlend, a und den Werten 1 bis 4: Welche Summen je Gruppe liefert <code>groupby</code>?</p>
+</section>
+<section id="rechnung-3" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-3">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="cn">NA</span>, <span class="dv">4</span>)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(x)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] NA</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2.333333</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(<span class="fu">is.na</span>(x))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">gruppe =</span> <span class="fu">c</span>(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="cn">NA</span>, <span class="st">"a"</span>), <span class="at">wert =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>d <span class="sc">|&gt;</span> <span class="fu">group_by</span>(gruppe) <span class="sc">|&gt;</span> <span class="fu">summarise</span>(<span class="at">summe =</span> <span class="fu">sum</span>(wert))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 3 × 2
+  gruppe summe
+  &lt;chr&gt;  &lt;int&gt;
+1 a          5
+2 b          2
+3 &lt;NA&gt;       3</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> pd.Series([<span class="dv">1</span>, <span class="dv">2</span>, np.nan, <span class="dv">4</span>])</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">round</span>(x.mean(), <span class="dv">4</span>), x.count(), <span class="bu">len</span>(x), x.isna().<span class="bu">sum</span>())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>2.3333 3 4 1</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(x.mean(skipna<span class="op">=</span><span class="va">False</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>nan</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb46"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>d <span class="op">=</span> pd.DataFrame({<span class="st">"gruppe"</span>: [<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="va">None</span>, <span class="st">"a"</span>], <span class="st">"wert"</span>: [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">4</span>]})</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(d.groupby(<span class="st">"gruppe"</span>)[<span class="st">"wert"</span>].<span class="bu">sum</span>().to_dict())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'a': 5, 'b': 2}</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb48"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(d.groupby(<span class="st">"gruppe"</span>, dropna<span class="op">=</span><span class="va">False</span>)[<span class="st">"wert"</span>].<span class="bu">sum</span>().to_dict())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'a': 5, 'b': 2, nan: 3}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-3" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-3">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grösse</th>
+<th>pandas</th>
+<th>R</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Mittelwert</td>
+<td><strong>2.3333</strong></td>
+<td><strong><code>NA</code></strong></td>
+<td>pandas lässt den fehlenden Wert still weg: (1 + 2 + 4) / 3. R verweigert das Ergebnis.</td>
+</tr>
+<tr class="even">
+<td>mit ausdrücklicher Angabe</td>
+<td><code>skipna=False</code>: <code>nan</code></td>
+<td><code>na.rm = TRUE</code>: 2.333333</td>
+<td>Jede Sprache kann das Verhalten der anderen, nur mit umgekehrter Voreinstellung.</td>
+</tr>
+<tr class="odd">
+<td>vorhandene Werte</td>
+<td><code>count()</code>: 3 von <code>len()</code>: 4</td>
+<td></td>
+<td><code>count</code> zählt nur Vorhandenes, <code>len</code> alles.</td>
+</tr>
+<tr class="even">
+<td>fehlende Werte</td>
+<td>1</td>
+<td>1</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>Summen je Gruppe</td>
+<td><strong>a 5, b 2</strong></td>
+<td>a 5, b 2, <strong>NA 3</strong></td>
+<td>Die Zeile mit fehlender Gruppe fehlt in pandas, ohne Hinweis. dplyr führt sie als eigene Gruppe.</td>
+</tr>
+<tr class="even">
+<td>mit <code>dropna=False</code></td>
+<td>a 5, b 2, nan 3</td>
+<td></td>
+<td>Jetzt ist die Summe aller Gruppen wieder 10.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="interpretation-und-ergebnissatz-3" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-3">Interpretation und Ergebnissatz</h4>
+<p>Beide Stellen verlieren Daten, ohne es zu sagen. Beim Mittelwert ist das oft gewollt, beim <code>groupby</code> selten: Die Gruppensummen addieren sich zu 7 statt zu 10, und wer die Gesamtsumme nicht nachrechnet, bemerkt es nicht. Die Kontrolle ist einfach: Summe der Gruppen gegen Summe der Spalte, und die Anzahl fehlender Werte je Spalte vor jeder Auswertung. Mehr dazu unter <a href="../daten/datenqualitaet.html">Datenqualität</a>.</p>
+<blockquote class="blockquote">
+<p>pandas ergibt einen Mittelwert von 2.3333, weil der fehlende Wert still weggelassen wird; R liefert <code>NA</code>. Beim Gruppieren fällt in pandas die Zeile mit fehlendem Schlüssel weg, sodass sich die Summen zu 7 statt 10 addieren; erst <code>dropna=False</code> behält sie.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-7-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-7-5-tab">
+<section id="frage-und-datenlage-4" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-4">Frage und Datenlage</h4>
+<p>Anzahl, mittlerer Verbrauch und Spannweite je Standort über alle 24 Messungen, danach der mittlere Verbrauch je Monat und Standort als breite Tabelle mit einer Spalte je Standort.</p>
+</section>
+<section id="rechnung-4" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-4">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>messungen <span class="sc">|&gt;</span></span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(standort) <span class="sc">|&gt;</span></span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n      =</span> <span class="fu">n</span>(),</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">mittel =</span> <span class="fu">round</span>(<span class="fu">mean</span>(verbrauch), <span class="dv">2</span>),</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">spanne =</span> <span class="fu">round</span>(<span class="fu">max</span>(verbrauch) <span class="sc">-</span> <span class="fu">min</span>(verbrauch), <span class="dv">1</span>),</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups =</span> <span class="st">"drop"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 4
+  standort     n mittel spanne
+  &lt;chr&gt;    &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+1 Bern        12  123.    17.4
+2 Chur        12   95.8   14.4</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>monat <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(<span class="fu">format</span>(messungen<span class="sc">$</span>datum, <span class="st">"%m"</span>))</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">tapply</span>(messungen<span class="sc">$</span>verbrauch, <span class="fu">list</span>(monat, messungen<span class="sc">$</span>standort), mean), <span class="dv">2</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    Bern  Chur
+1 123.80 94.62
+2 121.62 95.38
+3 123.92 97.25</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-5-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-5-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb54"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(messungen.groupby(<span class="st">"standort"</span>).agg(</span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>    n<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="st">"size"</span>),</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>    mittel<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="st">"mean"</span>),</span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>    spanne<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="kw">lambda</span> s: s.<span class="bu">max</span>() <span class="op">-</span> s.<span class="bu">min</span>()),</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>).<span class="bu">round</span>(<span class="dv">2</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>           n  mittel  spanne
+standort                    
+Bern      12  123.12    17.4
+Chur      12   95.75    14.4</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb56"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>monatlich <span class="op">=</span> (messungen</span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>    .assign(monat<span class="op">=</span>messungen[<span class="st">"datum"</span>].dt.month)</span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>    .groupby([<span class="st">"monat"</span>, <span class="st">"standort"</span>], as_index<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a>    .agg(mittel<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="st">"mean"</span>)))</span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(monatlich.pivot(index<span class="op">=</span><span class="st">"monat"</span>, columns<span class="op">=</span><span class="st">"standort"</span>, values<span class="op">=</span><span class="st">"mittel"</span>).<span class="bu">round</span>(<span class="dv">2</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>standort    Bern   Chur
+monat                  
+1         123.80  94.62
+2         121.62  95.38
+3         123.92  97.25</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-4" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-4">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Standort</th>
+<th>n</th>
+<th>Mittel</th>
+<th>Spannweite</th>
+<th>Januar</th>
+<th>Februar</th>
+<th>März</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Bern</td>
+<td>12</td>
+<td>123.12</td>
+<td>17.4</td>
+<td>123.80</td>
+<td>121.62</td>
+<td>123.92</td>
+</tr>
+<tr class="even">
+<td>Chur</td>
+<td>12</td>
+<td>95.75</td>
+<td>14.4</td>
+<td>94.62</td>
+<td>95.38</td>
+<td>97.25</td>
+</tr>
+</tbody>
+</table>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Teil</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>n</code></td>
+<td><code>size</code> in pandas, <code>n()</code> in dplyr: Zeilen je Gruppe, fehlende Werte eingeschlossen. <code>count</code> würde nur vorhandene zählen.</td>
+</tr>
+<tr class="even">
+<td>Mittel</td>
+<td>1477.4 / 12 für Bern, 1149.0 / 12 für Chur</td>
+</tr>
+<tr class="odd">
+<td>Spannweite</td>
+<td>Bern 133.2 − 115.8, Chur 103.1 − 88.7. Eine eigene Funktion als <code>lambda</code> in <code>agg</code>.</td>
+</tr>
+<tr class="even">
+<td>Monatsmittel</td>
+<td>je vier Wochen, weil jeder Monat hier vier Messtage hat</td>
+</tr>
+<tr class="odd">
+<td>breite Form</td>
+<td><code>pivot</code> in pandas, in R hier <code>tapply</code> mit zwei Gruppierungen; mit tidyr wäre es <code>pivot_wider()</code>.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="interpretation-und-ergebnissatz-4" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-4">Interpretation und Ergebnissatz</h4>
+<p><code>groupby</code> mit benannten Aggregationen entspricht Zeile für Zeile <code>group_by</code> mit <code>summarise</code>, nur dass pandas die Gruppen in den <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> legt. Die breite Tabelle zeigt, was die Gesamtmittel verbergen: Bern bleibt über alle drei Monate nahezu gleich, Chur steigt von 94.62 auf 97.25.</p>
+<blockquote class="blockquote">
+<p>Bern verbrauchte im Mittel 123.12 bei einer Spannweite von 17.4, Chur 95.75 bei 14.4, je über zwölf Messungen. Nach Monaten steigt der Verbrauch in Chur von 94.62 im Januar auf 97.25 im März, in Bern bleibt er zwischen 121.62 und 123.92.</p>
+</blockquote>
+</section>
+</div>
+<div id="tabset-7-6" class="tab-pane" role="tabpanel" aria-labelledby="tabset-7-6-tab">
+<section id="frage-und-datenlage-5" class="level4">
+<h4 class="anchored" data-anchor-id="frage-und-datenlage-5">Frage und Datenlage</h4>
+<p>Die Messungen sollen um den Kanton ergänzt werden. Die Stammdaten enthalten Bern, Chur und Sion. Eine zweite Fassung der Stammdaten führt Chur versehentlich doppelt. Was passiert mit Zeilenzahl und Gesamtverbrauch?</p>
+</section>
+<section id="rechnung-5" class="level4">
+<h4 class="anchored" data-anchor-id="rechnung-5">Rechnung</h4>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-6-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-1" role="tab" aria-controls="tabset-6-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-6-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-6-2" role="tab" aria-controls="tabset-6-2" aria-selected="false" href="">Python</a></li></ul>
+<div class="tab-content">
+<div id="tabset-6-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-6-1-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>stammdaten <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">standort =</span> <span class="fu">c</span>(<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Sion"</span>),</span>
+<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>                         <span class="at">kanton =</span> <span class="fu">c</span>(<span class="st">"BE"</span>, <span class="st">"GR"</span>, <span class="st">"VS"</span>))</span>
+<span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a>doppelt <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">standort =</span> <span class="fu">c</span>(<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Chur"</span>),</span>
+<span id="cb58-4"><a href="#cb58-4" aria-hidden="true" tabindex="-1"></a>                      <span class="at">kanton =</span> <span class="fu">c</span>(<span class="st">"BE"</span>, <span class="st">"GR"</span>, <span class="st">"GR"</span>))</span>
+<span id="cb58-5"><a href="#cb58-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb58-6"><a href="#cb58-6" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">vorher =</span> <span class="fu">nrow</span>(messungen),</span>
+<span id="cb58-7"><a href="#cb58-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">nachher =</span> <span class="fu">nrow</span>(<span class="fu">left_join</span>(messungen, stammdaten, <span class="at">by =</span> <span class="st">"standort"</span>)),</span>
+<span id="cb58-8"><a href="#cb58-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">doppelt =</span> <span class="fu">nrow</span>(<span class="fu">left_join</span>(messungen, doppelt, <span class="at">by =</span> <span class="st">"standort"</span>)))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> vorher nachher doppelt 
+     24      24      36 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">original =</span> <span class="fu">sum</span>(messungen<span class="sc">$</span>verbrauch),</span>
+<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">nach_join =</span> <span class="fu">sum</span>(<span class="fu">left_join</span>(messungen, doppelt, <span class="at">by =</span> <span class="st">"standort"</span>)<span class="sc">$</span>verbrauch)), <span class="dv">1</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> original nach_join 
+   2626.4    3775.4 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anyDuplicated</span>(doppelt<span class="sc">$</span>standort)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="fu">inherits</span>(<span class="fu">tryCatch</span>(<span class="fu">left_join</span>(messungen, doppelt, <span class="at">by =</span> <span class="st">"standort"</span>,</span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>                            <span class="at">relationship =</span> <span class="st">"many-to-one"</span>),</span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">error =</span> <span class="cf">function</span>(e) e), <span class="st">"error"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] TRUE</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-6-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-6-2-tab">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb66"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a>stammdaten <span class="op">=</span> pd.DataFrame({<span class="st">"standort"</span>: [<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Sion"</span>],</span>
+<span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>                           <span class="st">"kanton"</span>: [<span class="st">"BE"</span>, <span class="st">"GR"</span>, <span class="st">"VS"</span>]})</span>
+<span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>doppelt <span class="op">=</span> pd.DataFrame({<span class="st">"standort"</span>: [<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Chur"</span>],</span>
+<span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a>                        <span class="st">"kanton"</span>: [<span class="st">"BE"</span>, <span class="st">"GR"</span>, <span class="st">"GR"</span>]})</span>
+<span id="cb66-5"><a href="#cb66-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a>verknuepft <span class="op">=</span> messungen.merge(stammdaten, on<span class="op">=</span><span class="st">"standort"</span>, how<span class="op">=</span><span class="st">"left"</span>)</span>
+<span id="cb66-7"><a href="#cb66-7" aria-hidden="true" tabindex="-1"></a>falsch <span class="op">=</span> messungen.merge(doppelt, on<span class="op">=</span><span class="st">"standort"</span>, how<span class="op">=</span><span class="st">"left"</span>)</span>
+<span id="cb66-8"><a href="#cb66-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">len</span>(messungen), <span class="bu">len</span>(verknuepft), <span class="bu">len</span>(falsch))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>24 24 36</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb68"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="bu">round</span>(messungen[<span class="st">"verbrauch"</span>].<span class="bu">sum</span>(), <span class="dv">1</span>), <span class="bu">round</span>(falsch[<span class="st">"verbrauch"</span>].<span class="bu">sum</span>(), <span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>2626.4 3775.4</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb70"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(stammdaten[<span class="st">"standort"</span>].is_unique, doppelt[<span class="st">"standort"</span>].is_unique)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>True False</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb72"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span>:</span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>    messungen.merge(doppelt, on<span class="op">=</span><span class="st">"standort"</span>, how<span class="op">=</span><span class="st">"left"</span>, validate<span class="op">=</span><span class="st">"many_to_one"</span>)</span>
+<span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a><span class="cf">except</span> pd.errors.MergeError <span class="im">as</span> fehler:</span>
+<span id="cb72-4"><a href="#cb72-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="bu">type</span>(fehler).<span class="va">__name__</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>MergeError</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb74"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a>aussen <span class="op">=</span> messungen.merge(stammdaten, on<span class="op">=</span><span class="st">"standort"</span>, how<span class="op">=</span><span class="st">"outer"</span>)</span>
+<span id="cb74-2"><a href="#cb74-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(aussen[<span class="st">"standort"</span>].value_counts().to_dict())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>{'Bern': 12, 'Chur': 12, 'Sion': 1}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="output-zeile-für-zeile-5" class="level4">
+<h4 class="anchored" data-anchor-id="output-zeile-für-zeile-5">Output Zeile für Zeile</h4>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Schritt</th>
+<th>Python</th>
+<th>R</th>
+<th>Erklärung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Zeilen vorher</td>
+<td>24</td>
+<td>24</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>nach Join mit eindeutigen Stammdaten</td>
+<td>24</td>
+<td>24</td>
+<td>Jede Messung findet genau einen Kanton. Sion hat keine Messung und fällt beim Left Join weg.</td>
+</tr>
+<tr class="odd">
+<td>nach Join mit doppeltem Chur</td>
+<td><strong>36</strong></td>
+<td><strong>36</strong></td>
+<td>Jede der zwölf Churer Messungen wird mit beiden Chur-Zeilen kombiniert.</td>
+</tr>
+<tr class="even">
+<td>Gesamtverbrauch</td>
+<td>2626.4 gegen <strong>3775.4</strong></td>
+<td>dieselben</td>
+<td>Der Churer Verbrauch von 1149.0 zählt doppelt.</td>
+</tr>
+<tr class="odd">
+<td>Schlüssel eindeutig?</td>
+<td><code>True</code>, <code>False</code></td>
+<td><code>anyDuplicated</code>: 3</td>
+<td>R nennt die Position der ersten Doppelung.</td>
+</tr>
+<tr class="even">
+<td>Join mit Erwartung</td>
+<td><strong><code>MergeError</code></strong></td>
+<td>Fehler (<code>TRUE</code>)</td>
+<td><code>validate="many_to_one"</code> beziehungsweise <code>relationship = "many-to-one"</code> bricht ab, statt still zu vervielfachen.</td>
+</tr>
+<tr class="odd">
+<td>Outer Join</td>
+<td>Bern 12, Chur 12, Sion 1</td>
+<td></td>
+<td>Ein Outer Join fügt fehlende Schlüssel als Zeile mit <code>NaN</code> hinzu, vervielfacht aber nichts.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="interpretation-und-ergebnissatz-5" class="level4">
+<h4 class="anchored" data-anchor-id="interpretation-und-ergebnissatz-5">Interpretation und Ergebnissatz</h4>
+<p>Ein <span class="glossary-term" tabindex="0" data-topic="Daten" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses.">Join</span> mit doppeltem Schlüssel erzeugt keinen Fehler, sondern eine grössere Tabelle, und jede Summe danach ist falsch. Die Gewohnheit, nach jedem <span class="glossary-term" tabindex="0" data-topic="Daten" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses.">Join</span> die Zeilenzahl mit der vorherigen zu vergleichen, kostet eine Zeile Code. Noch besser ist es, die Erwartung gleich in den Aufruf zu schreiben: <code>validate</code> in pandas, <code>relationship</code> in dplyr. Warum Schlüssel eindeutig sein müssen, erklärt die <a href="../datenbanken/datenmodellierung.html">Datenmodellierung</a>.</p>
+<blockquote class="blockquote">
+<p>Mit eindeutigen Stammdaten behält die Tabelle ihre 24 Zeilen. Ist Chur in den Stammdaten doppelt, wächst sie ohne Fehlermeldung auf 36 Zeilen, und der Gesamtverbrauch steigt von 2626.4 auf 3775.4; <code>validate="many_to_one"</code> hätte den <span class="glossary-term" tabindex="0" data-topic="Daten" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses.">Join</span> abgebrochen.</p>
+</blockquote>
+</section>
+</div>
+</div>
+</div>
+</section>
+<section id="verständnisfragen" class="level2">
+<h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
 <div class="quiz">
 <div class="quiz__frage">
 <p>Warum schliesst <code>df.loc["b":"c"]</code> die Grenze ein, <code>df.iloc[1:3]</code> aber nicht?</p>
@@ -1388,7 +2152,7 @@ See the documentation for a more detailed explanation: https://pandas.pydata.org
 <code>.loc</code> arbeitet mit Beschriftungen, <code>.iloc</code> mit Positionen
 </div>
 <div class="quiz__erklaerung">
-Richtig. Bei Beschriftungen wäre eine ausgeschlossene obere Grenze unbrauchbar, weil man den nächsten Eintrag kennen müsste. Bei Positionen gilt die gewohnte Python-Regel.
+Richtig. Bei Beschriftungen wäre eine ausgeschlossene obere Grenze unbrauchbar, weil man den nächsten Eintrag kennen müsste.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
@@ -1411,247 +2175,46 @@ Beide sind aktuell und für verschiedene Zwecke gedacht.
 </div>
 <div class="quiz">
 <div class="quiz__frage">
-<p>Zwei <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position.">Series</span> mit gleichen Werten, aber verschiedener Indexreihenfolge werden addiert. Was passiert?</p>
+<p>Zwei <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position.">Series</span> mit <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> x, y, z und z, y, x werden addiert. In R ergäben benannte <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins.">Vektoren</span> 11, 22, 33. Was ergibt pandas?</p>
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
 <div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
-Pandas richtet nach <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> aus, nicht nach Position
+x 31, y 22, z 13
 </div>
 <div class="quiz__erklaerung">
-Richtig. Addiert werden die Werte mit gleichem Indexeintrag, <span class="glossary-term" tabindex="0" data-topic="Statistik" data-def="Zwei Ereignisse sind unabhängig, wenn das Wissen über das eine die Wahrscheinlichkeit des anderen nicht verändert. Nicht zu verwechseln mit disjunkt, was die stärkste Form der Abhängigkeit wäre.">unabhängig</span> von der Reihenfolge. Fehlt ein Eintrag auf einer Seite, entsteht dort <code>NaN</code>.
+Richtig. pandas richtet nach <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Beschriftung der Zeilen einer pandas-Struktur. Er dient nicht nur der Anzeige, sondern richtet Werte bei Rechnungen aus, was bei ungleichen Indizes fehlende Werte erzeugt.">Index</span> aus und addiert x zu x. R rechnet nach Position.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
 <div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
-Die Werte werden der Reihe nach addiert
+Ebenfalls 11, 22, 33
 </div>
 <div class="quiz__erklaerung">
-Das täte NumPy. Genau darin unterscheidet sich Pandas.
+Das wäre das Verhalten von NumPy-Arrays oder <code>.to_numpy()</code>.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
 <div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
-Es entsteht ein Fehler wegen unterschiedlicher Reihenfolge
+Einen Fehler wegen unterschiedlicher Reihenfolge
 </div>
 <div class="quiz__erklaerung">
-Der Fall ist vorgesehen und läuft still durch, was ihn tückisch macht.
+Der Fall ist vorgesehen und läuft still durch.
 </div>
 </div>
 </div>
 </div>
-</section>
-<section id="fehlende-werte" class="level3">
-<h3 class="anchored" data-anchor-id="fehlende-werte">Fehlende Werte</h3>
-<p>Pandas behandelt <code>NaN</code> in Aggregationen stillschweigend, indem es sie weglässt. Das ist bequem und unterscheidet sich von R, wo <code>mean</code> bei fehlenden Werten <code>NA</code> liefert und damit zur Entscheidung zwingt.</p>
-<div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Python</a></li></ul>
-<div class="tab-content">
-<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="cn">NA</span>, <span class="dv">4</span>)</span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(x)                  <span class="co"># NA</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] NA</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)    <span class="co"># bewusste Entscheidung</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 2.333333</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(<span class="fu">is.na</span>(x))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 1</code></pre>
-</div>
-</div>
-</div>
-<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> pd.Series([<span class="dv">1</span>, <span class="dv">2</span>, np.nan, <span class="dv">4</span>])</span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(x.mean())          <span class="co"># 2.333, NaN wurde still weggelassen</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>2.3333333333333335</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(x.count())         <span class="co"># zaehlt nur die vorhandenen</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>3</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(x.isna().<span class="bu">sum</span>())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>1</code></pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-<p>Der Unterschied ist beim Sprachwechsel wichtig. Wer in Python denselben Reflex will wie in R, prüft vor der Aggregation ausdrücklich:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>werte <span class="op">=</span> pd.Series([<span class="dv">1</span>, <span class="dv">2</span>, np.nan, <span class="dv">4</span>])</span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> werte.isna().<span class="bu">any</span>():</span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Achtung: </span><span class="sc">{</span>werte<span class="sc">.</span>isna()<span class="sc">.</span><span class="bu">sum</span>()<span class="sc">}</span><span class="ss"> fehlende Werte von </span><span class="sc">{</span><span class="bu">len</span>(werte)<span class="sc">}</span><span class="ss">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Achtung: 1 fehlende Werte von 4</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(werte.mean())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>2.3333333333333335</code></pre>
-</div>
-</div>
-</section>
-<section id="gruppieren-und-zusammenfassen" class="level3">
-<h3 class="anchored" data-anchor-id="gruppieren-und-zusammenfassen">Gruppieren und zusammenfassen</h3>
-<p>Dasselbe Muster wie in <a href="../daten/data-wrangling.html">Data Wrangling</a>: aufteilen, je Gruppe rechnen, zusammensetzen.</p>
-<div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">R</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Python</a></li></ul>
-<div class="tab-content">
-<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>messungen <span class="sc">|&gt;</span></span>
-<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(standort) <span class="sc">|&gt;</span></span>
-<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n      =</span> <span class="fu">n</span>(),</span>
-<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">mittel =</span> <span class="fu">round</span>(<span class="fu">mean</span>(verbrauch), <span class="dv">1</span>),</span>
-<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">spanne =</span> <span class="fu">round</span>(<span class="fu">max</span>(verbrauch) <span class="sc">-</span> <span class="fu">min</span>(verbrauch), <span class="dv">1</span>),</span>
-<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups =</span> <span class="st">"drop"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 2 × 4
-  standort     n mittel spanne
-  &lt;chr&gt;    &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;
-1 Bern        12  122.    44.6
-2 Chur        12   95.5   49.5</code></pre>
-</div>
-</div>
-</div>
-<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(messungen.groupby(<span class="st">"standort"</span>).agg(</span>
-<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>    n<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="st">"size"</span>),</span>
-<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>    mittel<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="st">"mean"</span>),</span>
-<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>    spanne<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="kw">lambda</span> s: s.<span class="bu">max</span>() <span class="op">-</span> s.<span class="bu">min</span>()),</span>
-<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a>).<span class="bu">round</span>(<span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>           n  mittel  spanne
-standort                    
-Bern      12   122.4    31.7
-Chur      12    92.2    24.3</code></pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-<p>Die Gegenüberstellung der Begriffe hilft beim Wechsel:</p>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>dplyr</th>
-<th>pandas</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>filter</code></td>
-<td><code>query</code> oder <code>.loc[maske]</code></td>
-</tr>
-<tr class="even">
-<td><code>select</code></td>
-<td><code>[["a", "b"]]</code></td>
-</tr>
-<tr class="odd">
-<td><code>mutate</code></td>
-<td><code>assign</code></td>
-</tr>
-<tr class="even">
-<td><code>arrange</code></td>
-<td><code>sort_values</code></td>
-</tr>
-<tr class="odd">
-<td><code>group_by</code> mit <code>summarise</code></td>
-<td><code>groupby</code> mit <code>agg</code></td>
-</tr>
-<tr class="even">
-<td><code>left_join</code></td>
-<td><code>merge(how="left")</code></td>
-</tr>
-<tr class="odd">
-<td><code>pivot_wider</code></td>
-<td><code>pivot</code></td>
-</tr>
-<tr class="even">
-<td><code>pivot_longer</code></td>
-<td><code>melt</code></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="verknüpfen-und-umformen" class="level3">
-<h3 class="anchored" data-anchor-id="verknüpfen-und-umformen">Verknüpfen und Umformen</h3>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>stammdaten <span class="op">=</span> pd.DataFrame({</span>
-<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"standort"</span>: [<span class="st">"Bern"</span>, <span class="st">"Chur"</span>, <span class="st">"Sion"</span>],</span>
-<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"kanton"</span>: [<span class="st">"BE"</span>, <span class="st">"GR"</span>, <span class="st">"VS"</span>],</span>
-<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>verknuepft <span class="op">=</span> messungen.merge(stammdaten, on<span class="op">=</span><span class="st">"standort"</span>, how<span class="op">=</span><span class="st">"left"</span>)</span>
-<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(verknuepft.head(<span class="dv">3</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>       datum standort  verbrauch kanton
-0 2026-01-11     Bern      123.0     BE
-1 2026-01-11     Chur       84.6     GR
-2 2026-01-18     Bern      127.5     BE</code></pre>
-</div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Zeilen vorher:"</span>, <span class="bu">len</span>(messungen), <span class="st">" nachher:"</span>, <span class="bu">len</span>(verknuepft))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Zeilen vorher: 24  nachher: 24</code></pre>
-</div>
-</div>
-<p>Die letzte Zeile ist eine Gewohnheit, die sich auszahlt. Wächst die Zeilenzahl nach einem <span class="glossary-term" tabindex="0" data-topic="Daten" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses.">Join</span> unerwartet, war der Schlüssel auf einer Seite nicht eindeutig, und dann stimmt hinterher jede Summe nicht mehr.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>monatlich <span class="op">=</span> (messungen</span>
-<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>    .assign(monat<span class="op">=</span><span class="kw">lambda</span> d: d[<span class="st">"datum"</span>].dt.to_period(<span class="st">"M"</span>).dt.to_timestamp())</span>
-<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>    .groupby([<span class="st">"monat"</span>, <span class="st">"standort"</span>], as_index<span class="op">=</span><span class="va">False</span>)</span>
-<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a>    .agg(mittel<span class="op">=</span>(<span class="st">"verbrauch"</span>, <span class="st">"mean"</span>)))</span>
-<span id="cb53-5"><a href="#cb53-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb53-6"><a href="#cb53-6" aria-hidden="true" tabindex="-1"></a>breit <span class="op">=</span> monatlich.pivot(index<span class="op">=</span><span class="st">"monat"</span>, columns<span class="op">=</span><span class="st">"standort"</span>, values<span class="op">=</span><span class="st">"mittel"</span>)</span>
-<span id="cb53-7"><a href="#cb53-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(breit.<span class="bu">round</span>(<span class="dv">1</span>))</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>standort     Bern  Chur
-monat                  
-2026-01-01  117.0  90.3
-2026-02-01  122.6  96.8
-2026-03-01  125.5  89.6</code></pre>
-</div>
-</div>
-</section>
-<section id="methodenketten" class="level3">
-<h3 class="anchored" data-anchor-id="methodenketten">Methodenketten</h3>
-<p>Wie die <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Operator, der das Ergebnis links als erstes Argument an die Funktion rechts weitergibt, in R geschrieben als |>. Er lässt eine Verarbeitungskette in der Reihenfolge lesen, in der sie gedacht wird.">Pipe</span> in R lassen sich Operationen aneinanderreihen. Die runden Klammern um den Ausdruck erlauben den Zeilenumbruch:</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>ergebnis <span class="op">=</span> (messungen</span>
-<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>    .query(<span class="st">"verbrauch &gt; 90"</span>)</span>
-<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>    .assign(abweichung<span class="op">=</span><span class="kw">lambda</span> d: d[<span class="st">"verbrauch"</span>] <span class="op">-</span> d[<span class="st">"verbrauch"</span>].mean())</span>
-<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>    .sort_values(<span class="st">"abweichung"</span>, ascending<span class="op">=</span><span class="va">False</span>)</span>
-<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>    .head(<span class="dv">3</span>))</span>
-<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(ergebnis)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>        datum standort  verbrauch  abweichung
-22 2026-03-29     Bern      132.2   17.616667
-10 2026-02-15     Bern      128.8   14.216667
-18 2026-03-15     Bern      128.8   14.216667</code></pre>
-</div>
-</div>
-<p><code>assign</code> mit einer <code>lambda</code>-Funktion ist der Schlüssel dazu: Sie bekommt den <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale.">DataFrame</span> in seinem aktuellen Zustand, also nach den vorherigen Schritten. Ohne sie müsste man das Zwischenergebnis benennen und die Kette abbrechen.</p>
 <div class="quiz">
 <div class="quiz__frage">
-<p>Warum ist <code>df[df["a"] &gt; 1]["b"] = 0</code> unzuverlässig?</p>
+<p>Warum ist <code>df[df["a"] &gt; 1]["b"] = 0</code> wirkungslos?</p>
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
 <div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
-Zwei Zugriffe hintereinander erzeugen ein Zwischenergebnis, das eine Kopie sein kann
+Die Zuweisung trifft ein Zwischenergebnis, das danach verworfen wird
 </div>
 <div class="quiz__erklaerung">
-Richtig. Die Zuweisung trifft dann dieses Zwischenergebnis, das danach verworfen wird, und das Original bleibt unverändert. Ein einziger <code>.loc</code>-Zugriff mit Zeilen- und Spaltenangabe umgeht das.
+Richtig. Seit pandas 3 ist das mit copy on write immer so, und pandas warnt mit <code>ChainedAssignmentError</code>. Ein einziger <code>.loc</code>-Zugriff umgeht das.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
@@ -1659,7 +2222,7 @@ Richtig. Die Zuweisung trifft dann dieses Zwischenergebnis, das danach verworfen
 Die Bedingung ist falsch geschrieben
 </div>
 <div class="quiz__erklaerung">
-Die Bedingung ist in Ordnung, das Problem liegt in der Verkettung.
+Die Bedingung ist in Ordnung.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
@@ -1674,6 +2237,37 @@ Der Datentyp spielt keine Rolle.
 </div>
 <div class="quiz">
 <div class="quiz__frage">
+<p>Die Summen aus <code>df.groupby("gruppe")["wert"].sum()</code> ergeben zusammen 7, die Spalte <code>wert</code> summiert 10. Was ist passiert?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Zeilen mit fehlendem Gruppenschlüssel wurden weggelassen
+</div>
+<div class="quiz__erklaerung">
+Richtig. <code>groupby</code> verwirft sie ohne Hinweis. <code>dropna=False</code> behält sie als eigene Gruppe, wie Beispiel 4 zeigt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+<code>sum</code> hat einen fehlenden Wert als 0 gezählt
+</div>
+<div class="quiz__erklaerung">
+Das würde die Summe nicht verringern.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Ein Rundungsfehler
+</div>
+<div class="quiz__erklaerung">
+Bei ganzen Zahlen gibt es keinen.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
 <p>Nach einem <code>merge</code> hat die Tabelle mehr Zeilen als vorher. Was ist passiert?</p>
 </div>
 <div class="quiz__optionen">
@@ -1682,7 +2276,7 @@ Der Datentyp spielt keine Rolle.
 Der Schlüssel war in der rechten Tabelle nicht eindeutig
 </div>
 <div class="quiz__erklaerung">
-Richtig. Jede Zeile links wurde mit jeder passenden Zeile rechts kombiniert. Vor dem <span class="glossary-term" tabindex="0" data-topic="Daten" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses.">Join</span> lohnt die Prüfung, ob der Schlüssel dort tatsächlich eindeutig ist.
+Richtig. Jede Zeile links wurde mit jeder passenden Zeile rechts kombiniert. Vor dem <span class="glossary-term" tabindex="0" data-topic="Daten" data-def="Verknüpfung zweier Tabellen über einen Schlüssel. Ist der Schlüssel auf einer Seite nicht eindeutig, vervielfachen sich die Zeilen des Ergebnisses.">Join</span> lohnt der Blick auf <code>is_unique</code>, oder gleich <code>validate="many_to_one"</code>.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
@@ -1695,7 +2289,7 @@ Der fügt fehlende Schlüssel hinzu, vervielfacht aber keine vorhandenen Zeilen.
 </div>
 <div class="quiz__option" data-richtig="0">
 <div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
-Pandas hat die Zeilen doppelt eingelesen
+pandas hat die Zeilen doppelt eingelesen
 </div>
 <div class="quiz__erklaerung">
 Der Einlesevorgang ist nicht beteiligt.
@@ -1703,44 +2297,43 @@ Der Einlesevorgang ist nicht beteiligt.
 </div>
 </div>
 </div>
-</section>
-</section>
-<section id="typische-aufgaben" class="level2">
-<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
-<p><strong>Einlesen und erster Blick</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb57"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">"daten.csv"</span>, sep<span class="op">=</span><span class="st">";"</span>, decimal<span class="op">=</span><span class="st">","</span>, encoding<span class="op">=</span><span class="st">"utf-8"</span>)</span>
-<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>df.head()</span>
-<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>df.info()</span>
-<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>df.describe(include<span class="op">=</span><span class="st">"all"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Auswählen</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb58"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>df.loc[df[<span class="st">"alter"</span>] <span class="op">&gt;</span> <span class="dv">40</span>, [<span class="st">"name"</span>, <span class="st">"miete"</span>]]   <span class="co"># nach Label und Bedingung</span></span>
-<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>df.iloc[<span class="dv">0</span>:<span class="dv">5</span>, <span class="dv">0</span>:<span class="dv">3</span>]                             <span class="co"># nach Position</span></span>
-<span id="cb58-3"><a href="#cb58-3" aria-hidden="true" tabindex="-1"></a>df.query(<span class="st">"alter &gt; 40 and lage == 'Mitte'"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Spalten anlegen und umbenennen</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb59"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"preis_pro_qm"</span>] <span class="op">=</span> df[<span class="st">"miete"</span>] <span class="op">/</span> df[<span class="st">"flaeche"</span>]</span>
-<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df.rename(columns<span class="op">=</span>{<span class="st">"miete"</span>: <span class="st">"kaltmiete"</span>})</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Gruppieren und zusammenfassen</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb60"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a>df.groupby(<span class="st">"lage"</span>).agg(</span>
-<span id="cb60-2"><a href="#cb60-2" aria-hidden="true" tabindex="-1"></a>    mittel<span class="op">=</span>(<span class="st">"miete"</span>, <span class="st">"mean"</span>),</span>
-<span id="cb60-3"><a href="#cb60-3" aria-hidden="true" tabindex="-1"></a>    anzahl<span class="op">=</span>(<span class="st">"miete"</span>, <span class="st">"size"</span>),</span>
-<span id="cb60-4"><a href="#cb60-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Fehlende Werte</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb61"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a>df.isna().<span class="bu">sum</span>()</span>
-<span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a>df.dropna(subset<span class="op">=</span>[<span class="st">"miete"</span>])</span>
-<span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"miete"</span>] <span class="op">=</span> df[<span class="st">"miete"</span>].fillna(df[<span class="st">"miete"</span>].median())</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Zusammenführen und umformen</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb62"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>pd.merge(links, rechts, on<span class="op">=</span><span class="st">"id"</span>, how<span class="op">=</span><span class="st">"left"</span>)</span>
-<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>df.pivot_table(index<span class="op">=</span><span class="st">"lage"</span>, columns<span class="op">=</span><span class="st">"jahr"</span>, values<span class="op">=</span><span class="st">"miete"</span>, aggfunc<span class="op">=</span><span class="st">"mean"</span>)</span>
-<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>df.melt(id_vars<span class="op">=</span><span class="st">"id"</span>, var_name<span class="op">=</span><span class="st">"merkmal"</span>, value_name<span class="op">=</span><span class="st">"wert"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
-<p><strong>Sortieren, zählen, exportieren</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb63"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>df.sort_values(<span class="st">"miete"</span>, ascending<span class="op">=</span><span class="va">False</span>).head(<span class="dv">10</span>)</span>
-<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"lage"</span>].value_counts()</span>
-<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a>df.to_csv(<span class="st">"ergebnis.csv"</span>, index<span class="op">=</span><span class="va">False</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>In pandas liefert <code>x.mean()</code> bei einem fehlenden Wert eine Zahl, in R <code>mean(x)</code> den Wert <code>NA</code>. Welche Voreinstellung ist die vorsichtigere?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Die von R, weil sie zur Entscheidung zwingt
+</div>
+<div class="quiz__erklaerung">
+Richtig. Wer <code>na.rm =     TRUE</code> schreibt, weiss, dass Werte fehlen. In pandas muss man daran denken, <code>isna().sum()</code> selbst aufzurufen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Die von pandas, weil sie ein Ergebnis liefert
+</div>
+<div class="quiz__erklaerung">
+Ein Ergebnis ohne Hinweis auf fehlende Werte kann täuschen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Beide sind gleichwertig
+</div>
+<div class="quiz__erklaerung">
+Das Ergebnis mit <code>na.rm = TRUE</code> ist gleich, der Weg dorthin nicht.
+</div>
+</div>
+</div>
+</div>
 </section>
 <section id="verlinkte-ressourcen" class="level2">
 <h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
 <ul>
-<li><a href="https://pandas.pydata.org/docs/user_guide/index.html">Pandas-Benutzerhandbuch</a></li>
+<li><a href="https://pandas.pydata.org/docs/user_guide/index.html">pandas-Benutzerhandbuch</a></li>
+<li><a href="https://pandas.pydata.org/docs/user_guide/copy_on_write.html">Copy on Write in pandas</a></li>
 <li><a href="https://pandas.pydata.org/docs/getting_started/comparison/comparison_with_r.html">Vergleich pandas gegen R</a></li>
 <li><a href="https://dplyr.tidyverse.org/">dplyr-Referenz</a></li>
 </ul>
@@ -2188,7 +2781,7 @@ Der Einlesevorgang ist nicht beteiligt.
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">11. September 2026, 21:30</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">11. September 2026, 21:44</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
