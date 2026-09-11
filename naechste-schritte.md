@@ -113,17 +113,19 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 |---|---|
 | `statistik/` (50 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
-| `visualisierung/` (11 Seiten) | **umgebaut**, Prüfung der Zahlen offen |
+| `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `programmierung/`, `daten/`, `ki/`, `datenbanken/`, `werkzeuge/` | unverändert, keine Beispiele |
 
-### Offen für den Visualisierungsbereich
+### Der Visualisierungsbereich ist abgeschlossen
 
-1. **Build abwarten und `pruefe-zahlen.py` laufen lassen.** Erst danach
-   `stand: fertig` setzen. Ein Render-Log-Commit der Action heisst, dass der
-   Build abgebrochen ist — dann zuerst `render.log` lesen.
-2. Bekannte Stolpersteine dieses Bereichs stehen in `build-fehler.md`:
-   matplotlib-Rückgabewerte an `_` zuweisen, `unname()` vor dem Benennen in
-   `c()`, keine Variable `t` in R.
+Build grün, `pruefe-zahlen.py` meldet alle zehn Codeseiten ohne Befund, und in
+keiner Ausgabe steht ein verirrtes matplotlib-Objekt. R und Python liefern
+durchgängig identische Zahlen.
+
+Bekannte Stolpersteine dieses Bereichs stehen in `build-fehler.md`:
+matplotlib-Rückgabewerte an `_` zuweisen, `unname()` vor dem Benennen in
+`c()`, keine Variable `t` in R, und ein Render-Log-Commit der Action bedeutet
+einen abgebrochenen Build.
 
 ### Was der Bereich jetzt kann
 
