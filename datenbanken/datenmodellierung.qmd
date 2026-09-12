@@ -1,7 +1,7 @@
 ---
 title: "Datenmodellierung"
 description: "Relationales Modell, Schlüssel, Beziehungen und Normalisierung."
-categories: ["Datenbanken", "SQL"]
+categories: ["Datenbanken", "SQL", "R", "Python"]
 quelle: ["PYFR"]
 seitentyp: konzept
 stand: entwurf
@@ -14,144 +14,628 @@ order: 10
 library(DBI)
 library(RSQLite)
 
-# Eine echte Datenbank im Arbeitsspeicher. Alle Abfragen dieser Seite laufen
-# wirklich; die Ausgaben sind keine abgeschriebenen Beispiele.
+# Eine echte Datenbank im Arbeitsspeicher. Alle Ausgaben dieser Seite sind
+# tatsaechliche Abfrageergebnisse.
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
+frage <- function(sql) knitr::kable(dbGetQuery(con, sql))
+tue <- function(sql) invisible(dbExecute(con, sql))
 
-dbExecute(con, "
-  CREATE TABLE artikel (
-    artikel_id INTEGER PRIMARY KEY,
-    bezeichnung TEXT NOT NULL,
-    kategorie   TEXT NOT NULL
-  )")
+tue("CREATE TABLE flach (bestell_id INTEGER PRIMARY KEY, artikel TEXT,
+                         kategorie TEXT, datum TEXT, betrag REAL)")
+tue("INSERT INTO flach VALUES
+  (1,'Ventil 3/8','Pneumatik','2026-01-14',240.0),
+  (2,'Ventil 3/8','Pneumatik','2026-02-03',600.0),
+  (3,'Zylinder 40','Pneumatik','2026-01-22',512.0),
+  (4,'Kugellager 608','Mechanik','2026-02-11',350.0),
+  (5,'Kugellager 608','Mechanik','2026-03-02',210.0),
+  (6,'Dichtring','Mechanik','2026-01-30',180.0)")
 
-dbExecute(con, "
-  CREATE TABLE bestellung (
-    bestell_id INTEGER PRIMARY KEY,
-    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
-    datum      TEXT NOT NULL,
-    menge      INTEGER NOT NULL,
-    betrag     REAL NOT NULL
-  )")
-
-dbExecute(con, "INSERT INTO artikel VALUES
-  (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
-  (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
-  (5,'Sensor induktiv','Elektronik')")
-
-dbExecute(con, "INSERT INTO bestellung VALUES
-  (1,1,'2026-01-14',10, 240.0), (2,1,'2026-02-03',25, 600.0),
-  (3,2,'2026-01-22', 4, 512.0), (4,3,'2026-02-11',100, 350.0),
-  (5,3,'2026-03-02', 60, 210.0), (6,4,'2026-01-30',200, 180.0),
-  (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
-  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
-
+tue("CREATE TABLE artikel (
+       artikel_id  INTEGER PRIMARY KEY,
+       bezeichnung TEXT NOT NULL UNIQUE,
+       kategorie   TEXT NOT NULL)")
+tue("CREATE TABLE bestellung (
+       bestell_id INTEGER PRIMARY KEY,
+       artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+       datum      TEXT NOT NULL,
+       betrag     REAL NOT NULL)")
+tue("INSERT INTO artikel VALUES (1,'Ventil 3/8','Pneumatik'),
+      (2,'Zylinder 40','Pneumatik'), (3,'Kugellager 608','Mechanik')")
+tue("INSERT INTO bestellung VALUES (1,1,'2026-01-14',240.0),
+      (2,1,'2026-02-03',600.0), (3,2,'2026-01-22',512.0)")
 ```
 
 ```{python}
 #| label: setup-python
 #| include: false
 import sqlite3
+
 import pandas as pd
 
 verbindung = sqlite3.connect(":memory:")
+
+
+def frage(sql):
+    return pd.read_sql_query(sql, verbindung)
+
+
 verbindung.executescript("""
-  CREATE TABLE artikel (
-    artikel_id INTEGER PRIMARY KEY,
-    bezeichnung TEXT NOT NULL,
-    kategorie   TEXT NOT NULL);
-  CREATE TABLE bestellung (
-    bestell_id INTEGER PRIMARY KEY,
-    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
-    datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
-  INSERT INTO artikel VALUES
-    (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
-    (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
-    (5,'Sensor induktiv','Elektronik');
-  INSERT INTO bestellung VALUES
-    (1,1,'2026-01-14',10,240.0), (2,1,'2026-02-03',25,600.0),
-    (3,2,'2026-01-22',4,512.0), (4,3,'2026-02-11',100,350.0),
-    (5,3,'2026-03-02',60,210.0), (6,4,'2026-01-30',200,180.0),
-    (7,5,'2026-02-19',8,960.0), (8,5,'2026-03-08',12,1440.0),
-    (9,2,'2026-03-15',2,256.0), (10,1,'2026-03-20',15,360.0);
+CREATE TABLE flach (bestell_id INTEGER PRIMARY KEY, artikel TEXT,
+                    kategorie TEXT, datum TEXT, betrag REAL);
+INSERT INTO flach VALUES
+ (1,'Ventil 3/8','Pneumatik','2026-01-14',240.0),
+ (2,'Ventil 3/8','Pneumatik','2026-02-03',600.0),
+ (3,'Zylinder 40','Pneumatik','2026-01-22',512.0),
+ (4,'Kugellager 608','Mechanik','2026-02-11',350.0),
+ (5,'Kugellager 608','Mechanik','2026-03-02',210.0),
+ (6,'Dichtring','Mechanik','2026-01-30',180.0);
+
+CREATE TABLE artikel (artikel_id INTEGER PRIMARY KEY,
+  bezeichnung TEXT NOT NULL UNIQUE, kategorie TEXT NOT NULL);
+CREATE TABLE bestellung (bestell_id INTEGER PRIMARY KEY,
+  artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+  datum TEXT NOT NULL, betrag REAL NOT NULL);
+INSERT INTO artikel VALUES (1,'Ventil 3/8','Pneumatik'),
+  (2,'Zylinder 40','Pneumatik'), (3,'Kugellager 608','Mechanik');
+INSERT INTO bestellung VALUES (1,1,'2026-01-14',240.0),
+  (2,1,'2026-02-03',600.0), (3,2,'2026-01-22',512.0);
 """)
 verbindung.commit()
 ```
 
 ## Kernideen
 
-- Relation, Attribut, Primär- und Fremdschlüssel
-- Redundanz erzeugt Anomalien beim Einfügen, Ändern und Löschen
-- Entity-Relationship-Modell und Kardinalitäten
-- Normalformen als Regeln gegen genau diese Anomalien
-- Der Weg vom Modell zu Tabellen ist eine Entwurfsentscheidung
+- **Redundanz erzeugt Anomalien**: Was mehrfach gespeichert ist, wird
+  irgendwann an einer Stelle geändert und widerspricht sich dann.
+- Der **Primärschlüssel** identifiziert eine Zeile, der **Fremdschlüssel**
+  verweist auf eine Zeile einer anderen Tabelle.
+- **Referentielle Integrität** verhindert Verweise ins Leere. In SQLite ist
+  sie **standardmässig abgeschaltet**.
+- Die **Kardinalität** entscheidet über die Umsetzung: eins zu viele über
+  einen Fremdschlüssel, viele zu viele über eine eigene Verbindungstabelle.
+- **Normalformen** sind keine Theorie um ihrer selbst willen, sondern Regeln
+  gegen genau diese Anomalien.
+- Für **Auswertungen** wird bewusst wieder zusammengeführt; das Sternschema
+  ist absichtlich nicht vollständig normalisiert.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** keines. Hilfreich ist [pandas](../programmierung/pandas.qmd),
-weil eine Tabelle dort dasselbe ist wie eine Relation hier. Wie man die
-entworfenen Tabellen abfragt, steht unter [SQL](sql.qmd), der Zugriff aus R und
-Python unter
+**Vorwissen:** keines. Hilfreich ist [Tidy Data](../daten/tidy-data.qmd), denn
+die Regel "eine Tabelle je Beobachtungseinheit" ist derselbe Gedanke in der
+Sprache der Datenaufbereitung. Wie man die entworfenen Tabellen abfragt, steht
+unter [SQL](sql.qmd), der Zugriff aus R und Python unter
 [Datenbankzugriff](datenbanken-zugriff.qmd).
 :::
 
-### Warum nicht einfach eine grosse Tabelle
+### Die Begriffe
 
-Eine Tabelle, die alles enthält, sieht bequem aus:
+| Begriff | Bedeutung | im Beispiel |
+|---|---|---|
+| Relation | Tabelle mit festen Spalten | `artikel` |
+| Tupel | eine Zeile | ein Artikel |
+| Attribut | eine Spalte | `bezeichnung` |
+| Primärschlüssel | identifiziert eine Zeile eindeutig | `artikel_id` |
+| Fremdschlüssel | verweist auf einen Primärschlüssel | `bestellung.artikel_id` |
+| Zusammengesetzter Schlüssel | mehrere Spalten zusammen | `(artikel_id, lieferant_id)` |
 
-| bestell_id | artikel | kategorie | datum | betrag |
-|---|---|---|---|---|
-| 1 | Ventil 3/8 | Pneumatik | 2026-01-14 | 240.00 |
-| 2 | Ventil 3/8 | Pneumatik | 2026-02-03 | 600.00 |
+### Die drei Anomalien
 
-Die Bezeichnung und die Kategorie stehen bei jeder Bestellung erneut. Daraus
-folgen drei Probleme, die zusammen Anomalien heissen:
+| Anomalie | passiert beim | Beispiel |
+|---|---|---|
+| Änderungsanomalie | Umbenennen | Der Artikel wird in einer Zeile umbenannt, in den anderen nicht. |
+| Einfügeanomalie | Erfassen | Ein neuer Artikel ohne Bestellung lässt sich gar nicht anlegen. |
+| Löschanomalie | Löschen | Mit der letzten Bestellung verschwindet auch der Artikel. |
 
-- **Änderung:** Wird der Artikel umbenannt, muss das an jeder Stelle geschehen. Wird eine übersehen, widersprechen sich die Daten.
-- **Einfügen:** Ein neuer Artikel ohne Bestellung lässt sich gar nicht erfassen, weil es keine Zeile gäbe.
-- **Löschen:** Wird die letzte Bestellung eines Artikels gelöscht, verschwindet der Artikel mit.
+### Die Normalformen
 
-Die Aufteilung auf zwei Tabellen, verbunden über einen Schlüssel, löst alle
-drei. Genau das ist die Idee des relationalen Modells.
+| Form | Regel | Verstoss im Beispiel |
+|---|---|---|
+| 1. NF | Jede Zelle enthält **einen** Wert | `mengen` enthält `10/25` |
+| 2. NF | Jedes Nichtschlüsselattribut hängt vom **ganzen** Schlüssel ab | bei zusammengesetztem Schlüssel: Artikelname hängt nur an der Artikelnummer |
+| 3. NF | Kein Nichtschlüsselattribut hängt von einem anderen ab | `kategorie_leiter` hängt an `kategorie`, nicht an der Bestellung |
 
-### Schlüssel
+Die Faustregel dahinter lautet: **Jede Tatsache an genau einer Stelle.** Wer
+sie einhält, bekommt die drei Anomalien nicht.
 
-Der **Primärschlüssel** identifiziert eine Zeile eindeutig. Der
-**Fremdschlüssel** verweist auf eine Zeile einer anderen Tabelle und erzwingt
-dabei, dass das Ziel existiert. Diese referentielle Integrität ist der
-Hauptunterschied zu einer Sammlung von CSV-Dateien: Die Datenbank verhindert
-widersprüchliche Zustände, statt sich darauf zu verlassen, dass alle Programme
-sich benehmen.
+### Wann man bewusst denormalisiert
+
+Normalisierung ist auf **Schreiben** optimiert. Für Auswertungen dreht sich
+das um: Ein Bericht, der zehn Tabellen verbinden muss, ist langsam und
+umständlich. Deshalb legt man für Analysen bewusst breitere Tabellen an
+(Sternschema, aufbereitete Auswertungstabellen). Der Unterschied ist die
+Absicht: Redundanz aus Versehen erzeugt Widersprüche, Redundanz mit Absicht
+wird aus der normalisierten Quelle **neu erzeugt** und nie von Hand geändert.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | SQL |
+|---|---|
+| Primärschlüssel | `artikel_id INTEGER PRIMARY KEY` |
+| Eindeutigkeit ohne Schlüssel | `bezeichnung TEXT NOT NULL UNIQUE` |
+| Fremdschlüssel | `artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id)` |
+| in SQLite einschalten | `PRAGMA foreign_keys = ON` |
+| zusammengesetzter Schlüssel | `PRIMARY KEY (artikel_id, lieferant_id)` |
+| verwaiste Zeilen finden | `LEFT JOIN ... WHERE a.id IS NULL` |
+| Widersprüche finden | `GROUP BY schluessel HAVING COUNT(DISTINCT wert) > 1` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Die drei Anomalien in einer flachen Tabelle
+
+#### Frage und Datenlage
+
+Eine Tabelle `flach` enthält sechs Bestellungen mit Artikelname und Kategorie
+in jeder Zeile, insgesamt vier verschiedene Artikel. Was passiert bei einer
+unvollständigen Umbenennung, und was beim Löschen der letzten Bestellung
+eines Artikels?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: schluessel-r
-# Verweis auf einen nicht existierenden Artikel
-dbExecute(con, "PRAGMA foreign_keys = ON")
-versuch <- try(
-  dbExecute(con, "INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 1, 10.0)"),
-  silent = TRUE)
-cat(if (inherits(versuch, "try-error")) "abgelehnt, Artikel 999 existiert nicht"
-    else "durchgelassen")
+#| label: b1-dm-r
+frage("SELECT COUNT(*) AS zeilen, COUNT(DISTINCT artikel) AS artikel FROM flach")
+
+tue("UPDATE flach SET artikel = 'Ventil 3/8 neu' WHERE bestell_id = 1")
+frage("SELECT artikel, COUNT(*) AS n FROM flach GROUP BY artikel ORDER BY artikel")
+
+tue("DELETE FROM flach WHERE artikel = 'Dichtring'")
+frage("SELECT COUNT(*) AS zeilen, COUNT(DISTINCT artikel) AS artikel FROM flach")
 ```
 
-Die Datenbank weist den Datensatz zurück. In einer CSV-Datei stünde er
-kommentarlos drin und würde beim nächsten Join stillschweigend verschwinden.
+##### Python
 
-### Vom ER-Modell zu Tabellen
+```{python}
+#| label: b1-dm-py
+print(frage("SELECT COUNT(*) AS zeilen, COUNT(DISTINCT artikel) AS artikel FROM flach"
+            ).to_string(index=False))
 
-Die Modellierung beginnt bei der Frage, welche Gegenstände es gibt und wie sie
-zusammenhängen. Die Kardinalität entscheidet über die Umsetzung:
+verbindung.execute("UPDATE flach SET artikel = 'Ventil 3/8 neu' WHERE bestell_id = 1")
+verbindung.commit()
+print(frage("SELECT artikel, COUNT(*) AS n FROM flach GROUP BY artikel ORDER BY artikel"
+            ).to_string(index=False))
 
-| Beziehung | Beispiel | Umsetzung |
+verbindung.execute("DELETE FROM flach WHERE artikel = 'Dichtring'")
+verbindung.commit()
+print(frage("SELECT COUNT(*) AS zeilen, COUNT(DISTINCT artikel) AS artikel FROM flach"
+            ).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Ergebnis | Anomalie |
 |---|---|---|
-| eins zu viele | ein Artikel hat viele Bestellungen | Fremdschlüssel auf der Viele-Seite |
-| viele zu viele | Artikel gehören zu mehreren Lieferanten und umgekehrt | eigene Verbindungstabelle |
-| eins zu eins | selten, meist Auslagerung optionaler Felder | Fremdschlüssel mit Eindeutigkeit |
+| Ausgangslage | 6 Zeilen, **4** Artikel | Der Name steht bei jeder Bestellung erneut. |
+| nach der Umbenennung **einer** Zeile | **5** verschiedene Artikel: `Ventil 3/8` und `Ventil 3/8 neu` nebeneinander | **Änderungsanomalie.** Ein Artikel ist jetzt zwei, und keine Zeile sieht falsch aus. |
+| nach dem Löschen der Dichtring-Bestellung | 5 Zeilen, 4 Artikel | **Löschanomalie.** Der Artikel Dichtring existiert nicht mehr, obwohl nur eine Bestellung gelöscht wurde. |
+| ein neuer Artikel ohne Bestellung | gar nicht erfassbar | **Einfügeanomalie.** Es gäbe keine Zeile, in die er passt, ausser einer mit leeren Bestelldaten. |
 
-Hier liegt der erste Fall vor: Der Fremdschlüssel steht in `bestellung`, weil
-dort die viele-Seite ist.
+#### Interpretation und Ergebnissatz
+
+Alle drei Anomalien haben dieselbe Ursache: Zwei verschiedene Dinge, der
+Artikel und die Bestellung, stehen in derselben Zeile. Die Aufteilung auf
+zwei Tabellen behebt alle drei auf einmal, und dieselbe Überlegung steht
+unter [Tidy Data](../daten/tidy-data.qmd) als Regel "eine Tabelle je
+Beobachtungseinheit".
+
+> Die unvollständige Umbenennung macht aus vier Artikeln fünf, und das
+> Löschen der einzigen Dichtring-Bestellung löscht den Artikel gleich mit.
+> Ein Artikel ohne Bestellung liesse sich in dieser Tabelle gar nicht
+> erfassen.
+
+### Beispiel 2: Referentielle Integrität, und warum sie oft nicht wirkt
+
+#### Frage und Datenlage
+
+Die Tabelle `bestellung` verweist mit `REFERENCES` auf `artikel`. Wird eine
+Bestellung mit der nicht existierenden Artikelnummer 999 abgelehnt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-dm-r
+frage("PRAGMA foreign_keys")           # 0 heisst: Pruefung ist aus
+
+ohne <- try(dbExecute(con,
+  "INSERT INTO bestellung VALUES (98, 999, '2026-04-01', 10.0)"), silent = TRUE)
+if (inherits(ohne, "try-error")) "abgelehnt" else "durchgelassen"
+
+frage("SELECT COUNT(*) AS verwaist FROM bestellung b
+       LEFT JOIN artikel a ON a.artikel_id = b.artikel_id
+       WHERE a.artikel_id IS NULL")
+
+tue("DELETE FROM bestellung WHERE bestell_id = 98")
+tue("PRAGMA foreign_keys = ON")
+
+mit <- try(dbExecute(con,
+  "INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 10.0)"), silent = TRUE)
+if (inherits(mit, "try-error")) "abgelehnt" else "durchgelassen"
+```
+
+##### Python
+
+```{python}
+#| label: b2-dm-py
+print(frage("PRAGMA foreign_keys").to_string(index=False))
+
+try:
+    verbindung.execute("INSERT INTO bestellung VALUES (98, 999, '2026-04-01', 10.0)")
+    verbindung.commit()
+    print("durchgelassen")
+except sqlite3.IntegrityError as fehler:
+    print("abgelehnt:", fehler)
+
+print(frage("""SELECT COUNT(*) AS verwaist FROM bestellung b
+               LEFT JOIN artikel a ON a.artikel_id = b.artikel_id
+               WHERE a.artikel_id IS NULL""").to_string(index=False))
+
+verbindung.execute("DELETE FROM bestellung WHERE bestell_id = 98")
+verbindung.commit()          # PRAGMA wirkt nicht in einer offenen Transaktion
+verbindung.execute("PRAGMA foreign_keys = ON")
+
+try:
+    verbindung.execute("INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 10.0)")
+    print("durchgelassen")
+except sqlite3.IntegrityError as fehler:
+    print("abgelehnt:", fehler)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Ergebnis | Erklärung |
+|---|---|---|
+| `PRAGMA foreign_keys` | **0** | SQLite prüft Fremdschlüssel aus Gründen der Abwärtskompatibilität **standardmässig nicht**, obwohl `REFERENCES` in der Tabellendefinition steht. |
+| Einfügen ohne Prüfung | **durchgelassen** | Die Bestellung verweist auf den Artikel 999, den es nicht gibt. |
+| verwaiste Bestellungen | **1** | Genau diese Zeile. Bei einem `INNER JOIN` verschwindet sie später stillschweigend, und die Umsatzsumme ist zu klein. |
+| nach `PRAGMA foreign_keys = ON` | **abgelehnt**, `FOREIGN KEY constraint failed` | Jetzt wirkt die Regel. |
+
+#### Interpretation und Ergebnissatz
+
+Eine Regel, die nicht eingeschaltet ist, ist Dokumentation, keine Garantie.
+In SQLite gehört `PRAGMA foreign_keys = ON` an den Anfang **jeder
+Verbindung**, denn die Einstellung gilt nicht für die Datei, sondern für die
+Sitzung. PostgreSQL und MySQL mit InnoDB prüfen von sich aus, siehe
+[PostgreSQL](postgresql.qmd). Und unabhängig davon lohnt die Abfrage nach
+verwaisten Zeilen bei jedem Datenbestand, der aus Dateien importiert wurde:
+Dort gibt es gar keine Prüfung.
+
+> Ohne eingeschaltete Prüfung nimmt SQLite die Bestellung mit der nicht
+> existierenden Artikelnummer 999 klaglos an; die Datenbank enthält danach
+> eine verwaiste Zeile. Erst mit `PRAGMA foreign_keys = ON` wird derselbe
+> Versuch abgelehnt.
+
+### Beispiel 3: Primärschlüssel, UNIQUE und die Lücke bei NULL
+
+#### Frage und Datenlage
+
+Was passiert bei einer doppelten Artikelnummer, bei einer doppelten
+Bezeichnung (die Spalte ist `UNIQUE`), und wie verhält sich `UNIQUE`, wenn
+der Wert fehlt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-dm-r
+pk <- try(dbExecute(con, "INSERT INTO artikel VALUES (1,'Doppelt','Test')"),
+          silent = TRUE)
+if (inherits(pk, "try-error")) "Primaerschluessel abgelehnt" else "durchgelassen"
+
+uq <- try(dbExecute(con, "INSERT INTO artikel VALUES (10,'Ventil 3/8','Pneumatik')"),
+          silent = TRUE)
+if (inherits(uq, "try-error")) "UNIQUE abgelehnt" else "durchgelassen"
+
+tue("CREATE TABLE person (id INTEGER PRIMARY KEY, ahv TEXT UNIQUE)")
+tue("INSERT INTO person VALUES (1, NULL), (2, NULL), (3, '756.1')")
+frage("SELECT COUNT(*) AS zeilen, COUNT(ahv) AS mit_ahv FROM person")
+```
+
+##### Python
+
+```{python}
+#| label: b3-dm-py
+for sql, was in [("INSERT INTO artikel VALUES (1,'Doppelt','Test')", "Primaerschluessel"),
+                 ("INSERT INTO artikel VALUES (10,'Ventil 3/8','Pneumatik')", "UNIQUE")]:
+    try:
+        verbindung.execute(sql)
+        print(was, "durchgelassen")
+    except sqlite3.IntegrityError as fehler:
+        print(was, "abgelehnt:", fehler)
+
+verbindung.executescript("""
+  CREATE TABLE person (id INTEGER PRIMARY KEY, ahv TEXT UNIQUE);
+  INSERT INTO person VALUES (1, NULL), (2, NULL), (3, '756.1');""")
+verbindung.commit()
+print(frage("SELECT COUNT(*) AS zeilen, COUNT(ahv) AS mit_ahv FROM person"
+            ).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Versuch | Ergebnis | Erklärung |
+|---|---|---|
+| Artikelnummer 1 erneut | **abgelehnt**, `UNIQUE constraint failed: artikel.artikel_id` | Der Primärschlüssel ist eindeutig, das prüft die Datenbank immer. |
+| Bezeichnung `Ventil 3/8` erneut | **abgelehnt**, `UNIQUE constraint failed: artikel.bezeichnung` | Eine zweite Eindeutigkeit neben dem Schlüssel; sinnvoll für fachliche Kennungen. |
+| zwei Zeilen mit `ahv = NULL` | **beide angenommen**: 3 Zeilen, davon **1** mit Wert | `UNIQUE` verbietet doppelte **Werte**. Zwei fehlende Werte gelten nicht als gleich, denn `NULL = NULL` ist unbekannt. |
+
+#### Interpretation und Ergebnissatz
+
+Die letzte Zeile ist die praktische Falle: Eine `UNIQUE`-Spalte, die
+`NULL` zulässt, verhindert Doppelerfassungen genau dann nicht, wenn die
+Kennung fehlt. Wer wirklich "jeder Datensatz hat genau eine Kennung, und
+zwar eine eigene" meint, braucht `NOT NULL UNIQUE`. Dasselbe Verhalten von
+`NULL` steckt hinter mehreren Überraschungen unter [SQL](sql.qmd),
+Beispiel 4.
+
+> Doppelte Artikelnummern und doppelte Bezeichnungen lehnt die Datenbank ab.
+> Zwei Zeilen ohne AHV-Nummer nimmt dieselbe `UNIQUE`-Spalte dagegen an, weil
+> zwei fehlende Werte nicht als gleich gelten.
+
+### Beispiel 4: Viele zu viele
+
+#### Frage und Datenlage
+
+Artikel werden von mehreren Lieferanten geführt, und ein Lieferant führt
+mehrere Artikel. Wie sieht die Umsetzung aus, und was verhindert den
+doppelten Eintrag desselben Paars?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-dm-r
+tue("CREATE TABLE lieferant (lieferant_id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
+tue("CREATE TABLE artikel_lieferant (
+       artikel_id   INTEGER NOT NULL REFERENCES artikel(artikel_id),
+       lieferant_id INTEGER NOT NULL REFERENCES lieferant(lieferant_id),
+       preis        REAL NOT NULL,
+       PRIMARY KEY (artikel_id, lieferant_id))")
+tue("INSERT INTO lieferant VALUES (1,'Alpha AG'), (2,'Beta GmbH')")
+tue("INSERT INTO artikel_lieferant VALUES (1,1,22.50), (1,2,21.90),
+      (2,1,120.00), (3,2,3.40)")
+
+frage("SELECT a.bezeichnung, COUNT(*) AS lieferanten, MIN(al.preis) AS bester
+       FROM artikel_lieferant al JOIN artikel a ON a.artikel_id = al.artikel_id
+       GROUP BY a.artikel_id ORDER BY a.bezeichnung")
+
+doppelt <- try(dbExecute(con, "INSERT INTO artikel_lieferant VALUES (1,1,19.90)"),
+               silent = TRUE)
+if (inherits(doppelt, "try-error")) "Paar abgelehnt" else "durchgelassen"
+```
+
+##### Python
+
+```{python}
+#| label: b4-dm-py
+verbindung.executescript("""
+CREATE TABLE lieferant (lieferant_id INTEGER PRIMARY KEY, name TEXT NOT NULL);
+CREATE TABLE artikel_lieferant (
+  artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+  lieferant_id INTEGER NOT NULL REFERENCES lieferant(lieferant_id),
+  preis REAL NOT NULL,
+  PRIMARY KEY (artikel_id, lieferant_id));
+INSERT INTO lieferant VALUES (1,'Alpha AG'), (2,'Beta GmbH');
+INSERT INTO artikel_lieferant VALUES (1,1,22.50), (1,2,21.90),
+  (2,1,120.00), (3,2,3.40);
+""")
+verbindung.commit()
+
+print(frage("""SELECT a.bezeichnung, COUNT(*) AS lieferanten, MIN(al.preis) AS bester
+               FROM artikel_lieferant al
+               JOIN artikel a ON a.artikel_id = al.artikel_id
+               GROUP BY a.artikel_id ORDER BY a.bezeichnung""").to_string(index=False))
+
+try:
+    verbindung.execute("INSERT INTO artikel_lieferant VALUES (1,1,19.90)")
+    print("durchgelassen")
+except sqlite3.IntegrityError as fehler:
+    print("abgelehnt:", fehler)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Artikel | Lieferanten | bester Preis | Erklärung |
+|---|---|---|---|
+| Kugellager 608 | 1 | 3.40 | |
+| Ventil 3/8 | **2** | **21.90** | Zwei Lieferanten führen denselben Artikel; der Preis gehört deshalb zur **Beziehung**, nicht zum Artikel. |
+| Zylinder 40 | 1 | 120.00 | |
+| dasselbe Paar erneut | **abgelehnt** | Der zusammengesetzte Primärschlüssel `(artikel_id, lieferant_id)` lässt jedes Paar genau einmal zu. |
+
+Der Preis steht in der Verbindungstabelle, weil er weder allein zum Artikel
+noch allein zum Lieferanten gehört. Das ist die übliche Prüffrage bei einer
+Verbindungstabelle: Welche Angaben hängen vom **Paar** ab?
+
+#### Interpretation und Ergebnissatz
+
+Eine viele-zu-viele-Beziehung lässt sich nicht mit einem Fremdschlüssel in
+einer der beiden Tabellen abbilden; jeder Versuch endet in wiederholten
+Spalten wie `lieferant_1`, `lieferant_2`. Die Verbindungstabelle ist die
+Lösung, und ihr zusammengesetzter Schlüssel ist zugleich die Regel gegen
+Doppelerfassungen.
+
+> Das Ventil wird von zwei Lieferanten geführt, der günstigere Preis liegt
+> bei 21.90. Dasselbe Paar aus Artikel und Lieferant ein zweites Mal
+> einzutragen, lehnt der zusammengesetzte Primärschlüssel ab.
+
+### Beispiel 5: Normalformen an einer Tabelle
+
+#### Frage und Datenlage
+
+Eine Tabelle führt je Bestellung den Artikel, die Kategorie, den Leiter der
+Kategorie und die Mengen als `10/25` in einer Zelle. Welche Normalform ist
+verletzt, und was folgt daraus?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-dm-r
+tue("CREATE TABLE unnormal (bestell_id INTEGER, artikel TEXT, kategorie TEXT,
+                            kategorie_leiter TEXT, mengen TEXT)")
+tue("INSERT INTO unnormal VALUES
+  (1,'Ventil 3/8','Pneumatik','Meier','10/25'),
+  (2,'Zylinder 40','Pneumatik','Meier','4'),
+  (3,'Kugellager 608','Mechanik','Suter','100/60')")
+
+frage("SELECT * FROM unnormal")
+frage("SELECT kategorie, COUNT(DISTINCT kategorie_leiter) AS leiter
+       FROM unnormal GROUP BY kategorie")
+
+tue("UPDATE unnormal SET kategorie_leiter = 'Meyer' WHERE bestell_id = 1")
+frage("SELECT kategorie, COUNT(DISTINCT kategorie_leiter) AS leiter
+       FROM unnormal GROUP BY kategorie")
+```
+
+##### Python
+
+```{python}
+#| label: b5-dm-py
+verbindung.executescript("""
+CREATE TABLE unnormal (bestell_id INTEGER, artikel TEXT, kategorie TEXT,
+                       kategorie_leiter TEXT, mengen TEXT);
+INSERT INTO unnormal VALUES
+ (1,'Ventil 3/8','Pneumatik','Meier','10/25'),
+ (2,'Zylinder 40','Pneumatik','Meier','4'),
+ (3,'Kugellager 608','Mechanik','Suter','100/60');
+""")
+verbindung.commit()
+
+print(frage("SELECT * FROM unnormal").to_string(index=False))
+print(frage("""SELECT kategorie, COUNT(DISTINCT kategorie_leiter) AS leiter
+               FROM unnormal GROUP BY kategorie""").to_string(index=False))
+
+verbindung.execute("UPDATE unnormal SET kategorie_leiter = 'Meyer' WHERE bestell_id = 1")
+verbindung.commit()
+print(frage("""SELECT kategorie, COUNT(DISTINCT kategorie_leiter) AS leiter
+               FROM unnormal GROUP BY kategorie""").to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Befund | Ergebnis | verletzte Regel |
+|---|---|---|
+| Spalte `mengen` enthält `10/25` | zwei Werte in einer Zelle | **1. Normalform.** Weder summieren noch zählen ist möglich, siehe [Tidy Data](../daten/tidy-data.qmd), Beispiel 2. |
+| `kategorie_leiter` je Kategorie | vorher **1** je Kategorie | Noch ist alles widerspruchsfrei. |
+| nach der Änderung **einer** Zeile | Pneumatik hat **2** Leiter | **3. Normalform.** Der Leiter hängt an der Kategorie, nicht an der Bestellung, steht aber in jeder Bestellzeile. |
+
+Die Abfrage `COUNT(DISTINCT ...)` je Gruppe ist der Standardgriff, um solche
+Widersprüche zu finden, und zwar unabhängig davon, ob die Daten aus einer
+Datenbank oder aus einer CSV-Datei kommen.
+
+#### Interpretation und Ergebnissatz
+
+Die dritte Normalform klingt abstrakt und beschreibt genau diesen Fall: Eine
+Angabe, die zu einer anderen Spalte gehört, wird in jeder Zeile wiederholt
+und irgendwann an einer Stelle geändert. Die Abhilfe ist eine eigene Tabelle
+`kategorie` mit dem Leiter, auf die verwiesen wird. Danach gibt es den
+Leiter genau einmal, und die Frage, welcher Eintrag gilt, stellt sich nicht
+mehr.
+
+> Die Spalte `mengen` mit `10/25` verletzt die erste Normalform. Die Änderung
+> des Kategorieleiters in einer einzigen Zeile führt dazu, dass Pneumatik
+> zwei Leiter hat, und verletzt damit die dritte.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Warum ist eine grosse Tabelle mit Artikelname in jeder Bestellzeile
+problematisch?
+
+- [x] Dieselbe Angabe steht mehrfach und wird irgendwann nur teilweise
+      geändert ~ Richtig. In Beispiel 1 werden aus vier Artikeln fünf, ohne
+      dass eine Zeile falsch aussieht. Dazu kommen Einfüge- und
+      Löschanomalie.
+- [ ] Sie braucht mehr Speicherplatz ~ Das stimmt, ist aber selten das
+      Problem.
+- [ ] Abfragen darauf sind langsamer ~ Für Auswertungen ist die breite
+      Tabelle oft sogar schneller; deshalb denormalisiert man dafür bewusst.
+:::
+
+::: {.quiz}
+Eine SQLite-Datenbank hat `REFERENCES` in allen Tabellendefinitionen, und
+trotzdem gibt es Bestellungen zu nicht existierenden Artikeln. Wie kommt das?
+
+- [x] SQLite prüft Fremdschlüssel nur, wenn `PRAGMA foreign_keys = ON`
+      gesetzt ist, und zwar je Verbindung ~ Richtig, wie Beispiel 2 zeigt.
+      Ohne die Einstellung ist `REFERENCES` reine Dokumentation.
+- [ ] Die Verweise wurden nachträglich gelöscht ~ Möglich, aber dann hätte
+      die eingeschaltete Prüfung auch das Löschen verhindert.
+- [ ] `REFERENCES` gilt nur für Text-Spalten ~ Der Typ spielt keine Rolle.
+:::
+
+::: {.quiz}
+Eine Spalte `ahv` ist `UNIQUE`, trotzdem stehen zwei Zeilen ohne AHV-Nummer
+darin. Ist das ein Fehler der Datenbank?
+
+- [ ] Ja, `UNIQUE` müsste das verhindern ~ `UNIQUE` verbietet doppelte Werte,
+      und `NULL` ist kein Wert.
+- [x] Nein, zwei fehlende Werte gelten nicht als gleich ~ Richtig. Wer jede
+      Zeile zu einer eigenen Kennung zwingen will, schreibt
+      `NOT NULL UNIQUE`.
+- [ ] Nein, weil `UNIQUE` nur zusammen mit dem Primärschlüssel wirkt ~ Es
+      wirkt eigenständig, nur eben nicht auf fehlende Werte.
+:::
+
+::: {.quiz}
+Artikel und Lieferanten stehen in einer viele-zu-viele-Beziehung, und der
+Einkaufspreis unterscheidet sich je Lieferant. Wo gehört der Preis hin?
+
+- [x] In die Verbindungstabelle, denn er hängt vom Paar ab ~ Richtig. Weder
+      der Artikel noch der Lieferant allein bestimmt ihn. Der zusammengesetzte
+      Schlüssel verhindert zugleich Doppelerfassungen.
+- [ ] In die Artikeltabelle, er gehört zum Artikel ~ Dann liesse sich nur ein
+      Preis je Artikel speichern.
+- [ ] In die Lieferantentabelle ~ Dann gäbe es nur einen Preis je Lieferant,
+      unabhängig vom Artikel.
+:::
+
+::: {.quiz}
+In einer Bestelltabelle steht neben der Kategorie auch deren Leiter. Welche
+Normalform ist verletzt, und woran merkt man es?
+
+- [x] Die dritte; der Leiter hängt an der Kategorie, und eine Änderung an
+      einer Stelle erzeugt zwei Leiter für dieselbe Kategorie ~ Richtig.
+      Finden lässt sich das mit `COUNT(DISTINCT leiter)` je Kategorie, wie in
+      Beispiel 5.
+- [ ] Die erste, weil zu viele Spalten in der Tabelle stehen ~ Die erste
+      betrifft mehrere Werte in einer Zelle, nicht die Anzahl der Spalten.
+- [ ] Keine, solange die Daten stimmen ~ Sie stimmen nur so lange, bis jemand
+      eine einzelne Zeile ändert.
+:::
 
 ## Verlinkte Ressourcen
 
-- [Einführung in relationale Datenbanken (SQLite)](https://www.sqlite.org/quirks.html)
+- [SQLite: Fremdschlüssel](https://www.sqlite.org/foreignkeys.html)
+- [Normalisierung, Übersicht](https://www.postgresql.org/docs/current/ddl-constraints.html)
+- [Sternschema für Auswertungen](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/)
