@@ -114,8 +114,32 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `statistik/` (50 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
 | `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
-| `programmierung/` (9 Seiten + Fragen) | **umgebaut** (11.09.2026), `stand: entwurf`; Ausgaben gegen den Text geprüft, `fertig` nach dem letzten Build-Abgleich |
-| `daten/`, `ki/`, `datenbanken/`, `werkzeuge/` | unverändert, keine Beispiele |
+| `programmierung/` (9 Seiten + Fragen) | **fertig** (12.09.2026), Zahlen maschinell und von Hand geprüft |
+| `daten/` (5 Seiten + Fragen) | **umgebaut** (12.09.2026), `stand: entwurf` bis zum Abgleich der Ausgaben |
+| `ki/`, `datenbanken/`, `werkzeuge/` | unverändert, keine Beispiele |
+
+### Erledigt am 12.09.2026
+
+- **pandas ist in `publish.yml` auf 2.3.3 festgeschrieben.** Grund und
+  Vorgehen beim Anheben stehen als Kommentar daneben.
+- **Gedankenstriche entfernt**, 829 Stellen auf 49 Seiten, nicht nur in
+  `visualisierung/`, sondern im ganzen Statistikbereich. Regeln: Einschub wird
+  Komma, vor und/oder fällt der Strich weg, vor aber/sondern wird er zum
+  Komma, Zahlbereiche werden "bis", eine Tabellenzelle mit nur einem Strich
+  bleibt leer. Nach dem Neurechnen aller 49 Seiten meldet `pruefe-zahlen.py`
+  keinen Befund; im HTML bleiben nur die Striche, die Quarto selbst im
+  `<title>` setzt.
+- **`daten/` umgebaut**: Datenimport, Tidy Data, Data Wrangling, Datum und
+  Zeit, Datenqualität. Data Wrangling und Datenqualität zogen zuvor getrennte
+  Zufallszahlen; jetzt feste Werte beziehungsweise ein Lehmer-Strom.
+
+| Seite | Befund |
+|---|---|
+| Datenimport | aus `0815` wird 815; `read_csv2` liest `1.234` als 1234, pandas lässt die Spalte Text; `thousands` mit `Int64` gibt einen `TypeError`; Latin-1 verdirbt auch die Spaltennamen |
+| Tidy Data | der Tippfehler `GH` fällt über `nunique` je Standort auf; `pivot` bricht bei doppeltem Schlüssel ab, tidyr liefert eine Listenspalte |
+| Data Wrangling | ohne `.groups = "drop"` liefert das zweite `summarise` zwei Zeilen statt einer; `case_when` und `cut` teilen den Randwert 10 verschieden zu |
+| Datum und Zeit | Monat als Text wirft Januar 2025 und 2026 zusammen; 31. Januar plus ein Monat ist in R ohne `%m+%` ein `NA`; zwischen 00:30 und 03:30 Ortszeit liegen in der Umstellungsnacht zwei Stunden; der 1.1.2027 liegt in ISO-Woche 53 von 2026 |
+| Datenqualität | 28 fehlende Blutdruckwerte, ausschliesslich bei über 65-Jährigen (dort 50 Prozent); fünf Schreibweisen für drei Standorte; 46.5 statt 20 Prozent der Werte enden auf 0 oder 5 |
 
 ### Der Programmierbereich ist umgebaut
 
@@ -181,13 +205,15 @@ Jede Behauptung hat eine Kennzahl. Die tragenden Beispiele:
 
 ### Danach
 
-Die vier verbleibenden Bereiche haben kein einziges `### Beispiel` und stehen
-alle auf `entwurf`. Reihenfolge nach vorhandener Substanz: `daten/`,
-`datenbanken/`, `werkzeuge/`, `ki/` (gar kein Code).
+Die drei verbleibenden Bereiche haben kein einziges `### Beispiel` und stehen
+alle auf `entwurf`. Reihenfolge nach vorhandener Substanz: `datenbanken/`
+(9 Seiten, davon sql und datenmodellierung mit Substanz), `werkzeuge/`
+(3 Seiten: Linux, Git, Docker), `ki/` (gar kein Code).
 
-Nebenbefund: Die Visualisierungsseiten (etwa `matplotlib.qmd`) enthalten noch
-Gedankenstriche (`—`), die nach `instruction.md` Abschnitt 4 nicht vorkommen
-sollen. Mechanisch ersetzbar, aber jede Stelle braucht einen eigenen Satzbau.
+Bei `datenbanken/` ist zu klären, wie Beispiele laufen sollen: RSQLite und
+`sqlite3` sind in beiden Sprachen vorhanden, also lassen sich Tabellen im
+Chunk anlegen und abfragen. PostgreSQL, MySQL und MongoDB haben im Build
+keinen Server; dort bleiben Listings.
 
 ## Der Lehmer-Generator als Standardweg für Beispieldaten
 
