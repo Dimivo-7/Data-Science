@@ -1,6 +1,6 @@
 ---
 title: "Datenqualität"
-description: "Fehlende Werte, Duplikate und Plausibilität systematisch prüfen."
+description: "Plausibilität, fehlende Werte, Duplikate und uneinheitliche Kategorien."
 categories: ["Datenqualität", "Data Wrangling", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: werkzeug
@@ -11,28 +11,40 @@ order: 50
 ```{r}
 #| label: setup-r
 #| include: false
-library(ggplot2)
 library(dplyr)
 
-theme_set(theme_minimal(base_size = 12))
-set.seed(42)
+# Deterministisch erzeugt, damit R und Python denselben Datensatz zeigen.
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
 
-# Ein Datensatz mit absichtlich eingebauten Auffaelligkeiten, wie sie in
-# echten Exporten vorkommen.
 n <- 400
-roh <- data.frame(
-  gewicht  = round(rnorm(n, 82, 11), 1),
-  alter    = sample(18:74, n, replace = TRUE),
-  standort = sample(c("Bern", "Chur", "Sion"), n, replace = TRUE,
-                    prob = c(0.5, 0.3, 0.2))
-)
-roh$blutdruck <- round(90 + 0.45 * roh$alter + 0.25 * roh$gewicht + rnorm(n, 0, 8))
-# Rundungspraeferenz: ein Teil der Werte wurde auf 5 gerundet abgelesen
-idx <- sample(seq_len(n), 150)
-roh$blutdruck[idx] <- round(roh$blutdruck[idx] / 5) * 5
-# Sensorfehler und Luecken
-roh$gewicht[c(12, 88, 301)] <- -1
-roh$blutdruck[sample(seq_len(n), 18)] <- NA
+u <- matrix(lehmer(2026, 4 * n), ncol = 4, byrow = TRUE)
+
+alter     <- as.integer(18 + floor(57 * u[, 1]))
+gewicht   <- round(82 + 11 * qnorm(u[, 2]), 1)
+standort  <- ifelse(u[, 3] < 0.5, "Bern", ifelse(u[, 3] < 0.8, "Chur", "Sion"))
+blutdruck <- round(90 + 0.45 * alter + 0.25 * gewicht + 8 * qnorm(u[, 4]))
+
+haeufung <- ((seq_len(n) - 1) %% 8) < 3          # Ziffernhaeufung auf 0 und 5
+blutdruck[haeufung] <- round(blutdruck[haeufung] / 5) * 5
+
+gewicht[c(12, 88, 301)] <- -1                    # Platzhalter statt fehlend
+blutdruck[alter > 65 & u[, 4] > 0.55] <- NA      # fehlt vor allem bei Aelteren
+
+standort[c(4, 18, 45)] <- "bern"                 # uneinheitliche Schreibweise
+standort[c(9, 26)] <- "Bern "
+
+roh <- data.frame(gewicht = gewicht, alter = alter,
+                  standort = standort, blutdruck = blutdruck)
+roh <- rbind(roh, roh[c(6, 10), ])               # zwei exakte Duplikate
+rownames(roh) <- NULL
 ```
 
 ```{python}
@@ -40,84 +52,463 @@ roh$blutdruck[sample(seq_len(n), 18)] <- NA
 #| include: false
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from scipy import stats
 
-plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
-                     "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
 
 n = 400
-gewicht = np.round(rng.normal(82, 11, n), 1)
-alter = rng.integers(18, 75, n)
-standort = rng.choice(["Bern", "Chur", "Sion"], n, p=[0.5, 0.3, 0.2])
-blutdruck = np.round(90 + 0.45 * alter + 0.25 * gewicht + rng.normal(0, 8, n))
+u = lehmer(2026, 4 * n).reshape(n, 4)
 
-idx = rng.choice(n, 150, replace=False)
-blutdruck[idx] = np.round(blutdruck[idx] / 5) * 5
+alter = (18 + np.floor(57 * u[:, 0])).astype(int)
+gewicht = np.round(82 + 11 * stats.norm.ppf(u[:, 1]), 1)
+standort = np.where(u[:, 2] < 0.5, "Bern",
+                    np.where(u[:, 2] < 0.8, "Chur", "Sion")).astype(object)
+blutdruck = np.round(90 + 0.45 * alter + 0.25 * gewicht + 8 * stats.norm.ppf(u[:, 3]))
+
+haeufung = (np.arange(n) % 8) < 3
+blutdruck[haeufung] = np.round(blutdruck[haeufung] / 5) * 5
+
 gewicht[[11, 87, 300]] = -1.0
-blutdruck = blutdruck.astype(float)
-blutdruck[rng.choice(n, 18, replace=False)] = np.nan
+blutdruck[(alter > 65) & (u[:, 3] > 0.55)] = np.nan
+
+standort[[3, 17, 44]] = "bern"
+standort[[8, 25]] = "Bern "
 
 roh = pd.DataFrame({"gewicht": gewicht, "alter": alter,
                     "standort": standort, "blutdruck": blutdruck})
+roh = pd.concat([roh, roh.iloc[[5, 9]]], ignore_index=True)
 ```
 
 ## Kernideen
 
-- Plausibilität prüfen heisst fragen, was gar nicht sein kann
-- Fehlende Werte werden untersucht, nicht stillschweigend entfernt
-- Der Grund des Fehlens entscheidet über den Umgang damit
-- Duplikate entstehen leise und verzerren jede Kennzahl
-- Jede Bereinigung wird festgehalten, sonst ist sie nicht nachvollziehbar
+- **Plausibilität zuerst:** Was gar nicht sein kann, ist kein Ausreisser,
+  sondern ein Fehler oder ein Platzhalter.
+- Ein Platzhalter wie `-1` oder `9999` ist **gefährlicher als eine leere
+  Zelle**, weil er mitrechnet.
+- Bei fehlenden Werten zählt nicht die Anzahl, sondern das **Muster**: Hängt
+  das Fehlen mit anderen Merkmalen zusammen, verzerrt jedes Weglassen.
+- **Duplikate** entstehen leise, meist beim Zusammenführen, und verschieben
+  jede Kennzahl.
+- Kategorien sind **uneinheitlich geschrieben**, bevor jemand sie
+  vereinheitlicht: `Bern`, `bern`, `Bern ` sind drei Gruppen.
+- **Ziffernhäufung** verrät gerundete oder geschätzte Werte.
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** [Data Wrangling](data-wrangling.qmd) für die Handgriffe und
-[Tidy Data](tidy-data.qmd) für die Form. Die systematische Sichtung insgesamt
-steht unter
-[explorative Datenanalyse](../statistik/grundlagen/explorative-datenanalyse.qmd).
+[Tidy Data](tidy-data.qmd) für die Form. Woher die Fehler kommen, steht unter
+[Datenimport](datenimport-formate.qmd); die systematische Sichtung insgesamt
+unter [explorative Datenanalyse](../statistik/grundlagen/explorative-datenanalyse.qmd).
 :::
 
-### Plausibilität: was gar nicht sein kann
+### Die Reihenfolge der Prüfungen
 
-Bevor Zusammenhänge interessieren, gehört geprüft, ob die Werte überhaupt
-möglich sind. Negative Mengen, Datumsangaben in der Zukunft, Anteile über 100
-Prozent, ein Alter von 200 Jahren.
+| Schritt | Frage | Werkzeug |
+|---|---|---|
+| 1. Struktur | Stimmen Zeilenzahl und Spaltentypen? | `str()`, `df.dtypes` |
+| 2. Plausibilität | Was kann gar nicht sein? | `summary()`, `describe()`, Minimum und Maximum |
+| 3. Fehlende Werte | Wie viele, und **wo**? | `is.na()`, `isna().sum()`, Vergleich der Gruppen |
+| 4. Duplikate | Gibt es Zeilen doppelt, gibt es Schlüssel doppelt? | `duplicated()`, `.duplicated()` |
+| 5. Kategorien | Wie viele Ausprägungen, und sind es wirklich so viele? | `table()`, `value_counts()` |
+| 6. Verteilung | Häufen sich Werte an runden Stellen? | letzte Ziffer auszählen |
 
-::: panel-tabset
-## R
+Erst danach beginnt die Auswertung. Jeder Schritt wird **im Code**
+festgehalten, nicht von Hand in der Datei korrigiert: Sonst ist die
+Bereinigung beim nächsten Datenstand weg und niemand kann sie nachvollziehen.
+
+### Fehlende Werte: drei Muster
+
+| Muster | heisst | Folge |
+|---|---|---|
+| rein zufällig | das Fehlen hängt von nichts ab | Weglassen kostet nur Fälle |
+| von beobachteten Merkmalen abhängig | Ältere antworten seltener | Weglassen **verzerrt**; die Abhängigkeit gehört ins Modell |
+| vom fehlenden Wert selbst abhängig | wer viel verdient, nennt das Einkommen nicht | aus den Daten allein nicht erkennbar |
+
+Die zweite Sorte lässt sich aufdecken, indem man die Fälle mit und ohne
+Lücke vergleicht. Genau das macht Beispiel 2.
+
+### Der Umgang mit Lücken
+
+| Vorgehen | wann | Vorsicht |
+|---|---|---|
+| Fall weglassen | wenige Fälle, zufälliges Fehlen | bei Abhängigkeit verzerrt es |
+| Mittelwert einsetzen | nie ohne Not | verkleinert die Streuung, täuscht Genauigkeit vor |
+| Modellbasiert ersetzen | wenn viele Fälle betroffen sind | aufwendig, und die Unsicherheit muss mitgeführt werden |
+| als eigene Kategorie führen | kategoriale Merkmale | oft die ehrlichste Lösung |
+
+In jedem Fall gehört die Anzahl der weggelassenen oder ersetzten Werte in den
+Bericht.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| fehlende Werte je Spalte | `colSums(is.na(df))` | `df.isna().sum()` |
+| Platzhalter auf `NA` setzen | `df$x[df$x < 0] <- NA` | `df.loc[df["x"] < 0, "x"] = np.nan` |
+| vollständige Fälle | `df[complete.cases(df), ]` | `df.dropna()` |
+| exakte Duplikate | `sum(duplicated(df))` | `df.duplicated().sum()` |
+| doppelte Schlüssel | `sum(duplicated(df$id))` | `df["id"].duplicated().sum()` |
+| Duplikate entfernen | `distinct(df)` | `df.drop_duplicates()` |
+| Leerzeichen entfernen | `trimws(x)` | `s.str.strip()` |
+| Gross- und Kleinschreibung | `tolower(x)` | `s.str.lower()` |
+| Ausprägungen zählen | `table(x)` | `s.value_counts()` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Der Platzhalter, der mitrechnet
+
+#### Frage und Datenlage
+
+402 Datensätze mit Gewicht, Alter, Standort und Blutdruck. Der Blick auf die
+Kennzahlen des Gewichts zeigt ein Minimum, das es nicht geben kann.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: plausibel-r
-summary(roh$gewicht)                   # das Minimum ist verdaechtig
-sum(roh$gewicht < 0)                   # wie viele Faelle?
-roh |> filter(gewicht < 0) |> head(3)
+#| label: b1-dq-r
+nrow(roh)
+summary(roh$gewicht)
+sum(roh$gewicht < 0)
+head(roh[roh$gewicht < 0, ], 3)
+
+sauber <- roh
+sauber$gewicht[sauber$gewicht < 0] <- NA
+round(c(vorher = mean(roh$gewicht), nachher = mean(sauber$gewicht, na.rm = TRUE)), 2)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: plausibel-py
-print(roh["gewicht"].describe())
-print("negative Werte:", (roh["gewicht"] < 0).sum())
-print(roh[roh["gewicht"] < 0].head(3))
+#| label: b1-dq-py
+print(len(roh))
+print(roh["gewicht"].describe().round(2).to_dict())
+print("negativ:", int((roh["gewicht"] < 0).sum()))
+print(roh[roh["gewicht"] < 0].head(3).to_string(index=False))
+
+sauber = roh.copy()
+sauber.loc[sauber["gewicht"] < 0, "gewicht"] = np.nan
+print(round(roh["gewicht"].mean(), 2), round(sauber["gewicht"].mean(), 2))
 ```
+
 :::
 
-Ein Gewicht von minus eins ist kein Ausreisser, sondern ein Platzhalter. Viele
-Erfassungssysteme codieren fehlende Werte so. Wer ihn als Zahl behandelt, zieht
-den Mittelwert nach unten, ohne dass es auffällt. Solche Werte gehören auf `NA`
-gesetzt, bevor gerechnet wird.
+#### Output Zeile für Zeile
+
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| Zeilen | 402 | |
+| Minimum Gewicht | **−1.0** | Ein Gewicht von minus eins ist kein Ausreisser, sondern ein Code. |
+| Maximum | 117.7 | plausibel |
+| Anzahl negativer Werte | **3** | Drei Erfassungen mit Platzhalter. |
+| Mittelwert vorher | **80.41** | mit den drei Platzhaltern |
+| Mittelwert nachher | **81.02** | nach dem Ersetzen durch `NA`, also 0.61 höher |
+
+#### Interpretation und Ergebnissatz
+
+Der Unterschied von 0.61 wirkt harmlos und ist es nur, weil es drei von 402
+Fällen sind. Derselbe Platzhalter bei zehn Prozent der Werte, oder ein Code
+wie 9999 statt −1, verschöbe das Ergebnis massiv. Der eigentliche Punkt ist
+nicht die Grösse der Verschiebung, sondern dass sie **ohne jeden Hinweis**
+entsteht: Eine leere Zelle wird als `NA` gelesen und von jeder Rechnung
+sichtbar behandelt, ein Platzhalter rechnet mit.
+
+> Drei der 402 Gewichte sind mit dem Platzhalter −1 erfasst. Ersetzt man sie
+> durch `NA`, steigt der Mittelwert von 80.41 auf 81.02.
+
+### Beispiel 2: Fehlende Werte haben ein Muster
+
+#### Frage und Datenlage
+
+Beim Blutdruck fehlen Werte. Wie viele sind es, und unterscheiden sich die
+Fälle mit Lücke von denen ohne?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: plausibel-fix-r
-daten <- roh
-daten$gewicht[daten$gewicht < 0] <- NA
+#| label: b2-dq-r
+c(fehlend = sum(is.na(sauber$blutdruck)),
+  anteil  = round(mean(is.na(sauber$blutdruck)) * 100, 1))
 
-c(vorher  = mean(roh$gewicht),
-  nachher = mean(daten$gewicht, na.rm = TRUE)) |> round(2)
+sauber |>
+  mutate(fehlt = is.na(blutdruck)) |>
+  summarise(.by = fehlt, n = n(), mittleres_alter = round(mean(alter), 1))
+
+sauber |>
+  mutate(gruppe = cut(alter, c(17, 40, 65, 100),
+                      labels = c("18-40", "41-65", "66+"))) |>
+  summarise(.by = gruppe,
+            anteil_fehlend = round(mean(is.na(blutdruck)) * 100, 1)) |>
+  arrange(gruppe)
+
+round(mean(sauber$blutdruck, na.rm = TRUE), 2)
 ```
+
+##### Python
+
+```{python}
+#| label: b2-dq-py
+print("fehlend:", int(sauber["blutdruck"].isna().sum()),
+      round(sauber["blutdruck"].isna().mean() * 100, 1))
+
+print(sauber.assign(fehlt=sauber["blutdruck"].isna())
+      .groupby("fehlt")
+      .agg(n=("alter", "size"), mittleres_alter=("alter", "mean"))
+      .round(1).to_string())
+
+gruppen = pd.cut(sauber["alter"], [17, 40, 65, 100],
+                 labels=["18-40", "41-65", "66+"])
+print(sauber.groupby(gruppen, observed=True)["blutdruck"]
+      .apply(lambda s: round(s.isna().mean() * 100, 1)).to_dict())
+
+print(round(sauber["blutdruck"].mean(), 2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| fehlende Werte | **28** von 402, **7.0 Prozent** | Für sich genommen unauffällig. |
+| mittleres Alter, Wert vorhanden | **43.4** Jahre | 374 Fälle |
+| mittleres Alter, Wert fehlt | **70.0** Jahre | 28 Fälle. Der Unterschied von über 26 Jahren ist das Warnzeichen. |
+| Anteil fehlend, 18 bis 40 | **0.0 Prozent** | |
+| Anteil fehlend, 41 bis 65 | **0.0 Prozent** | |
+| Anteil fehlend, 66 und älter | **50.0 Prozent** | Jede zweite ältere Person hat keinen Blutdruckwert. |
+| Mittelwert der vorhandenen Werte | 129.06 | Dieser Wert beschreibt eine Stichprobe, in der die Älteren fehlen. |
+
+#### Interpretation und Ergebnissatz
+
+Sieben Prozent Lücken klingen nach einer Kleinigkeit, die man wegwirft. Der
+Vergleich zeigt das Gegenteil: Die Lücken liegen fast vollständig bei den
+über 65-Jährigen. Wer die Fälle weglässt, rechnet den Blutdruck einer
+jüngeren Bevölkerung aus, und weil Blutdruck mit dem Alter steigt, ist das
+Ergebnis zu niedrig. Der Anteil fehlender Werte je Altersgruppe gehört
+deshalb in den Bericht, und die Altersabhängigkeit ins Modell.
+
+> Von 402 Blutdruckwerten fehlen 28, also 7.0 Prozent, und zwar ausschliesslich
+> bei den über 65-Jährigen, wo jeder zweite Wert fehlt. Die Fälle mit Lücke
+> sind im Mittel 70.0 Jahre alt, die vollständigen 43.4.
+
+### Beispiel 3: Duplikate
+
+#### Frage und Datenlage
+
+Beim Zusammenführen zweier Exporte sind Zeilen doppelt in den Datensatz
+geraten. Wie viele, und was ändert sich, wenn man sie entfernt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-dq-r
+sum(duplicated(roh))
+which(duplicated(roh))
+
+ohne <- distinct(roh)
+c(mit = nrow(roh), ohne = nrow(ohne))
+round(c(mit = mean(roh$alter), ohne = mean(ohne$alter)), 3)
+```
+
+##### Python
+
+```{python}
+#| label: b3-dq-py
+print("exakte Duplikate:", int(roh.duplicated().sum()))
+print(roh.index[roh.duplicated()].tolist())
+
+ohne = roh.drop_duplicates()
+print(len(roh), len(ohne))
+print(round(roh["alter"].mean(), 3), round(ohne["alter"].mean(), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| exakte Duplikate | **2** | Zeilen, die in allen Spalten mit einer früheren übereinstimmen. |
+| Zeilen mit, ohne | **402** gegen **400** | |
+| mittleres Alter | 45.221 gegen **45.138** | Der Unterschied ist klein, weil es zwei von 402 sind. Er zeigt aber, dass jede Kennzahl betroffen ist. |
+
+`duplicated()` markiert das **zweite** und jedes weitere Vorkommen, nicht das
+erste. Für Schlüsselspalten prüft man zusätzlich `duplicated(df$id)`: Zwei
+Zeilen mit derselben Kennung, aber verschiedenen Werten sind der schlimmere
+Fall, weil keine der beiden falsch aussieht.
+
+#### Interpretation und Ergebnissatz
+
+Exakte Duplikate sind leicht zu finden und meist harmlos zu beheben. Die
+eigentliche Gefahr liegt davor: Sie entstehen fast immer beim Verknüpfen mit
+einem nicht eindeutigen Schlüssel, siehe [pandas](../programmierung/pandas.qmd),
+Beispiel 6. Deshalb ist die Zeilenzahl vor und nach jedem Join die billigste
+Kontrolle, die es gibt.
+
+> Der Datensatz enthält zwei exakte Duplikate; nach dem Entfernen bleiben 400
+> Zeilen, und das mittlere Alter verschiebt sich von 45.221 auf 45.138.
+
+### Beispiel 4: Dieselbe Kategorie, drei Schreibweisen
+
+#### Frage und Datenlage
+
+Der Standort ist als Text erfasst. Wie viele Ausprägungen gibt es, und wie
+viele sollten es sein?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-dq-r
+sort(unique(roh$standort))
+table(roh$standort)
+
+normiert <- trimws(roh$standort)
+normiert <- paste0(toupper(substr(normiert, 1, 1)),
+                   tolower(substring(normiert, 2)))
+table(normiert)
+```
+
+##### Python
+
+```{python}
+#| label: b4-dq-py
+print(sorted(roh["standort"].unique().tolist()))
+print(roh["standort"].value_counts().to_dict())
+
+normiert = roh["standort"].str.strip().str.capitalize()
+print(normiert.value_counts().to_dict())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausprägung | Anzahl | Erklärung |
+|---|---|---|
+| `Bern` | 200 | |
+| `Chur` | 114 | |
+| `Sion` | 83 | |
+| `bern` | **3** | kleingeschrieben erfasst |
+| `Bern ` | **2** | mit angehängtem Leerzeichen, im Ausdruck **unsichtbar** |
+| nach dem Normieren | Bern **205**, Chur 114, Sion 83 | drei Ausprägungen statt fünf |
+
+Das angehängte Leerzeichen ist der tückischere Fall: In jeder Tabelle und
+jeder Grafik sieht `Bern ` genau aus wie `Bern`, aber eine Gruppierung
+trennt beide, und ein Join findet die Zeilen nicht. Ein Blick auf die Anzahl
+der Ausprägungen (`length(unique(x))` gegen die erwartete Zahl) findet das
+sofort.
+
+#### Interpretation und Ergebnissatz
+
+Fünf Gruppen statt drei bedeuten fünf Zeilen in jeder Auswertung, zwei davon
+mit winzigen Fallzahlen, und einen Mittelwert für "Bern", der drei Prozent
+der Berner Fälle nicht enthält. Das Vereinheitlichen (Leerzeichen entfernen,
+Schreibweise angleichen) gehört vor jede Gruppierung; bei freiem Text kommt
+das Abgleichen gegen eine Referenzliste dazu.
+
+> Der Standort hat fünf Ausprägungen, obwohl es drei Orte sind: `bern`
+> dreimal und `Bern ` mit Leerzeichen zweimal. Nach dem Vereinheitlichen
+> stehen 205 Berner Fälle statt 200.
+
+### Beispiel 5: Ziffernhäufung
+
+#### Frage und Datenlage
+
+Blutdruckwerte werden oft geschätzt oder auf "runde" Werte gerundet. Lässt
+sich das an den Daten selbst erkennen? Dazu die Häufigkeit der letzten Ziffer
+aller vorhandenen Werte.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-dq-r
+bd <- sauber$blutdruck[!is.na(sauber$blutdruck)]
+length(bd)
+
+table(bd %% 10)
+round(mean(bd %% 5 == 0) * 100, 1)
+```
+
+##### Python
+
+```{python}
+#| label: b5-dq-py
+bd = sauber["blutdruck"].dropna()
+print(len(bd))
+
+print((bd % 10).astype(int).value_counts().sort_index().to_dict())
+print(round(((bd % 5) == 0).mean() * 100, 1))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| letzte Ziffer | Anzahl | Erwartung bei gleichmässiger Verteilung |
+|---|---|---|
+| **0** | **102** | rund 37 |
+| 1 | 24 | |
+| 2 | 25 | |
+| 3 | 26 | |
+| 4 | 22 | |
+| **5** | **72** | rund 37 |
+| 6 | 30 | |
+| 7 | 24 | |
+| 8 | 19 | |
+| 9 | 30 | |
+
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| Werte insgesamt | 374 | |
+| Anteil auf 0 oder 5 | **46.5 Prozent** | Bei gleichmässiger Verteilung wären es 20 Prozent. |
+
+#### Interpretation und Ergebnissatz
+
+Fast die Hälfte aller Werte endet auf 0 oder 5. Das kommt in der Natur nicht
+vor, es kommt aus dem Erfassungsvorgang: geschätzte oder gerundete Ablesungen.
+Für die Auswertung heisst das zweierlei. Die Werte sind gröber, als ihre
+Nachkommastellen vortäuschen, und eine Kennzahl sollte nicht mehr Stellen
+nennen, als die Erfassung hergibt. Und wenn nur ein Teil der Erhebung so
+zustande kam, unterscheiden sich die Teile systematisch, was vor jedem
+Gruppenvergleich zu klären ist.
+
+> 46.5 Prozent der 374 Blutdruckwerte enden auf 0 oder 5, erwartet wären
+> 20 Prozent; allein die Endziffer 0 kommt 102-mal statt rund 37-mal vor. Die
+> Werte sind also zu einem erheblichen Teil gerundet erfasst.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 In den Daten steht bei drei Personen ein Gewicht von minus eins. Warum ist so
@@ -126,244 +517,68 @@ ein Platzhalter gefährlicher als eine leere Zelle?
 - [ ] Er ist nicht gefährlicher, nur unschöner ~ Der Unterschied ist, ob ein
       Fehler auffällt oder nicht.
 - [x] Er sieht wie ein gültiger Wert aus und rechnet stillschweigend mit ~
-      Richtig. Eine leere Zelle wird als `NA` eingelesen und von jeder Rechnung
-      sichtbar behandelt. Minus eins verschiebt jedes Ergebnis ohne Warnung.
+      Richtig. Eine leere Zelle wird als `NA` eingelesen und von jeder
+      Rechnung sichtbar behandelt; −1 verschiebt den Mittelwert ohne Warnung,
+      hier um 0.61.
 - [ ] Er lässt sich nicht in `NA` umwandeln ~ Umwandeln lässt er sich gut, man
       muss ihn nur zuerst bemerken.
 :::
 
 ::: {.quiz}
-Nach dem Ersetzen der Platzhalter ändert sich der Mittelwert nur um wenige
-Zehntel. Ist das Problem damit klein?
+Bei sieben Prozent der Fälle fehlt der Blutdruck. Diese Fälle sind im Mittel
+70 Jahre alt, die übrigen 43. Was folgt daraus?
 
-- [ ] Ja, die Auswirkung ist messbar gering ~ Sie ist gering, weil es zufällig
-      nur drei von vierhundert Fällen sind.
-- [x] Nein, die geringe Auswirkung ist Zufall der Anzahl ~ Richtig. Derselbe
-      Platzhalter bei zehn Prozent der Werte, oder einer wie 9999, verschöbe
-      das Ergebnis massiv. Und es geht darum, zu wissen, was in den Daten
-      steht.
-- [ ] Nein, weil Platzhalter immer entfernt werden müssen ~ Entfernt werden
-      müssen sie, aber die Begründung ist nicht die Regel, sondern die
-      Verlässlichkeit des Ergebnisses.
-:::
-
-### Fehlende Werte untersuchen, nicht wegwerfen
-
-Die Anzahl fehlender Werte ist die eine Frage, ihr Muster die wichtigere. Fehlen
-sie zufällig, ist Weglassen vertretbar. Hängt das Fehlen mit anderen Merkmalen
-zusammen, verzerrt jedes Weglassen das Ergebnis.
-
-```{r}
-#| label: na-muster-r
-# Wie viele fehlen, und unterscheiden sich die Faelle mit Luecke?
-daten |>
-  mutate(fehlt = is.na(blutdruck)) |>
-  group_by(fehlt) |>
-  summarise(n = n(), mittleres_alter = round(mean(alter), 1), .groups = "drop")
-```
-
-Liegen die beiden Altersmittel nahe beieinander, spricht das dafür, dass die
-Lücken nicht mit dem Alter zusammenhängen. Das ist kein Beweis, aber ein
-Argument, und es ist mehr, als ein stillschweigendes `na.rm` liefert.
-
-::: {.note-box}
-Was in dieser Phase auffällt, ist eine Hypothese, kein Ergebnis. Ein an
-denselben Daten entdeckter Zusammenhang lässt sich an denselben Daten nicht
-bestätigen. Wer lange genug sucht, findet in jedem Datensatz etwas
-Auffälliges, und genau davor schützt die Trennung zwischen Erkunden und
-Prüfen.
+- [ ] Sieben Prozent sind wenig, die Fälle können weg ~ Die Anzahl ist nicht
+      das Kriterium, sondern das Muster.
+- [x] Das Fehlen hängt vom Alter ab, Weglassen verzerrt das Ergebnis nach
+      unten ~ Richtig. Übrig bleibt eine jüngere Stichprobe, und da der
+      Blutdruck mit dem Alter steigt, ist das Ergebnis zu niedrig.
+- [ ] Die Messgeräte waren defekt ~ Möglich, aber das ändert nichts an der
+      Verzerrung.
 :::
 
 ::: {.quiz}
-Beim Durchsehen der Daten fällt ein deutlicher Zusammenhang auf. Warum sollte
-er nicht direkt als Ergebnis berichtet werden?
+Eine Auswertung nach Standort zeigt fünf Gruppen, obwohl es drei Standorte
+gibt. Was ist zuerst zu prüfen?
 
-- [x] Weil bei vielen betrachteten Kombinationen einige zufällig auffällig
-      aussehen ~ Richtig. Wer zwanzig Zusammenhänge ansieht, findet im Schnitt
-      einen, der auf dem Fünfprozentniveau signifikant wirkt. Der Fund gehört
-      an neuen Daten geprüft.
-- [ ] Weil Grafiken keine Beweise sind ~ Auch ein Test an denselben Daten wäre
-      kein Beleg. Das Problem liegt nicht an der Darstellungsform.
-- [ ] Weil die Stichprobe zu klein ist ~ Der Umfang ist nicht der Punkt; das
-      Problem bestünde auch bei sehr grossen Daten.
+- [x] Schreibweise und unsichtbare Leerzeichen ~ Richtig. `Bern`, `bern` und
+      `Bern ` sind drei verschiedene Zeichenketten, und das Leerzeichen sieht
+      man im Ausdruck nicht. `trimws` beziehungsweise `.str.strip()` und eine
+      einheitliche Schreibweise lösen es.
+- [ ] Ob zwei Standorte neu eröffnet wurden ~ Möglich, aber die Fallzahlen
+      von 3 und 2 sprechen dagegen.
+- [ ] Ob die Gruppierung falsch programmiert ist ~ Die Gruppierung tut genau,
+      was sie soll; die Werte unterscheiden sich wirklich.
 :::
 
 ::: {.quiz}
-Wie prüft man, ob fehlende Werte systematisch fehlen?
+46.5 Prozent der Blutdruckwerte enden auf 0 oder 5. Was sagt das über die
+Daten?
 
-- [ ] Man zählt sie und vergleicht mit einer Faustregel ~ Die Anzahl sagt über
-      das Muster nichts aus.
-- [x] Man bildet eine Hilfsvariable fehlt ja oder nein und hält sie gegen die
-      übrigen Merkmale ~ Richtig. Unterscheiden sich die Gruppen mit und ohne
-      Lücke systematisch, etwa im Alter, fehlen die Werte nicht zufällig.
-- [ ] Man ersetzt sie durch den Mittelwert und schaut, ob sich etwas ändert ~
-      Das Ersetzen verdeckt die Frage, statt sie zu beantworten.
-:::
-
-## Typische Aufgaben
-
-**Der Unterschied, der beim Sprachwechsel Ergebnisse verschiebt**
-
-R liefert bei fehlenden Werten `NA` und erzwingt damit eine Entscheidung. pandas
-lässt sie bei `mean` stillschweigend weg und liefert eine Zahl, die aussieht wie
-ein Mittelwert über alle Beobachtungen. Wer zwischen den Sprachen wechselt,
-sollte das im Kopf haben.
-
-::: {.panel-tabset}
-
-## R
-
-```r
-mean(x)                 # NA, sobald ein Wert fehlt
-mean(x, na.rm = TRUE)   # bewusste Entscheidung, sichtbar im Code
-```
-
-## Python
-
-```python
-s.mean()                # laesst fehlende Werte still weg
-s.mean(skipna=False)    # erzwingt dieselbe Sichtbarkeit wie in R
-```
-
-:::
-
-**Fehlende Werte zählen, je Spalte und je Zeile**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-colSums(is.na(df))
-sum(!complete.cases(df))
-```
-
-## Python
-
-```python
-df.isna().sum()
-df.isna().any(axis=1).sum()
-```
-
-:::
-
-**Prüfen, ob sie systematisch fehlen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-df$fehlt <- is.na(df$verbrauch)
-aggregate(fehlt ~ standort, data = df, FUN = mean)
-```
-
-## Python
-
-```python
-df.assign(fehlt=df["verbrauch"].isna()).groupby("standort")["fehlt"].mean()
-```
-
-:::
-
-Verteilen sich die Lücken gleichmässig über Gruppen und Zeit, ist Weglassen
-vertretbar. Häufen sie sich an einer Stelle, hat das eine Ursache, und die
-gehört in den Bericht.
-
-**Platzhalter erkennen und in echte fehlende Werte umwandeln**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-df$gewicht[df$gewicht %in% c(-1, -999)] <- NA
-```
-
-## Python
-
-```python
-df["gewicht"] = df["gewicht"].replace([-1, -999], np.nan)
-```
-
-:::
-
-**Duplikate finden und entfernen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-sum(duplicated(df))
-df[duplicated(df$id), ]          # nur nach Schluessel
-df <- df[!duplicated(df$id), ]
-```
-
-## Python
-
-```python
-df.duplicated().sum()
-df[df.duplicated("id", keep=False)]
-df = df.drop_duplicates("id")
-```
-
-:::
-
-**Wertebereiche prüfen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-range(df$alter, na.rm = TRUE)
-table(df$standort, useNA = "ifany")
-```
-
-## Python
-
-```python
-df["alter"].agg(["min", "max"])
-df["standort"].value_counts(dropna=False)
-```
-
-:::
-
-**Die drei Prüfungen nach jedem Import**
-
-Zeilenzahl plausibel, Spaltentypen korrekt, fehlende Werte gezählt. Diese drei
-Handgriffe finden den grössten Teil der Importfehler, bevor sie in ein Ergebnis
-einfliessen.
-
-::: {.quiz}
-`mean(x)` liefert in R bei fehlenden Werten `NA`, in pandas dagegen einen Wert.
-Welches Verhalten ist für eine Auswertung günstiger?
-
-- [x] Das von R, weil es sichtbar macht, dass etwas fehlt ~ Richtig. Ein
-      stillschweigend berechneter Mittelwert über die vorhandenen Werte sieht
-      aus wie einer über alle. Der Aufwand, `na.rm` zu schreiben, ist der
-      Moment der bewussten Entscheidung.
-- [ ] Das von pandas, weil man weiterarbeiten kann ~ Weiterarbeiten kann man
-      auch in R, nur eben ausdrücklich.
-- [ ] Beide sind gleichwertig ~ Beim Wechsel zwischen den Sprachen führt genau
-      dieser Unterschied zu abweichenden Ergebnissen.
+- [x] Ein grosser Teil wurde gerundet oder geschätzt erfasst ~ Richtig. Bei
+      gleichmässiger Verteilung der Endziffern wären es 20 Prozent. Die Werte
+      sind gröber, als sie aussehen.
+- [ ] Die Messgeräte sind besonders genau ~ Genaue Geräte erzeugen keine
+      Häufung auf runden Werten.
+- [ ] Es ist Zufall ~ Bei 374 Werten ist eine Abweichung von 20 auf 46.5
+      Prozent kein Zufall.
 :::
 
 ::: {.quiz}
-Eine Spalte hat 5 Prozent fehlende Werte, alle aus derselben Kalenderwoche. Was
-folgt daraus?
+Nach dem Entfernen von zwei Duplikaten ändert sich das mittlere Alter von
+45.221 auf 45.138. Ist der Aufwand gerechtfertigt?
 
-- [ ] Nichts, 5 Prozent sind wenig ~ Der Anteil ist nicht das Entscheidende,
-      sondern das Muster.
-- [x] Sie fehlen nicht zufällig, und Weglassen verzerrt möglicherweise ~
-      Richtig. Ein Ausfall über eine ganze Woche hat eine Ursache.
-      Unterscheidet sich diese Woche von den übrigen, verschiebt das Weglassen
-      das Ergebnis systematisch.
-- [ ] Die Daten sind unbrauchbar ~ Brauchbar bleiben sie, nur gehört die
-      Ursache in den Bericht.
+- [x] Ja, denn die Grösse der Änderung ist Zufall der Anzahl ~ Richtig. Bei
+      zwei von 402 Zeilen ist sie klein; entstünden die Duplikate durch einen
+      Join mit nicht eindeutigem Schlüssel, wären es schnell Hunderte.
+- [ ] Nein, die dritte Nachkommastelle ist belanglos ~ Belanglos ist die
+      Verschiebung hier, nicht die Ursache.
+- [ ] Nein, Duplikate sind immer echte Beobachtungen ~ Zwei identische Zeilen
+      können echt sein; dann braucht es eine Kennung, die sie unterscheidet.
 :::
 
 ## Verlinkte Ressourcen
 
-- [R for Data Science, Kapitel zu fehlenden Werten](https://r4ds.hadley.nz/missing-values)
+- [Missing data, Kapitel in R for Data Science](https://r4ds.hadley.nz/missing-values)
+- [pandas: Umgang mit fehlenden Werten](https://pandas.pydata.org/docs/user_guide/missing_data.html)
+- [naniar: fehlende Werte sichtbar machen](https://naniar.njtierney.com/)
