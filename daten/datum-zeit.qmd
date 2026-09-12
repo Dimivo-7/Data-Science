@@ -1,6 +1,6 @@
 ---
 title: "Datum und Zeit"
-description: "Zeitstempel parsen, rechnen, Zeitzonen und typische Stolpersteine."
+description: "Datumsangaben einlesen, Bestandteile herausziehen, rechnen, Zeitzonen."
 categories: ["Data Wrangling", "R", "Python"]
 quelle: ["ESDS", "PYFR"]
 seitentyp: werkzeug
@@ -11,6 +11,7 @@ order: 40
 ```{r}
 #| label: setup-r
 #| include: false
+library(dplyr)
 library(lubridate)
 ```
 
@@ -22,324 +23,535 @@ import pandas as pd
 
 ## Kernideen
 
-- Ein Datum ist ein eigener Typ, keine Zeichenkette und keine Zahl
-- Umgewandelt wird früh, am besten direkt beim Import
-- Das Format muss angegeben werden, sonst rät die Bibliothek
-- Differenzen zwischen Zeitpunkten haben eine Einheit, die man mitliest
-- Zeitzonen und Sommerzeit sind die Quelle der unangenehmsten Fehler
+- Solange ein Datum **Text** ist, sortiert es alphabetisch und lässt sich
+  nicht verrechnen. Die Umwandlung gehört an den Import.
+- **Ohne Formatangabe raten** beide Sprachen, und bei Tageszahlen bis zwölf
+  raten sie mit einer Trefferquote von 50 Prozent.
+- Für Auswertungen je Monat wird **abgerundet** (Monatsanfang, Periode), nicht
+  der Monatsname gebildet: Der Name verliert das Jahr.
+- Eine Differenz ist ein **eigener Typ mit Einheit**, keine Zahl.
+- **Monate sind verschieden lang**: Ein Monat addieren und 30 Tage addieren
+  sind zwei verschiedene Dinge.
+- **Zeitzonen und Sommerzeit**: Es gibt Ortszeiten, die nie stattfinden, und
+  ein Tag hat nicht immer 24 Stunden.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** [Datenimport und Formate](datenimport-formate.qmd), denn die
-Umwandlung gehört dorthin, und [Data Wrangling](data-wrangling.qmd) für das
-Gruppieren nach Zeitabschnitten. Für Reihen, bei denen die Reihenfolge selbst
-Information trägt, siehe
-[Zeitreihen](../statistik/zeitreihen/index.qmd).
+**Vorwissen:** [Datenimport](datenimport-formate.qmd), weil die Umwandlung
+dorthin gehört, und [Data Wrangling](data-wrangling.qmd) für das Gruppieren
+nach Zeitabschnitten. Für Reihen, bei denen die Reihenfolge selbst
+Information trägt, siehe [Zeitreihen](../statistik/zeitreihen/index.qmd).
 :::
 
-### Warum Text als Datum gefährlich ist
+### Die Typen
 
-Solange ein Datum als Zeichenkette vorliegt, wird alphabetisch verglichen und
-sortiert. Der 10. Januar liegt dann vor dem 2. Februar, weil die Ziffer 1 vor
-der 2 steht. Ebenso scheitert jede Rechnung: die Differenz zwischen zwei
-Zeichenketten ist nicht definiert, und eine Gruppierung nach Monat gruppiert
-nach Text.
+| Was | R | Python |
+|---|---|---|
+| Datum ohne Zeit | `Date` | `datetime64[ns]`, `Timestamp` |
+| Zeitpunkt | `POSIXct` | `Timestamp` mit `tz` |
+| Differenz | `difftime` | `Timedelta` |
+| Kalenderabschnitt | `floor_date()` auf Monat, Woche | `Period`, `to_period("M")` |
 
-::: {.panel-tabset}
+### Einlesen mit Formatangabe
 
-## R
+In R heissen die Parser nach der Reihenfolge der Bestandteile: `ymd()`,
+`dmy()`, `mdy()`, für Zeitstempel `ymd_hms()`. In Python nimmt
+`pd.to_datetime()` ein `format` in der Schreibweise mit Prozentzeichen
+(`%d.%m.%Y`). Ohne Angabe raten beide. Wer das Format kennt, gibt es an; wer
+es nicht kennt, sieht sich die Rohwerte an, bevor er importiert.
 
-```{r}
-#| label: parsen-r
-roh <- c("05.01.2026", "10.01.2026", "02.02.2026")
+| Zeichen | Bedeutung | Beispiel |
+|---|---|---|
+| `%d` | Tag zweistellig | 05 |
+| `%m` | Monat zweistellig | 03 |
+| `%Y` | Jahr vierstellig | 2026 |
+| `%y` | Jahr zweistellig | 26 |
+| `%H:%M:%S` | Stunde, Minute, Sekunde | 14:30:00 |
 
-sort(roh)                       # alphabetisch, also falsch
+### Gruppieren nach Zeitabschnitten
 
-datum <- dmy(roh)               # Tag, Monat, Jahr
-sort(datum)
-class(datum)
-```
+Für eine Auswertung je Monat gibt es zwei Wege, und nur einer ist richtig:
 
-## Python
+| Weg | Ergebnis | tauglich |
+|---|---|---|
+| Monatsname oder `%m` als Text | "01", "Januar" | **nein**, das Jahr fehlt |
+| auf den Monatsanfang abrunden | 2026-01-01 | ja |
+| Periode | `2026-01` | ja |
 
-```{python}
-#| label: parsen-py
-roh = pd.Series(["05.01.2026", "10.01.2026", "02.02.2026"])
+Dasselbe gilt für Wochen. Dort kommt hinzu, dass die **ISO-Woche** zum
+Jahreswechsel zu einem anderen Jahr gehören kann als das Datum: Der
+1. Januar 2027 liegt in der ISO-Woche 53 des Jahres 2026. Wer nur nach der
+Wochennummer gruppiert, wirft zwei Jahre zusammen; richtig ist das Paar aus
+ISO-Jahr und ISO-Woche.
 
-print(roh.sort_values().tolist())        # alphabetisch, also falsch
+### Rechnen
 
-datum = pd.to_datetime(roh, format="%d.%m.%Y")
-print(datum.sort_values().tolist())
-print(datum.dtype)
-```
-
-:::
-
-In R heissen die Parser nach der Reihenfolge der Bestandteile: `ymd`, `dmy`,
-`mdy`, für Zeitstempel `ymd_hms`. In Python nimmt `pd.to_datetime` ein
-`format` in der Schreibweise mit Prozentzeichen. Ohne Formatangabe raten beide,
-und das Raten geht bei Tagen bis zwölf schief, weil `03.04.2026` sowohl der
-3. April als auch der 4. März sein kann. Wer das Format kennt, gibt es an.
-
-### Bestandteile herausziehen und gruppieren
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: teile-r
-d <- ymd("2026-03-15")
-
-year(d); month(d); day(d)
-wday(d, label = TRUE, week_start = 1)
-isoweek(d)
-floor_date(d, unit = "month")     # auf den Monatsanfang abrunden
-```
-
-## Python
-
-```{python}
-#| label: teile-py
-d = pd.Timestamp("2026-03-15")
-
-print(d.year, d.month, d.day)
-print(d.day_name())
-print(d.isocalendar().week)
-print(d.to_period("M").start_time)
-```
-
-:::
-
-Für eine Auswertung je Monat wird nicht der Monatsname als Text gebildet,
-sondern auf den Monatsanfang abgerundet. Der Text verliert das Jahr, und Januar
-2025 landet dann in derselben Gruppe wie Januar 2026.
-
-### Rechnen mit Zeitpunkten
-
-::: {.panel-tabset}
-
-## R
-
-```{r}
-#| label: rechnen-r
-start <- ymd("2026-01-05")
-ende  <- ymd("2026-03-15")
-
-ende - start                          # Differenz mit Einheit
-as.numeric(ende - start, units = "days")
-start + days(30)
-start %m+% months(1)                  # monatsweise, ohne Ueberlauf
-```
-
-## Python
-
-```{python}
-#| label: rechnen-py
-start = pd.Timestamp("2026-01-05")
-ende = pd.Timestamp("2026-03-15")
-
-print(ende - start)                   # Timedelta
-print((ende - start).days)
-print(start + pd.Timedelta(days=30))
-print(start + pd.DateOffset(months=1))
-```
-
-:::
-
-Die Differenz ist in beiden Sprachen ein eigener Typ mit Einheit, nicht einfach
-eine Zahl. Wer sie weiterrechnet, wandelt sie ausdrücklich um und legt die
-Einheit fest; sonst hängt das Ergebnis davon ab, welche Einheit die Bibliothek
-gewählt hat.
-
-Der Zusatz `%m+%` in R und `DateOffset` in Python addieren Monate, ohne über das
-Monatsende hinauszulaufen: der 31. Januar plus ein Monat ergibt den 28. oder
-29. Februar, nicht den 3. März.
+`+ days(30)` addiert 30 Tage, `%m+% months(1)` beziehungsweise
+`DateOffset(months=1)` addiert einen Monat, und ein Monat ist je nach Monat
+28 bis 31 Tage lang. Beim Monatsende kommt hinzu, dass es den Zieltag nicht
+geben muss: der 31. Januar plus ein Monat. R liefert mit dem gewöhnlichen
+`+ months(1)` dafür `NA`, mit `%m+%` den letzten Tag des Zielmonats; pandas
+nimmt mit `DateOffset` ebenfalls den letzten Tag.
 
 ### Zeitzonen
 
-Ein Zeitstempel ohne Zeitzone ist mehrdeutig, sobald Daten aus mehreren Quellen
-zusammenkommen. Zwei Regeln vermeiden die meisten Probleme: intern in UTC
-speichern und rechnen, erst für die Ausgabe in die lokale Zone umwandeln.
+| Operation | R | Python | Wirkung |
+|---|---|---|---|
+| umwandeln | `with_tz()` | `tz_convert()` | **derselbe Moment**, andere Darstellung |
+| festlegen | `force_tz()` | `tz_localize()` | **anderer Moment**, gleiche Ziffern |
+
+Zwei Regeln vermeiden die meisten Probleme: intern in UTC speichern und
+rechnen, erst für die Ausgabe umwandeln. Die Sommerzeit macht zusätzlich zwei
+Dinge kaputt: Im Frühling gibt es eine Ortszeit, die nicht existiert, im
+Herbst eine, die zweimal vorkommt.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R (lubridate) | Python (pandas) |
+|---|---|---|
+| Text zu Datum | `dmy(x)`, `ymd_hms(x)` | `pd.to_datetime(x, format="%d.%m.%Y")` |
+| beim Import | `col_date(format = "%d.%m.%Y")` | `parse_dates=["datum"], dayfirst=True` |
+| Bestandteile | `year()`, `month()`, `day()`, `wday()` | `.dt.year`, `.dt.month`, `.dt.day_name()` |
+| auf Monat runden | `floor_date(d, "month")` | `.dt.to_period("M")` |
+| ISO-Woche | `isoweek()`, `isoyear()` | `.dt.isocalendar().week` und `.year` |
+| Differenz in Tagen | `as.numeric(b - a, units = "days")` | `(b - a).days` |
+| Monat addieren | `d %m+% months(1)` | `d + pd.DateOffset(months=1)` |
+| Zeitachse erzeugen | `seq(von, bis, by = "day")` | `pd.date_range(von, bis, freq="D")` |
+| Zone umwandeln | `with_tz(t, "Europe/Zurich")` | `t.tz_convert("Europe/Zurich")` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Text ist kein Datum
+
+#### Frage und Datenlage
+
+Drei Datumsangaben als Text: `05.01.2026`, `10.01.2026`, `02.02.2026`. Wie
+sortieren sie als Text, wie als Datum? Und was macht `03.04.2026` aus einem
+Import ohne Formatangabe?
+
+#### Rechnung
 
 ::: {.panel-tabset}
 
-## R
+##### R
 
 ```{r}
-#| label: zonen-r
-t <- ymd_hms("2026-03-29 01:30:00", tz = "UTC")
+#| label: b1-dz-r
+roh <- c("05.01.2026", "10.01.2026", "02.02.2026")
+sort(roh)                       # alphabetisch, also falsch
 
-with_tz(t, "Europe/Zurich")     # derselbe Zeitpunkt, andere Darstellung
-force_tz(t, "Europe/Zurich")    # andere Interpretation, anderer Zeitpunkt
+datum <- dmy(roh)
+sort(datum)
+class(datum)
+
+c(als_dmy = format(dmy("03.04.2026")), als_mdy = format(mdy("03.04.2026")))
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: zonen-py
-t = pd.Timestamp("2026-03-29 01:30:00", tz="UTC")
+#| label: b1-dz-py
+roh = pd.Series(["05.01.2026", "10.01.2026", "02.02.2026"])
+print(roh.sort_values().tolist())        # alphabetisch, also falsch
 
-print(t.tz_convert("Europe/Zurich"))    # derselbe Zeitpunkt, andere Darstellung
-print(t.tz_localize(None))              # Zeitzone entfernen, Wert bleibt
+datum = pd.to_datetime(roh, format="%d.%m.%Y")
+print(datum.sort_values().dt.strftime("%d.%m.%Y").tolist())
+print(datum.dtype)
+
+print(pd.to_datetime("03.04.2026", format="%d.%m.%Y").strftime("%Y-%m-%d"),
+      pd.to_datetime("03.04.2026", format="%m.%d.%Y").strftime("%Y-%m-%d"))
 ```
 
 :::
 
-Der Unterschied zwischen Umwandeln und Festlegen ist der Kern: `with_tz` und
-`tz_convert` beschreiben denselben Moment in einer anderen Zone, `force_tz` und
-`tz_localize` behaupten, dass die abgelesene Uhrzeit in einer anderen Zone galt,
-und verschieben damit den Zeitpunkt selbst.
+#### Output Zeile für Zeile
 
-Die Umstellung auf Sommerzeit macht zusätzlich zwei Dinge kaputt: In der
-Umstellungsnacht gibt es eine Stunde, die nicht existiert, und im Herbst eine,
-die zweimal vorkommt. Deshalb ist ein Tag nicht immer 24 Stunden lang, und eine
-Differenz in Tagen ist nicht immer das Vielfache von 24 Stunden.
+| Schritt | Ergebnis | Erklärung |
+|---|---|---|
+| als Text sortiert | **02.02., 05.01., 10.01.** | Der 2. Februar steht vorn, weil die Ziffer 0 vor der 1 kommt. Verglichen wird zeichenweise. |
+| als Datum sortiert | 05.01., 10.01., 02.02. | richtige Reihenfolge |
+| Typ | `Date` beziehungsweise `datetime64[ns]` | Erst damit sind Differenzen und Gruppierungen möglich. |
+| `03.04.2026` als Tag zuerst | **2026-04-03** | der 3. April |
+| dieselbe Zeichenkette als Monat zuerst | **2026-03-04** | der 4. März |
+
+#### Interpretation und Ergebnissatz
+
+Dieselbe Zeichenkette ergibt zwei verschiedene Daten, und beide Lesarten sind
+gültig. Ein Import, der rät, entscheidet das oft anhand der
+Spracheinstellung des Rechners; dieselbe Datei wird dann auf zwei Rechnern
+verschieden eingelesen. Auffallen wird es frühestens bei einer Auswertung
+nach Monat, und dann fehlt der Zusammenhang zur Ursache.
+
+> Als Text sortiert steht der 2. Februar vor dem 5. Januar. Die Zeichenkette
+> `03.04.2026` ergibt je nach Lesart den 3. April oder den 4. März, weshalb
+> das Format immer anzugeben ist.
+
+### Beispiel 2: Bestandteile und das Gruppieren nach Monat
+
+#### Frage und Datenlage
+
+Vom 15. März 2026 sollen Jahr, Monat, Tag, Wochentag und ISO-Woche bestimmt
+werden. Danach vier Werte aus Januar 2025, Januar 2026 und Februar 2026:
+Was passiert, wenn nach dem Monat als Text gruppiert wird?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-dz-r
+d <- ymd("2026-03-15")
+c(jahr = year(d), monat = month(d), tag = day(d),
+  wochentag = wday(d, week_start = 1), woche = isoweek(d))
+floor_date(d, "month")
+
+ueber <- data.frame(
+  datum = ymd(c("2025-01-15", "2025-01-28", "2026-01-12", "2026-02-03")),
+  wert  = c(10, 20, 30, 40))
+
+tapply(ueber$wert, format(ueber$datum, "%m"), sum)          # nur Monat
+tapply(ueber$wert, floor_date(ueber$datum, "month"), sum)   # Monatsanfang
+```
+
+##### Python
+
+```{python}
+#| label: b2-dz-py
+d = pd.Timestamp("2026-03-15")
+print(d.year, d.month, d.day, d.day_name(), d.isocalendar().week)
+print(d.to_period("M").start_time.date())
+
+ueber = pd.DataFrame({
+    "datum": pd.to_datetime(["2025-01-15", "2025-01-28", "2026-01-12", "2026-02-03"]),
+    "wert": [10, 20, 30, 40]})
+
+print(ueber.groupby(ueber["datum"].dt.strftime("%m"))["wert"].sum().to_dict())
+print({str(k): v for k, v in
+       ueber.groupby(ueber["datum"].dt.to_period("M"))["wert"].sum().items()})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| Jahr, Monat, Tag | 2026, 3, 15 | |
+| Wochentag | **7** beziehungsweise `Sunday` | Mit `week_start = 1` zählt R ab Montag, die 7 ist der Sonntag. |
+| ISO-Woche | **11** | |
+| Monatsanfang | 2026-03-01 | `floor_date` beziehungsweise `to_period("M")` |
+| nach Monat als Text | **`{'01': 60, '02': 40}`** | **Falsch:** Die 60 fasst Januar 2025 (10 + 20) und Januar 2026 (30) zusammen. Zwei Jahre in einer Gruppe. |
+| nach Monatsanfang | 2025-01: **30**, 2026-01: **30**, 2026-02: 40 | Jetzt trennt die Gruppierung die Jahre. |
+
+#### Interpretation und Ergebnissatz
+
+Der Monatsname ist eine Beschriftung, kein Zeitabschnitt. Er verliert das
+Jahr, und das fällt nur auf, wenn man die Summen nachrechnet, denn die
+Tabelle sieht in beiden Fällen gleich plausibel aus. Für eine Grafik ist der
+abgerundete Monatsanfang zusätzlich praktisch, weil er auf einer Zeitachse
+richtig platziert wird, während Text alphabetisch einsortiert würde.
+
+> Mit dem Monat als Text entsteht eine Januargruppe mit 60, die zwei Jahre
+> vermischt; nach Monatsanfang gruppiert stehen Januar 2025 und Januar 2026
+> getrennt bei je 30.
+
+### Beispiel 3: Rechnen mit Zeitpunkten
+
+#### Frage und Datenlage
+
+Vom 5. Januar bis zum 15. März 2026: Wie gross ist die Differenz? Und was
+ergibt der 31. Januar plus ein Monat, verglichen mit plus 31 Tagen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-dz-r
+start <- ymd("2026-01-05")
+ende  <- ymd("2026-03-15")
+
+ende - start
+as.numeric(ende - start, units = "days")
+start + days(30)
+start %m+% months(1)
+
+ende_jan <- ymd("2026-01-31")
+ende_jan + months(1)        # Zieltag gibt es nicht
+ende_jan %m+% months(1)     # auf den letzten Tag gesetzt
+ende_jan + days(31)
+```
+
+##### Python
+
+```{python}
+#| label: b3-dz-py
+start, ende = pd.Timestamp("2026-01-05"), pd.Timestamp("2026-03-15")
+
+print(ende - start, "|", (ende - start).days)
+print((start + pd.Timedelta(days=30)).date())
+print((start + pd.DateOffset(months=1)).date())
+
+ende_jan = pd.Timestamp("2026-01-31")
+print((ende_jan + pd.DateOffset(months=1)).date())
+print((ende_jan + pd.Timedelta(days=31)).date())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Rechnung | Ergebnis | Erklärung |
+|---|---|---|
+| `ende - start` | **69 Tage**, als eigener Typ | R zeigt `Time difference of 69 days`, Python `69 days 00:00:00`. Keine blosse Zahl. |
+| in Tagen | 69 | Erst die ausdrückliche Umwandlung macht eine Zahl daraus. |
+| 5. Januar plus 30 Tage | **2026-02-04** | |
+| 5. Januar plus 1 Monat | **2026-02-05** | Ein Tag später als plus 30 Tage, weil der Januar 31 Tage hat. |
+| 31. Januar plus 1 Monat, R mit `+ months(1)` | **`NA`** | Den 31. Februar gibt es nicht. R sagt das deutlich. |
+| 31. Januar plus 1 Monat, `%m+%` / `DateOffset` | **2026-02-28** | auf den letzten Tag des Zielmonats gesetzt |
+| 31. Januar plus 31 Tage | **2026-03-03** | Drei Tage weiter als "ein Monat später". |
+
+#### Interpretation und Ergebnissatz
+
+"Ein Monat" ist keine Dauer, sondern eine Kalenderoperation. Wer Fristen
+rechnet (Kündigung, Garantie, Folgetermin), muss sich entscheiden, was
+gemeint ist, und es aufschreiben. Das `NA` in R ist dabei die ehrlichere
+Voreinstellung als das stille Verschieben auf den Monatsletzten, weil es zur
+Entscheidung zwingt.
+
+> Zwischen dem 5. Januar und dem 15. März 2026 liegen 69 Tage. Der 31. Januar
+> plus ein Monat ergibt den 28. Februar (in R mit `+ months(1)` ein `NA`),
+> plus 31 Tage dagegen den 3. März.
+
+### Beispiel 4: Zeitzonen und die Nacht der Umstellung
+
+#### Frage und Datenlage
+
+In der Nacht zum 29. März 2026 wird in Europa auf Sommerzeit umgestellt. Was
+zeigt ein UTC-Zeitstempel von 00:30 und einer von 01:30 in Zürich? Was
+passiert mit der Ortszeit 02:30, und wie lang ist die Spanne von 00:30 bis
+03:30 Ortszeit?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-dz-r
+t1 <- ymd_hms("2026-03-29 00:30:00", tz = "UTC")
+t2 <- ymd_hms("2026-03-29 01:30:00", tz = "UTC")
+
+with_tz(t1, "Europe/Zurich")
+with_tz(t2, "Europe/Zurich")
+
+force_tz(ymd_hms("2026-03-29 02:30:00"), "Europe/Zurich")   # gibt es nicht
+
+a <- ymd_hms("2026-03-29 00:30:00", tz = "Europe/Zurich")
+b <- ymd_hms("2026-03-29 03:30:00", tz = "Europe/Zurich")
+b - a
+```
+
+##### Python
+
+```{python}
+#| label: b4-dz-py
+t1 = pd.Timestamp("2026-03-29 00:30:00", tz="UTC")
+t2 = pd.Timestamp("2026-03-29 01:30:00", tz="UTC")
+
+print(t1.tz_convert("Europe/Zurich"))
+print(t2.tz_convert("Europe/Zurich"))
+
+try:
+    pd.Timestamp("2026-03-29 02:30:00").tz_localize("Europe/Zurich")
+except Exception as fehler:
+    print(type(fehler).__name__)
+
+a = pd.Timestamp("2026-03-29 00:30", tz="Europe/Zurich")
+b = pd.Timestamp("2026-03-29 03:30", tz="Europe/Zurich")
+print(b - a)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeitpunkt | in Zürich | Erklärung |
+|---|---|---|
+| 00:30 UTC | **01:30 +01:00** (MEZ) | vor der Umstellung |
+| 01:30 UTC | **03:30 +02:00** (MESZ) | Eine Stunde UTC später, aber zwei Stunden auf der Ortsuhr: Um 02:00 sprang sie auf 03:00. |
+| Ortszeit 02:30 festlegen | **`NonExistentTimeError`** beziehungsweise `NA` | Diese Ortszeit hat es nie gegeben. Beide Sprachen verweigern die Angabe. |
+| 00:30 bis 03:30 Ortszeit | **2 Stunden** | Auf der Uhr sind es drei, tatsächlich zwei. |
+
+#### Interpretation und Ergebnissatz
+
+Die letzte Zeile ist der Punkt, an dem Auswertungen still falsch werden: Wer
+Dauern aus Ortszeiten berechnet, bekommt zweimal im Jahr eine Stunde
+geschenkt oder gestohlen. Deshalb die Regel, intern in UTC zu rechnen und
+erst zur Anzeige umzuwandeln. Und deshalb ist es ein gutes Zeichen, wenn eine
+Bibliothek bei der nicht existierenden Ortszeit abbricht, statt etwas
+anzunehmen.
+
+> Ein UTC-Zeitstempel von 01:30 ist in Zürich bereits 03:30, während 00:30
+> UTC erst 01:30 ist. Die Ortszeit 02:30 gibt es an diesem Tag nicht, und
+> zwischen 00:30 und 03:30 Ortszeit liegen nur zwei Stunden.
+
+### Beispiel 5: Die ISO-Woche am Jahreswechsel
+
+#### Frage und Datenlage
+
+Drei Tage um den Jahreswechsel: 28. Dezember 2026, 31. Dezember 2026 und
+1. Januar 2027. In welcher ISO-Woche liegen sie, und was passiert beim
+Gruppieren nach der Wochennummer?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-dz-r
+tage <- ymd(c("2026-01-01", "2026-12-28", "2026-12-31", "2027-01-01"))
+data.frame(tag = tage, wochentag = wday(tage, week_start = 1),
+           iso_jahr = isoyear(tage), iso_woche = isoweek(tage))
+
+reihe <- data.frame(datum = ymd(c("2026-12-28", "2026-12-31", "2027-01-01")),
+                    wert  = c(1, 2, 3))
+
+tapply(reihe$wert, isoweek(reihe$datum), sum)          # nur Woche
+
+reihe |>
+  mutate(iso_jahr = isoyear(datum), iso_woche = isoweek(datum)) |>
+  summarise(.by = c(iso_jahr, iso_woche), summe = sum(wert))
+```
+
+##### Python
+
+```{python}
+#| label: b5-dz-py
+tage = pd.to_datetime(["2026-01-01", "2026-12-28", "2026-12-31", "2027-01-01"])
+iso = tage.isocalendar()
+print(pd.DataFrame({"tag": tage.strftime("%Y-%m-%d"),
+                    "wochentag": tage.day_name().str[:3],
+                    "iso_jahr": iso["year"].values,
+                    "iso_woche": iso["week"].values}).to_string(index=False))
+
+reihe = pd.DataFrame({"datum": pd.to_datetime(["2026-12-28", "2026-12-31", "2027-01-01"]),
+                      "wert": [1, 2, 3]})
+iso_r = reihe["datum"].dt.isocalendar()
+print(reihe.groupby(iso_r["week"])["wert"].sum().to_dict())
+print({f"{j}-W{w}": v for (j, w), v in
+       reihe.groupby([iso_r["year"], iso_r["week"]])["wert"].sum().items()})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Tag | Wochentag | ISO-Jahr | ISO-Woche | Erklärung |
+|---|---|---|---|---|
+| 2026-01-01 | Donnerstag | 2026 | **1** | Die ISO-Woche 1 ist die Woche mit dem ersten Donnerstag des Jahres. |
+| 2026-12-28 | Montag | 2026 | **53** | Das Jahr 2026 hat 53 ISO-Wochen. |
+| 2026-12-31 | Donnerstag | 2026 | 53 | |
+| 2027-01-01 | Freitag | **2026** | **53** | Der 1. Januar 2027 gehört zur letzten Woche des ISO-Jahres 2026. |
+
+| Gruppierung | Ergebnis | Erklärung |
+|---|---|---|
+| nur nach Woche | Woche 53: **6** | Alle drei Werte in einer Gruppe. Hier zufällig richtig, weil alle drei Tage wirklich in derselben ISO-Woche liegen. |
+| nach ISO-Jahr und Woche | (2026, 53): 6 | Dieselbe Gruppe, jetzt aber eindeutig benannt. Kämen Tage aus der Woche 53 eines anderen Jahres dazu, träfe nur diese Form die Unterscheidung. |
+
+#### Interpretation und Ergebnissatz
+
+Die Wochennummer allein ist kein Schlüssel. Über mehrere Jahre hinweg
+gruppiert sie Woche 53 aus 2020 und 2026 zusammen, und am Jahreswechsel
+gehören Tage zu einem ISO-Jahr, das nicht ihr Kalenderjahr ist. Wer nach
+Wochen auswertet, nimmt deshalb immer das Paar aus ISO-Jahr und ISO-Woche,
+oder rundet gleich auf den Wochenanfang ab.
+
+> Der 1. Januar 2027 liegt in der ISO-Woche 53 des Jahres 2026, zusammen mit
+> dem 28. und dem 31. Dezember 2026; ihre Summe beträgt 6. Nur das Paar aus
+> ISO-Jahr und Woche benennt diese Gruppe eindeutig.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Ein Datensatz enthält die Spalte `datum` als Text im Format `03.04.2026`, und
 der Import hat sie automatisch umgewandelt. Warum ist das ein Risiko?
 
-- [ ] Kein Risiko, die Erkennung ist zuverlässig ~ Sie ist es genau dann nicht,
-      wenn beide Lesarten möglich sind.
+- [ ] Kein Risiko, die Erkennung ist zuverlässig ~ Sie ist es genau dann
+      nicht, wenn beide Lesarten möglich sind.
 - [x] Bei Tageszahlen bis zwölf sind Tag und Monat vertauschbar ~ Richtig.
-      `03.04.2026` kann der 3. April oder der 4. März sein. Die automatische
-      Erkennung wählt eine Lesart, oft je nach Spracheinstellung, und der Fehler
-      fällt erst bei einer Auswertung nach Monat auf.
-- [ ] Weil Text grundsätzlich nicht umgewandelt werden darf ~ Umgewandelt gehört
-      er unbedingt, nur mit ausdrücklichem Format.
+      `03.04.2026` kann der 3. April oder der 4. März sein, wie Beispiel 1
+      zeigt. Die Erkennung wählt eine Lesart, oft je nach Spracheinstellung.
+- [ ] Weil Text grundsätzlich nicht umgewandelt werden darf ~ Umgewandelt
+      gehört er unbedingt, nur mit ausdrücklichem Format.
 :::
 
 ::: {.quiz}
 Eine Auswertung gruppiert Umsätze nach dem Monatsnamen, den sie aus dem Datum
 gebildet hat. Was geht dabei schief?
 
-- [x] Gleiche Monate verschiedener Jahre landen in derselben Gruppe ~ Richtig.
-      Der Name enthält das Jahr nicht mehr. Richtig ist, auf den Monatsanfang
-      abzurunden oder Jahr und Monat gemeinsam zu gruppieren.
-- [ ] Die Sortierung wird alphabetisch ~ Das passiert zusätzlich, ist aber nur
-      ein Darstellungsproblem.
+- [x] Gleiche Monate verschiedener Jahre landen in derselben Gruppe ~
+      Richtig, wie die Januarsumme 60 in Beispiel 2. Richtig ist, auf den
+      Monatsanfang abzurunden oder Jahr und Monat gemeinsam zu gruppieren.
+- [ ] Die Sortierung wird alphabetisch ~ Das passiert zusätzlich, ist aber
+      nur ein Darstellungsproblem.
 - [ ] Nichts, das ist der übliche Weg ~ Er ist üblich und trotzdem falsch,
       sobald mehr als ein Jahr in den Daten steckt.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+Eine Frist läuft "einen Monat" ab dem 31. Januar. Welches Ergebnis ist zu
+erwarten?
 
-**Beim Import direkt umwandeln**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-readr::read_csv("daten.csv", col_types = readr::cols(
-  datum = readr::col_date(format = "%d.%m.%Y")
-))
-```
-
-## Python
-
-```python
-pd.read_csv("daten.csv", parse_dates=["datum"], dayfirst=True)
-```
-
+- [x] Der 28. Februar, sofern die Bibliothek auf den Monatsletzten setzt ~
+      Richtig, mit `%m+%` beziehungsweise `DateOffset`. R liefert mit dem
+      gewöhnlichen `+ months(1)` stattdessen `NA`, weil es den 31. Februar
+      nicht gibt.
+- [ ] Der 3. März, also 31 Tage später ~ Das wäre "plus 31 Tage", eine andere
+      Rechnung.
+- [ ] Ein Fehler, weil Monate keine feste Länge haben ~ Genau deshalb gibt es
+      eigene Operatoren dafür.
 :::
 
-**Nach Monat oder Woche zusammenfassen**
+::: {.quiz}
+Eine Auswertung berechnet Arbeitsdauern als Differenz zweier Ortszeiten. In
+der Nacht der Zeitumstellung ist eine Schicht um eine Stunde zu lang. Was ist
+die Ursache?
 
-::: {.panel-tabset}
-
-## R
-
-```r
-df |>
-  dplyr::mutate(monat = lubridate::floor_date(datum, "month")) |>
-  dplyr::summarise(summe = sum(umsatz), .by = monat)
-```
-
-## Python
-
-```python
-df.groupby(df["datum"].dt.to_period("M"))["umsatz"].sum()
-```
-
+- [x] Zwischen 00:30 und 03:30 Ortszeit liegen an diesem Tag nur zwei Stunden
+      ~ Richtig. Die Ortsuhr sprang von 02:00 auf 03:00. Wer in UTC rechnet
+      und erst zur Anzeige umwandelt, hat das Problem nicht.
+- [ ] Die Zeitzone war falsch eingestellt ~ Auch mit richtiger Zone gilt der
+      Sprung.
+- [ ] Es ist ein Rundungsfehler ~ Es geht um eine ganze Stunde.
 :::
 
-**Eine Zeitachse ohne Lücken erzeugen**
+::: {.quiz}
+Eine Wochenauswertung über drei Jahre gruppiert nach `isoweek()`
+beziehungsweise `.dt.isocalendar().week`. Was fehlt?
 
-::: {.panel-tabset}
-
-## R
-
-```r
-seq(as.Date("2026-01-01"), as.Date("2026-12-31"), by = "day")
-```
-
-## Python
-
-```python
-pd.date_range("2026-01-01", "2026-12-31", freq="D")
-```
-
-:::
-
-**Alter oder Dauer in Jahren berechnen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-as.numeric(lubridate::interval(geburtstag, Sys.Date()) / lubridate::years(1))
-```
-
-## Python
-
-```python
-(pd.Timestamp.today() - geburtstag).dt.days / 365.25
-```
-
-:::
-
-**Unix-Zeitstempel umwandeln**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-as.POSIXct(1767225600, origin = "1970-01-01", tz = "UTC")
-```
-
-## Python
-
-```python
-pd.to_datetime(1767225600, unit="s", utc=True)
-```
-
-:::
-
-**Für die Ausgabe formatieren**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-format(datum, "%d.%m.%Y")
-```
-
-## Python
-
-```python
-datum.dt.strftime("%d.%m.%Y")
-```
-
+- [x] Das ISO-Jahr; sonst fällt Woche 53 aus mehreren Jahren zusammen ~
+      Richtig. Dazu kommt, dass der 1. Januar 2027 zur Woche 53 des ISO-Jahres
+      2026 gehört, wie Beispiel 5 zeigt.
+- [ ] Nichts, die Wochennummer ist eindeutig ~ Sie wiederholt sich jedes
+      Jahr.
+- [ ] Der Wochentag ~ Für eine Wochengruppierung ist er nicht nötig.
 :::
 
 ## Verlinkte Ressourcen
 
-- [lubridate: Referenz](https://lubridate.tidyverse.org/)
+- [lubridate: Datum und Zeit in R](https://lubridate.tidyverse.org/)
 - [pandas: Zeitreihen und Datumsfunktionen](https://pandas.pydata.org/docs/user_guide/timeseries.html)
-- [Liste der Zeitzonennamen](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+- [ISO 8601, Wochennummerierung](https://www.iso.org/iso-8601-date-and-time-format.html)
