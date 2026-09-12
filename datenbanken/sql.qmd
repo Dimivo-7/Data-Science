@@ -18,56 +18,56 @@ library(RSQLite)
 # wirklich; die Ausgaben sind keine abgeschriebenen Beispiele.
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
 
-dbExecute(con, "
+invisible(dbExecute(con, "
   CREATE TABLE artikel (
-    artikel_id INTEGER PRIMARY KEY,
+    artikel_id  INTEGER PRIMARY KEY,
     bezeichnung TEXT NOT NULL,
-    kategorie   TEXT NOT NULL
-  )")
+    kategorie   TEXT NOT NULL,
+    rabatt      REAL)"))
 
-dbExecute(con, "
+invisible(dbExecute(con, "
   CREATE TABLE bestellung (
     bestell_id INTEGER PRIMARY KEY,
     artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
     datum      TEXT NOT NULL,
     menge      INTEGER NOT NULL,
-    betrag     REAL NOT NULL
-  )")
+    betrag     REAL NOT NULL)"))
 
-dbExecute(con, "INSERT INTO artikel VALUES
-  (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
-  (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
-  (5,'Sensor induktiv','Elektronik')")
+invisible(dbExecute(con, "INSERT INTO artikel VALUES
+  (1,'Ventil 3/8','Pneumatik',5.0), (2,'Zylinder 40','Pneumatik',NULL),
+  (3,'Kugellager 608','Mechanik',2.5), (4,'Dichtring','Mechanik',NULL),
+  (5,'Sensor induktiv','Elektronik',10.0), (6,'Schlauch 8mm','Pneumatik',NULL)"))
 
-dbExecute(con, "INSERT INTO bestellung VALUES
+invisible(dbExecute(con, "INSERT INTO bestellung VALUES
   (1,1,'2026-01-14',10, 240.0), (2,1,'2026-02-03',25, 600.0),
   (3,2,'2026-01-22', 4, 512.0), (4,3,'2026-02-11',100, 350.0),
   (5,3,'2026-03-02', 60, 210.0), (6,4,'2026-01-30',200, 180.0),
   (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
-  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
+  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)"))
 
+frage <- function(sql) knitr::kable(dbGetQuery(con, sql))
 ```
 
 ```{python}
 #| label: setup-python
 #| include: false
 import sqlite3
+
 import pandas as pd
 
 verbindung = sqlite3.connect(":memory:")
 verbindung.executescript("""
   CREATE TABLE artikel (
-    artikel_id INTEGER PRIMARY KEY,
-    bezeichnung TEXT NOT NULL,
-    kategorie   TEXT NOT NULL);
+    artikel_id INTEGER PRIMARY KEY, bezeichnung TEXT NOT NULL,
+    kategorie TEXT NOT NULL, rabatt REAL);
   CREATE TABLE bestellung (
     bestell_id INTEGER PRIMARY KEY,
     artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
     datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
   INSERT INTO artikel VALUES
-    (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
-    (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
-    (5,'Sensor induktiv','Elektronik');
+    (1,'Ventil 3/8','Pneumatik',5.0), (2,'Zylinder 40','Pneumatik',NULL),
+    (3,'Kugellager 608','Mechanik',2.5), (4,'Dichtring','Mechanik',NULL),
+    (5,'Sensor induktiv','Elektronik',10.0), (6,'Schlauch 8mm','Pneumatik',NULL);
   INSERT INTO bestellung VALUES
     (1,1,'2026-01-14',10,240.0), (2,1,'2026-02-03',25,600.0),
     (3,2,'2026-01-22',4,512.0), (4,3,'2026-02-11',100,350.0),
@@ -76,15 +76,23 @@ verbindung.executescript("""
     (9,2,'2026-03-15',2,256.0), (10,1,'2026-03-20',15,360.0);
 """)
 verbindung.commit()
+
+
+def frage(sql):
+    return pd.read_sql_query(sql, verbindung)
 ```
 
 ## Kernideen
 
-- `SELECT`, `WHERE`, `JOIN`, `GROUP BY`, `HAVING`, `ORDER BY`
-- Die Auswertungsreihenfolge weicht von der Schreibreihenfolge ab
-- `WHERE` filtert Zeilen, `HAVING` filtert Gruppen
-- Ein Join verbindet über Schlüssel, die Art des Joins entscheidet über Verluste
-- Aggregate ohne `GROUP BY` fassen die ganze Tabelle zusammen
+- SQL ist **deklarativ**: Man beschreibt das Ergebnis, nicht den Weg dorthin.
+- Die **Auswertungsreihenfolge** weicht von der Schreibreihenfolge ab. Deshalb
+  filtert `WHERE` Zeilen **vor** der Gruppierung und `HAVING` Gruppen danach.
+- Ein **`INNER JOIN`** verliert, was keinen Partner hat; ein **`LEFT JOIN`**
+  behält es und füllt mit `NULL`.
+- **`NULL` ist kein Wert, sondern das Fehlen eines Werts.** Jeder Vergleich
+  damit ergibt weder wahr noch falsch, und das verändert Ergebnisse still.
+- `COUNT(*)` zählt Zeilen, `COUNT(spalte)` zählt **vorhandene Werte**.
+- **Fensterfunktionen** rechnen je Gruppe, ohne die Zeilen zusammenzufassen.
 
 ## Erklärung
 
@@ -92,73 +100,19 @@ verbindung.commit()
 **Vorwissen:** [Datenmodellierung](datenmodellierung.qmd) für Schlüssel und
 Beziehungen. Wer [Data Wrangling](../daten/data-wrangling.qmd) oder
 [pandas](../programmierung/pandas.qmd) kennt, findet dieselben Operationen
-wieder: `WHERE` ist `filter`, `GROUP BY` ist `groupby`, `JOIN` ist `merge`. Die
-Abfragen dieser Seite laufen beim Bauen der Website gegen eine echte
-SQLite-Datenbank.
+wieder: `WHERE` ist `filter`, `GROUP BY` ist `groupby`, `JOIN` ist `merge`,
+und `SUM() OVER (PARTITION BY ...)` ist `transform`. Wie man Abfragen aus R
+oder Python absetzt, steht unter [Datenbankzugriff](datenbanken-zugriff.qmd).
 :::
 
-### Abfragen
+### Die Daten dieser Seite
 
-SQL ist deklarativ. Man beschreibt das gewünschte Ergebnis, nicht den Weg
-dorthin.
-
-Die folgenden Abfragen laufen beim Bauen der Seite gegen die Beispieldatenbank;
-unter jedem Block steht das tatsächliche Ergebnis. Wie man dieselbe Abfrage aus
-R oder Python absetzt, steht unter
-[Datenbankzugriff](datenbanken-zugriff.qmd).
-
-```sql
-SELECT bezeichnung, kategorie
-FROM artikel
-WHERE kategorie = 'Pneumatik'
-```
-
-```{r}
-#| label: select-sql
-#| echo: false
-knitr::kable(dbGetQuery(con, "SELECT bezeichnung, kategorie FROM artikel WHERE kategorie = 'Pneumatik'"))
-```
-
-Verbinden zweier Tabellen über den Schlüssel:
-
-```sql
-SELECT b.datum, a.bezeichnung, b.menge, b.betrag
-FROM bestellung b
-JOIN artikel a ON a.artikel_id = b.artikel_id
-ORDER BY b.datum
-LIMIT 5
-```
-
-```{r}
-#| label: join-sql
-#| echo: false
-knitr::kable(dbGetQuery(con, "SELECT b.datum, a.bezeichnung, b.menge, b.betrag FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id ORDER BY b.datum LIMIT 5"))
-```
-
-Gruppieren und zusammenfassen, mit einer Bedingung auf dem Aggregat:
-
-```sql
-SELECT a.kategorie,
-       COUNT(*)                AS anzahl,
-       SUM(b.betrag)           AS umsatz,
-       ROUND(AVG(b.betrag), 2) AS mittel
-FROM bestellung b
-JOIN artikel a ON a.artikel_id = b.artikel_id
-GROUP BY a.kategorie
-HAVING COUNT(*) >= 2
-ORDER BY umsatz DESC
-```
-
-```{r}
-#| label: groupby-sql
-#| echo: false
-knitr::kable(dbGetQuery(con, "SELECT a.kategorie,        COUNT(*)                AS anzahl,        SUM(b.betrag)           AS umsatz,        ROUND(AVG(b.betrag), 2) AS mittel FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id GROUP BY a.kategorie HAVING COUNT(*) >= 2 ORDER BY umsatz DESC"))
-```
+Zwei Tabellen in einer SQLite-Datenbank, die beim Bauen der Seite entsteht:
+**sechs Artikel** (mit Kategorie und einem Rabatt, der bei drei Artikeln
+fehlt) und **zehn Bestellungen**. Ein Artikel, der Schlauch, wurde nie
+bestellt. Alle Ausgaben sind echte Abfrageergebnisse.
 
 ### Die Auswertungsreihenfolge
-
-Sie erklärt die häufigste Verwirrung von Einsteigern, nämlich warum sich ein
-Aggregat nicht in `WHERE` prüfen lässt:
 
 | Reihenfolge | Klausel | was passiert |
 |---|---|---|
@@ -168,122 +122,548 @@ Aggregat nicht in `WHERE` prüfen lässt:
 | 4 | `HAVING` | Gruppen filtern |
 | 5 | `SELECT` | Spalten auswählen und berechnen |
 | 6 | `ORDER BY` | sortieren |
+| 7 | `LIMIT` | abschneiden |
 
-`WHERE` läuft, bevor gruppiert wurde, und kennt die Summe deshalb noch nicht.
-`HAVING` läuft danach.
+Daraus folgt die häufigste Verwirrung: `WHERE SUM(betrag) > 500` ist nicht
+möglich, weil zum Zeitpunkt von `WHERE` noch nicht gruppiert wurde. Ebenso
+lässt sich ein in `SELECT` vergebener Aliasname in `WHERE` nicht verwenden,
+in `ORDER BY` dagegen schon.
+
+### Die Join-Arten
+
+| Join | behält | typischer Einsatz |
+|---|---|---|
+| `INNER JOIN` | nur Paare, die auf beiden Seiten passen | Bestellungen mit ihren Artikeln |
+| `LEFT JOIN` | alle Zeilen links, rechts `NULL` wenn nichts passt | alle Artikel, auch nie bestellte |
+| `FULL OUTER JOIN` | alles von beiden Seiten | Abgleich zweier Quellen |
+| `CROSS JOIN` | jede Kombination | Kalender mal Standorte als Gerüst |
+
+### NULL: die dritte Wahrheit
+
+Ein Vergleich mit `NULL` ergibt nicht wahr und nicht falsch, sondern
+**unbekannt**, und `WHERE` behält nur Zeilen, deren Bedingung wahr ist.
+
+| Ausdruck | Ergebnis | Folge |
+|---|---|---|
+| `rabatt = NULL` | unbekannt | findet **nie** etwas; richtig ist `IS NULL` |
+| `rabatt <> 5` | unbekannt, wenn `rabatt` fehlt | die Zeilen fehlen im Ergebnis |
+| `COUNT(rabatt)` | zählt nur vorhandene | weniger als `COUNT(*)` |
+| `AVG(rabatt)` | ignoriert fehlende | Nenner ist die Anzahl der vorhandenen |
+| `NOT IN (Unterabfrage mit NULL)` | nie wahr | liefert **gar nichts**; `NOT EXISTS` verwenden |
+| `COALESCE(rabatt, 0)` | Ersatzwert | macht die Annahme sichtbar |
+
+### Kurz nachgeschlagen
+
+| Aufgabe | SQL |
+|---|---|
+| filtern und sortieren | `WHERE ... ORDER BY ... LIMIT 10` |
+| Gruppen bilden und filtern | `GROUP BY kategorie HAVING COUNT(*) >= 3` |
+| verbinden | `JOIN artikel a ON a.artikel_id = b.artikel_id` |
+| fehlende Werte | `IS NULL`, `COALESCE(x, 0)` |
+| Fallunterscheidung | `CASE WHEN betrag > 500 THEN 'gross' ELSE 'klein' END` |
+| Zwischenergebnis benennen | `WITH umsatz AS (...) SELECT ... FROM umsatz` |
+| Anteil an der Gruppe | `SUM(x) OVER (PARTITION BY kategorie)` |
+| Rangfolge | `ROW_NUMBER() OVER (ORDER BY betrag DESC)` |
+| Duplikate finden | `GROUP BY schluessel HAVING COUNT(*) > 1` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Auswählen, filtern, sortieren
+
+#### Frage und Datenlage
+
+Welche Artikel gehören zur Kategorie Pneumatik, und wie gross sind die beiden
+Tabellen?
 
 ```sql
--- WHERE filtert einzelne Zeilen, und zwar vor der Gruppierung
-SELECT a.kategorie, SUM(b.betrag) AS umsatz
+SELECT bezeichnung, kategorie
+FROM artikel
+WHERE kategorie = 'Pneumatik'
+ORDER BY bezeichnung
+```
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-sq-r
+frage("SELECT bezeichnung, kategorie FROM artikel
+       WHERE kategorie = 'Pneumatik' ORDER BY bezeichnung")
+
+frage("SELECT COUNT(*) AS artikel,
+              (SELECT COUNT(*) FROM bestellung) AS bestellungen
+       FROM artikel")
+```
+
+##### Python
+
+```{python}
+#| label: b1-sq-py
+print(frage("""SELECT bezeichnung, kategorie FROM artikel
+               WHERE kategorie = 'Pneumatik' ORDER BY bezeichnung"""
+            ).to_string(index=False))
+
+print(frage("""SELECT COUNT(*) AS artikel,
+                      (SELECT COUNT(*) FROM bestellung) AS bestellungen
+               FROM artikel""").to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ergebnis | Wert | Erklärung |
+|---|---|---|
+| Pneumatik-Artikel | **Schlauch 8mm, Ventil 3/8, Zylinder 40** | `ORDER BY` sortiert nach Text, deshalb steht der Schlauch vorn. |
+| Artikel insgesamt | **6** | |
+| Bestellungen | **10** | Die Unterabfrage in `SELECT` liefert genau einen Wert und darf deshalb dort stehen. |
+
+R und Python setzen dieselbe Abfrage ab und bekommen dasselbe Ergebnis; die
+Arbeit macht die Datenbank. Der Unterschied liegt nur in der Verpackung,
+`dbGetQuery` gegen `pd.read_sql_query`.
+
+#### Interpretation und Ergebnissatz
+
+Die Abfrage beschreibt, **was** gewünscht ist. Wie die Datenbank es holt
+(Index, Reihenfolge der Tabellen, Verfahren beim Verbinden), entscheidet sie
+selbst. Deshalb sieht dieselbe Abfrage auf zehn wie auf zehn Millionen Zeilen
+gleich aus.
+
+> Drei der sechs Artikel gehören zur Kategorie Pneumatik, und zu den sechs
+> Artikeln gibt es zehn Bestellungen.
+
+### Beispiel 2: INNER JOIN gegen LEFT JOIN
+
+#### Frage und Datenlage
+
+Der Schlauch wurde nie bestellt. Wie viele Zeilen liefert ein Join über
+beide Tabellen, und welcher Join zeigt den nie bestellten Artikel?
+
+```sql
+SELECT a.bezeichnung, COUNT(b.bestell_id) AS anzahl,
+       COALESCE(SUM(b.betrag), 0) AS umsatz
+FROM artikel a
+LEFT JOIN bestellung b ON a.artikel_id = b.artikel_id
+GROUP BY a.artikel_id
+ORDER BY umsatz
+```
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-sq-r
+frage("SELECT COUNT(*) AS inner_join FROM bestellung b
+       JOIN artikel a ON a.artikel_id = b.artikel_id")
+
+frage("SELECT COUNT(*) AS left_join FROM artikel a
+       LEFT JOIN bestellung b ON a.artikel_id = b.artikel_id")
+
+frage("SELECT a.bezeichnung, COUNT(b.bestell_id) AS anzahl,
+              COALESCE(SUM(b.betrag), 0) AS umsatz
+       FROM artikel a
+       LEFT JOIN bestellung b ON a.artikel_id = b.artikel_id
+       GROUP BY a.artikel_id ORDER BY umsatz")
+```
+
+##### Python
+
+```{python}
+#| label: b2-sq-py
+print(len(frage("""SELECT * FROM bestellung b
+                   JOIN artikel a ON a.artikel_id = b.artikel_id""")))
+print(len(frage("""SELECT * FROM artikel a
+                   LEFT JOIN bestellung b ON a.artikel_id = b.artikel_id""")))
+
+print(frage("""SELECT a.bezeichnung, COUNT(b.bestell_id) AS anzahl,
+                      COALESCE(SUM(b.betrag), 0) AS umsatz
+               FROM artikel a
+               LEFT JOIN bestellung b ON a.artikel_id = b.artikel_id
+               GROUP BY a.artikel_id ORDER BY umsatz""").to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Abfrage | Zeilen | Erklärung |
+|---|---|---|
+| `INNER JOIN` | **10** | so viele wie Bestellungen; der Schlauch fehlt. |
+| `LEFT JOIN` von `artikel` aus | **11** | zehn Bestellungen plus eine Zeile für den Schlauch mit `NULL`. |
+
+| Artikel | Bestellungen | Umsatz | Erklärung |
+|---|---|---|---|
+| Schlauch 8mm | **0** | **0.0** | `COUNT(b.bestell_id)` zählt nur vorhandene Werte und ergibt deshalb 0, während `COUNT(*)` hier 1 ergäbe. `COALESCE` macht aus dem `NULL` der Summe eine 0. |
+| Dichtring | 1 | 180.0 | |
+| Kugellager 608 | 2 | 560.0 | |
+| Zylinder 40 | 2 | 768.0 | |
+| Ventil 3/8 | 3 | 1200.0 | |
+| Sensor induktiv | 2 | 2400.0 | der umsatzstärkste Artikel bei nur zwei Bestellungen |
+
+#### Interpretation und Ergebnissatz
+
+Der Unterschied zwischen 10 und 11 Zeilen ist die ganze Geschichte: Ein
+`INNER JOIN` beantwortet "was wurde bestellt", ein `LEFT JOIN` "wie steht es
+um jeden Artikel". Für eine Auswertung über das Sortiment ist der zweite
+richtig, sonst fehlen genau die Artikel, die am meisten zu erzählen hätten,
+nämlich die mit null Bestellungen. Der Unterschied zwischen `COUNT(*)` und
+`COUNT(spalte)` ist dabei entscheidend, sonst steht beim Schlauch eine 1.
+
+> Der `INNER JOIN` liefert zehn Zeilen, der `LEFT JOIN` elf: Der nie
+> bestellte Schlauch erscheint nur im zweiten, mit null Bestellungen und
+> einem Umsatz von 0.
+
+### Beispiel 3: Gruppieren, WHERE und HAVING
+
+#### Frage und Datenlage
+
+Umsatz je Kategorie, danach nur Kategorien mit mindestens drei Bestellungen,
+und schliesslich nur Bestellungen ab Februar.
+
+```sql
+SELECT a.kategorie, COUNT(*) AS anzahl, SUM(b.betrag) AS umsatz,
+       ROUND(AVG(b.betrag), 2) AS mittel
 FROM bestellung b
 JOIN artikel a ON a.artikel_id = b.artikel_id
-WHERE b.datum >= '2026-02-01'
 GROUP BY a.kategorie
 ORDER BY umsatz DESC
 ```
 
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
 ```{r}
-#| label: reihenfolge-sql
-#| echo: false
-knitr::kable(dbGetQuery(con, "SELECT a.kategorie, SUM(b.betrag) AS umsatz FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id WHERE b.datum >= '2026-02-01' GROUP BY a.kategorie ORDER BY umsatz DESC"))
+#| label: b3-sq-r
+frage("SELECT a.kategorie, COUNT(*) AS anzahl, SUM(b.betrag) AS umsatz,
+              ROUND(AVG(b.betrag), 2) AS mittel
+       FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+       GROUP BY a.kategorie ORDER BY umsatz DESC")
+
+frage("SELECT a.kategorie, COUNT(*) AS anzahl, SUM(b.betrag) AS umsatz
+       FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+       GROUP BY a.kategorie HAVING COUNT(*) >= 3 ORDER BY umsatz DESC")
+
+frage("SELECT a.kategorie, SUM(b.betrag) AS umsatz
+       FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+       WHERE b.datum >= '2026-02-01'
+       GROUP BY a.kategorie ORDER BY umsatz DESC")
 ```
+
+##### Python
+
+```{python}
+#| label: b3-sq-py
+print(frage("""SELECT a.kategorie, COUNT(*) AS anzahl, SUM(b.betrag) AS umsatz,
+                      ROUND(AVG(b.betrag), 2) AS mittel
+               FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+               GROUP BY a.kategorie ORDER BY umsatz DESC""").to_string(index=False))
+
+print(frage("""SELECT a.kategorie, COUNT(*) AS anzahl, SUM(b.betrag) AS umsatz
+               FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+               GROUP BY a.kategorie HAVING COUNT(*) >= 3
+               ORDER BY umsatz DESC""").to_string(index=False))
+
+print(frage("""SELECT a.kategorie, SUM(b.betrag) AS umsatz
+               FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+               WHERE b.datum >= '2026-02-01'
+               GROUP BY a.kategorie ORDER BY umsatz DESC""").to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Kategorie | Bestellungen | Umsatz | Mittel | Erklärung |
+|---|---|---|---|---|
+| Elektronik | 2 | **2400.0** | 1200.00 | wenige, aber grosse Bestellungen |
+| Pneumatik | 5 | 1968.0 | 393.60 | viele kleine |
+| Mechanik | 3 | 740.0 | 246.67 | |
+
+| Zusatz | Ergebnis | Erklärung |
+|---|---|---|
+| `HAVING COUNT(*) >= 3` | nur **Pneumatik (1968.0)** und **Mechanik (740.0)** | Elektronik fällt mit zwei Bestellungen heraus, obwohl es der grösste Umsatz ist. `HAVING` filtert **Gruppen**. |
+| `WHERE datum >= '2026-02-01'` | Elektronik 2400.0, Pneumatik **1216.0**, Mechanik **560.0** | `WHERE` filtert **Zeilen** vor der Gruppierung: Die Januarbestellungen fehlen in den Summen. Elektronik bleibt unverändert, weil dort beide Bestellungen später liegen. |
+
+Das Datum steht hier als Text `JJJJ-MM-TT`. Dieses Format sortiert und
+vergleicht sich richtig, weshalb der Textvergleich `>= '2026-02-01'`
+funktioniert. Bei jedem anderen Format wäre es falsch, siehe
+[Datum und Zeit](../daten/datum-zeit.qmd).
+
+#### Interpretation und Ergebnissatz
+
+Beide Filter verkleinern das Ergebnis und meinen Verschiedenes. `WHERE` sagt
+"diese Zeilen interessieren mich", `HAVING` sagt "diese Gruppen interessieren
+mich". Wer eine Bedingung an der falschen Stelle setzt, bekommt ein
+plausibles, aber anderes Ergebnis: hier einmal 1968.0 und einmal 1216.0 für
+dieselbe Kategorie.
+
+> Elektronik führt mit 2400.0 Umsatz aus nur zwei Bestellungen, Pneumatik
+> folgt mit 1968.0 aus fünf. Mit `HAVING COUNT(*) >= 3` fällt Elektronik
+> heraus; mit `WHERE` ab Februar sinkt Pneumatik auf 1216.0.
+
+### Beispiel 4: NULL ist kein Wert
+
+#### Frage und Datenlage
+
+Bei drei der sechs Artikel fehlt der Rabatt. Was zählen `COUNT(*)` und
+`COUNT(rabatt)`, was findet `WHERE rabatt <> 5.0`, und was liefert ein
+`NOT IN` mit einem `NULL` in der Unterabfrage?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-sq-r
+frage("SELECT COUNT(*) AS zeilen, COUNT(rabatt) AS mit_rabatt,
+              ROUND(AVG(rabatt), 4) AS mittel FROM artikel")
+
+frage("SELECT
+         (SELECT COUNT(*) FROM artikel WHERE rabatt = NULL)    AS gleich_null,
+         (SELECT COUNT(*) FROM artikel WHERE rabatt IS NULL)   AS ist_null,
+         (SELECT COUNT(*) FROM artikel WHERE rabatt <> 5.0)    AS ungleich_5")
+
+frage("SELECT bezeichnung FROM artikel
+       WHERE artikel_id NOT IN (SELECT artikel_id FROM bestellung)")
+
+# Dieselbe Frage, aber ein NULL in der Unterabfrage
+frage("SELECT COUNT(*) AS treffer FROM artikel
+       WHERE artikel_id NOT IN
+         (SELECT CASE WHEN artikel_id = 1 THEN NULL ELSE artikel_id END
+          FROM bestellung)")
+```
+
+##### Python
+
+```{python}
+#| label: b4-sq-py
+print(frage("""SELECT COUNT(*) AS zeilen, COUNT(rabatt) AS mit_rabatt,
+                      ROUND(AVG(rabatt), 4) AS mittel FROM artikel"""
+            ).to_string(index=False))
+
+print(frage("""SELECT
+         (SELECT COUNT(*) FROM artikel WHERE rabatt = NULL)  AS gleich_null,
+         (SELECT COUNT(*) FROM artikel WHERE rabatt IS NULL) AS ist_null,
+         (SELECT COUNT(*) FROM artikel WHERE rabatt <> 5.0)  AS ungleich_5"""
+            ).to_string(index=False))
+
+print(frage("""SELECT bezeichnung FROM artikel
+               WHERE artikel_id NOT IN (SELECT artikel_id FROM bestellung)"""
+            ).to_string(index=False))
+
+print(len(frage("""SELECT bezeichnung FROM artikel WHERE artikel_id NOT IN
+                   (SELECT CASE WHEN artikel_id = 1 THEN NULL ELSE artikel_id END
+                    FROM bestellung)""")))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Abfrage | Ergebnis | Erklärung |
+|---|---|---|
+| `COUNT(*)` | **6** | alle Zeilen |
+| `COUNT(rabatt)` | **3** | nur die Zeilen mit einem Wert |
+| `AVG(rabatt)` | **5.8333** | (5.0 + 2.5 + 10.0) / **3**, nicht durch 6. Der Nenner ist die Anzahl der vorhandenen Werte. |
+| `WHERE rabatt = NULL` | **0** Treffer | Der Vergleich ist nie wahr, auch nicht für die fehlenden. |
+| `WHERE rabatt IS NULL` | **3** | So fragt man nach dem Fehlen. |
+| `WHERE rabatt <> 5.0` | **2** statt 5 | Die drei Zeilen ohne Rabatt fehlen: Für sie ist die Bedingung unbekannt, nicht wahr. |
+| `NOT IN` ohne `NULL` | **Schlauch 8mm** | der nie bestellte Artikel |
+| `NOT IN` mit einem `NULL` | **0 Zeilen** | Sobald die Unterabfrage ein `NULL` enthält, ist `NOT IN` nie wahr. Das Ergebnis ist leer, ohne Fehlermeldung. |
+
+#### Interpretation und Ergebnissatz
+
+Die Zeile `WHERE rabatt <> 5.0` ist der Fall, der in Auswertungen am
+häufigsten schadet: Sie sieht aus wie "alle ausser den Fünfern" und liefert
+"alle ausser den Fünfern und ausser allen, bei denen der Rabatt fehlt".
+Richtig wäre `WHERE rabatt IS NULL OR rabatt <> 5.0`. Beim `NOT IN` ist die
+Falle noch stiller, weil das Ergebnis nicht falsch, sondern leer ist;
+`NOT EXISTS` verhält sich dort wie erwartet.
+
+> Von sechs Artikeln haben drei einen Rabatt, ihr Mittel beträgt 5.8333.
+> `WHERE rabatt <> 5.0` findet nur zwei Artikel statt fünf, und ein `NOT IN`
+> mit einem `NULL` in der Unterabfrage liefert gar keine Zeile.
+
+### Beispiel 5: Zwischenergebnis benennen und Fensterfunktion
+
+#### Frage und Datenlage
+
+Umsatz je Artikel, und wie viel Prozent davon auf die jeweilige Kategorie
+entfallen. Ohne die Zeilen zusammenzufassen.
+
+```sql
+WITH je_artikel AS (
+  SELECT artikel_id, SUM(betrag) AS summe
+  FROM bestellung
+  GROUP BY artikel_id
+)
+SELECT a.bezeichnung, a.kategorie, j.summe,
+       ROUND(100.0 * j.summe / SUM(j.summe) OVER (PARTITION BY a.kategorie), 1)
+         AS anteil_kat
+FROM je_artikel j
+JOIN artikel a ON a.artikel_id = j.artikel_id
+ORDER BY a.kategorie, j.summe DESC
+```
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-sq-r
+frage("WITH je_artikel AS (
+         SELECT artikel_id, SUM(betrag) AS summe FROM bestellung
+         GROUP BY artikel_id)
+       SELECT a.bezeichnung, a.kategorie, j.summe,
+              ROUND(100.0 * j.summe /
+                    SUM(j.summe) OVER (PARTITION BY a.kategorie), 1) AS anteil_kat
+       FROM je_artikel j JOIN artikel a ON a.artikel_id = j.artikel_id
+       ORDER BY a.kategorie, j.summe DESC")
+```
+
+##### Python
+
+```{python}
+#| label: b5-sq-py
+print(frage("""WITH je_artikel AS (
+                 SELECT artikel_id, SUM(betrag) AS summe FROM bestellung
+                 GROUP BY artikel_id)
+               SELECT a.bezeichnung, a.kategorie, j.summe,
+                      ROUND(100.0 * j.summe /
+                            SUM(j.summe) OVER (PARTITION BY a.kategorie), 1)
+                        AS anteil_kat
+               FROM je_artikel j JOIN artikel a ON a.artikel_id = j.artikel_id
+               ORDER BY a.kategorie, j.summe DESC""").to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Artikel | Kategorie | Umsatz | Anteil an der Kategorie |
+|---|---|---|---|
+| Sensor induktiv | Elektronik | 2400.0 | **100.0** Prozent |
+| Kugellager 608 | Mechanik | 560.0 | **75.7** Prozent |
+| Dichtring | Mechanik | 180.0 | 24.3 Prozent |
+| Ventil 3/8 | Pneumatik | 1200.0 | **61.0** Prozent |
+| Zylinder 40 | Pneumatik | 768.0 | 39.0 Prozent |
+
+| Baustein | Wirkung |
+|---|---|
+| `WITH je_artikel AS (...)` | benennt das Zwischenergebnis, statt es zu verschachteln. Es liest sich von oben nach unten wie eine Pipe. |
+| `SUM(j.summe) OVER (PARTITION BY a.kategorie)` | die Kategoriesumme **in jeder Zeile**, ohne zu gruppieren |
+| `100.0 *` | erzwingt Gleitkommadivision; mit `100 *` würde SQLite ganzzahlig rechnen |
+| fehlender Schlauch | Er taucht nicht auf, weil `je_artikel` nur Artikel mit Bestellungen enthält. |
+
+#### Interpretation und Ergebnissatz
+
+Die Fensterfunktion ist in SQL das, was `transform` in pandas und
+`mutate(.by = ...)` in dplyr sind: ein Gruppenwert, der bei den Einzelzeilen
+bleibt. Ohne sie bräuchte es eine zweite Abfrage und einen Join auf die
+Kategoriesummen. Das Ergebnis zeigt zugleich eine Abhängigkeit, die in der
+Kategorie-Auswertung aus Beispiel 3 unsichtbar war: Der gesamte
+Elektronikumsatz hängt an einem einzigen Artikel.
+
+> Der Sensor macht 100 Prozent des Elektronikumsatzes aus, das Kugellager
+> 75.7 Prozent der Mechanik und das Ventil 61.0 Prozent der Pneumatik. Der nie
+> bestellte Schlauch fehlt, weil das Zwischenergebnis nur Artikel mit
+> Bestellungen enthält.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Warum lässt sich `WHERE SUM(betrag) > 500` nicht schreiben?
 
 - [x] `WHERE` wird vor der Gruppierung ausgewertet, es gibt dort noch keine
-      Summen ~ Richtig. Bedingungen auf Aggregaten gehören in `HAVING`, das nach
-      der Gruppierung läuft. Beides in einer Abfrage ist möglich und üblich.
-- [ ] `SUM` ist in einer Bedingung generell nicht erlaubt ~ In `HAVING` ist es
-      erlaubt, es hängt allein am Zeitpunkt.
-- [ ] Es fehlt ein `GROUP BY` ~ Auch mit `GROUP BY` bliebe die Zeile falsch, denn
-      `WHERE` läuft trotzdem vorher.
+      Summen ~ Richtig. Bedingungen auf Aggregaten gehören in `HAVING`, das
+      nach der Gruppierung läuft. Beides in einer Abfrage ist möglich und
+      üblich.
+- [ ] `SUM` ist in einer Bedingung generell nicht erlaubt ~ In `HAVING` ist
+      es erlaubt, es hängt allein am Zeitpunkt.
+- [ ] Es fehlt ein `GROUP BY` ~ Auch mit `GROUP BY` bliebe die Zeile falsch,
+      denn `WHERE` läuft trotzdem vorher.
 :::
 
 ::: {.quiz}
-Ein Join liefert mehr Zeilen als die linke Tabelle hatte. Was ist die Ursache?
+Eine Auswertung über das Sortiment zeigt fünf statt sechs Artikel. Was ist
+die wahrscheinlichste Ursache?
 
-- [x] Der Schlüssel war auf der rechten Seite nicht eindeutig ~ Richtig. Jede
-      linke Zeile wird mit jeder passenden rechten kombiniert. Es ist dieselbe
-      Falle wie beim `merge` in [pandas](../programmierung/pandas.qmd), und die Prüfung ist
-      dieselbe: vorher die Eindeutigkeit des Schlüssels sicherstellen.
-- [ ] Es wurde ein `LEFT JOIN` statt eines `INNER JOIN` verwendet ~ Ein
-      `LEFT JOIN` behält alle linken Zeilen, vervielfacht sie aber nicht von
-      sich aus.
-- [ ] Die Verknüpfungsbedingung fehlt ~ Dann entstünde das Kreuzprodukt, also
-      ungleich mehr Zeilen. Der häufigere und unauffälligere Fall ist der
-      mehrdeutige Schlüssel.
+- [x] Es wurde ein `INNER JOIN` verwendet, und ein Artikel hat keine
+      Bestellung ~ Richtig, wie der Schlauch in Beispiel 2. Für Auswertungen
+      über alle Artikel gehört der `LEFT JOIN` von der Artikeltabelle aus.
+- [ ] Der Artikel wurde gelöscht ~ Möglich, aber dann fehlte er auch in
+      `SELECT * FROM artikel`.
+- [ ] `GROUP BY` verwirft Gruppen mit nur einer Zeile ~ Das tut es nicht.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+`SELECT COUNT(*), COUNT(rabatt) FROM artikel` liefert 6 und 3. Was bedeutet
+das?
 
-**Zeilen auswählen und filtern**
+- [x] Bei drei Artikeln fehlt der Rabatt; `COUNT(spalte)` zählt nur
+      vorhandene Werte ~ Richtig. Deshalb teilt `AVG(rabatt)` auch durch 3
+      und nicht durch 6.
+- [ ] Drei Artikel haben den Rabatt 0 ~ Eine 0 wäre ein Wert und würde
+      mitgezählt.
+- [ ] `COUNT(*)` zählt doppelt ~ Es zählt Zeilen, hier sechs.
+:::
 
-```sql
-SELECT bezeichnung, preis
-FROM artikel
-WHERE preis > 100 AND bezeichnung LIKE 'A%'
-ORDER BY preis DESC
-LIMIT 10;
-```
+::: {.quiz}
+`WHERE rabatt <> 5.0` liefert zwei von sechs Artikeln, obwohl nur einer den
+Rabatt 5.0 hat. Warum?
 
-**Gruppieren und die Gruppen filtern**
+- [x] Für die drei Artikel ohne Rabatt ist die Bedingung unbekannt, nicht
+      wahr ~ Richtig. `WHERE` behält nur Zeilen, deren Bedingung wahr ist.
+      Gemeint war `WHERE rabatt IS NULL OR rabatt <> 5.0`.
+- [ ] `<>` ist kein gültiger Operator ~ Er ist gültig und bedeutet "ungleich".
+- [ ] Die Datenbank hat einen Index auf `rabatt` ~ Ein Index ändert
+      Ergebnisse nicht.
+:::
 
-```sql
-SELECT artikel_id, COUNT(*) AS anzahl, SUM(menge) AS menge_total
-FROM bestellung
-GROUP BY artikel_id
-HAVING COUNT(*) >= 2;
-```
+::: {.quiz}
+Eine Abfrage mit `NOT IN (SELECT kunde_id FROM sperrliste)` liefert plötzlich
+gar keine Zeilen mehr, obwohl es passende Kunden gibt. Was ist zu prüfen?
 
-`WHERE` wirkt vor der Gruppierung auf einzelne Zeilen, `HAVING` danach auf die
-gebildeten Gruppen. Die Verwechslung ist der häufigste Fehler beim Aggregieren.
+- [x] Ob die Unterabfrage ein `NULL` enthält ~ Richtig. Ein einziges `NULL`
+      macht `NOT IN` für jede Zeile unbekannt, und das Ergebnis ist leer.
+      `NOT EXISTS` oder `WHERE kunde_id IS NOT NULL` in der Unterabfrage
+      lösen es.
+- [ ] Ob die Sperrliste zu gross ist ~ Die Grösse ändert das Ergebnis nicht.
+- [ ] Ob ein Index fehlt ~ Das beträfe die Geschwindigkeit, nicht das
+      Ergebnis.
+:::
 
-**Tabellen verbinden**
+::: {.quiz}
+Welche Entsprechung hat `SUM(x) OVER (PARTITION BY g)` in pandas und dplyr?
 
-```sql
-SELECT b.bestell_id, a.bezeichnung, b.menge
-FROM bestellung AS b
-JOIN artikel AS a ON a.artikel_id = b.artikel_id;
-```
-
-Ein `LEFT JOIN` behält alle Zeilen der linken Tabelle, auch wenn rechts nichts
-passt; ein `INNER JOIN` verwirft sie. Wer nach einem Join weniger Zeilen hat als
-erwartet, hat meist den falschen Typ gewählt.
-
-**Fehlende Werte und Fallunterscheidungen**
-
-```sql
-SELECT bezeichnung,
-       COALESCE(rabatt, 0) AS rabatt,
-       CASE WHEN preis > 500 THEN 'teuer' ELSE 'guenstig' END AS klasse
-FROM artikel;
-```
-
-**Zwischenergebnis benennen statt verschachteln**
-
-```sql
-WITH umsatz AS (
-  SELECT artikel_id, SUM(menge * preis) AS summe
-  FROM bestellung
-  GROUP BY artikel_id
-)
-SELECT a.bezeichnung, u.summe
-FROM umsatz AS u
-JOIN artikel AS a ON a.artikel_id = u.artikel_id
-ORDER BY u.summe DESC;
-```
-
-**Doppelte Werte finden**
-
-```sql
-SELECT bezeichnung, COUNT(*) AS anzahl
-FROM artikel
-GROUP BY bezeichnung
-HAVING COUNT(*) > 1;
-```
+- [x] `groupby("g")["x"].transform("sum")` beziehungsweise
+      `mutate(.by = g, s = sum(x))` ~ Richtig. Alle drei legen den
+      Gruppenwert in jede Zeile, ohne die Zeilen zusammenzufassen.
+- [ ] `groupby("g").agg(...)` beziehungsweise `summarise()` ~ Die fassen
+      zusammen und liefern eine Zeile je Gruppe.
+- [ ] `merge` beziehungsweise `left_join` ~ Damit lässt sich dasselbe
+      nachbauen, es ist aber der Umweg.
+:::
 
 ## Verlinkte Ressourcen
 
 - [SQLite: SQL-Referenz](https://www.sqlite.org/lang.html)
+- [SQLite: Fensterfunktionen](https://www.sqlite.org/windowfunctions.html)
 - [Use The Index, Luke: SQL-Performance erklärt](https://use-the-index-luke.com/)
