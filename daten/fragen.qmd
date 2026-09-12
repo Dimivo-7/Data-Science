@@ -24,6 +24,49 @@ Warum lässt sich in SQL nicht `WHERE SUM(betrag) > 500` schreiben?
       Auswertungsreihenfolge.
 :::
 
+::: {.quiz}
+Eine Abfrage `WHERE rabatt <> 5` liefert deutlich weniger Zeilen als erwartet,
+und dieselbe Auswertung in pandas mit `df[df["rabatt"] != 5]` liefert mehr.
+Woher kommt der Unterschied?
+
+- [x] In SQL ist der Vergleich mit `NULL` unbekannt und die Zeile fällt
+      heraus, pandas vergleicht `NaN` als ungleich ~ Richtig. In SQL braucht
+      es `rabatt IS NULL OR rabatt <> 5`. Dieselbe Logik steckt hinter
+      `NOT IN` mit einem `NULL` in der Unterabfrage, das gar nichts liefert.
+- [ ] pandas rechnet falsch ~ Beide verhalten sich wie dokumentiert, nur
+      verschieden.
+- [ ] Die Datentypen unterscheiden sich ~ Der Typ ist nicht die Ursache,
+      sondern die Behandlung des fehlenden Werts.
+:::
+
+::: {.quiz}
+Eine Auswertung verbindet Bestellungen mit Artikeln und liefert mehr Zeilen
+als es Bestellungen gibt. In welchen drei Werkzeugen ist das derselbe Fehler?
+
+- [x] In SQL beim `JOIN`, in pandas bei `merge` und in dplyr bei
+      `left_join` ~ Richtig. Immer ist der Schlüssel auf einer Seite nicht
+      eindeutig. Die Gegenmittel heissen `validate="many_to_one"`,
+      `relationship = "many-to-one"` und vorher die Eindeutigkeit prüfen.
+- [ ] Nur in SQL, die anderen prüfen das automatisch ~ Keines der drei prüft
+      ohne ausdrückliche Angabe.
+- [ ] Es ist kein Fehler, sondern gewollt ~ Gewollt nur bei einer echten
+      viele-zu-viele-Beziehung, und dann weiss man es vorher.
+:::
+
+::: {.quiz}
+Wann ist der Weg über eine SQLite-Datei einem direkten Einlesen der CSV-Datei
+überlegen?
+
+- [x] Wenn die Datei zu gross für den Arbeitsspeicher ist oder mehrere
+      Skripte denselben Zwischenstand brauchen ~ Richtig. Einmal einlesen,
+      danach gezielt abfragen, statt jedes Mal alles zu laden. Zudem bleiben
+      Typen erhalten, anders als bei CSV.
+- [ ] Immer, eine Datenbank ist schneller ~ Für eine kleine Datei ist der
+      Umweg reiner Aufwand.
+- [ ] Nie, dafür braucht es einen Server ~ SQLite braucht keinen Server, es
+      ist eine Datei.
+:::
+
 ### Aufbereitung und Qualität
 
 ::: {.quiz}
