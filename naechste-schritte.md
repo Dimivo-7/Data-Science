@@ -115,8 +115,9 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
 | `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `programmierung/` (9 Seiten + Fragen) | **fertig** (12.09.2026), Zahlen maschinell und von Hand geprüft |
-| `daten/` (5 Seiten + Fragen) | **umgebaut** (12.09.2026), `stand: entwurf` bis zum Abgleich der Ausgaben |
-| `ki/`, `datenbanken/`, `werkzeuge/` | unverändert, keine Beispiele |
+| `daten/` (5 Seiten + Fragen) | **umgebaut** (12.09.2026), Ausgaben gegen den Text geprüft, noch `stand: entwurf` |
+| `datenbanken/` (8 Seiten) | **umgebaut** (12.09.2026): vier Seiten mit echten Beispielen gegen SQLite, vier ohne Server nur strukturell angeglichen |
+| `werkzeuge/` (3 Seiten), `ki/` | unverändert, keine Beispiele |
 
 ### Erledigt am 12.09.2026
 
@@ -205,15 +206,34 @@ Jede Behauptung hat eine Kennzahl. Die tragenden Beispiele:
 
 ### Danach
 
-Die drei verbleibenden Bereiche haben kein einziges `### Beispiel` und stehen
-alle auf `entwurf`. Reihenfolge nach vorhandener Substanz: `datenbanken/`
-(9 Seiten, davon sql und datenmodellierung mit Substanz), `werkzeuge/`
-(3 Seiten: Linux, Git, Docker), `ki/` (gar kein Code).
+Offen sind noch `werkzeuge/` (Linux und Shell, Git, Docker) und `ki/` (gar
+kein Code).
 
-Bei `datenbanken/` ist zu klären, wie Beispiele laufen sollen: RSQLite und
-`sqlite3` sind in beiden Sprachen vorhanden, also lassen sich Tabellen im
-Chunk anlegen und abfragen. PostgreSQL, MySQL und MongoDB haben im Build
-keinen Server; dort bleiben Listings.
+Für `werkzeuge/` gilt dieselbe Frage wie bei den Serverdatenbanken: Was läuft
+im Build wirklich? Shell-Befehle lassen sich über `system()` beziehungsweise
+`subprocess` echt ausführen, Git-Befehle in einem temporären Repository
+ebenfalls (Git ist auf dem Runner vorhanden). Docker läuft im Build nicht und
+bleibt deshalb bei Listings, wie die Serverdatenbanken.
+
+### Der Datenbankbereich
+
+Vier Seiten rechnen echt gegen eine SQLite-Datenbank, die im Chunk entsteht:
+SQL, Datenmodellierung, Datenbankzugriff und SQLite. Vier Seiten (DuckDB,
+PostgreSQL, MySQL, MongoDB) haben im Build kein System und bleiben bei
+Listings; sie wurden nur strukturell angeglichen und tragen jetzt einen
+Hinweis, dass dort nichts gerechnet wird.
+
+| Seite | Befund |
+|---|---|
+| SQL | `INNER JOIN` 10 gegen `LEFT JOIN` 11 Zeilen; `AVG` teilt durch 3 statt 6; `rabatt <> 5.0` findet 2 statt 5; `NOT IN` mit `NULL` liefert gar nichts |
+| Datenmodellierung | SQLite prüft Fremdschlüssel nur mit `PRAGMA foreign_keys = ON`; zwei `NULL` in einer `UNIQUE`-Spalte sind erlaubt; eine Änderung in einer Zeile erzeugt zwei Kategorieleiter |
+| Datenbankzugriff | `x' OR '1'='1` liefert zusammengebaut alle Zeilen, als Parameter keine; nach dem Transaktionsabbruch stehen unverändert zehn Zeilen da |
+| SQLite | `SUM` über eine Spalte mit Text ergibt 45.7 statt eines Fehlers; `STRICT` lehnt ihn ab; `SCAN` wird mit Index zu `SEARCH` |
+
+**Beim Schreiben gelernt:** `PRAGMA foreign_keys` wirkt **nicht** in einer
+offenen Transaktion. In Python öffnet `sqlite3` nach jedem `INSERT` oder
+`DELETE` implizit eine, also gehört ein `commit()` davor, sonst läuft das
+Beispiel still falsch.
 
 ## Der Lehmer-Generator als Standardweg für Beispieldaten
 
