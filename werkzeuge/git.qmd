@@ -11,8 +11,8 @@ order: 20
 ```{r}
 #| label: setup-r
 #| include: false
-# Ein echtes Repository, das beim Build entsteht. Die Ausgaben unten stammen
-# daraus, sind also keine abgeschriebenen Beispiele.
+# Ein echtes Repository, das beim Build entsteht. Alle Ausgaben dieser Seite
+# stammen daraus, sind also keine abgeschriebenen Beispiele.
 repo <- file.path(tempdir(), "repo")
 unlink(repo, recursive = TRUE)
 dir.create(repo, recursive = TRUE)
@@ -22,26 +22,40 @@ git <- function(befehl) {
   voll <- paste("cd", shQuote(repo), "&&",
                 "git -c user.name=Beispiel -c user.email=beispiel@example.org",
                 befehl, "2>&1")
-  cat(system(voll, intern = TRUE), sep = "\n")
+  ausgabe <- suppressWarnings(system(voll, intern = TRUE))
+  cat(ausgabe, sep = "\n")
 }
 
-schreibe <- function(datei, text) writeLines(text, file.path(repo, datei))
+schreibe <- function(datei, text) {
+  pfad <- file.path(repo, datei)
+  dir.create(dirname(pfad), recursive = TRUE, showWarnings = FALSE)
+  writeLines(text, pfad)
+}
+
+zeige <- function(datei) cat(readLines(file.path(repo, datei)), sep = "\n")
 ```
 
 ## Kernideen
 
-- Verteiltes Repository statt zentralem Server
-- Arbeitsverzeichnis, Staging-Bereich, Commit
-- Branch und Merge
-- Remote, `push`, `pull`, `clone`
-- `.gitignore` und was nicht ins Repository gehört
+- Git speichert **Zustände**, nicht Unterschiede: Jeder Commit hält den
+  vollständigen Stand fest und verweist auf seinen Vorgänger.
+- Drei Orte: **Arbeitsverzeichnis**, **Staging-Bereich**, **Commit**. Der
+  Umweg über das Staging macht Commits inhaltlich sauber.
+- Ein **Branch** ist nur ein Zeiger auf einen Commit und deshalb billig.
+- **Konflikte sind normal.** Git markiert die Stelle und überlässt die
+  Entscheidung dem Menschen.
+- Rückgängig machen heisst je nach Ziel `restore`, `reset` oder `revert`.
+  Nur `revert` ist für bereits geteilte Commits richtig.
+- Was nicht hineingehört, hält `.gitignore` draussen. Ein einmal committetes
+  Passwort bleibt in der Historie.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** keines. Hilfreich ist [Linux und Shell](linux-shell.qmd), weil Git
-auf der Kommandozeile bedient wird. Die Ausgaben dieser Seite stammen aus einem
-echten Repository, das beim Bauen der Website angelegt wird.
+**Vorwissen:** keines. Hilfreich ist [Linux und Shell](linux-shell.qmd), weil
+Git auf der Kommandozeile bedient wird. Die Ausgaben dieser Seite stammen aus
+einem echten Repository, das beim Bauen der Website angelegt wird. Git ist
+sprachunabhängig, deshalb gibt es hier keine getrennten R- und Python-Reiter.
 :::
 
 ### Das Problem hinter der Versionsverwaltung
@@ -49,159 +63,41 @@ echten Repository, das beim Bauen der Website angelegt wird.
 Der Ordner mit `analyse_final.R`, `analyse_final_v2.R` und
 `analyse_final_wirklich.R` ist bekannt. Er beantwortet keine der Fragen, die
 später gestellt werden: Was war der Unterschied? Warum wurde das geändert? Mit
-welcher Fassung ist die Zahl im Bericht entstanden?
+welcher Fassung ist die Zahl im Bericht entstanden? Git beantwortet genau
+diese Fragen.
 
-Git beantwortet genau diese Fragen. Es speichert nicht Unterschiede, sondern
-Zustände: Jeder Commit hält den vollständigen Stand fest und verweist auf
-seinen Vorgänger. Daraus entsteht eine Kette, in der sich jeder frühere Zustand
-exakt wiederherstellen lässt.
+### Die drei Orte
 
-### Anlegen und der erste Commit
+| Ort | Inhalt | Befehl dorthin |
+|---|---|---|
+| Arbeitsverzeichnis | die Dateien, an denen gerade gearbeitet wird | Datei speichern |
+| Staging-Bereich (Index) | was in den nächsten Commit soll | `git add` |
+| Repository | die festgeschriebene Historie | `git commit` |
 
-```{r}
-#| label: init-r
-git("init -q -b main")
-schreibe("analyse.R", c("werte <- c(1, 2, 3)", "mean(werte)"))
-git("status --short")
-```
+`git status --short` zeigt beide Spalten: **links** der Staging-Bereich,
+**rechts** das Arbeitsverzeichnis.
 
-Das Fragezeichen bedeutet, dass Git die Datei sieht, sie aber noch nicht
-verfolgt. Der Weg zum Commit führt über zwei Schritte:
-
-```{r}
-#| label: commit-r
-git("add analyse.R")
-git("status --short")          # jetzt vorgemerkt
-git("commit -q -m 'Mittelwert berechnen'")
-git("log --oneline")
-```
-
-### Warum der Umweg über den Staging-Bereich
-
-Der Zwischenschritt wirkt umständlich und ist der Grund, warum Commits
-inhaltlich sauber bleiben können. Man wählt aus, was in den nächsten Commit
-gehört, statt pauschal alles Geänderte einzupacken.
-
-```{r}
-#| label: staging-r
-schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "mean(werte)", "sd(werte)"))
-schreibe("notizen.txt", "unfertige Gedanken")
-
-git("add analyse.R")            # nur diese eine Datei
-git("status --short")
-```
-
-Die erste Spalte zeigt den Staging-Bereich, die zweite das
-Arbeitsverzeichnis. `M` links heisst vorgemerkt, `??` heisst unverfolgt. So
-lässt sich die fertige Änderung festhalten und die unfertige liegen lassen.
-
-```{r}
-#| label: commit2-r
-git("commit -q -m 'Standardabweichung ergaenzen'")
-git("log --oneline")
-```
-
-Ein guter Commit ist eine abgeschlossene Änderung mit einer Nachricht, die das
-**Warum** benennt. `Fix` oder `Update` sind in einem halben Jahr wertlos;
-`Dezimalkomma beim Import beruecksichtigen` ist es nicht.
-
-### Was sich geändert hat
-
-```{r}
-#| label: diff-r
-schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "mean(werte)",
-                        "sd(werte)", "median(werte)"))
-git("diff --stat")
-git("diff")
-```
-
-Das Minus zeigt die alte Zeile, das Plus die neue. Genau diese Ansicht ist der
-Grund, warum Textformate versioniert werden können und Binärformate wie
-Excel-Dateien nicht sinnvoll.
-
-### Branches
-
-Ein Branch ist nur ein Zeiger auf einen Commit und deshalb billig. Das macht es
-sinnvoll, für jeden grösseren Versuch einen anzulegen: Die Hauptlinie bleibt
-lauffähig, und ein missglückter Versuch wird verworfen statt zurückgebaut.
-
-```{r}
-#| label: branch-r
-git("add -A && git -c user.name=B -c user.email=b@example.org commit -q -m 'Median ergaenzen'")
-git("switch -q -c experiment-log")
-schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "mean(log(werte))"))
-git("add -A && git -c user.name=B -c user.email=b@example.org commit -q -m 'Log-Transformation testen'")
-
-git("log --oneline --all --graph")
-```
-
-Die Verzweigung ist im Graphen sichtbar. Zurück auf die Hauptlinie und
-zusammenführen:
-
-```{r}
-#| label: merge-r
-git("switch -q main")
-git("merge -q experiment-log -m 'Experiment uebernehmen'")
-git("log --oneline")
-```
-
-Konflikte entstehen, wenn dieselbe Stelle auf beiden Seiten geändert wurde. Sie
-sind normal und müssen inhaltlich entschieden werden; Git markiert die Stelle
-und überlässt die Entscheidung dem Menschen.
-
-::: {.quiz}
-Warum zeigt `git status` eine Datei als `??` an, obwohl sie im Ordner liegt?
-
-- [x] Git verfolgt Dateien nicht automatisch ~ Richtig. Eine neue Datei ist
-      zunächst unbekannt und wird erst durch `git add` aufgenommen. Das ist
-      Absicht, sonst landeten Zwischenergebnisse und Zugangsdaten ungewollt im
-      Repository.
-- [ ] Die Datei steht in `.gitignore` ~ Dann erschiene sie gar nicht in der
-      Ausgabe.
-- [ ] Der letzte Commit fehlt noch ~ Der Zustand hat nichts mit dem letzten
-      Commit zu tun, sondern damit, dass die Datei nie vorgemerkt wurde.
-:::
-
-::: {.quiz}
-Was ist der Unterschied zwischen `git add` und `git commit`?
-
-- [x] `add` merkt Änderungen vor, `commit` schreibt das Vorgemerkte fest ~
-      Richtig. Der Zwischenschritt erlaubt es, aus vielen Änderungen im
-      Arbeitsverzeichnis gezielt eine zusammengehörige Auswahl festzuhalten.
-- [ ] `add` speichert lokal, `commit` überträgt auf den Server ~ Beides bleibt
-      lokal. Übertragen wird erst mit `push`.
-- [ ] `add` gilt für neue Dateien, `commit` für geänderte ~ `add` wird für beide
-      gebraucht.
-:::
-
-### Was nicht ins Repository gehört
-
-```{r}
-#| label: gitignore-r
-schreibe(".gitignore", c(".venv/", "renv/library/", "__pycache__/",
-                         "data/roh/", "*.Rhistory", ".RData"))
-dir.create(file.path(repo, "data", "roh"), recursive = TRUE, showWarnings = FALSE)
-schreibe("data/roh/gross.csv", "viele Zeilen")
-
-git("add -A && git -c user.name=B -c user.email=b@example.org commit -q -m 'Ignorierliste'")
-git("status --short")           # leer: die Rohdatei wird ignoriert
-```
-
-Die Ausgabe ist leer, obwohl eine neue Datei existiert. Sie wird von der
-Ignorierliste erfasst.
-
-| gehört hinein | gehört nicht hinein |
+| Anzeige | Bedeutung |
 |---|---|
-| Code und Skripte | Zugangsdaten und Passwörter |
-| Konfiguration | virtuelle Umgebungen |
-| Abhängigkeitslisten | grosse Rohdaten |
-| Dokumentation | generierte Ausgaben |
+| `??` | unverfolgt, Git kennt die Datei nicht |
+| `A ` | neu und vorgemerkt |
+| `M ` | geändert und vorgemerkt |
+| ` M` | geändert, **nicht** vorgemerkt |
+| `MM` | vorgemerkt und danach erneut geändert |
+| `UU` | Konflikt, von beiden Seiten geändert |
 
-::: {.note-box}
-Ein einmal committetes Passwort bleibt in der Historie, auch wenn die Datei
-später gelöscht wird. Es muss als kompromittiert gelten und gewechselt werden.
-Deshalb steht `.gitignore` am Anfang eines Projekts und nicht am Ende.
-:::
+### Rückgängig machen
+
+| Ziel | Befehl | Wirkung |
+|---|---|---|
+| Änderung im Arbeitsverzeichnis verwerfen | `git restore datei` | Datei zurück auf den letzten Commit |
+| Vormerkung zurücknehmen | `git restore --staged datei` | Änderung bleibt, verlässt das Staging |
+| letzten Commit auflösen, Änderung behalten | `git reset --soft HEAD~1` | Commit weg, Inhalt wieder vorgemerkt |
+| Commit inhaltlich zurücknehmen | `git revert <commit>` | **neuer** Commit, der die Änderung aufhebt |
+
+Die Faustregel: Solange nichts geteilt wurde, ist `reset` bequem. Sobald
+andere den Commit haben, ist `revert` der einzige saubere Weg, weil es die
+Historie nicht umschreibt.
 
 ### Remote und Zusammenarbeit
 
@@ -212,71 +108,432 @@ vollständige Historie, weshalb sich auch ohne Netzverbindung arbeiten lässt.
 git remote add origin https://github.com/nutzer/projekt.git
 git push -u origin main        # erstmalig, merkt sich die Zuordnung
 git pull                       # Aenderungen anderer holen
-git clone https://github.com/nutzer/projekt.git    # anderswo auschecken
+git clone https://github.com/nutzer/projekt.git
 ```
 
-### Notebooks und Git
+### Kurz nachgeschlagen
 
-Ein Punkt, der in der Datenarbeit regelmässig Ärger macht: Jupyter-Notebooks
-sind JSON und enthalten neben dem Code auch Ausgaben, Bilder und
-Ausführungszähler. Schon ein erneuter Durchlauf ohne inhaltliche Änderung
-erzeugt damit einen riesigen Diff.
+| Aufgabe | Befehl |
+|---|---|
+| Stand ansehen | `git status`, `git status --short` |
+| abschnittsweise vormerken | `git add -p` |
+| Verlauf | `git log --oneline --graph --all` |
+| Änderungen | `git diff`, `git diff --staged` |
+| Branch anlegen und wechseln | `git switch -c thema` |
+| zusammenführen | `git merge thema` |
+| Konfliktdateien auflisten | `git diff --name-only --diff-filter=U` |
+| Datei aus der Verfolgung nehmen | `git rm --cached datei` |
+| wer hat diese Zeile geändert | `git blame datei` |
+| Zwischenstand parken | `git stash`, `git stash pop` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Vom leeren Ordner zum ersten Commit
+
+#### Frage und Datenlage
+
+Ein leerer Ordner, eine neue Datei `analyse.R`. Welche Schritte führen zum
+ersten Commit, und was zeigt `git status` dazwischen?
+
+#### Rechnung
 
 ```{r}
-#| label: notebook-r
-schreibe("beispiel.ipynb",
-         '{"cells": [{"cell_type": "code", "execution_count": 1, "outputs": [{"text": "12.4"}], "source": ["mean(x)"]}]}')
-git("add -A && git -c user.name=B -c user.email=b@example.org commit -q -m 'Notebook'")
-schreibe("beispiel.ipynb",
-         '{"cells": [{"cell_type": "code", "execution_count": 2, "outputs": [{"text": "12.4"}], "source": ["mean(x)"]}]}')
-git("diff --stat")
+#| label: b1-gt-r
+git("init -q -b main")
+schreibe("analyse.R", c("werte <- c(1, 2, 3)", "mean(werte)"))
+
+git("status --short")          # Git kennt die Datei noch nicht
+git("add analyse.R")
+git("status --short")          # jetzt vorgemerkt
+git("commit -q -m 'Mittelwert berechnen'")
+git("log --oneline")
 ```
 
-Der Code ist unverändert, nur der Ausführungszähler ist gestiegen, und trotzdem
-meldet Git eine Änderung. Wer Ausgaben vor dem Commit leert, bekommt eine
-lesbare Historie. Der andere Weg ist, die Logik in ein Modul auszulagern, wie
-in [Funktionen und Module in Python](../programmierung/python-funktionen-module.qmd) beschrieben, und das Notebook schlank zu halten.
+#### Output Zeile für Zeile
 
-::: {.note-box}
-In RStudio ist Git über eine Oberfläche eingebaut, `usethis::use_git()` legt
-ein Repository an. Die Begriffe sind dieselben; wer die Kommandozeile
-verstanden hat, findet sich dort sofort zurecht.
+| Schritt | Ausgabe | Erklärung |
+|---|---|---|
+| nach dem Anlegen | **`?? analyse.R`** | Git sieht die Datei, verfolgt sie aber nicht. Das ist Absicht: Sonst landeten Zwischenergebnisse und Zugangsdaten ungewollt im Repository. |
+| nach `git add` | **`A  analyse.R`** | Das `A` steht links, also im Staging-Bereich: neu und vorgemerkt. |
+| nach `git commit` | keine Ausgabe (durch `-q`) | |
+| `git log --oneline` | eine Zeile mit Kurzkennung und Nachricht | Der Commit ist da; die Kennung ist eine Prüfsumme über den Inhalt und deshalb bei jedem Lauf anders. |
+
+#### Interpretation und Ergebnissatz
+
+Der Weg führt immer über dieselben zwei Schritte. `add` beantwortet "was
+gehört dazu", `commit` beantwortet "und das halte ich jetzt fest". Eine gute
+Commit-Nachricht benennt das **Warum**: `Fix` oder `Update` sind in einem
+halben Jahr wertlos, `Dezimalkomma beim Import beruecksichtigen` ist es nicht.
+
+> Eine neue Datei erscheint zunächst als `?? analyse.R`, nach `git add` als
+> `A  analyse.R`, und nach dem Commit steht sie mit ihrer Nachricht im
+> Verlauf.
+
+### Beispiel 2: Warum der Umweg über das Staging
+
+#### Frage und Datenlage
+
+Zwei Änderungen gleichzeitig: Die Analyse ist fertig, die Notizen sind es
+nicht. Wie hält man nur die fertige Änderung fest?
+
+#### Rechnung
+
+```{r}
+#| label: b2-gt-r
+schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "mean(werte)", "sd(werte)"))
+schreibe("notizen.txt", "unfertige Gedanken")
+
+git("add analyse.R")           # nur diese eine Datei
+git("status --short")
+
+git("diff --staged --stat")    # was in den Commit ginge
+git("diff --stat")             # was draussen bleibt
+
+git("commit -q -m 'Standardabweichung ergaenzen'")
+git("status --short")
+```
+
+#### Output Zeile für Zeile
+
+| Zeile | Ausgabe | Erklärung |
+|---|---|---|
+| nach `add analyse.R` | **`M  analyse.R`** und **`?? notizen.txt`** | Das `M` steht links: vorgemerkt. Die Notizen sind unverfolgt und bleiben es. |
+| `diff --staged --stat` | `analyse.R \| 3 ++-`, eine Datei geändert | Das ist genau der Inhalt des nächsten Commits. |
+| `diff --stat` | leer | Im Arbeitsverzeichnis gibt es keine unvorgemerkte Änderung an verfolgten Dateien; `notizen.txt` ist gar nicht verfolgt. |
+| nach dem Commit | nur noch **`?? notizen.txt`** | Die fertige Änderung ist festgehalten, die unfertige liegt unberührt daneben. |
+
+#### Interpretation und Ergebnissatz
+
+Der Zwischenschritt wirkt umständlich und ist der Grund, warum Commits
+inhaltlich sauber bleiben können. Man wählt aus, was zusammengehört, statt
+pauschal alles Geänderte einzupacken. Mit `git add -p` geht das sogar
+abschnittsweise innerhalb einer Datei.
+
+> Nach `git add analyse.R` ist nur diese Datei vorgemerkt (`M `), die
+> unfertigen Notizen bleiben unverfolgt (`??`) und überstehen den Commit
+> unberührt.
+
+### Beispiel 3: Was sich geändert hat
+
+#### Frage und Datenlage
+
+Eine Zeile wird ergänzt. Wie sieht Git den Unterschied, und warum funktioniert
+das bei Textdateien und nicht bei Excel-Dateien?
+
+#### Rechnung
+
+```{r}
+#| label: b3-gt-r
+schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "mean(werte)",
+                        "sd(werte)", "median(werte)"))
+git("diff --stat")
+git("diff")
+```
+
+#### Output Zeile für Zeile
+
+| Teil der Ausgabe | Bedeutung |
+|---|---|
+| `analyse.R \| 1 +` | eine Datei, eine hinzugefügte Zeile |
+| `@@ -1,3 +1,4 @@` | der Abschnitt: vorher Zeilen 1 bis 3, nachher 1 bis 4 |
+| Zeilen ohne Vorzeichen | unverändert, nur als Zusammenhang gezeigt |
+| `+median(werte)` | die hinzugefügte Zeile |
+
+Bei einer Änderung statt einer Ergänzung stünden `-` und `+` untereinander:
+die alte und die neue Fassung derselben Zeile.
+
+#### Interpretation und Ergebnissatz
+
+Genau diese Ansicht ist der Grund, warum Textformate versioniert werden
+können und Binärformate wie Excel- oder Word-Dateien nicht sinnvoll: Dort
+kann Git nur "die Datei ist anders" sagen. Für die Datenarbeit heisst das,
+Code und Konfiguration in Textform zu halten, und Notebooks vor dem Commit
+von ihren Ausgaben zu befreien.
+
+> `git diff` zeigt die neue Zeile `+median(werte)` im Zusammenhang der
+> umgebenden Zeilen; die Kopfzeile `@@ -1,3 +1,4 @@` nennt die betroffenen
+> Zeilennummern vorher und nachher.
+
+### Beispiel 4: Branch, Merge und ein echter Konflikt
+
+#### Frage und Datenlage
+
+Auf einem Branch wird die Analyse logarithmiert, auf der Hauptlinie
+gleichzeitig auf den Median umgestellt. Beide ändern dieselbe Zeile. Was
+passiert beim Zusammenführen?
+
+#### Rechnung
+
+```{r}
+#| label: b4-gt-r
+git("add -A")
+git("commit -q -m 'Median ergaenzen'")
+
+git("switch -q -c experiment")
+schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "mean(log(werte))"))
+git("add -A")
+git("commit -q -m 'Log-Transformation testen'")
+
+git("switch -q main")
+schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "median(werte)"))
+git("add -A")
+git("commit -q -m 'Median statt Mittel'")
+
+git("log --oneline --graph --all")
+git("merge experiment -m 'Experiment uebernehmen'")
+git("status --short")
+```
+
+Die Datei enthält jetzt beide Fassungen mit Markierungen:
+
+```{r}
+#| label: b4b-gt-r
+zeige("analyse.R")
+git("diff --name-only --diff-filter=U")
+```
+
+Aufgelöst wird von Hand, danach wie ein gewöhnlicher Commit:
+
+```{r}
+#| label: b4c-gt-r
+schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "median(werte)",
+                        "mean(log(werte))"))
+git("add analyse.R")
+git("commit -q -m 'Konflikt aufgeloest: beide Kennzahlen'")
+git("log --oneline --graph")
+```
+
+#### Output Zeile für Zeile
+
+| Schritt | Ausgabe | Erklärung |
+|---|---|---|
+| Graph vor dem Merge | zwei Linien, die sich verzweigen | Beide Commits haben denselben Vorgänger. |
+| `git merge` | `Auto-merging analyse.R`, **`CONFLICT (content)`**, `Automatic merge failed` | Git kann nicht entscheiden, welche Fassung gilt. |
+| `git status --short` | **`UU analyse.R`** | `U` steht für unmerged, auf beiden Seiten geändert. |
+| Dateiinhalt | `<<<<<<< HEAD`, die eigene Fassung, `=======`, die fremde, `>>>>>>> experiment` | Die Markierungen zeigen genau die strittige Stelle; alles andere hat Git selbst zusammengeführt. |
+| `--diff-filter=U` | `analyse.R` | die Liste der Konfliktdateien, nützlich bei vielen Dateien |
+| nach dem Auflösen | Graph mit zusammengeführter Linie | Der Merge-Commit hat **zwei** Vorgänger. |
+
+#### Interpretation und Ergebnissatz
+
+Ein Konflikt ist kein Fehler, sondern eine Frage: Welche der beiden
+Änderungen gilt, oder gelten beide? Git stellt sie und beantwortet sie nicht
+selbst. Wichtig ist, die Markierungen vollständig zu entfernen; bleibt eine
+Zeile mit `<<<<<<<` stehen, ist der Code syntaktisch kaputt, und der Commit
+läuft trotzdem durch.
+
+> Das Zusammenführen meldet `CONFLICT (content): Merge conflict in analyse.R`,
+> und `git status` zeigt `UU analyse.R`. Nach dem Auflösen von Hand und einem
+> gewöhnlichen Commit führt der Graph beide Linien wieder zusammen.
+
+### Beispiel 5: Rückgängig machen, dreimal verschieden
+
+#### Frage und Datenlage
+
+Drei Situationen: eine Änderung im Arbeitsverzeichnis verwerfen, eine
+Vormerkung zurücknehmen, und einen bereits gemachten Commit aufheben.
+
+#### Rechnung
+
+```{r}
+#| label: b5-gt-r
+schreibe("analyse.R", c("werte <- c(1, 2, 3, 4)", "unsinn()"))
+git("status --short")
+git("restore analyse.R")       # Aenderung verwerfen
+git("status --short")
+zeige("analyse.R")
+```
+
+```{r}
+#| label: b5b-gt-r
+schreibe("notizen.txt", "doch fertig")
+git("add notizen.txt")
+git("status --short")          # vorgemerkt
+git("restore --staged notizen.txt")
+git("status --short")          # Aenderung bleibt, Vormerkung weg
+```
+
+```{r}
+#| label: b5c-gt-r
+schreibe("fehler.txt", "sollte nicht bleiben")
+git("add -A")
+git("commit -q -m 'Versehentlicher Commit'")
+git("log --oneline")
+
+git("revert --no-edit HEAD")
+git("log --oneline")
+```
+
+#### Output Zeile für Zeile
+
+| Schritt | Ausgabe | Erklärung |
+|---|---|---|
+| Datei kaputt geändert | **` M analyse.R`** | Das `M` steht **rechts**: geändert, nicht vorgemerkt. |
+| nach `restore` | keine Zeile mehr | Die Änderung ist weg, die Datei steht wieder auf dem letzten Commit. **Nicht rückgängig zu machen.** |
+| nach `add notizen.txt` | **`M  notizen.txt`** | Die Datei ist seit Beispiel 4 verfolgt, also `M` statt `A`, und das `M` steht links: vorgemerkt. |
+| nach `restore --staged` | **` M notizen.txt`** | Dasselbe `M`, jetzt rechts: Die Vormerkung ist zurückgenommen, der neue Inhalt bleibt erhalten. |
+| nach dem versehentlichen Commit | der Commit steht oben im Verlauf | |
+| nach `revert` | eine Zeile mehr, oben `Revert "Versehentlicher Commit"` | Der alte Commit bleibt in der Historie, ein **neuer** hebt ihn auf. |
+
+#### Interpretation und Ergebnissatz
+
+Die drei Befehle greifen an drei verschiedenen Orten an, und die Wahl hängt
+davon ab, wo die Änderung gerade liegt. `restore` ohne `--staged` verwirft
+unwiderruflich; alles andere lässt sich wiederherstellen. Für geteilte
+Commits ist `revert` richtig, weil es nichts umschreibt: Wer den alten Stand
+schon geholt hat, bekommt einfach den neuen Commit dazu.
+
+> `git restore` setzt die Datei auf den letzten Commit zurück,
+> `git restore --staged` nimmt nur die Vormerkung zurück, und `git revert`
+> fügt einen neuen Commit hinzu, der die Änderung aufhebt, statt die Historie
+> zu ändern.
+
+### Beispiel 6: Was nicht ins Repository gehört
+
+#### Frage und Datenlage
+
+Eine Rohdatei und eine Datei mit Zugangsdaten liegen im Projekt. Wie hält man
+sie draussen, und was tun, wenn eine davon schon committet ist?
+
+#### Rechnung
+
+```{r}
+#| label: b6-gt-r
+schreibe(".gitignore", c(".venv/", "renv/library/", "__pycache__/",
+                         "data/roh/", "*.Rhistory", ".RData"))
+schreibe("data/roh/gross.csv", "viele Zeilen")
+git("add -A")
+git("commit -q -m 'Ignorierliste'")
+git("status --short")          # leer: die Rohdatei wird ignoriert
+```
+
+```{r}
+#| label: b6b-gt-r
+schreibe(".env", "PGPASSWORD=geheim")
+git("add -f .env")             # -f erzwingt es trotz Ignorierliste
+git("commit -q -m 'Versehentlich Zugangsdaten'")
+git("ls-files")
+
+git("rm -q --cached .env")
+git("commit -q -m 'Zugangsdaten aus der Verfolgung nehmen'")
+git("ls-files")
+```
+
+#### Output Zeile für Zeile
+
+| Schritt | Ausgabe | Erklärung |
+|---|---|---|
+| `status` nach der Ignorierliste | **leer** | Obwohl `data/roh/gross.csv` existiert, meldet Git nichts: Die Datei ist ignoriert. |
+| `ls-files` nach dem Fehlgriff | `.env` steht in der Liste | `-f` hat die Ignorierliste übergangen; so passiert es in der Praxis. |
+| nach `git rm --cached .env` | `.env` fehlt in der Liste | Die Datei bleibt **auf der Platte**, wird aber nicht mehr verfolgt. |
+
+| gehört hinein | gehört nicht hinein |
+|---|---|
+| Code und Skripte | Zugangsdaten und Passwörter |
+| Konfiguration ohne Geheimnisse | virtuelle Umgebungen |
+| Abhängigkeitslisten | grosse Rohdaten |
+| Dokumentation | generierte Ausgaben |
+
+#### Interpretation und Ergebnissatz
+
+`git rm --cached` nimmt die Datei aus der Verfolgung, **nicht aus der
+Historie**. Das Passwort steht weiterhin im alten Commit und lässt sich dort
+lesen. Es muss deshalb als kompromittiert gelten und gewechselt werden; das
+Bereinigen der Historie ist aufwendig und hilft nicht, wenn jemand den Stand
+bereits geholt hat. Deshalb steht `.gitignore` am Anfang eines Projekts und
+nicht am Ende.
+
+> Die ignorierte Rohdatei taucht in `git status` gar nicht auf. Eine mit `-f`
+> erzwungene Datei steht dagegen in `ls-files` und verschwindet erst durch
+> `git rm --cached` aus der Verfolgung, bleibt aber in der Historie und auf
+> der Platte.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Warum zeigt `git status` eine Datei als `??` an, obwohl sie im Ordner liegt?
+
+- [x] Git verfolgt Dateien nicht automatisch ~ Richtig. Eine neue Datei ist
+      zunächst unbekannt und wird erst durch `git add` aufgenommen. Das ist
+      Absicht, sonst landeten Zwischenergebnisse und Zugangsdaten ungewollt im
+      Repository.
+- [ ] Die Datei steht in `.gitignore` ~ Dann erschiene sie gar nicht in der
+      Ausgabe, wie die Rohdatei in Beispiel 6.
+- [ ] Der letzte Commit fehlt noch ~ Der Zustand hängt daran, dass die Datei
+      nie vorgemerkt wurde.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+Was ist der Unterschied zwischen `git add` und `git commit`?
 
-```bash
-git status                        # Was ist geaendert, was vorgemerkt
-git add -p                        # Aenderungen abschnittsweise vormerken
-git commit -m "Nachricht"         # Vorgemerktes festschreiben
-git log --oneline --graph         # Verlauf kompakt, mit Verzweigungen
-git diff                          # Aenderungen im Arbeitsstand
-git diff --cached                 # Aenderungen, die vorgemerkt sind
-git switch -c thema               # Branch anlegen und wechseln
-git merge thema                   # Branch einarbeiten
-git restore datei.qmd             # Aenderung an einer Datei verwerfen
-git restore --staged datei.qmd    # Vormerkung zuruecknehmen
-git revert <commit>               # Commit rueckgaengig machen, mit neuem Commit
-git remote -v                     # Verknuepfte Remotes anzeigen
-git pull --rebase                 # Fremde Commits unter die eigenen legen
-```
+- [x] `add` merkt Änderungen vor, `commit` schreibt das Vorgemerkte fest ~
+      Richtig. Der Zwischenschritt erlaubt es, aus vielen Änderungen gezielt
+      eine zusammengehörige Auswahl festzuhalten, wie in Beispiel 2.
+- [ ] `add` speichert lokal, `commit` überträgt auf den Server ~ Beides
+      bleibt lokal. Übertragen wird erst mit `push`.
+- [ ] `add` gilt für neue Dateien, `commit` für geänderte ~ `add` wird für
+      beide gebraucht.
+:::
 
-**Eine Datei versehentlich eingecheckt, die nicht ins Repository gehört**
+::: {.quiz}
+`git status` zeigt `UU analyse.R`. Was ist zu tun?
 
-```bash
-echo "geheim.env" >> .gitignore
-git rm --cached geheim.env
-git commit -m "Datei aus der Versionsverwaltung nehmen"
-```
+- [x] Die Datei öffnen, zwischen den Markierungen entscheiden und den Commit
+      abschliessen ~ Richtig. `UU` heisst, dass beide Seiten dieselbe Stelle
+      geändert haben. Nach dem Auflösen folgt `git add` und ein gewöhnlicher
+      Commit.
+- [ ] Den Merge abbrechen, Konflikte sind ein Fehler ~ Sie sind normal.
+      `git merge --abort` ist nur dann richtig, wenn man den Merge überhaupt
+      nicht wollte.
+- [ ] Die Datei löschen und neu schreiben ~ Das verwirft beide Änderungen.
+:::
 
-**Herausfinden, wann eine Änderung entstanden ist**
+::: {.quiz}
+Ein Commit wurde schon gepusht und soll rückgängig gemacht werden. Welcher
+Befehl ist richtig?
 
-```bash
-git log -S "gesuchter Text" --oneline
-git blame datei.qmd
-```
+- [x] `git revert`, weil es einen neuen Commit anlegt und die Historie nicht
+      umschreibt ~ Richtig. Wer den alten Stand bereits geholt hat, bekommt
+      einfach den neuen Commit dazu.
+- [ ] `git reset --hard`, das ist gründlicher ~ Es schreibt die Historie um;
+      beim nächsten Push bräuchte es `--force`, und alle anderen bekommen
+      Probleme.
+- [ ] `git restore` ~ Das wirkt auf Dateien im Arbeitsverzeichnis, nicht auf
+      Commits.
+:::
+
+::: {.quiz}
+Eine Datei mit Zugangsdaten wurde versehentlich committet und mit
+`git rm --cached` wieder entfernt. Ist das Problem damit gelöst?
+
+- [ ] Ja, die Datei ist nicht mehr im Repository ~ Sie ist nicht mehr
+      **verfolgt**, steht aber weiterhin im alten Commit.
+- [x] Nein, das Passwort steht in der Historie und muss als kompromittiert
+      gelten ~ Richtig. Es gehört gewechselt. Das Bereinigen der Historie ist
+      aufwendig und hilft nicht, wenn jemand den Stand schon geholt hat.
+- [ ] Nein, die Datei muss auch von der Platte gelöscht werden ~ Lokal darf
+      sie bleiben, sie ist ja ignoriert.
+:::
+
+::: {.quiz}
+Warum erzeugt ein Jupyter-Notebook auch ohne inhaltliche Änderung einen
+grossen Diff?
+
+- [x] Es ist JSON und enthält Ausgaben, Bilder und Ausführungszähler ~
+      Richtig. Schon ein erneuter Durchlauf ändert die Zähler. Wer die
+      Ausgaben vor dem Commit leert, bekommt eine lesbare Historie.
+- [ ] Git kann JSON nicht vergleichen ~ Es vergleicht JSON wie jeden anderen
+      Text, genau darin liegt das Problem.
+- [ ] Notebooks werden immer als Binärdateien behandelt ~ Sie sind Text;
+      unlesbar ist nur der Diff.
+:::
 
 ## Verlinkte Ressourcen
 
-- [Pro Git, deutsch und frei verfügbar](https://git-scm.com/book/de/v2)
-- [Happy Git with R](https://happygitwithr.com/)
+- [Pro Git, das Buch (frei verfügbar)](https://git-scm.com/book/de/v2)
+- [Git: Referenz der Befehle](https://git-scm.com/docs)
+- [Oh Shit, Git!?! Rezepte für verfahrene Lagen](https://ohshitgit.com/)
