@@ -117,7 +117,11 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `programmierung/` (9 Seiten + Fragen) | **fertig** (12.09.2026), Zahlen maschinell und von Hand geprüft |
 | `daten/` (5 Seiten + Fragen) | **umgebaut** (12.09.2026), Ausgaben gegen den Text geprüft, noch `stand: entwurf` |
 | `datenbanken/` (8 Seiten) | **umgebaut** (12.09.2026): vier Seiten mit echten Beispielen gegen SQLite, vier ohne Server nur strukturell angeglichen |
-| `werkzeuge/` (3 Seiten), `ki/` | unverändert, keine Beispiele |
+| `werkzeuge/` (3 Seiten) | **umgebaut** (12.09.2026): Git und Shell mit echten Beispielen, Docker nur angeglichen |
+| `ki/` (9 Seiten) | **angeglichen** (12.09.2026), keine ausführbaren Beispiele möglich |
+
+**Damit ist jeder Bereich einmal durch.** Was bleibt, ist das Nachziehen von
+`stand: entwurf` auf `fertig`, sobald die Ausgaben je Bereich geprüft sind.
 
 ### Erledigt am 12.09.2026
 
@@ -206,14 +210,37 @@ Jede Behauptung hat eine Kennzahl. Die tragenden Beispiele:
 
 ### Danach
 
-Offen sind noch `werkzeuge/` (Linux und Shell, Git, Docker) und `ki/` (gar
-kein Code).
+Alle Bereiche sind umgebaut. Sinnvolle nächste Schritte:
 
-Für `werkzeuge/` gilt dieselbe Frage wie bei den Serverdatenbanken: Was läuft
-im Build wirklich? Shell-Befehle lassen sich über `system()` beziehungsweise
-`subprocess` echt ausführen, Git-Befehle in einem temporären Repository
-ebenfalls (Git ist auf dem Runner vorhanden). Docker läuft im Build nicht und
-bleibt deshalb bei Listings, wie die Serverdatenbanken.
+1. **`stand` nachziehen.** `daten/`, `datenbanken/`, `werkzeuge/` und `ki/`
+   stehen auf `entwurf`. Nach einer Durchsicht der gebauten Seiten kann das
+   auf `fertig` gehen, wie es für `programmierung/` am 12.09. geschah.
+2. **Die Fragenseiten wachsen lassen.** `werkzeuge/` und `datenbanken/` haben
+   keine eigene `fragen.qmd`; ihre übergreifenden Fragen liegen in
+   `daten/fragen.qmd` beziehungsweise `programmierung/fragen.qmd`.
+3. **Befehlsreferenz ergänzen.** Die Befehle der neuen Seiten (Shell, Git,
+   SQL) stehen noch nicht in `referenz/r.qmd` und `referenz/python.qmd`; die
+   Referenz ist bisher auf R und Python beschränkt, eine dritte Spalte oder
+   eine eigene Seite wäre zu entscheiden.
+
+### Der Werkzeugbereich
+
+Git und die Shell laufen im Build **echt**: Die Git-Seite legt ein Repository
+im Temp-Verzeichnis an und führt darin bis zum Merge-Konflikt alles vor, die
+Shell-Seite arbeitet auf einem erzeugten Beispielordner. Docker läuft nicht
+und bleibt bei Listings; echt ist dort nur die Ausgabe zur Umgebung.
+
+| Seite | Befund |
+|---|---|
+| Git | echter Merge-Konflikt mit `UU` und Markern; `restore`, `restore --staged` und `revert` greifen an drei verschiedenen Orten an; `git rm --cached` holt das Passwort nicht aus der Historie |
+| Linux und Shell | `wc -l` zählt die Kopfzeile mit; `uniq` zählt nur Nachbarn, deshalb `sort` davor; fehlende Datei gibt Rückgabewert 2; `chmod 600` für Zugangsdaten |
+
+### Der KI-Bereich
+
+Neun Seiten, angeglichen ohne ausführbare Beispiele. Der Grund steht auf
+jeder Seite: Es fehlt nicht nur der Modellzugriff im Build, dieselbe Frage
+wird auch je nach Modellstand verschieden beantwortet. Reproduzierbar ist
+nicht die Antwort, sondern ihre Prüfung an den Daten.
 
 ### Der Datenbankbereich
 
