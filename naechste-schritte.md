@@ -210,18 +210,36 @@ Jede Behauptung hat eine Kennzahl. Die tragenden Beispiele:
 
 ### Danach
 
-Alle Bereiche sind umgebaut. Sinnvolle nächste Schritte:
+**Alle Bereiche sind umgebaut und stehen auf `stand: fertig`** (Stand
+12.09.2026). Die Referenz hat seit dem 12.09. eine dritte Seite,
+`referenz/werkzeuge.qmd`, für Shell, Git und SQL; sie ist bewusst **nicht**
+zeilenweise parallel aufgebaut wie `r.qmd` und `python.qmd`, sondern folgt
+dem Arbeitsweg im jeweiligen Werkzeug.
 
-1. **`stand` nachziehen.** `daten/`, `datenbanken/`, `werkzeuge/` und `ki/`
-   stehen auf `entwurf`. Nach einer Durchsicht der gebauten Seiten kann das
-   auf `fertig` gehen, wie es für `programmierung/` am 12.09. geschah.
-2. **Die Fragenseiten wachsen lassen.** `werkzeuge/` und `datenbanken/` haben
+Sinnvolle nächste Schritte:
+
+1. **Die Fragenseiten wachsen lassen.** `werkzeuge/` und `datenbanken/` haben
    keine eigene `fragen.qmd`; ihre übergreifenden Fragen liegen in
-   `daten/fragen.qmd` beziehungsweise `programmierung/fragen.qmd`.
-3. **Befehlsreferenz ergänzen.** Die Befehle der neuen Seiten (Shell, Git,
-   SQL) stehen noch nicht in `referenz/r.qmd` und `referenz/python.qmd`; die
-   Referenz ist bisher auf R und Python beschränkt, eine dritte Spalte oder
-   eine eigene Seite wäre zu entscheiden.
+   `daten/fragen.qmd` beziehungsweise `programmierung/fragen.qmd`. Entweder so
+   lassen und dort weiter ergänzen, oder zwei eigene Fragenseiten anlegen.
+2. **Zweite Durchsicht der älteren Bereiche.** `statistik/` und
+   `visualisierung/` sind seit dem 11.09. unverändert; sie wurden nach
+   derselben Schablone gebaut, aber vor einigen Erkenntnissen, die später
+   dazukamen (Lehmer statt Seed, versionsabhängige Ausgaben, Rückgabewerte an
+   `_`). Ein Durchgang mit heutigem Blick würde vermutlich noch etwas finden.
+Neu im Ablauf ist ein drittes Prüfskript: `pruefe-links.py` prüft alle
+Querverweise zwischen Seiten, ihre Anker und die eingebundenen Bilder. Quarto
+meldet einen toten internen Link nicht, der Build bleibt grün. Über die 122
+Seiten lief es am 12.09. ohne Befund; gegen absichtlich kaputte Verweise
+getestet, damit ein "alles gut" auch etwas heisst.
+
+```bash
+python pruefe-chunks.py    # laedt jede Seite, was sie benutzt?
+python pruefe-links.py     # zeigt jeder Verweis auf etwas?
+# nach dem Build:
+python zeige-ausgaben.py _freeze/<pfad>/execute-results/html.json
+python pruefe-zahlen.py
+```
 
 ### Der Werkzeugbereich
 
