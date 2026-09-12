@@ -1,7 +1,7 @@
 ---
 title: "Linux und Shell"
 description: "Dateien, Rechte, Pipes und die Befehle, die man täglich braucht."
-categories: ["Linux", "Tooling"]
+categories: ["Linux", "Tooling", "R", "Python"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
 stand: entwurf
@@ -14,152 +14,434 @@ order: 10
 # Ein kleiner Beispielordner, auf dem die Befehle dieser Seite arbeiten.
 # Er entsteht beim Build und wird danach verworfen.
 demo <- file.path(tempdir(), "demo")
+unlink(demo, recursive = TRUE)
 dir.create(file.path(demo, "logs"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(demo, "daten"), recursive = TRUE, showWarnings = FALSE)
 
 writeLines(c("2026-03-01 INFO Start",
              "2026-03-01 ERROR Sensor 3 antwortet nicht",
              "2026-03-01 INFO Weiter",
-             "2026-03-02 ERROR Zeitüberschreitung"),
+             "2026-03-02 ERROR Zeitüberschreitung",
+             "2026-03-02 WARN Puffer fast voll",
+             "2026-03-03 ERROR Sensor 3 antwortet nicht"),
            file.path(demo, "logs", "anlage.log"))
-writeLines(c("id;wert", "1;12.4", "2;9.8"), file.path(demo, "daten", "messung.csv"))
+writeLines(c("id;wert;standort", "1;12.4;Bern", "2;9.8;Chur", "3;14.1;Bern"),
+           file.path(demo, "daten", "messung.csv"))
 writeLines("nur ein Beispiel", file.path(demo, "notiz.txt"))
 
 lauf <- function(befehl) {
-  cat(system(paste("cd", shQuote(demo), "&&", befehl), intern = TRUE), sep = "\n")
+  ausgabe <- suppressWarnings(
+    system(paste("cd", shQuote(demo), "&&", befehl), intern = TRUE))
+  cat(ausgabe, sep = "\n")
 }
 ```
 
 ```{python}
 #| label: setup-python
 #| include: false
-import subprocess, pathlib, os
+import pathlib
+import subprocess
+import tempfile
+
+demo_py = pathlib.Path(tempfile.mkdtemp()) / "demo"
+(demo_py / "logs").mkdir(parents=True, exist_ok=True)
+_ = (demo_py / "logs" / "anlage.log").write_text(
+    "2026-03-01 INFO Start\n"
+    "2026-03-01 ERROR Sensor 3 antwortet nicht\n"
+    "2026-03-01 INFO Weiter\n"
+    "2026-03-02 ERROR Zeitüberschreitung\n"
+    "2026-03-02 WARN Puffer fast voll\n"
+    "2026-03-03 ERROR Sensor 3 antwortet nicht\n", encoding="utf-8")
 ```
 
 ## Kernideen
 
-- Ein Wurzelverzeichnis, alles ist eine Datei
-- Navigation und Dateiarbeit: `ls`, `cd`, `mkdir`, `rm`, `cat`
-- Suchen mit `grep` und `find`
-- Standardströme, Umlenkung und Pipes
-- Rechteverwaltung: Besitzer, Gruppe, andere
-- Editoren im Terminal
+- Ein **Baum** ab `/`, keine Laufwerksbuchstaben; fast alles ist eine Datei.
+- **`grep` sucht in Dateien, `find` sucht nach Dateien.**
+- Jedes Programm liest von der Standardeingabe und schreibt auf die
+  Standardausgabe; eine **Pipe** verbindet beides zu Ketten.
+- **Drei Ströme**: stdin, stdout, stderr. Fehler laufen bewusst getrennt.
+- `>` überschreibt ohne Rückfrage, `>>` hängt an. `rm` kennt keinen
+  Papierkorb.
+- **Rechte** stehen in zehn Zeichen: Art, dann Besitzer, Gruppe, alle übrigen.
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** keines. Die Beispiele dieser Seite laufen beim Bauen der
-Website auf einem Linux-Rechner; die Ausgaben sind also echt. Angelegt wird
-dafür ein kleiner Beispielordner mit Logdateien und einer CSV-Datei.
+Website auf einem Linux-Rechner, die Ausgaben sind also echt. Angelegt wird
+dafür ein kleiner Ordner mit einer Logdatei, einer CSV-Datei und einer Notiz.
+Die Shell ist sprachunabhängig; nur Beispiel 6 zeigt R und Python getrennt.
 :::
 
 ### Warum sich die Shell lohnt
 
-Die Frage ist berechtigt: Warum Befehle tippen, wenn es Fenster gibt? Drei
-Gründe, die sich in der Datenarbeit zeigen.
-
-Erstens laufen Auswertungen irgendwann auf einem Server, und der hat keine
-Oberfläche. Zweitens ist ein Befehl wiederholbar und dokumentierbar, ein
-Mausklick nicht. Drittens sind manche Aufgaben in der Shell schlicht schneller:
-Wer wissen will, wie viele Zeilen einer Logdatei einen Fehler enthalten, tippt
-das in fünf Sekunden.
+Auswertungen laufen irgendwann auf einem Server, und der hat keine
+Oberfläche. Ein Befehl ist wiederholbar und dokumentierbar, ein Mausklick
+nicht. Und manche Aufgaben sind in der Shell schlicht schneller: Wer wissen
+will, wie viele Zeilen einer Logdatei einen Fehler enthalten, tippt das in
+fünf Sekunden.
 
 ### Ein Baum, keine Laufwerke
 
-Unter Windows hat jedes Laufwerk seinen eigenen Buchstaben. Unter Unix gibt es
-genau einen Baum, der bei `/` beginnt; weitere Datenträger werden an einer
-Stelle darin eingehängt. Auch Geräte und laufende Prozesse erscheinen als
-Dateien.
-
-Das klingt akademisch und hat eine praktische Folge: Dieselben Werkzeuge, die
-auf Textdateien arbeiten, lassen sich auf fast alles anwenden.
-
-```{r}
-#| label: struktur-r
-lauf("ls -R")
-```
-
-Die Ausgabe zeigt den Beispielordner, den diese Seite verwendet: zwei
-Unterordner und drei Dateien.
+Unter Windows hat jedes Laufwerk einen Buchstaben. Unter Unix gibt es genau
+einen Baum ab `/`; weitere Datenträger werden an einer Stelle darin
+eingehängt. Auch Geräte und laufende Prozesse erscheinen als Dateien, weshalb
+sich dieselben Werkzeuge auf fast alles anwenden lassen.
 
 ### Die Grundbefehle
 
 | Befehl | tut | häufig gebraucht mit |
 |---|---|---|
-| `ls` | Inhalt auflisten | `-l` ausführlich, `-a` auch versteckte |
+| `ls` | Inhalt auflisten | `-l` ausführlich, `-a` auch versteckte, `-R` rekursiv |
 | `cd` | Verzeichnis wechseln | `..` eine Ebene hoch |
 | `pwd` | wo bin ich | |
 | `mkdir` | Ordner anlegen | `-p` samt Zwischenebenen |
-| `cp`, `mv` | kopieren, verschieben oder umbenennen | `-r` rekursiv |
+| `cp`, `mv` | kopieren, verschieben, umbenennen | `-r` rekursiv |
 | `rm` | löschen | `-r` rekursiv, **kein Papierkorb** |
-| `cat`, `head`, `tail` | Inhalt anzeigen, Anfang, Ende | `-n` Zeilenzahl |
-
-```{r}
-#| label: grundbefehle-r
-lauf("ls -l logs")
-lauf("head -n 2 logs/anlage.log")
-```
-
-Die erste Ausgabe zeigt links die Rechte, dann Besitzer, Gruppe, Grösse und
-Änderungszeitpunkt. Auf die Rechte kommen wir gleich zurück.
+| `cat`, `head`, `tail` | Inhalt, Anfang, Ende | `-n` Zeilenzahl, `tail -f` mitlesen |
+| `wc` | zählen | `-l` Zeilen |
 
 ::: {.note-box}
-`rm` löscht sofort und endgültig, es gibt keinen Papierkorb. `rm -rf` auf ein
-falsches Verzeichnis ist einer der teuersten Tippfehler überhaupt. Vor dem
-Löschen mit Platzhaltern lohnt es sich, denselben Ausdruck zuerst mit `ls`
-auszuprobieren.
+`rm` löscht sofort und endgültig. `rm -rf` auf ein falsches Verzeichnis ist
+einer der teuersten Tippfehler überhaupt. Vor dem Löschen mit Platzhaltern
+lohnt es sich, denselben Ausdruck zuerst mit `ls` auszuprobieren.
 :::
 
-### Suchen: grep und find
+### Die drei Ströme
 
-Die beiden werden ständig verwechselt. `grep` sucht **in** Dateien nach
-Inhalten, `find` sucht **nach** Dateien anhand ihrer Eigenschaften.
+| Strom | Nummer | wofür | umlenken mit |
+|---|---|---|---|
+| stdin | 0 | Eingabe | `< datei` |
+| stdout | 1 | normale Ausgabe | `> datei` (überschreibt), `>> datei` (hängt an) |
+| stderr | 2 | Fehlermeldungen | `2> datei`, `2>/dev/null` |
 
-```{r}
-#| label: grep-r
-lauf("grep ERROR logs/anlage.log")
-lauf("grep -c ERROR logs/anlage.log")     # nur zaehlen
-```
+Fehlermeldungen laufen über einen eigenen Kanal. Deshalb erscheinen sie
+weiterhin am Bildschirm, wenn die normale Ausgabe in eine Datei geht, und
+deshalb landen sie nicht versehentlich mitten in den Daten.
 
-```{r}
-#| label: find-r
-lauf("find . -name '*.csv'")
-lauf("find . -type d")                    # nur Verzeichnisse
-```
+### Rechte
 
-### Ströme und Pipes
+`ls -l` beginnt mit zehn Zeichen, etwa `-rw-r--r--`: erst die Art (`-` Datei,
+`d` Verzeichnis), dann drei Dreiergruppen für Besitzer, Gruppe und alle
+übrigen, jeweils Lesen, Schreiben, Ausführen.
 
-Hier liegt die eigentliche Stärke. Jedes Programm liest von der
-Standardeingabe und schreibt auf die Standardausgabe. Eine Pipe verbindet die
-Ausgabe des einen mit der Eingabe des nächsten, und daraus entstehen aus
-kleinen Werkzeugen Verarbeitungsketten.
-
-```{r}
-#| label: pipe-r
-# Wie viele verschiedene Meldungsarten kommen vor, und wie oft?
-lauf("cat logs/anlage.log | awk '{print $2}' | sort | uniq -c")
-```
-
-Die Kette liest die Datei, schneidet die zweite Spalte heraus, sortiert sie und
-zählt gleiche Nachbarn. Vier kleine Programme, keines davon weiss etwas von den
-anderen.
-
-Drei Ströme gibt es, und der Unterschied wird beim Umlenken wichtig:
-
-| Strom | Nummer | wofür |
+| Ziffer | Rechte | entspricht |
 |---|---|---|
-| stdin | 0 | Eingabe |
-| stdout | 1 | normale Ausgabe |
-| stderr | 2 | Fehlermeldungen |
+| 7 | `rwx` | lesen, schreiben, ausführen |
+| 6 | `rw-` | lesen, schreiben |
+| 5 | `r-x` | lesen, ausführen |
+| 4 | `r--` | nur lesen |
+
+`chmod 600 datei` heisst also: Besitzer darf lesen und schreiben, sonst
+niemand etwas. Genau das gehört auf Dateien mit Zugangsdaten.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | Befehl |
+|---|---|
+| Zeilen zählen | `wc -l datei` |
+| in Dateien suchen | `grep -rn "muster" ordner/` |
+| Dateien finden | `find . -name "*.csv"` |
+| Spalte herausschneiden | `cut -d';' -f2 datei.csv` |
+| rechnen über eine Spalte | `awk -F';' 'NR>1 {s+=$2} END {print s}' datei.csv` |
+| sortieren und zählen | `sort \| uniq -c \| sort -rn` |
+| grosse Datei ansehen | `less datei`, `tail -f logdatei` |
+| Rechte setzen | `chmod 600 datei`, `chmod +x skript.sh` |
+| Platzbedarf | `du -sh ordner`, `df -h` |
+| Befehl finden | `which python`, `type ls` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Sehen, was da ist
+
+#### Frage und Datenlage
+
+Ein Ordner mit zwei Unterordnern und drei Dateien. Wie sieht man die Struktur,
+die Details und den Anfang einer Datei?
+
+#### Rechnung
 
 ```{r}
-#| label: umlenkung-r
-lauf("grep ERROR logs/anlage.log > fehler.txt && wc -l < fehler.txt")
+#| label: b1-sh-r
+lauf("ls -R")
+lauf("ls -l logs")
+lauf("head -n 2 logs/anlage.log")
+lauf("wc -l logs/anlage.log daten/messung.csv")
 ```
 
-Fehlermeldungen laufen bewusst über einen eigenen Kanal. Deshalb erscheinen sie
-weiterhin am Bildschirm, wenn die normale Ausgabe in eine Datei umgelenkt wird,
-und deshalb landen sie nicht versehentlich mitten in den Daten.
+#### Output Zeile für Zeile
+
+| Befehl | Ausgabe | Erklärung |
+|---|---|---|
+| `ls -R` | `daten`, `logs`, `notiz.txt`, danach je Unterordner dessen Inhalt | rekursiv, mit dem Ordnernamen als Überschrift |
+| `ls -l logs` | eine Zeile mit Rechten, Besitzer, Gruppe, Grösse, Zeitpunkt, Name | Die zehn Zeichen links sind die Rechte. |
+| `head -n 2` | die ersten beiden Logzeilen | `tail` nimmt das Ende, `tail -f` wartet auf Neues. |
+| `wc -l` | **6** für die Logdatei, **4** für die CSV-Datei, dazu die Summe | Die CSV-Datei hat vier Zeilen, also **drei** Datensätze plus Kopfzeile. |
+
+#### Interpretation und Ergebnissatz
+
+`wc -l` ist der schnellste Weg, die Grösse einer Datei in Datensätzen zu
+schätzen, und zugleich eine Falle: Die Kopfzeile zählt mit, und ein fehlender
+Zeilenumbruch am Dateiende kostet eine Zeile. Für eine Prüfung nach dem Import
+ist die Zahl trotzdem gut genug: Wer 4 Zeilen liest und 3 Datensätze
+importiert, weiss, dass es stimmt.
+
+> Der Ordner enthält zwei Unterordner und drei Dateien. Die Logdatei hat sechs
+> Zeilen, die CSV-Datei vier, also drei Datensätze und eine Kopfzeile.
+
+### Beispiel 2: grep sucht in Dateien, find sucht Dateien
+
+#### Frage und Datenlage
+
+Wie viele Fehlerzeilen stehen im Log, in welchen Zeilen, und wo liegen die
+CSV-Dateien?
+
+#### Rechnung
+
+```{r}
+#| label: b2-sh-r
+lauf("grep ERROR logs/anlage.log")
+lauf("grep -c ERROR logs/anlage.log")        # nur zaehlen
+lauf("grep -n 'Sensor' logs/anlage.log")     # mit Zeilennummer
+lauf("grep -ri 'puffer' .")                  # rekursiv, ohne Gross- und Kleinschreibung
+
+lauf("find . -name '*.csv'")
+lauf("find . -type d")
+```
+
+#### Output Zeile für Zeile
+
+| Befehl | Ergebnis | Erklärung |
+|---|---|---|
+| `grep ERROR` | drei Zeilen | die vollständigen Treffer |
+| `grep -c ERROR` | **3** | nur die Anzahl |
+| `grep -n Sensor` | Zeilen **2** und **6** | Dieselbe Meldung kommt zweimal vor, an zwei Tagen. |
+| `grep -ri puffer .` | die WARN-Zeile, mit Dateinamen davor | `-r` durchsucht den Baum, `-i` ignoriert Gross- und Kleinschreibung. Bei mehreren Dateien stellt `grep` den Dateinamen voran. |
+| `find . -name '*.csv'` | `./daten/messung.csv` | sucht nach **Namen**, gibt Pfade aus |
+| `find . -type d` | `.`, `./daten`, `./logs` | nur Verzeichnisse |
+
+#### Interpretation und Ergebnissatz
+
+Die beiden Werkzeuge beantworten verschiedene Fragen und ergänzen sich:
+`find . -name '*.log' -exec grep -c ERROR {} +` zählt Fehler in allen
+Logdateien. In der Datenarbeit ist `grep -c` der schnellste Weg, eine Vermutung
+über eine Datei zu prüfen, bevor man sie überhaupt einliest.
+
+> Die Logdatei enthält drei Fehlerzeilen, die Meldung über Sensor 3 steht in
+> den Zeilen 2 und 6. `find` liefert den Pfad der einzigen CSV-Datei.
+
+### Beispiel 3: Pipes und Umlenkung
+
+#### Frage und Datenlage
+
+Welche Meldungsarten kommen wie oft vor? Und wie schreibt man die Fehlerzeilen
+in eine eigene Datei?
+
+#### Rechnung
+
+```{r}
+#| label: b3-sh-r
+lauf("cat logs/anlage.log | awk '{print $2}' | sort | uniq -c | sort -rn")
+
+lauf("grep ERROR logs/anlage.log > fehler.txt")
+lauf("wc -l < fehler.txt")
+lauf("ls")
+
+lauf("ls nichtvorhanden.txt 2>/dev/null; echo \"Rueckgabewert: $?\"")
+```
+
+#### Output Zeile für Zeile
+
+| Schritt der Kette | Zwischenergebnis |
+|---|---|
+| `cat logs/anlage.log` | sechs Zeilen |
+| `awk '{print $2}'` | nur die zweite Spalte: INFO, ERROR, INFO, ERROR, WARN, ERROR |
+| `sort` | gleiche Werte stehen nebeneinander |
+| `uniq -c` | zählt gleiche **Nachbarn**, deshalb muss vorher sortiert werden |
+| `sort -rn` | nach Anzahl absteigend |
+
+| Ergebnis | Wert |
+|---|---|
+| ERROR | **3** |
+| INFO | **2** |
+| WARN | **1** |
+| `wc -l < fehler.txt` | **3** |
+| `ls` nach der Umlenkung | zusätzlich `fehler.txt` |
+| fehlende Datei, Fehler unterdrückt | keine Meldung, **Rückgabewert 2** |
+
+#### Interpretation und Ergebnissatz
+
+Vier kleine Programme, von denen keines etwas von den anderen weiss, ergeben
+eine Auswertung. Das ist das Prinzip: Ein Werkzeug tut eine Sache, und die
+Pipe verbindet sie. Wichtig ist die Reihenfolge, denn `uniq` zählt nur
+**benachbarte** gleiche Zeilen; ohne `sort` davor kommt Unsinn heraus. Und der
+Rückgabewert ist der Grund, warum sich Befehle in Skripten verketten lassen:
+`&&` führt den nächsten nur bei 0 aus.
+
+> Die Logdatei enthält dreimal ERROR, zweimal INFO und einmal WARN. Die
+> Fehlerzeilen stehen nach der Umlenkung in `fehler.txt`, das drei Zeilen hat;
+> der Zugriff auf eine fehlende Datei liefert den Rückgabewert 2.
+
+### Beispiel 4: Spalten und Rechnen ohne Tabellenkalkulation
+
+#### Frage und Datenlage
+
+Die CSV-Datei mit Semikolon als Trenner: Wie holt man eine Spalte heraus, wie
+summiert man sie, und wie zählt man je Standort?
+
+#### Rechnung
+
+```{r}
+#| label: b4-sh-r
+lauf("cat daten/messung.csv")
+lauf("cut -d';' -f2 daten/messung.csv")
+lauf("awk -F';' 'NR>1 {summe += $2} END {printf \"%.1f\\n\", summe}' daten/messung.csv")
+lauf("tail -n +2 daten/messung.csv | cut -d';' -f3 | sort | uniq -c")
+```
+
+#### Output Zeile für Zeile
+
+| Befehl | Ausgabe | Erklärung |
+|---|---|---|
+| `cat` | vier Zeilen samt Kopfzeile | |
+| `cut -d';' -f2` | `wert`, 12.4, 9.8, 14.1 | Die **Kopfzeile wird mitgeschnitten**, `cut` kennt keine Tabellenstruktur. |
+| `awk` mit `NR>1` | **36.3** | `NR` ist die Zeilennummer; `NR>1` überspringt die Kopfzeile. Die Summe stimmt mit der Datenimport-Seite überein. |
+| `tail -n +2 \| cut \| sort \| uniq -c` | Bern **2**, Chur **1** | `tail -n +2` beginnt bei Zeile 2, also ohne Kopfzeile. |
+
+#### Interpretation und Ergebnissatz
+
+Für einen schnellen Blick in eine grosse Datei ist das unschlagbar: Zeilen
+zählen, Spalte prüfen, Werte summieren, alles ohne Import und ohne
+Arbeitsspeicher. Die Grenze ist erreicht, sobald Anführungszeichen, eingebettete
+Trennzeichen oder Zeilenumbrüche im Feld vorkommen; dann braucht es einen
+echten CSV-Leser, siehe [Datenimport](../daten/datenimport-formate.qmd).
+
+> Die Werte summieren sich zu 36.3, und von den drei Messungen entfallen zwei
+> auf Bern und eine auf Chur. `cut` schneidet die Kopfzeile mit, `awk` mit
+> `NR>1` und `tail -n +2` lassen sie weg.
+
+### Beispiel 5: Rechte
+
+#### Frage und Datenlage
+
+Eine Notizdatei und ein kleines Skript. Wie sehen die Rechte aus, und was
+ändert `chmod`?
+
+#### Rechnung
+
+```{r}
+#| label: b5-sh-r
+lauf("ls -l notiz.txt")
+lauf("chmod 600 notiz.txt && ls -l notiz.txt")
+
+lauf("printf '#!/bin/sh\\necho hallo aus dem Skript\\n' > start.sh")
+lauf("ls -l start.sh")
+lauf("./start.sh 2>&1 || echo 'nicht ausfuehrbar'")
+lauf("chmod +x start.sh && ls -l start.sh")
+lauf("./start.sh")
+```
+
+#### Output Zeile für Zeile
+
+| Schritt | Rechte | Erklärung |
+|---|---|---|
+| `notiz.txt` vorher | `-rw-r--r--` | Besitzer darf lesen und schreiben, alle anderen nur lesen. |
+| nach `chmod 600` | **`-rw-------`** | Nur noch der Besitzer. Genau das gehört auf eine Datei mit Zugangsdaten. |
+| `start.sh` neu geschrieben | `-rw-r--r--` | Ein Skript ist zunächst **nicht** ausführbar. |
+| Aufruf ohne Ausführrecht | Fehlermeldung, `nicht ausfuehrbar` | Die Datei existiert, das Recht fehlt. |
+| nach `chmod +x` | **`-rwxr-xr-x`** | Das `x` ist gesetzt. |
+| Aufruf danach | `hallo aus dem Skript` | |
+
+#### Interpretation und Ergebnissatz
+
+Das `x`-Recht ist der Grund, warum ein frisch heruntergeladenes Skript nicht
+startet. Wichtiger für die Datenarbeit ist die andere Richtung: `chmod 600` auf
+Dateien mit Zugangsdaten, damit sie nicht von anderen Konten auf demselben
+Server gelesen werden können. Was die Rechte **nicht** leisten, ist Schutz vor
+dem Besitzer selbst; ein versehentlich committetes Passwort bleibt ein
+Passwort in der Historie, siehe [Git](git.qmd), Beispiel 6.
+
+> `chmod 600` nimmt Gruppe und allen anderen jeden Zugriff auf die Notiz. Das
+> neu geschriebene Skript ist erst nach `chmod +x` ausführbar und gibt dann
+> `hallo aus dem Skript` aus.
+
+### Beispiel 6: Die Shell aus R und Python aufrufen
+
+#### Frage und Datenlage
+
+Dieselbe Zählung der Fehlerzeilen, aber aus einem Skript heraus: Wie kommt die
+Ausgabe in eine Variable, und wie prüft man, ob der Befehl gelungen ist?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b6-sh-r
+pfad <- file.path(demo, "logs", "anlage.log")
+
+anzahl <- system2("grep", c("-c", "ERROR", shQuote(pfad)), stdout = TRUE)
+anzahl
+as.integer(anzahl)
+
+fehlgriff <- suppressWarnings(
+  system2("grep", c("-c", "ERROR", "gibtsnicht.log"),
+          stdout = TRUE, stderr = FALSE))
+attr(fehlgriff, "status")
+```
+
+##### Python
+
+```{python}
+#| label: b6-sh-py
+pfad = demo_py / "logs" / "anlage.log"
+
+lauf = subprocess.run(["grep", "-c", "ERROR", str(pfad)],
+                      capture_output=True, text=True)
+print(repr(lauf.stdout), lauf.returncode)
+print(int(lauf.stdout.strip()))
+
+fehlgriff = subprocess.run(["grep", "-c", "ERROR", "gibtsnicht.log"],
+                           capture_output=True, text=True)
+print(fehlgriff.returncode, repr(fehlgriff.stdout), fehlgriff.stderr.strip()[:60])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | R | Python | Erklärung |
+|---|---|---|---|
+| Ausgabe | `"3"` als **Text** | `'3\n'` | Was von der Shell kommt, ist immer Text, samt Zeilenumbruch. |
+| umgewandelt | 3 | 3 | `as.integer()` beziehungsweise `int(...)` nach `strip()`. |
+| Rückgabewert bei Erfolg | kein `status`-Attribut | **0** | |
+| Rückgabewert beim Fehlgriff | **2** im Attribut `status` | **2**, Ausgabe leer, Meldung auf stderr | Bei `grep` heisst 1 "nichts gefunden" und 2 "Fehler". Der Unterschied ist wichtig: Nichts gefunden ist kein Fehler. |
+
+In Python ist die Liste der Argumente der sichere Weg: Ohne `shell=True`
+interpretiert keine Shell die Zeichen, und ein Dateiname mit Leerzeichen oder
+Apostroph kann nichts anrichten. In R leistet `system2` mit `shQuote()`
+dasselbe.
+
+#### Interpretation und Ergebnissatz
+
+Der Aufruf aus dem Skript lohnt für genau die Fälle, in denen die Shell
+schneller ist: eine Datei vorab zählen, ein Archiv entpacken, ein
+Kommandozeilenwerkzeug ansteuern. Zwei Regeln machen ihn sicher: Argumente als
+Liste übergeben statt eine Zeichenkette zusammenzubauen, und den Rückgabewert
+prüfen, statt anzunehmen, dass es geklappt hat.
+
+> Der Aufruf liefert die Ausgabe als Text (`'3\n'`), die erst umgewandelt
+> werden muss. Beim Zugriff auf eine fehlende Datei ist der Rückgabewert 2 und
+> die Ausgabe leer; die Meldung steht auf dem Fehlerkanal.
+
+::::
+
+## Verständnisfragen
 
 ::: {.quiz}
 Was ist der Unterschied zwischen `grep muster datei` und `find . -name muster`?
@@ -168,131 +450,73 @@ Was ist der Unterschied zwischen `grep muster datei` und `find . -name muster`?
       durchsucht den Inhalt und gibt passende Zeilen aus, `find` durchsucht das
       Dateisystem nach Namen und gibt Pfade aus.
 - [ ] `grep` arbeitet nur auf einer Datei, `find` auf mehreren ~ `grep` nimmt
-      ebenso viele Dateien entgegen; der Unterschied liegt nicht in der Anzahl.
-- [ ] `find` ist die neuere Variante von `grep` ~ Es sind zwei Werkzeuge für zwei
-      verschiedene Fragen, die sich gut kombinieren lassen.
+      ebenso viele Dateien entgegen.
+- [ ] `find` ist die neuere Variante von `grep` ~ Es sind zwei Werkzeuge für
+      zwei verschiedene Fragen, die sich gut kombinieren lassen.
 :::
 
 ::: {.quiz}
 Warum ist `>` gefährlicher als `>>`?
 
 - [x] Es überschreibt die Zieldatei ohne Rückfrage, und zwar bevor der Befehl
-      links läuft ~ Richtig. Ein vertippter Dateiname löscht damit deren Inhalt,
-      auch wenn der Befehl danach scheitert. `>>` hängt an und lässt Bestehendes
-      stehen.
+      links läuft ~ Richtig. Ein vertippter Dateiname löscht damit deren
+      Inhalt, auch wenn der Befehl danach scheitert. `>>` hängt an.
 - [ ] Es schreibt auch Fehlermeldungen in die Datei ~ Das täte erst `2>` oder
-      `&>`; die normale Umleitung nimmt nur die Standardausgabe.
+      `&>`.
 - [ ] Es ist langsamer bei grossen Dateien ~ Die Geschwindigkeit ist nicht das
       Thema.
 :::
 
-### Rechte
+::: {.quiz}
+`cat log | awk '{print $2}' | uniq -c` liefert seltsame Zahlen: Dieselbe
+Meldungsart erscheint mehrfach mit kleinen Anzahlen. Was fehlt?
 
-Die Ausgabe von `ls -l` beginnt mit zehn Zeichen, etwa `-rw-r--r--`. Das erste
-gibt die Art an, danach folgen drei Dreiergruppen für Besitzer, Gruppe und alle
-übrigen, jeweils mit Lesen, Schreiben und Ausführen.
-
-```{r}
-#| label: rechte-r
-lauf("ls -l notiz.txt")
-lauf("chmod 600 notiz.txt && ls -l notiz.txt")
-```
-
-Die Zahlenschreibweise ergibt sich aus der Summe je Gruppe: Lesen zählt 4,
-Schreiben 2, Ausführen 1. Aus 600 wird damit Lesen und Schreiben für den
-Besitzer, nichts für alle anderen.
-
-Bei Verzeichnissen bedeutet das Ausführungsrecht das Betreten. Ein Verzeichnis
-ohne dieses Recht lässt sich auflisten, aber nicht durchqueren, was zu
-Fehlermeldungen führt, die zunächst rätselhaft wirken.
-
-::: {.note-box}
-Für die Datenarbeit wird das relevant, sobald ein Skript auf einem Server läuft.
-Ein Prozess unter einer anderen Benutzerkennung kann eine Datei nicht lesen,
-obwohl sie sichtbar ist. Der erste Blick gilt dann `ls -l` und der Frage, unter
-welcher Kennung der Prozess läuft.
+- [x] Ein `sort` vor `uniq` ~ Richtig. `uniq` fasst nur **benachbarte** gleiche
+      Zeilen zusammen. Ohne Sortierung wird jede Gruppe für sich gezählt.
+- [ ] Die Option `-a` bei `uniq` ~ Die gibt es nicht; das Verhalten ist so
+      gewollt.
+- [ ] `awk` muss die Spalte anders adressieren ~ `$2` ist richtig.
 :::
 
-### Wann Shell, wann Python
+::: {.quiz}
+Eine CSV-Datei hat 1001 Zeilen laut `wc -l`. Wie viele Datensätze sind das?
 
-Beide können dasselbe, und die Grenze verläuft entlang der Lesbarkeit.
-
-::: panel-tabset
-## R
-
-```{r}
-#| label: dateien-r
-# Aus R heraus, plattformunabhaengig
-alt <- getwd(); setwd(demo)
-list.files(pattern = "\\.txt$", recursive = TRUE)
-length(readLines("logs/anlage.log"))
-setwd(alt)
-```
-
-## Python
-
-```{python}
-#| label: dateien-py
-import pathlib, tempfile, os
-
-# eigener Beispielordner fuer den Python-Teil
-demo = pathlib.Path(tempfile.mkdtemp())
-(demo / "logs").mkdir()
-(demo / "logs" / "anlage.log").write_text(
-    "INFO Start\nERROR Sensor 3\nINFO Weiter\n", encoding="utf-8")
-
-print(list(demo.rglob("*.log")))
-
-text = (demo / "logs" / "anlage.log").read_text(encoding="utf-8")
-print("Zeilen mit ERROR:", sum("ERROR" in z for z in text.splitlines()))
-```
+- [x] Vermutlich 1000, weil die Kopfzeile mitgezählt wird ~ Richtig. Dazu
+      kommt: Fehlt am Dateiende der Zeilenumbruch, zählt `wc -l` eine Zeile zu
+      wenig. Für eine Kontrolle nach dem Import reicht es trotzdem.
+- [ ] Genau 1001 ~ Nur ohne Kopfzeile.
+- [ ] Das lässt sich nicht sagen ~ Mit einem Blick auf `head -n 1` schon.
 :::
 
-Faustregel: Für einmalige Erkundung und für Ketten aus zwei bis drei Schritten
-ist die Shell schneller. Sobald Bedingungen, Fehlerbehandlung oder Rechnungen
-dazukommen, ist ein Skript in Python oder R besser lesbar und leichter zu
-prüfen. Wer eine Shell-Zeile schreibt, die er selbst nicht mehr vorlesen kann,
-hat die Grenze überschritten.
+::: {.quiz}
+Eine Datei mit Zugangsdaten liegt auf einem gemeinsam genutzten Server. Welche
+Rechte gehören darauf?
 
-::: {.note-box}
-Unter Windows steht dieselbe Umgebung über WSL zur Verfügung. Das ist
-praktischer, als jeden Befehl in ein PowerShell-Gegenstück zu übersetzen, und
-entspricht ausserdem dem, was später auf dem Server läuft.
+- [x] `chmod 600`, also nur der Besitzer darf lesen und schreiben ~ Richtig.
+      Voreingestellt ist meist `-rw-r--r--`, und damit kann jedes andere Konto
+      auf dem Server die Datei lesen.
+- [ ] `chmod 777`, damit alle Programme darauf zugreifen können ~ Das gibt
+      jedem alle Rechte und ist das Gegenteil des Gewollten.
+- [ ] `chmod +x`, damit nur ausführbare Programme sie lesen ~ Das Ausführrecht
+      hat mit Lesen nichts zu tun.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+Ein Python-Skript ruft `subprocess.run("grep -c ERROR " + dateiname,
+shell=True)` auf. Was ist daran riskant?
 
-```bash
-ls -lah                      # Inhalt mit Groessen und versteckten Dateien
-du -sh *                     # Groesse je Eintrag im aktuellen Ordner
-find . -name "*.csv"         # Dateien nach Namensmuster suchen
-grep -rn "muster" .          # Text rekursiv suchen, mit Zeilennummern
-head -5 daten.csv            # erste Zeilen ansehen, ohne alles zu laden
-wc -l daten.csv              # Zeilen zaehlen
-tar -czf sicherung.tar.gz ordner/    # Ordner packen
-chmod +x skript.sh           # Skript ausfuehrbar machen
-ps aux | grep python         # laufende Prozesse finden
-```
-
-**Werte einer Spalte auszählen, ohne die Datei zu laden**
-
-```bash
-cut -d, -f2 daten.csv | sort | uniq -c | sort -rn | head
-```
-
-**Ausgabe weiterverarbeiten statt zwischenspeichern**
-
-```bash
-grep "FEHLER" app.log | cut -d" " -f1 | sort | uniq -c
-```
-
-**Einen Befehl auf viele Dateien anwenden**
-
-```bash
-for f in *.csv; do echo "$f: $(wc -l < "$f") Zeilen"; done
-```
+- [x] Der Dateiname wird von der Shell interpretiert; Leerzeichen oder
+      Sonderzeichen ändern den Befehl ~ Richtig. Mit einer Argumentliste ohne
+      `shell=True` kann das nicht passieren. Es ist dieselbe Trennung von Wert
+      und Anweisung wie bei SQL-Parametern.
+- [ ] `grep` ist für Skripte ungeeignet ~ Es eignet sich gut, nur der Aufruf
+      ist hier unsicher.
+- [ ] Der Rückgabewert geht verloren ~ Er steht in `returncode`; das ist ein
+      anderer Punkt.
+:::
 
 ## Verlinkte Ressourcen
 
-- [Bash-Referenzhandbuch](https://www.gnu.org/software/bash/manual/)
-- [Windows Subsystem for Linux](https://learn.microsoft.com/de-de/windows/wsl/)
+- [Kurs des MIT zu Shell und Werkzeugen](https://missing.csail.mit.edu/)
+- [ExplainShell: Befehle zerlegt erklärt](https://explainshell.com/)
+- [Bash-Handbuch (GNU)](https://www.gnu.org/software/bash/manual/)
