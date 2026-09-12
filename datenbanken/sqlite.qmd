@@ -13,205 +13,567 @@ order: 40
 #| include: false
 library(DBI)
 library(RSQLite)
+
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+frage <- function(sql, ...) knitr::kable(dbGetQuery(con, sql, ...))
+tue <- function(sql, ...) invisible(dbExecute(con, sql, ...))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import pathlib
+import sqlite3
+import tempfile
+
+import pandas as pd
+
+verbindung = sqlite3.connect(":memory:")
+
+
+def frage(sql, params=None):
+    return pd.read_sql_query(sql, verbindung, params=params)
 ```
 
 ## Kernideen
 
-- Eine Datenbank ist eine einzige Datei, es läuft kein Server
-- In R und Python ohne Installation verfügbar, die Treiber bringen sie mit
-- Typen sind Empfehlungen, keine Vorschriften: SQLite speichert, was kommt
-- Ideal für Auswertungen, Prototypen und Datensätze, die nicht in den Speicher passen
-- Grenze ist der gleichzeitige Schreibzugriff, nicht die Datenmenge
-- Alles, was hier an SQL geübt wird, gilt in den Serversystemen weiter
+- Eine Datenbank ist **eine einzige Datei**, es läuft kein Server. In R und
+  Python ist der Treiber bereits dabei.
+- **Typen sind Empfehlungen**: Eine `INTEGER`-Spalte nimmt auch Text an, und
+  eine Summe darüber rechnet stillschweigend weiter.
+- Wer das ausschliessen will, nutzt `CHECK`, `NOT NULL` und seit SQLite 3.37
+  **`STRICT`**-Tabellen.
+- Kein eigener **Datums- und Wahrheitstyp**; beides wird als Text
+  beziehungsweise Zahl abgelegt.
+- **Fremdschlüssel sind standardmässig aus** und gehören je Verbindung
+  eingeschaltet.
+- Die Grenze ist der **gleichzeitige Schreibzugriff**, nicht die Datenmenge.
 
 ## Erklärung
 
 ::: {.note-box}
-**Vorwissen:** [SQL](sql.qmd) für die Abfragen und
-[Datenmodellierung](datenmodellierung.qmd) für den Tabellenentwurf. Welches
-System wann passt, steht in der [Übersicht](index.qmd).
+**Vorwissen:** [SQL](sql.qmd) für die Abfragen,
+[Datenmodellierung](datenmodellierung.qmd) für den Tabellenentwurf und
+[Datenbankzugriff](datenbanken-zugriff.qmd) für Verbindung und Parameter.
+Welches System wann passt, steht in der [Übersicht](index.qmd).
 :::
 
 ### Was SQLite ist
 
 SQLite ist eine Programmbibliothek, keine Serveranwendung. Die gesamte
-Datenbank steht in einer Datei, und das Programm, das sie benutzt, spricht
-direkt mit dieser Datei. Es gibt keinen Dienst, keinen Port, keine Benutzer
-und keine Rechteverwaltung. Genau das macht sie für die Datenarbeit so
-praktisch: Eine Auswertung braucht keine Infrastruktur, und die Datenbank lässt
-sich kopieren, versionieren und weitergeben wie jede andere Datei.
+Datenbank steht in einer Datei, und das Programm spricht direkt mit dieser
+Datei. Es gibt keinen Dienst, keinen Port, keine Benutzer und keine
+Rechteverwaltung. Genau das macht sie für die Datenarbeit praktisch: Eine
+Auswertung braucht keine Infrastruktur, und die Datenbank lässt sich
+kopieren, versionieren und weitergeben wie jede andere Datei.
 
-Der Preis dafür ist das Schreibmodell. Lesen können viele Prozesse
-gleichzeitig, schreiben nur einer. Für eine Anwendung mit vielen gleichzeitigen
-Benutzern ist das die falsche Wahl; für eine Auswertung, die eine Person
-ausführt, spielt es keine Rolle.
+Der Preis ist das Schreibmodell. Lesen können viele Prozesse gleichzeitig,
+schreiben nur einer. Für eine Anwendung mit vielen gleichzeitigen Benutzern
+ist das die falsche Wahl, für eine Auswertung spielt es keine Rolle.
 
-### Typen sind Empfehlungen
+### Wann SQLite, wann ein Server
 
-SQLite ist dynamisch typisiert. Eine als `INTEGER` deklarierte Spalte nimmt
-klaglos den Text `"k.A."` auf, weil der deklarierte Typ nur eine Affinität ist.
-Das ist bequem beim Einlesen roher Daten und eine Fehlerquelle bei allem, was
-danach kommt.
+| Fall | Wahl |
+|---|---|
+| Datei zu gross für den Arbeitsspeicher | SQLite, einmal einlesen, danach gezielt abfragen |
+| Zwischenstand mehrerer Skripte | SQLite als Datei im Projekt |
+| eine Person wertet aus | SQLite |
+| viele schreiben gleichzeitig | [PostgreSQL](postgresql.qmd), [MySQL](mysql-mariadb.qmd) |
+| Rechteverwaltung, Netzwerkzugriff | Server |
+| analytische Abfragen über viele Spalten | [DuckDB](duckdb.qmd) |
 
-Die praktische Folge: Prüfungen gehören ins eigene Vorgehen, nicht in die
-Erwartung an das System. Wer sicher sein will, setzt beim Anlegen Bedingungen:
+### Typaffinität
 
-```sql
-CREATE TABLE messung (
-  messung_id INTEGER PRIMARY KEY,
-  wert       REAL    NOT NULL CHECK (wert >= 0),
-  gemessen   TEXT    NOT NULL,          -- ISO-8601 als Text
-  geraet_id  INTEGER NOT NULL REFERENCES geraet(geraet_id)
-);
+SQLite ist dynamisch typisiert. Der deklarierte Typ ist eine **Affinität**:
+Die Datenbank wandelt um, wo es geht, und speichert sonst, was kommt. Das ist
+bequem beim Einlesen roher Daten und eine Fehlerquelle bei allem danach. Drei
+Gegenmittel:
+
+| Mittel | Wirkung |
+|---|---|
+| `CHECK (wert >= 0)` | prüft den Inhalt bei jedem Schreiben |
+| `NOT NULL` | verhindert fehlende Werte |
+| `... ) STRICT` | erzwingt die deklarierten Typen, seit SQLite 3.37 |
+
+### Die Funktion `typeof()`
+
+`SELECT typeof(spalte)` zeigt je Zeile, was wirklich gespeichert ist. Das ist
+der schnellste Weg, eine verunreinigte Spalte zu finden, und es gibt ihn nur
+in SQLite.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | SQL beziehungsweise Befehl |
+|---|---|
+| Tabellen auflisten | `SELECT name FROM sqlite_master WHERE type='table'` |
+| Spalten und Typen | `PRAGMA table_info(tabelle)` oder `pragma_table_info('tabelle')` |
+| tatsächlicher Typ je Zeile | `SELECT typeof(spalte) FROM tabelle` |
+| Fremdschlüssel einschalten | `PRAGMA foreign_keys = ON` (je Verbindung) |
+| Abfrageplan ansehen | `EXPLAIN QUERY PLAN SELECT ...` |
+| Index anlegen | `CREATE INDEX idx ON tabelle(spalte)` |
+| Datei aufräumen | `VACUUM` |
+| grosse CSV überführen | stückweise lesen und `append` schreiben |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Der Typ ist nur eine Empfehlung
+
+#### Frage und Datenlage
+
+Eine Spalte ist als `INTEGER` angelegt. Was passiert, wenn dort `42`, der
+Text `k.A.` und die Zahl `3.7` landen, und was ergibt die Summe?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-sl-r
+tue("CREATE TABLE messung (id INTEGER PRIMARY KEY, wert INTEGER)")
+tue("INSERT INTO messung VALUES (1, 42), (2, 'k.A.'), (3, 3.7)")
+
+frage("SELECT id, wert, typeof(wert) AS typ FROM messung")
+frage("SELECT typeof(wert) AS typ, COUNT(*) AS n FROM messung GROUP BY typeof(wert)")
+frage("SELECT SUM(wert) AS summe, COUNT(*) AS n, AVG(wert) AS mittel FROM messung")
 ```
 
-Zwei Eigenheiten sind dabei zu kennen. Erstens kennt SQLite keinen eigenen
-Datums- und Zeittyp; Zeitstempel werden als Text im Format `YYYY-MM-DD` oder
-als Zahl abgelegt, siehe [Datum und Zeit](../daten/datum-zeit.qmd). Zweitens sind
-Fremdschlüssel standardmässig ausgeschaltet und müssen je Verbindung
-eingeschaltet werden.
+##### Python
 
-### Wo sie in der Datenarbeit glänzt
+```{python}
+#| label: b1-sl-py
+verbindung.executescript("""
+  CREATE TABLE messung (id INTEGER PRIMARY KEY, wert INTEGER);
+  INSERT INTO messung VALUES (1, 42), (2, 'k.A.'), (3, 3.7);""")
+verbindung.commit()
 
-Der häufigste Fall ist eine Datei, die für den Arbeitsspeicher zu gross ist.
-Statt sie ganz zu laden, legt man sie einmal in eine SQLite-Datei und fragt
-danach nur noch das ab, was gebraucht wird. Der zweite Fall ist der
-Zwischenstand einer längeren Auswertung: eine Tabelle, die mehrere Skripte
-gemeinsam nutzen, ohne dass jemand eine CSV-Datei hin- und herkopiert.
+print(frage("SELECT id, wert, typeof(wert) AS typ FROM messung").to_string(index=False))
+print(frage("""SELECT typeof(wert) AS typ, COUNT(*) AS n FROM messung
+               GROUP BY typeof(wert)""").to_string(index=False))
+print(frage("SELECT SUM(wert) AS summe, COUNT(*) AS n FROM messung"
+            ).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Zeile | Wert | `typeof` | Erklärung |
+|---|---|---|---|
+| 1 | 42 | **integer** | wie deklariert |
+| 2 | `k.A.` | **text** | Der Text wird angenommen, obwohl die Spalte `INTEGER` heisst. |
+| 3 | 3.7 | **real** | Auch die Kommazahl bleibt, was sie ist. |
+
+| Kennzahl | Wert | Erklärung |
+|---|---|---|
+| `COUNT(*)` | 3 | drei Zeilen |
+| `SUM(wert)` | **45.7** | 42 + 3.7, der Text zählt als 0. **Keine Fehlermeldung, kein `NULL`.** |
+
+#### Interpretation und Ergebnissatz
+
+Die Summe 45.7 ist das Gefährliche an der Typaffinität: Sie sieht richtig aus.
+Eine Spalte mit einem einzigen `k.A.` liefert eine plausible Summe, die zu
+klein ist, und nichts weist darauf hin. Deshalb gehört nach jedem Import roher
+Daten eine Abfrage auf `typeof()` je Spalte, oder die Tabelle wird gleich als
+`STRICT` angelegt.
+
+> In der als `INTEGER` deklarierten Spalte stehen ein Integer, ein Text und
+> eine Realzahl nebeneinander. Die Summe beträgt 45.7, weil der Text
+> stillschweigend als 0 zählt.
+
+### Beispiel 2: Bedingungen und STRICT
+
+#### Frage und Datenlage
+
+Dieselbe Tabelle mit `NOT NULL`, `CHECK (wert >= 0)` und als `STRICT`
+angelegt. Welche vier Einfügeversuche gehen durch?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-sl-r
+frage("SELECT sqlite_version() AS version")
+
+angelegt <- try(dbExecute(con, "CREATE TABLE streng (
+    id   INTEGER PRIMARY KEY,
+    wert REAL NOT NULL CHECK (wert >= 0)) STRICT"), silent = TRUE)
+if (inherits(angelegt, "try-error")) "STRICT nicht unterstuetzt" else "STRICT angelegt"
+
+for (sql in c("INSERT INTO streng VALUES (1, 12.5)",
+              "INSERT INTO streng VALUES (2, -1)",
+              "INSERT INTO streng VALUES (3, 'k.A.')",
+              "INSERT INTO streng VALUES (4, NULL)")) {
+  ergebnis <- try(dbExecute(con, sql), silent = TRUE)
+  cat(sub(".*VALUES ", "", sql), ":",
+      if (inherits(ergebnis, "try-error")) "abgelehnt" else "angenommen", "\n")
+}
+
+frage("SELECT COUNT(*) AS zeilen FROM streng")
+```
+
+##### Python
+
+```{python}
+#| label: b2-sl-py
+print(frage("SELECT sqlite_version() AS version").to_string(index=False))
+
+verbindung.executescript("""CREATE TABLE streng (
+    id   INTEGER PRIMARY KEY,
+    wert REAL NOT NULL CHECK (wert >= 0)) STRICT;""")
+verbindung.commit()
+
+for sql, was in [("INSERT INTO streng VALUES (1, 12.5)", "12.5"),
+                 ("INSERT INTO streng VALUES (2, -1)", "-1"),
+                 ("INSERT INTO streng VALUES (3, 'k.A.')", "'k.A.'"),
+                 ("INSERT INTO streng VALUES (4, NULL)", "NULL")]:
+    try:
+        verbindung.execute(sql)
+        verbindung.commit()
+        print(was, "angenommen")
+    except sqlite3.Error as fehler:
+        print(was, "abgelehnt:", str(fehler)[:50])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Versuch | Ergebnis | Regel, die greift |
+|---|---|---|
+| `12.5` | **angenommen** | erfüllt alles |
+| `-1` | **abgelehnt**, `CHECK constraint failed: wert >= 0` | `CHECK` |
+| `'k.A.'` | **abgelehnt**, `cannot store TEXT value in REAL column` | **`STRICT`**; ohne diesen Zusatz wäre der Text angenommen worden, wie in Beispiel 1. |
+| `NULL` | **abgelehnt**, `NOT NULL constraint failed` | `NOT NULL` |
+
+#### Interpretation und Ergebnissatz
+
+Mit drei Zusätzen verhält sich SQLite wie eine Datenbank mit festen Typen.
+`STRICT` gibt es seit Version 3.37; die Abfrage `sqlite_version()` zeigt, was
+die eigene Installation mitbringt. Für Tabellen, die roh eingelesene Daten
+aufnehmen, ist die lockere Variante bequem; für alles, womit danach gerechnet
+wird, ist die strenge die richtige.
+
+> Von vier Einfügeversuchen geht nur der gültige durch: Die negative Zahl
+> scheitert am `CHECK`, der Text am `STRICT`, der fehlende Wert am
+> `NOT NULL`.
+
+### Beispiel 3: Die Datenbank ist eine Datei
+
+#### Frage und Datenlage
+
+Eine Datenbank wird als Datei angelegt, gefüllt und geschlossen. Was steht
+danach auf der Platte, und was findet man beim erneuten Öffnen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-sl-r
+pfad <- file.path(tempdir(), "laden.sqlite")
+datei <- dbConnect(RSQLite::SQLite(), pfad)
+invisible(dbExecute(datei, "CREATE TABLE artikel (id INTEGER PRIMARY KEY, name TEXT)"))
+invisible(dbExecute(datei, "INSERT INTO artikel VALUES (1,'Ventil'), (2,'Zylinder')"))
+dbDisconnect(datei)
+
+c(vorhanden = file.exists(pfad), bytes = file.size(pfad))
+
+wieder <- dbConnect(RSQLite::SQLite(), pfad)
+dbListTables(wieder)
+dbGetQuery(wieder, "SELECT COUNT(*) AS n FROM artikel")
+dbDisconnect(wieder)
+```
+
+##### Python
+
+```{python}
+#| label: b3-sl-py
+ordner = pathlib.Path(tempfile.mkdtemp())
+pfad = ordner / "laden.sqlite"
+
+datei = sqlite3.connect(pfad)
+datei.executescript("""CREATE TABLE artikel (id INTEGER PRIMARY KEY, name TEXT);
+                       INSERT INTO artikel VALUES (1,'Ventil'), (2,'Zylinder');""")
+datei.commit()
+datei.close()
+
+print(pfad.exists(), pfad.stat().st_size)
+
+wieder = sqlite3.connect(pfad)
+print(pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table'",
+                        wieder)["name"].tolist())
+print(pd.read_sql_query("SELECT COUNT(*) AS n FROM artikel", wieder).iloc[0, 0])
+wieder.close()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Ergebnis | Erklärung |
+|---|---|---|
+| Datei vorhanden | **`True`** | Sie entsteht beim Verbinden, nicht erst beim Schreiben. |
+| Grösse | **8192 Byte** | zwei Seiten à 4096 Byte: Kopf und Inhalt. Eine leere Datenbank ist winzig. |
+| Tabellen nach dem erneuten Öffnen | `artikel` | Alles steht in der Datei, es gibt keinen Server, der etwas hält. |
+| Zeilen | 2 | |
+
+Die Liste der Tabellen steht in der Systemtabelle `sqlite_master`, die jede
+SQLite-Datei mitbringt. In R gibt es dafür zusätzlich `dbListTables()`.
+
+#### Interpretation und Ergebnissatz
+
+Weil die Datenbank eine Datei ist, gelten für sie die Regeln von Dateien: Sie
+lässt sich kopieren, in ein Backup legen und weitergeben. Was sie nicht
+verträgt, ist gleichzeitiges Schreiben aus mehreren Prozessen, und was nicht
+in die Versionsverwaltung gehört, ist die Datei selbst: Sie ist binär, und
+jede Änderung erzeugt einen unlesbaren Diff.
+
+> Die angelegte Datei ist 8192 Byte gross und enthält nach dem erneuten
+> Öffnen die Tabelle `artikel` mit zwei Zeilen, ohne dass ein Dienst läuft.
+
+### Beispiel 4: Index und Abfrageplan
+
+#### Frage und Datenlage
+
+Eine Tabelle mit 50 000 Messwerten und 500 Geräten. Wie beantwortet SQLite
+die Frage nach einem Gerät, mit und ohne Index?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-sl-r
+n <- 50000
+messwert <- data.frame(id = seq_len(n),
+                       geraet_id = (seq_len(n) - 1) %% 500,
+                       wert = ((seq_len(n) * 37) %% 1000) / 10)
+invisible(dbWriteTable(con, "messwert", messwert, overwrite = TRUE))
+frage("SELECT COUNT(*) AS zeilen FROM messwert")
+
+frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42")
+
+tue("CREATE INDEX idx_geraet ON messwert(geraet_id)")
+frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42")
+
+frage("SELECT COUNT(*) AS treffer FROM messwert WHERE geraet_id = 42")
+frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE wert > 90")
+```
+
+##### Python
+
+```{python}
+#| label: b4-sl-py
+verbindung.execute("CREATE TABLE messwert (id INTEGER PRIMARY KEY, "
+                   "geraet_id INTEGER, wert REAL)")
+verbindung.executemany("INSERT INTO messwert VALUES (?,?,?)",
+                       [(i, i % 500, (i * 37 % 1000) / 10) for i in range(1, 50001)])
+verbindung.commit()
+print(frage("SELECT COUNT(*) AS zeilen FROM messwert").iloc[0, 0])
+
+print(frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42"
+            )["detail"].tolist())
+
+verbindung.execute("CREATE INDEX idx_geraet ON messwert(geraet_id)")
+verbindung.commit()
+print(frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42"
+            )["detail"].tolist())
+
+print(frage("SELECT COUNT(*) AS treffer FROM messwert WHERE geraet_id = 42").iloc[0, 0])
+print(frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE wert > 90"
+            )["detail"].tolist())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Abfrage | Plan | Erklärung |
+|---|---|---|
+| nach `geraet_id`, **ohne** Index | **`SCAN messwert`** | Die Datenbank liest alle 50 000 Zeilen und behält die passenden. |
+| nach `geraet_id`, **mit** Index | **`SEARCH messwert USING INDEX idx_geraet (geraet_id=?)`** | Jetzt springt sie über den Index direkt zu den Treffern. |
+| Treffer | **100** Zeilen | 50 000 / 500 Geräte |
+| nach `wert > 90`, ohne passenden Index | `SCAN messwert` | Der Index auf `geraet_id` hilft hier nicht; ein Index wirkt nur für die Spalten, über die er geht. |
+
+`EXPLAIN QUERY PLAN` ist die eigentliche Antwort auf "warum ist das langsam".
+Die Wörter `SCAN` und `SEARCH` sagen es direkt, und zwar ohne Zeitmessung,
+die je nach Rechner schwankt.
+
+#### Interpretation und Ergebnissatz
+
+Ein Index ist kein allgemeiner Beschleuniger, sondern ein Verzeichnis für
+**eine bestimmte Spalte**. Er kostet Platz und verlangsamt das Schreiben,
+weshalb man ihn dort setzt, wo regelmässig gefiltert oder verbunden wird,
+typischerweise auf Fremdschlüsseln. Ob er greift, zeigt der Abfrageplan;
+Vermutungen darüber sind unnötig.
+
+> Ohne Index liest SQLite für die Frage nach einem Gerät alle 50 000 Zeilen
+> (`SCAN`), mit Index greift es über `SEARCH ... USING INDEX` direkt auf die
+> 100 Treffer zu. Für die Bedingung auf `wert` bleibt es beim `SCAN`.
+
+### Beispiel 5: Stückweise lesen
+
+#### Frage und Datenlage
+
+Die Summe aller 50 000 Messwerte, ohne die Tabelle auf einmal in den
+Arbeitsspeicher zu laden.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-sl-r
+abfrage <- dbSendQuery(con, "SELECT wert FROM messwert")
+summe <- 0
+stuecke <- 0
+while (!dbHasCompleted(abfrage)) {
+  teil <- dbFetch(abfrage, n = 10000)
+  if (nrow(teil) == 0) break
+  summe <- summe + sum(teil$wert)
+  stuecke <- stuecke + 1
+}
+dbClearResult(abfrage)
+
+c(stuecke = stuecke, summe = summe)
+dbGetQuery(con, "SELECT SUM(wert) AS summe FROM messwert")
+```
+
+##### Python
+
+```{python}
+#| label: b5-sl-py
+summe = 0.0
+stuecke = 0
+for teil in pd.read_sql_query("SELECT wert FROM messwert", verbindung,
+                              chunksize=10000):
+    summe += teil["wert"].sum()
+    stuecke += 1
+
+print(stuecke, round(summe, 1))
+print(round(frage("SELECT SUM(wert) AS summe FROM messwert").iloc[0, 0], 1))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| Stücke | **5** | 50 000 Zeilen zu je 10 000 |
+| Summe stückweise | **2497500.0** | |
+| Summe in der Datenbank | **2497500.0** | dieselbe Zahl, aber in einer Zeile übertragen |
+
+Für eine blosse Summe ist der Weg über die Datenbank offensichtlich besser.
+Das stückweise Lesen lohnt dort, wo je Zeile etwas geschehen muss, das SQL
+nicht kann: ein Modell anwenden, Text verarbeiten, eine Datei schreiben.
+
+#### Interpretation und Ergebnissatz
+
+Der Arbeitsspeicher ist bei SQLite selten die Grenze, weil man nie alles
+laden muss. Das ist der Grund, warum eine zu grosse CSV-Datei zuerst in eine
+SQLite-Datei wandert: Danach beantwortet man jede Frage mit einer Abfrage
+statt mit einem Import.
+
+> Stückweise gelesen ergeben die 50 000 Messwerte in fünf Teilen die Summe
+> 2497500.0, genau wie die Abfrage `SELECT SUM(wert)`, die dafür eine einzige
+> Zeile überträgt.
+
+::::
+
+```{r}
+#| label: aufraeumen-r
+#| include: false
+dbDisconnect(con)
+```
+
+```{python}
+#| label: aufraeumen-py
+#| include: false
+verbindung.close()
+```
+
+## Verständnisfragen
 
 ::: {.quiz}
 Eine Spalte ist als `INTEGER` angelegt, und beim Import landen dort Texte wie
-`"k.A."`. Was ist passiert?
+`k.A.`. Was ist passiert?
 
 - [ ] Der Import ist fehlerhaft und muss wiederholt werden ~ Der Import hat
       getan, was er sollte; SQLite hat den Wert angenommen.
 - [x] SQLite behandelt den deklarierten Typ als Empfehlung ~ Richtig. Die
       Typaffinität wandelt um, wo möglich, und speichert sonst wie geliefert.
-      Wer das ausschliessen will, setzt beim Anlegen eine `CHECK`-Bedingung
-      oder prüft beim Import.
+      `CHECK`, `NOT NULL` oder eine `STRICT`-Tabelle schliessen es aus.
 - [ ] Die Spalte war in Wahrheit als `TEXT` deklariert ~ Auch bei `INTEGER`
       passiert genau das.
 :::
 
-## Typische Aufgaben
+::: {.quiz}
+In einer Spalte mit 1000 Messwerten steht in einer Zeile `k.A.`. Was liefert
+`SELECT SUM(wert)`?
 
-**Verbinden, abfragen, schliessen**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-con <- DBI::dbConnect(RSQLite::SQLite(), "laden.sqlite")
-DBI::dbExecute(con, "PRAGMA foreign_keys = ON")   # Fremdschluessel aktivieren
-df <- DBI::dbGetQuery(con, "SELECT * FROM artikel WHERE preis > ?", params = list(100))
-DBI::dbDisconnect(con)
-```
-
-## Python
-
-```python
-import sqlite3
-import pandas as pd
-
-with sqlite3.connect("laden.sqlite") as verbindung:
-    verbindung.execute("PRAGMA foreign_keys = ON")
-    df = pd.read_sql_query("SELECT * FROM artikel WHERE preis > ?", verbindung,
-                           params=(100,))
-```
-
+- [x] Eine plausible, aber zu kleine Summe, denn der Text zählt als 0 ~
+      Richtig, wie die 45.7 in Beispiel 1. Es gibt weder Fehler noch `NULL`,
+      und genau das macht den Fall gefährlich.
+- [ ] `NULL`, weil ein Wert ungültig ist ~ Das wäre das Verhalten bei einem
+      echten `NULL` in manchen anderen Systemen.
+- [ ] Einen Fehler ~ SQLite rechnet stillschweigend weiter.
 :::
 
-**Eine grosse CSV-Datei in eine Datenbank überführen**
+::: {.quiz}
+Eine Abfrage auf einer grossen Tabelle ist langsam. Was ist der erste
+Schritt?
 
-::: {.panel-tabset}
-
-## R
-
-```r
-con <- DBI::dbConnect(RSQLite::SQLite(), "gross.sqlite")
-readr::read_csv_chunked(
-  "gross.csv",
-  callback = readr::DataFrameCallback$new(function(teil, pos) {
-    DBI::dbWriteTable(con, "messung", teil, append = TRUE)
-  }),
-  chunk_size = 100000
-)
-```
-
-## Python
-
-```python
-import sqlite3
-import pandas as pd
-
-with sqlite3.connect("gross.sqlite") as verbindung:
-    for teil in pd.read_csv("gross.csv", chunksize=100_000):
-        teil.to_sql("messung", verbindung, if_exists="append", index=False)
-```
-
+- [x] `EXPLAIN QUERY PLAN` ansehen und prüfen, ob `SCAN` oder `SEARCH` steht ~
+      Richtig. Das sagt ohne Zeitmessung, ob ein Index greift, und ist auf
+      jedem Rechner gleich.
+- [ ] Die Tabelle in mehrere kleinere aufteilen ~ Das löst selten etwas und
+      verkompliziert jede Abfrage.
+- [ ] Auf jede Spalte einen Index legen ~ Indizes kosten Platz und
+      verlangsamen das Schreiben; sie gehören auf die Spalten, nach denen
+      gefiltert oder verbunden wird.
 :::
 
-**Nachsehen, was in der Datei liegt**
+::: {.quiz}
+Warum gehört eine `.sqlite`-Datei in der Regel nicht ins Git-Repository?
 
-```sql
-SELECT name FROM sqlite_master WHERE type = 'table';   -- Tabellen
-PRAGMA table_info(artikel);                            -- Spalten und Typen
-SELECT COUNT(*) FROM artikel;                          -- Zeilen
-```
+- [x] Sie ist binär, und jede Änderung erzeugt einen unlesbaren Diff ~
+      Richtig. Versioniert wird der Code, der sie erzeugt, und bei Bedarf die
+      Rohdaten. Für kleine, unveränderliche Referenzdaten kann es Ausnahmen
+      geben.
+- [ ] Git kann keine Binärdateien speichern ~ Kann es, nur wächst das
+      Repository mit jeder Fassung.
+- [ ] SQLite-Dateien sind zu gross ~ Sie können klein sein; das Problem ist
+      die Nachvollziehbarkeit.
+:::
 
-**Eine Abfrage beschleunigen**
+::: {.quiz}
+Eine Auswertung soll je Zeile ein Modell anwenden, und die Tabelle hat zehn
+Millionen Zeilen. Was ist der Weg?
 
-```sql
-EXPLAIN QUERY PLAN
-SELECT * FROM bestellung WHERE artikel_id = 3;
-
-CREATE INDEX idx_bestellung_artikel ON bestellung(artikel_id);
-```
-
-Steht im Plan `SCAN`, wird die ganze Tabelle gelesen; nach dem Index steht dort
-`SEARCH`. Bei kleinen Tabellen ist beides gleich schnell, ab einigen
-Hunderttausend Zeilen ist es der Unterschied zwischen Sekunden und Minuten.
-
-**Wartung und Grösse**
-
-```sql
-ANALYZE;    -- Statistiken fuer den Abfrageplaner auffrischen
-VACUUM;     -- geloeschten Platz zurueckgeben, Datei verkleinern
-```
-
-**Mit der Kommandozeile arbeiten**
-
-```bash
-sqlite3 laden.sqlite               # interaktive Konsole
-.tables                            # Tabellen auflisten
-.schema artikel                    # Definition einer Tabelle
-.headers on
-.mode csv
-.import daten.csv artikel          # CSV importieren
-.output ergebnis.csv               # Ausgabe umleiten
-```
-
-**Eine Datenbank im Arbeitsspeicher, etwa für Tests**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
-```
-
-## Python
-
-```python
-verbindung = sqlite3.connect(":memory:")
-```
-
+- [x] Stückweise lesen und je Stück verarbeiten ~ Richtig, mit `chunksize`
+      beziehungsweise `dbFetch(n = ...)`. So bleibt der Arbeitsspeicher
+      konstant belegt, wie in Beispiel 5.
+- [ ] Alles laden, dann verarbeiten ~ Genau das soll vermieden werden.
+- [ ] Die Verarbeitung in SQL nachbauen ~ Für Summen und Filter ja, für ein
+      Modell in der Regel nicht.
 :::
 
 ## Verlinkte Ressourcen
 
-- [SQLite: offizielle Dokumentation](https://www.sqlite.org/docs.html)
-- [Wann SQLite passt und wann nicht](https://www.sqlite.org/whentouse.html)
-- [Typaffinität in SQLite](https://www.sqlite.org/datatype3.html)
+- [SQLite: Typaffinität](https://www.sqlite.org/datatype3.html)
+- [SQLite: STRICT-Tabellen](https://www.sqlite.org/stricttables.html)
+- [SQLite: Abfragepläne](https://www.sqlite.org/eqp.html)
