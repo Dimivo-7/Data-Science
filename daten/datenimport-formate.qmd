@@ -236,10 +236,16 @@ sapply(geraten, class)
 geraten$plz
 geraten$menge
 
+ganzzahl <- read_csv2(pfad2, show_col_types = FALSE,
+                      col_types = cols(plz = col_character(),
+                                       menge = col_integer()))
+ganzzahl$menge                       # col_integer() kennt kein Tausenderzeichen
+
 genau <- read_csv2(pfad2, show_col_types = FALSE,
                    col_types = cols(plz = col_character(),
-                                    menge = col_integer()))
+                                    menge = col_number()))
 genau$plz
+genau$menge
 sum(genau$menge, na.rm = TRUE)
 ```
 
@@ -277,7 +283,8 @@ print(genau["plz"].tolist(), genau["menge"].tolist(), genau["menge"].sum())
 | `menge` | Text: `['1.234', '987', nan]` | **1234**, 987, `NA` | Hier trennen sich die Sprachen: `read_csv2` kennt den Punkt als Tausenderzeichen, pandas braucht `thousands="."` und liest die Spalte sonst als Text. |
 | `preis` | `float64` | `numeric` | Das Dezimalkomma war angegeben. |
 | `thousands` mit `dtype="Int64"` | **`TypeError`** | | pandas wandelt zuerst in Gleitkomma und kann dann nicht mehr verlustfrei in die ganzzahlige Spalte giessen. Erst lesen, dann `astype("Int64")`. |
-| mit Vorgaben | `['8001', '0815', '3011']`, Mengen `[1234, 987, <NA>]`, Summe **2221** | `0815` bleibt, Summe 2221 | `Int64` mit grossem I trägt fehlende Werte, `int64` nicht. |
+| mit Vorgaben | `['8001', '0815', '3011']`, Mengen `[1234, 987, <NA>]`, Summe **2221** | `0815` bleibt; mit `col_number()` ebenfalls 1234, 987, `NA` und Summe 2221 | `Int64` mit grossem I trägt fehlende Werte, `int64` nicht. |
+| R mit `col_integer()` | | **`NA`, 987, `NA`**, Summe nur **987** | Die ausdrückliche Ganzzahl-Vorgabe kennt das Tausenderzeichen **nicht** und wirft den Wert weg, den `read_csv2` ohne Vorgabe richtig gelesen hätte. Für Zahlen mit Trennzeichen ist `col_number()` die richtige Angabe. |
 
 #### Interpretation und Ergebnissatz
 
@@ -503,7 +510,7 @@ print(pd.read_pickle(pfad6).equals(df))
 | `datum` | `datetime64[ns]` | **`object`** (Text) | `Date` | readr erkennt das ISO-Format beim Lesen wieder, pandas nicht ohne `parse_dates`. |
 | `typ` | `category` | **`object`** | **`character`** | Die Kategorie mit ihren Stufen ist weg, in beiden Sprachen. |
 | `menge` | `Int64` mit fehlendem Wert | **`float64`**, der Wert wird zu `NaN` | `numeric` | Die CSV-Zeile lautet `2026-03-02,B,`; ob dort eine leere Zahl, ein Text oder nichts stand, ist der Datei nicht anzusehen. |
-| Datei | | drei Zeilen: Kopfzeile, `2026-03-01,A,5` und `2026-03-02,B,` | | Kein Typ in Sicht; die letzte Zelle ist schlicht leer. |
+| Datei | | drei Zeilen: Kopfzeile, `2026-03-01,A,5` und `2026-03-02,B,` | R schreibt dort `2026-03-02,B,NA` | Kein Typ in Sicht. pandas lässt die Zelle leer, `write_csv` schreibt das Wort `NA`; beim Einlesen erkennen beide ihre eigene Schreibweise wieder, fremde nicht ohne `na`-Angabe. |
 | mit Pickle bzw. RDS | | **`True`**, alles identisch | `TRUE` | Das sprachgebundene Format bringt Datum, Kategorie und fehlenden Wert unverändert zurück. |
 
 #### Interpretation und Ergebnissatz
