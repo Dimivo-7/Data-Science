@@ -145,7 +145,7 @@ frage("SELECT SUM(wert) AS summe, COUNT(*) AS n, AVG(wert) AS mittel FROM messun
 
 ```{python}
 #| label: b1-sl-py
-verbindung.executescript("""
+_ = verbindung.executescript("""
   CREATE TABLE messung (id INTEGER PRIMARY KEY, wert INTEGER);
   INSERT INTO messung VALUES (1, 42), (2, 'k.A.'), (3, 3.7);""")
 verbindung.commit()
@@ -161,16 +161,24 @@ print(frage("SELECT SUM(wert) AS summe, COUNT(*) AS n FROM messung"
 
 #### Output Zeile für Zeile
 
-| Zeile | Wert | `typeof` | Erklärung |
+| Zeile | Wert in Python | `typeof` | Erklärung |
 |---|---|---|---|
 | 1 | 42 | **integer** | wie deklariert |
 | 2 | `k.A.` | **text** | Der Text wird angenommen, obwohl die Spalte `INTEGER` heisst. |
 | 3 | 3.7 | **real** | Auch die Kommazahl bleibt, was sie ist. |
 
+Die R-Ausgabe zeigt in der zweiten Zeile **`0.0`** statt `k.A.`, und zwar bei
+unverändertem `typeof` von `text`. Der Grund liegt nicht in der Datenbank,
+sondern im Treiber: RSQLite richtet sich nach dem **deklarierten** Typ der
+Spalte, holt sie als Zahl und macht aus dem Text eine 0. Der Wert steht also
+in der Datenbank, kommt in R aber nicht als solcher an. Ein zweiter Grund, sich
+`typeof()` anzusehen, statt den Werten zu vertrauen.
+
 | Kennzahl | Wert | Erklärung |
 |---|---|---|
 | `COUNT(*)` | 3 | drei Zeilen |
 | `SUM(wert)` | **45.7** | 42 + 3.7, der Text zählt als 0. **Keine Fehlermeldung, kein `NULL`.** |
+| `AVG(wert)` | **15.23333** | 45.7 geteilt durch **3**, nicht durch 2. Der Text geht als Null in den Mittelwert ein und zieht ihn nach unten. |
 
 #### Interpretation und Ergebnissatz
 
@@ -224,7 +232,7 @@ frage("SELECT COUNT(*) AS zeilen FROM streng")
 #| label: b2-sl-py
 print(frage("SELECT sqlite_version() AS version").to_string(index=False))
 
-verbindung.executescript("""CREATE TABLE streng (
+_ = verbindung.executescript("""CREATE TABLE streng (
     id   INTEGER PRIMARY KEY,
     wert REAL NOT NULL CHECK (wert >= 0)) STRICT;""")
 verbindung.commit()
@@ -234,7 +242,7 @@ for sql, was in [("INSERT INTO streng VALUES (1, 12.5)", "12.5"),
                  ("INSERT INTO streng VALUES (3, 'k.A.')", "'k.A.'"),
                  ("INSERT INTO streng VALUES (4, NULL)", "NULL")]:
     try:
-        verbindung.execute(sql)
+        _ = verbindung.execute(sql)
         verbindung.commit()
         print(was, "angenommen")
     except sqlite3.Error as fehler:
@@ -375,9 +383,9 @@ frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE wert > 90")
 
 ```{python}
 #| label: b4-sl-py
-verbindung.execute("CREATE TABLE messwert (id INTEGER PRIMARY KEY, "
+_ = verbindung.execute("CREATE TABLE messwert (id INTEGER PRIMARY KEY, "
                    "geraet_id INTEGER, wert REAL)")
-verbindung.executemany("INSERT INTO messwert VALUES (?,?,?)",
+_ = verbindung.executemany("INSERT INTO messwert VALUES (?,?,?)",
                        [(i, i % 500, (i * 37 % 1000) / 10) for i in range(1, 50001)])
 verbindung.commit()
 print(frage("SELECT COUNT(*) AS zeilen FROM messwert").iloc[0, 0])
@@ -385,7 +393,7 @@ print(frage("SELECT COUNT(*) AS zeilen FROM messwert").iloc[0, 0])
 print(frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42"
             )["detail"].tolist())
 
-verbindung.execute("CREATE INDEX idx_geraet ON messwert(geraet_id)")
+_ = verbindung.execute("CREATE INDEX idx_geraet ON messwert(geraet_id)")
 verbindung.commit()
 print(frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42"
             )["detail"].tolist())

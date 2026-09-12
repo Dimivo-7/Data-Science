@@ -59,7 +59,7 @@ def frage(sql):
     return pd.read_sql_query(sql, verbindung)
 
 
-verbindung.executescript("""
+_ = verbindung.executescript("""
 CREATE TABLE flach (bestell_id INTEGER PRIMARY KEY, artikel TEXT,
                     kategorie TEXT, datum TEXT, betrag REAL);
 INSERT INTO flach VALUES
@@ -196,12 +196,12 @@ frage("SELECT COUNT(*) AS zeilen, COUNT(DISTINCT artikel) AS artikel FROM flach"
 print(frage("SELECT COUNT(*) AS zeilen, COUNT(DISTINCT artikel) AS artikel FROM flach"
             ).to_string(index=False))
 
-verbindung.execute("UPDATE flach SET artikel = 'Ventil 3/8 neu' WHERE bestell_id = 1")
+_ = verbindung.execute("UPDATE flach SET artikel = 'Ventil 3/8 neu' WHERE bestell_id = 1")
 verbindung.commit()
 print(frage("SELECT artikel, COUNT(*) AS n FROM flach GROUP BY artikel ORDER BY artikel"
             ).to_string(index=False))
 
-verbindung.execute("DELETE FROM flach WHERE artikel = 'Dichtring'")
+_ = verbindung.execute("DELETE FROM flach WHERE artikel = 'Dichtring'")
 verbindung.commit()
 print(frage("SELECT COUNT(*) AS zeilen, COUNT(DISTINCT artikel) AS artikel FROM flach"
             ).to_string(index=False))
@@ -271,7 +271,7 @@ if (inherits(mit, "try-error")) "abgelehnt" else "durchgelassen"
 print(frage("PRAGMA foreign_keys").to_string(index=False))
 
 try:
-    verbindung.execute("INSERT INTO bestellung VALUES (98, 999, '2026-04-01', 10.0)")
+    _ = verbindung.execute("INSERT INTO bestellung VALUES (98, 999, '2026-04-01', 10.0)")
     verbindung.commit()
     print("durchgelassen")
 except sqlite3.IntegrityError as fehler:
@@ -281,12 +281,12 @@ print(frage("""SELECT COUNT(*) AS verwaist FROM bestellung b
                LEFT JOIN artikel a ON a.artikel_id = b.artikel_id
                WHERE a.artikel_id IS NULL""").to_string(index=False))
 
-verbindung.execute("DELETE FROM bestellung WHERE bestell_id = 98")
+_ = verbindung.execute("DELETE FROM bestellung WHERE bestell_id = 98")
 verbindung.commit()          # PRAGMA wirkt nicht in einer offenen Transaktion
-verbindung.execute("PRAGMA foreign_keys = ON")
+_ = verbindung.execute("PRAGMA foreign_keys = ON")
 
 try:
-    verbindung.execute("INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 10.0)")
+    _ = verbindung.execute("INSERT INTO bestellung VALUES (99, 999, '2026-04-01', 10.0)")
     print("durchgelassen")
 except sqlite3.IntegrityError as fehler:
     print("abgelehnt:", fehler)
@@ -354,12 +354,12 @@ frage("SELECT COUNT(*) AS zeilen, COUNT(ahv) AS mit_ahv FROM person")
 for sql, was in [("INSERT INTO artikel VALUES (1,'Doppelt','Test')", "Primaerschluessel"),
                  ("INSERT INTO artikel VALUES (10,'Ventil 3/8','Pneumatik')", "UNIQUE")]:
     try:
-        verbindung.execute(sql)
+        _ = verbindung.execute(sql)
         print(was, "durchgelassen")
     except sqlite3.IntegrityError as fehler:
         print(was, "abgelehnt:", fehler)
 
-verbindung.executescript("""
+_ = verbindung.executescript("""
   CREATE TABLE person (id INTEGER PRIMARY KEY, ahv TEXT UNIQUE);
   INSERT INTO person VALUES (1, NULL), (2, NULL), (3, '756.1');""")
 verbindung.commit()
@@ -429,7 +429,7 @@ if (inherits(doppelt, "try-error")) "Paar abgelehnt" else "durchgelassen"
 
 ```{python}
 #| label: b4-dm-py
-verbindung.executescript("""
+_ = verbindung.executescript("""
 CREATE TABLE lieferant (lieferant_id INTEGER PRIMARY KEY, name TEXT NOT NULL);
 CREATE TABLE artikel_lieferant (
   artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
@@ -448,7 +448,7 @@ print(frage("""SELECT a.bezeichnung, COUNT(*) AS lieferanten, MIN(al.preis) AS b
                GROUP BY a.artikel_id ORDER BY a.bezeichnung""").to_string(index=False))
 
 try:
-    verbindung.execute("INSERT INTO artikel_lieferant VALUES (1,1,19.90)")
+    _ = verbindung.execute("INSERT INTO artikel_lieferant VALUES (1,1,19.90)")
     print("durchgelassen")
 except sqlite3.IntegrityError as fehler:
     print("abgelehnt:", fehler)
@@ -517,7 +517,7 @@ frage("SELECT kategorie, COUNT(DISTINCT kategorie_leiter) AS leiter
 
 ```{python}
 #| label: b5-dm-py
-verbindung.executescript("""
+_ = verbindung.executescript("""
 CREATE TABLE unnormal (bestell_id INTEGER, artikel TEXT, kategorie TEXT,
                        kategorie_leiter TEXT, mengen TEXT);
 INSERT INTO unnormal VALUES
@@ -531,7 +531,7 @@ print(frage("SELECT * FROM unnormal").to_string(index=False))
 print(frage("""SELECT kategorie, COUNT(DISTINCT kategorie_leiter) AS leiter
                FROM unnormal GROUP BY kategorie""").to_string(index=False))
 
-verbindung.execute("UPDATE unnormal SET kategorie_leiter = 'Meyer' WHERE bestell_id = 1")
+_ = verbindung.execute("UPDATE unnormal SET kategorie_leiter = 'Meyer' WHERE bestell_id = 1")
 verbindung.commit()
 print(frage("""SELECT kategorie, COUNT(DISTINCT kategorie_leiter) AS leiter
                FROM unnormal GROUP BY kategorie""").to_string(index=False))
