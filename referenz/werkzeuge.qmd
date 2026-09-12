@@ -1,0 +1,153 @@
+---
+title: "Befehlsreferenz Shell, Git und SQL"
+description: "Nachschlagetabelle der Befehle ausserhalb von R und Python."
+categories: ["Linux", "Tooling", "SQL"]
+seitentyp: referenz
+stand: fertig
+order: 30
+---
+
+Diese Seite rechnet nichts. Sie listet die Befehle, die man neben R und Python
+täglich braucht, mit den wichtigsten Argumenten. Anders als die beiden
+Sprachreferenzen ist sie nicht zeilenweise parallel aufgebaut, denn Shell, Git
+und SQL beantworten verschiedene Fragen; sie folgt stattdessen dem Arbeitsweg
+innerhalb jedes Werkzeugs.
+
+Die Spalte Bemerkung hält die Stolpersteine fest. Wo eine Themenseite den Fall
+ausführlich zeigt, ist sie beim ersten Vorkommen verlinkt.
+
+## Shell: Navigation und Dateien
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| Inhalt auflisten | `ls -l`, `ls -a`, `ls -R` | `-l` zeigt Rechte, Besitzer, Grösse; siehe [Linux und Shell](../werkzeuge/linux-shell.qmd) |
+| Verzeichnis wechseln | `cd ordner`, `cd ..`, `cd -` | `cd -` springt zurück zum vorherigen |
+| wo bin ich | `pwd` | |
+| Ordner anlegen | `mkdir -p a/b/c` | `-p` legt Zwischenebenen mit an |
+| kopieren, verschieben | `cp -r quelle ziel`, `mv alt neu` | `mv` ist auch das Umbenennen |
+| löschen | `rm datei`, `rm -r ordner` | **kein Papierkorb**; den Ausdruck vorher mit `ls` testen |
+| Inhalt ansehen | `cat`, `head -n 20`, `tail -n 20`, `less` | `tail -f` liest mitlaufend weiter |
+| Zeilen zählen | `wc -l datei` | zählt die Kopfzeile mit |
+| Platzbedarf | `du -sh ordner`, `df -h` | `-h` in lesbaren Einheiten |
+| Datei finden | `find . -name "*.csv"`, `find . -type d` | sucht **nach Dateien**, nicht in ihnen |
+
+## Shell: Suchen und Text verarbeiten
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| in Dateien suchen | `grep -rn "muster" ordner/` | `-r` rekursiv, `-n` mit Zeilennummer, `-i` ohne Gross- und Kleinschreibung |
+| Treffer zählen | `grep -c muster datei` | Rückgabewert 1 heisst "nichts gefunden", 2 heisst Fehler |
+| Spalte herausschneiden | `cut -d';' -f2 datei.csv` | schneidet die Kopfzeile mit |
+| rechnen über eine Spalte | `awk -F';' 'NR>1 {s+=$2} END {print s}' datei.csv` | `NR>1` überspringt die Kopfzeile |
+| ohne Kopfzeile beginnen | `tail -n +2 datei.csv` | zählt ab Zeile 2 |
+| sortieren und zählen | `sort \| uniq -c \| sort -rn` | `uniq` zählt nur **benachbarte** gleiche Zeilen, deshalb `sort` davor |
+| ersetzen | `sed 's/alt/neu/g' datei` | `-i` ändert die Datei an Ort und Stelle |
+| verbinden | `befehl1 \| befehl2` | die Ausgabe links wird zur Eingabe rechts |
+
+## Shell: Umlenkung, Rechte, System
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| Ausgabe in eine Datei | `befehl > datei`, `befehl >> datei` | `>` **überschreibt ohne Rückfrage**, `>>` hängt an |
+| Fehler unterdrücken | `befehl 2>/dev/null` | stderr ist Kanal 2, stdout Kanal 1 |
+| Ausgabe und Fehler zusammen | `befehl > datei 2>&1` | Reihenfolge beachten |
+| Rückgabewert ansehen | `echo $?` | 0 heisst Erfolg |
+| verketten | `befehl1 && befehl2`, `befehl1 \|\| befehl2` | `&&` nur bei Erfolg, `\|\|` nur bei Misserfolg |
+| Rechte setzen | `chmod 600 datei`, `chmod +x skript.sh` | 600 für Zugangsdaten, `+x` macht ausführbar |
+| Besitzer ändern | `chown benutzer:gruppe datei` | meist mit `sudo` |
+| Umgebungsvariable | `export PGPASSWORD=...`, `echo $PGPASSWORD` | Zugangsdaten gehören hierhin, nicht in den Code |
+| Programm finden | `which python`, `type ls` | zeigt, welche Fassung wirklich läuft |
+| Prozesse | `ps aux`, `top`, `kill <pid>` | |
+| Archiv | `tar -czf a.tar.gz ordner/`, `tar -xzf a.tar.gz` | `c` erstellen, `x` entpacken |
+| entfernt arbeiten | `ssh nutzer@host`, `scp datei nutzer@host:/pfad` | |
+
+## Git: Stand und Commits
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| Repository anlegen | `git init -b main` | siehe [Git](../werkzeuge/git.qmd) |
+| Stand ansehen | `git status`, `git status --short` | links der Staging-Bereich, rechts das Arbeitsverzeichnis |
+| vormerken | `git add datei`, `git add -A`, `git add -p` | `-p` wählt abschnittsweise aus |
+| festschreiben | `git commit -m "Warum, nicht was"` | `--amend` ändert den letzten Commit, nur solange er nicht geteilt ist |
+| Ignorierliste | `.gitignore` | gehört an den **Anfang** eines Projekts |
+| Datei aus der Verfolgung nehmen | `git rm --cached datei` | die Datei bleibt auf der Platte und **in der Historie** |
+
+## Git: Verlauf, Branches, Zusammenführen
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| Verlauf | `git log --oneline --graph --all` | der Graph zeigt Verzweigungen |
+| Änderungen | `git diff`, `git diff --staged` | ohne Zusatz: was **nicht** vorgemerkt ist |
+| wer hat das geändert | `git blame datei` | |
+| Branch anlegen und wechseln | `git switch -c thema`, `git switch main` | ein Branch ist nur ein Zeiger, also billig |
+| zusammenführen | `git merge thema` | Konflikte sind normal |
+| Konfliktdateien auflisten | `git diff --name-only --diff-filter=U` | `UU` im Status heisst beidseitig geändert |
+| Merge abbrechen | `git merge --abort` | nur wenn man den Merge gar nicht wollte |
+| Zwischenstand parken | `git stash`, `git stash pop` | greift nicht auf unverfolgte Dateien, dafür `-u` |
+
+## Git: Rückgängig und Remote
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| Änderung verwerfen | `git restore datei` | **unwiderruflich** |
+| Vormerkung zurücknehmen | `git restore --staged datei` | Inhalt bleibt erhalten |
+| letzten Commit auflösen | `git reset --soft HEAD~1` | Änderung wird wieder vorgemerkt |
+| Commit aufheben | `git revert <commit>` | legt einen **neuen** Commit an; der richtige Weg für Geteiltes |
+| Remote verknüpfen | `git remote add origin <url>`, `git remote -v` | |
+| übertragen und holen | `git push -u origin main`, `git pull`, `git clone <url>` | lokal liegt die vollständige Historie |
+
+## SQL: Abfragen
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| auswählen und filtern | `SELECT a, b FROM t WHERE x > 5 ORDER BY a LIMIT 10` | Auswertungsreihenfolge: `FROM`, `WHERE`, `GROUP BY`, `HAVING`, `SELECT`, `ORDER BY`; siehe [SQL](../datenbanken/sql.qmd) |
+| fehlende Werte | `WHERE x IS NULL`, `COALESCE(x, 0)` | `= NULL` findet **nie** etwas |
+| ungleich, mit fehlenden Werten | `WHERE x IS NULL OR x <> 5` | `x <> 5` allein lässt die `NULL`-Zeilen weg |
+| Fallunterscheidung | `CASE WHEN x > 500 THEN 'gross' ELSE 'klein' END` | |
+| eindeutige Werte | `SELECT DISTINCT kategorie FROM t` | |
+| Unterabfrage vermeiden | `WITH schritt AS (...) SELECT ... FROM schritt` | liest sich von oben nach unten wie eine Pipe |
+
+## SQL: Verbinden und Gruppieren
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| verbinden | `FROM a JOIN b ON b.a_id = a.id` | `INNER` verliert, was keinen Partner hat |
+| alles links behalten | `FROM a LEFT JOIN b ON ...` | für Auswertungen über den ganzen Bestand |
+| zählen | `COUNT(*)`, `COUNT(spalte)` | `COUNT(spalte)` zählt nur **vorhandene** Werte |
+| gruppieren | `GROUP BY kategorie` | |
+| Gruppen filtern | `HAVING COUNT(*) >= 3` | `WHERE` filtert Zeilen **vor** der Gruppierung |
+| Duplikate finden | `GROUP BY schluessel HAVING COUNT(*) > 1` | |
+| Widersprüche finden | `GROUP BY a HAVING COUNT(DISTINCT b) > 1` | findet zwei Kantone für denselben Standort |
+| Anteil an der Gruppe | `SUM(x) OVER (PARTITION BY g)` | entspricht `transform` in pandas und `mutate(.by=)` in dplyr |
+| Rangfolge, Vorperiode | `ROW_NUMBER() OVER (ORDER BY x DESC)`, `LAG(x) OVER (ORDER BY datum)` | |
+
+## SQL: Struktur und Ändern
+
+| Aufgabe | Befehl | Bemerkung |
+|---|---|---|
+| Tabelle anlegen | `CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT NOT NULL)` | siehe [Datenmodellierung](../datenbanken/datenmodellierung.qmd) |
+| Eindeutigkeit | `name TEXT NOT NULL UNIQUE` | ohne `NOT NULL` sind mehrere `NULL` erlaubt |
+| Fremdschlüssel | `a_id INTEGER NOT NULL REFERENCES a(id)` | in SQLite erst mit `PRAGMA foreign_keys = ON` wirksam |
+| zusammengesetzter Schlüssel | `PRIMARY KEY (a_id, b_id)` | die Verbindungstabelle bei viele zu viele |
+| einfügen, ändern, löschen | `INSERT INTO`, `UPDATE ... WHERE`, `DELETE FROM ... WHERE` | ohne `WHERE` trifft es **alle** Zeilen |
+| Transaktion | `BEGIN; ... COMMIT;` oder `ROLLBACK;` | ganz oder gar nicht |
+| Index | `CREATE INDEX idx ON t(spalte)` | wirkt nur für die Spalten, über die er geht |
+| Abfrageplan | `EXPLAIN QUERY PLAN ...` (SQLite), `EXPLAIN ANALYZE ...` (PostgreSQL) | `SCAN` beziehungsweise `Seq Scan` heisst: ganze Tabelle gelesen |
+
+## SQL: Was je System verschieden ist
+
+| Thema | SQLite | PostgreSQL, MySQL |
+|---|---|---|
+| Typen | Affinität, `typeof()` zeigt den echten Typ; `STRICT` erzwingt sie | Typen gelten immer |
+| Datum | Text im Format `JJJJ-MM-TT` | eigener Datumstyp, `date_trunc('month', d)` |
+| Wahrheitswerte | 0 und 1 | `BOOLEAN` |
+| Fremdschlüssel | **standardmässig aus** | immer aktiv (MySQL: InnoDB) |
+| Tabellen auflisten | `SELECT name FROM sqlite_master WHERE type='table'` | `\dt` in psql, `information_schema.tables` |
+| Spalten ansehen | `PRAGMA table_info(t)` | `\d t`, `information_schema.columns` |
+| Sicherung | Datei kopieren | `pg_dump`, `mysqldump` |
+
+## Verlinkte Ressourcen
+
+- [ExplainShell: Befehle zerlegt erklärt](https://explainshell.com/)
+- [Git: Referenz der Befehle](https://git-scm.com/docs)
+- [SQLite: SQL-Referenz](https://www.sqlite.org/lang.html)
