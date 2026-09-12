@@ -66,9 +66,9 @@ def exp_zeiten(saat, anzahl, rate):
 - Die Überlebensfunktion $S(t)$ gibt den Anteil an, der zum Zeitpunkt $t$ noch
   kein Ereignis hatte.
 - Die Hazard-Rate $h(t)$ ist das **momentane** Risiko unter den bis dahin
-  Ereignisfreien — keine Wahrscheinlichkeit und nicht auf 1 begrenzt.
-- Die zentrale Annahme — Zensierte haben dasselbe Risiko wie die weiter
-  Beobachteten — ist **in den Daten nicht prüfbar**.
+  Ereignisfreien, keine Wahrscheinlichkeit und nicht auf 1 begrenzt.
+- Die zentrale Annahme, Zensierte haben dasselbe Risiko wie die weiter
+  Beobachteten, ist **in den Daten nicht prüfbar**.
 
 ## Erklärung
 
@@ -242,14 +242,14 @@ Die drei Sichtweisen liefern drei verschiedene Kurven:
 |---|---|---|---|
 | 3 | 0.75 | 0.80 | 0.80 |
 | 4 | 0.50 | 0.60 | 0.60 |
-| 5 | — | 0.40 | **0.60** (fällt nicht) |
+| 5 |   | 0.40 | **0.60** (fällt nicht) |
 | 8 | 0.25 | 0.20 | 0.30 |
 | 10 | 0.00 | 0.00 | 0.00 |
 | Median | 4 (R: 6) | 5 | **8** |
 
 | Zeile | Was sie zeigt |
 |---|---|
-| Bei $t = 3$: 0.75 gegen 0.80 | Wer den zensierten Fall streicht, rechnet mit vier statt fünf unter Risiko. Der **erste** Schritt fällt dadurch schon zu tief aus — der Fehler beginnt lange vor dem Zensierungszeitpunkt. |
+| Bei $t = 3$: 0.75 gegen 0.80 | Wer den zensierten Fall streicht, rechnet mit vier statt fünf unter Risiko. Der **erste** Schritt fällt dadurch schon zu tief aus, der Fehler beginnt lange vor dem Zensierungszeitpunkt. |
 | Bei $t = 5$: die richtige Kurve fällt **nicht** | Kein Ereignis, kein Schritt. Aber die Anzahl unter Risiko sinkt von 3 auf 2. |
 | Bei $t = 8$: 0.30 gegen 0.20 | Der Schritt beträgt $1 - 1/2 = 0.5$ statt $1 - 1/3$: Weil nur noch zwei unter Risiko stehen, wiegt jedes Ereignis schwerer. So schlägt die Zensierung auf **alle späteren** Schritte durch. |
 | Der Median: 4, 5 und **8** | Drei Zahlen aus fünf Beobachtungen, je nach Behandlung eines einzigen Falls. |
@@ -258,7 +258,7 @@ Die drei Sichtweisen liefern drei verschiedene Kurven:
 ::: {.note-box}
 **Was der zensierte Fall beiträgt, in einem Satz:** Er zählt bis $t = 5$ voll im
 Nenner mit und verschwindet danach. Damit ist genau die Information genutzt, die
-vorliegt — "hat mindestens 5 überlebt" — und keine, die nicht vorliegt.
+vorliegt, "hat mindestens 5 überlebt" und keine, die nicht vorliegt.
 
 Die beiden Behelfslösungen tun jeweils zu viel: Weglassen behauptet, es habe
 diesen Fall nie gegeben; als Ereignis zählen behauptet, das Ereignis sei bei $t
@@ -278,9 +278,9 @@ gross er bei realistischen Zensierungsanteilen wird.
 Daten konstruiert sind, ist der **wahre** Median bekannt: $\ln(2)/\text{Rate}$.
 Verglichen werden zwei Fälle:
 
-- **mässige Zensierung**: Rate 0.035, wahrer Median 19.8 Monate — der Median
+- **mässige Zensierung**: Rate 0.035, wahrer Median 19.8 Monate, der Median
   liegt also vor dem Stichtag.
-- **starke Zensierung**: Rate 0.020, wahrer Median 34.7 Monate — der Median
+- **starke Zensierung**: Rate 0.020, wahrer Median 34.7 Monate, der Median
   liegt **hinter** dem Stichtag.
 
 #### Rechnung
@@ -343,8 +343,8 @@ print(pd.DataFrame({"maessig": vergleich(2027, 0.035),
 
 | Zeile | Was sie zeigt |
 |---|---|
-| **Nur die Gekündigten**: 10.0 und 10.3 | Die schlimmste der drei Rechnungen — knapp die Hälfte beziehungsweise weniger als ein Drittel des wahren Werts. Und der Grund, warum sie so schlimm ist: Zensiert sind **per Konstruktion** gerade die Langläufer. Wer sie streicht, behält nur die kurzen Zeiten. Bemerkenswert ist auch, dass die Zahl in beiden Fällen fast gleich ist, obwohl die wahren Mediane um den Faktor 1.75 auseinanderliegen: Diese Rechnung misst vor allem den Stichtag, nicht die Laufzeit. |
-| **Alle als Ereignis**, mässig: 19.7 | Sieht gut aus — und ist ein Zufall der Datenlage. Weil der Median deutlich vor dem Stichtag liegt, betrifft die falsche Behandlung nur Werte oberhalb des Medians, und den Median verschiebt das nicht. Bei einem Mittelwert wäre die Verzerrung sofort sichtbar. |
+| **Nur die Gekündigten**: 10.0 und 10.3 | Die schlimmste der drei Rechnungen, knapp die Hälfte beziehungsweise weniger als ein Drittel des wahren Werts. Und der Grund, warum sie so schlimm ist: Zensiert sind **per Konstruktion** gerade die Langläufer. Wer sie streicht, behält nur die kurzen Zeiten. Bemerkenswert ist auch, dass die Zahl in beiden Fällen fast gleich ist, obwohl die wahren Mediane um den Faktor 1.75 auseinanderliegen: Diese Rechnung misst vor allem den Stichtag, nicht die Laufzeit. |
+| **Alle als Ereignis**, mässig: 19.7 | Sieht gut aus und ist ein Zufall der Datenlage. Weil der Median deutlich vor dem Stichtag liegt, betrifft die falsche Behandlung nur Werte oberhalb des Medians, und den Median verschiebt das nicht. Bei einem Mittelwert wäre die Verzerrung sofort sichtbar. |
 | **Alle als Ereignis**, stark: **exakt 24.0** | Hier bricht die Rechnung sichtbar zusammen. Über die Hälfte aller Zeiten wurde auf den Stichtag gesetzt, also **ist** der Median der Stichtag. Die Zahl sagt nur, wann die Beobachtung endete. |
 | **Kaplan-Meier**, mässig: 19.7 gegen wahre 19.8 | Ein Zehntel daneben, und das ist Stichprobenzufall, keine systematische Verzerrung. |
 | **Kaplan-Meier**, stark: `NA` beziehungsweise `inf` | **Die ehrlichste Ausgabe der ganzen Tabelle.** Die Kurve erreicht im Beobachtungszeitraum nie die Hälfte; der Median ist aus diesen Daten nicht schätzbar. Ein Verfahren, das hier eine Zahl nennt, erfindet sie. |
@@ -372,7 +372,7 @@ Grundgesamtheit:
 1. **Wahrheit**: alle Zeiten vollständig beobachtet, keine Zensierung.
 2. **Administrative Zensierung**: Beobachtung endet für alle bei Monat 24.
 3. **Informative Zensierung**: zusätzlich steigen die Hochrisikopersonen
-   irgendwann in den ersten sechs Monaten aus der Beobachtung aus — sie kündigen
+   irgendwann in den ersten sechs Monaten aus der Beobachtung aus, sie kündigen
    das Studio zwar nicht, melden sich aber ab und sind nicht mehr erreichbar.
 
 #### Rechnung
@@ -470,9 +470,9 @@ plt.show()
 | Beobachtung | Deutung |
 |---|---|
 | Administrativ = wahr, auf drei Stellen | Trotz 45 Prozent Zensierung liefert der Schätzer **exakt** die richtige Kurve. Das ist keine Näherung: Wenn die Zensierung nichts über das Risiko sagt, geht keine Information verloren. Genau dafür ist das Verfahren gebaut. |
-| Informativ: $\hat{S}(12) = 0.764$ statt 0.668 | Zehn Prozentpunkte zu optimistisch. Und die Richtung ist kein Zufall: Ausgestiegen sind gerade die Hochrisikopersonen. Der Schätzer nimmt an, sie hätten ab dem Ausstieg das Risiko der Verbliebenen — was falsch ist, denn ihr Risiko war fast dreimal so hoch. |
+| Informativ: $\hat{S}(12) = 0.764$ statt 0.668 | Zehn Prozentpunkte zu optimistisch. Und die Richtung ist kein Zufall: Ausgestiegen sind gerade die Hochrisikopersonen. Der Schätzer nimmt an, sie hätten ab dem Ausstieg das Risiko der Verbliebenen, was falsch ist, denn ihr Risiko war fast dreimal so hoch. |
 | Informativ: Median nicht erreicht | Aus 20.7 Monaten wird "über 24". Wer nur diese Auswertung sieht, hat keinen Anhaltspunkt, dass etwas nicht stimmt. |
-| Anteil zensiert 0.74 | Der **einzige** Hinweis in den Zahlen — und ein schwacher, denn eine hohe Zensierungsrate ist für sich genommen kein Fehler (Beispiel 2, Fall "stark", hatte 63 Prozent bei völlig unbedenklicher Zensierung). |
+| Anteil zensiert 0.74 | Der **einzige** Hinweis in den Zahlen und ein schwacher, denn eine hohe Zensierungsrate ist für sich genommen kein Fehler (Beispiel 2, Fall "stark", hatte 63 Prozent bei völlig unbedenklicher Zensierung). |
 
 ::: {.note-box}
 **Was diesen Fall so unangenehm macht:** Es gibt keinen Test, der ihn findet. Der
@@ -502,7 +502,7 @@ Was hilft, ist ausschliesslich die **Buchführung über die Zensierungsgründe**
 
 #### Frage und Datenlage
 
-Die Hazard-Rate macht sichtbar, **wann** das Risiko hoch ist — die
+Die Hazard-Rate macht sichtbar, **wann** das Risiko hoch ist, die
 Überlebensfunktion nur, wie viel sich insgesamt angesammelt hat. Drei Verläufe,
 alle mit demselben Median von 20 Monaten:
 
@@ -625,17 +625,17 @@ Die Anteile ohne Ereignis, alle drei Verläufe mit Median 20:
 | Alle drei bei $t = 20$ auf **0.500** | Der Median ist identisch. Wer nur ihn berichtet, berichtet drei völlig verschiedene Sachverhalte als dieselbe Zahl. |
 | Bei $t = 3$: 0.765 gegen 0.985 | Nach drei Monaten sind im fallenden Fall bereits 23.5 Prozent ausgeschieden, im steigenden 1.5 Prozent. Ein Unterschied, der über jede Garantiezusage entscheidet. |
 | Bei $t = 36$: 0.395 gegen 0.106 | Und danach kehrt sich das Verhältnis um: fast das Vierfache. Wer die frühe Phase übersteht, hält im fallenden Fall lange. |
-| Die Hazard-Kurve links | zeigt das unmittelbar: rot fällt steil ab, blau steigt linear. Die Überlebenskurven rechts sehen dagegen alle ähnlich aus — glatt und fallend. |
+| Die Hazard-Kurve links | zeigt das unmittelbar: rot fällt steil ab, blau steigt linear. Die Überlebenskurven rechts sehen dagegen alle ähnlich aus, glatt und fallend. |
 
 ::: {.note-box}
 **Warum das für die Modellwahl entscheidend ist:** Das
-[Cox-Modell](cox-modell.qmd) muss über die Form von $h_0(t)$ nichts annehmen —
+[Cox-Modell](cox-modell.qmd) muss über die Form von $h_0(t)$ nichts annehmen,
 es lässt sie frei und schätzt nur Verhältnisse. Genau deshalb ist es der
 Standardfall.
 
 Ein **parametrisches** Modell (Weibull, Exponential, log-normal) legt die Form
 fest. Das bringt zwei Dinge: eine Extrapolation über den Beobachtungszeitraum
-hinaus und engere Intervalle — beides aber nur, wenn die unterstellte Form
+hinaus und engere Intervalle, beides aber nur, wenn die unterstellte Form
 stimmt. Der Exponentialfall entspricht dem konstanten Verlauf oben, also
 $k = 1$; ihn zu unterstellen heisst zu behaupten, das Risiko hänge nicht vom
 Alter ab. Für Verschleissteile ist das offensichtlich falsch.
@@ -644,7 +644,7 @@ Alter ab. Für Verschleissteile ist das offensichtlich falsch.
 #### Interpretation
 
 Zu einer Überlebensanalyse gehören deshalb immer die **Anteile zu mehreren
-Zeitpunkten**, nicht nur der Median — und, wo möglich, ein Blick auf den Verlauf
+Zeitpunkten**, nicht nur der Median und, wo möglich, ein Blick auf den Verlauf
 der Hazard-Rate.
 
 ::::
@@ -659,7 +659,7 @@ verbleibenden Zeiten. Was ist die Folge?
       nicht nur kleiner, sondern systematisch ausgewählt.
 - [x] Die Zeit wird unterschätzt, weil die Langläufer fehlen ~ Richtig. Zensiert
       sind gerade die Fälle, die lange kein Ereignis hatten. Wer sie entfernt,
-      behält die kurzen Zeiten und verzerrt nach unten — im Beispiel auf die
+      behält die kurzen Zeiten und verzerrt nach unten, im Beispiel auf die
       Hälfte des wahren Medians.
 - [ ] Die Zeit wird überschätzt ~ Beide Behelfslösungen verzerren nach unten, nur
       aus verschiedenen Gründen.
@@ -697,8 +697,7 @@ Hochrisikopersonen scheiden früh aus der Beobachtung aus. In welche Richtung
 verzerrt das die Kurve?
 
 - [x] Sie wird zu optimistisch ~ Richtig. Der Schätzer unterstellt den
-      Ausgeschiedenen ab dem Zensierungszeitpunkt das Risiko der Verbliebenen —
-      und das ist niedriger. Im Beispiel steigt der Anteil nach zwölf Monaten von
+      Ausgeschiedenen ab dem Zensierungszeitpunkt das Risiko der Verbliebenen und das ist niedriger. Im Beispiel steigt der Anteil nach zwölf Monaten von
       0.67 auf 0.76.
 - [ ] Sie wird zu pessimistisch ~ Das wäre der Fall, wenn gerade die
       Niedrigrisikopersonen ausschieden.

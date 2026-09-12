@@ -280,13 +280,13 @@ die Konfidenzgrenze liegt bei ±0.233. Der ADF-Test bestätigt Stationarität
 |---|---|
 | **ACF bei 12: -0.401** | Der grösste Einzelwert und weit ausserhalb der Grenze. Ein **negativer** Wert genau bei der Periode ist die Signatur des saisonalen Differenzierens: Es erzeugt eine saisonale MA-Struktur. Daraus folgt $Q = 1$. |
 | Keine weitere Spitze bei 24 | Ein saisonaler MA-Term reicht; $Q = 2$ wäre nicht begründet. |
-| **Auf der kurzen Skala ist das Bild unklar** | ACF und PACF haben beide einen Ausschlag bei 3 und danach kleinere Werte, ohne dass eine der beiden sauber abbricht. Genau der Fall aus der Theorie: **beide fallen allmählich ab, also gemischtes Modell** — die Ordnung ist nicht ablesbar. |
+| **Auf der kurzen Skala ist das Bild unklar** | ACF und PACF haben beide einen Ausschlag bei 3 und danach kleinere Werte, ohne dass eine der beiden sauber abbricht. Genau der Fall aus der Theorie: **beide fallen allmählich ab, also gemischtes Modell**, die Ordnung ist nicht ablesbar. |
 | Streuung vor und nach dem Differenzieren | sinkt deutlich | Ein Hinweis, dass nicht überdifferenziert wurde. |
 | `ndiffs` und `nsdiffs` in R | schlagen $d$ und $D$ vor | Python hat dafür keine eingebaute Entsprechung; dort entscheidet man über Tests und Grafik. |
 
 ::: {.note-box}
 **Was die Korrelogramme hier leisten und was nicht.** Sie liefern eindeutig
-$D = 1$ und $Q = 1$ — die saisonale Ebene ist klar. Für die gewöhnliche Ebene
+$D = 1$ und $Q = 1$, die saisonale Ebene ist klar. Für die gewöhnliche Ebene
 geben sie nur die Auskunft "es ist etwas da, aber weder reines AR noch reines
 MA". Die Wahl zwischen (1,1,1), (0,1,1), (1,1,0) und (2,1,2) fällt deshalb in
 Beispiel 2 über Informationskriterien und den Testfehler, nicht über das Bild.
@@ -360,7 +360,7 @@ for ordnung in [(0, 1, 1), (1, 1, 0), (1, 1, 1), (2, 1, 2)]:
 
 | Beobachtung | Deutung |
 |---|---|
-| **Die beiden Umgebungen wählen verschieden** | R nimmt (1,1,1), Python (2,1,2). Das ist der wichtigste Befund dieses Beispiels — und kein Widerspruch, sondern die Folge davon, dass `Arima()` und `SARIMAX` verschieden rechnen. |
+| **Die beiden Umgebungen wählen verschieden** | R nimmt (1,1,1), Python (2,1,2). Das ist der wichtigste Befund dieses Beispiels und kein Widerspruch, sondern die Folge davon, dass `Arima()` und `SARIMAX` verschieden rechnen. |
 | Die Zahlenniveaus liegen 130 Punkte auseinander | Die beiden Funktionen behandeln die Startwerte der differenzierten Reihe verschieden; R bezieht die Likelihood auf die volle Reihe, Python auf die differenzierte. Verglichen wird deshalb **innerhalb** einer Umgebung, nie über die Tabs hinweg. |
 | Warum Python (2,1,2) bevorzugt | Weil hier `enforce_stationarity` und `enforce_invertibility` abgeschaltet sind, darf das grösste Modell an den Rand des Parameterraums laufen und holt sich dort ein besseres Kriterium. R lässt das nicht zu. |
 | Die log-Likelihood **steigt immer** mit mehr Parametern | Das ist keine Information, sondern eine Selbstverständlichkeit; deshalb braucht es überhaupt Kriterien. |
@@ -371,7 +371,7 @@ for ordnung in [(0, 1, 1), (1, 1, 0), (1, 1, 1), (2, 1, 2)]:
 **Zwei Regeln zu Informationskriterien, die oft verletzt werden:**
 
 1. Sie sind nur zwischen Modellen auf **identischen Daten** vergleichbar. Wer $d$
-   oder $D$ ändert, ändert die Daten, auf die das Modell passt — die Werte sind
+   oder $D$ ändert, ändert die Daten, auf die das Modell passt, die Werte sind
    dann nicht mehr vergleichbar. Nur $p$, $q$, $P$ und $Q$ dürfen variieren.
 2. Ein kleines Kriterium ist **keine gute Prognose**. Es misst die Anpassung an
    die Trainingsdaten, bestraft um die Parameterzahl. Bewertet wird auf dem
@@ -379,7 +379,7 @@ for ordnung in [(0, 1, 1), (1, 1, 0), (1, 1, 1), (2, 1, 2)]:
 
 Die automatische Suche in R landet meist nicht bei der von Hand gewählten
 Ordnung, sondern bei einer Variante mit Drift und saisonalen AR-Termen. Beide
-beschreiben dieselbe Struktur — Trend plus Jahressaison — nur über verschiedene
+beschreiben dieselbe Struktur, Trend plus Jahressaison, nur über verschiedene
 Bauteile. Das ist der Normalfall und kein Widerspruch.
 :::
 
@@ -434,16 +434,16 @@ print(ohne_d.params.round(4))
 
 | Koeffizient | Schätzung (R / Python) | Standardfehler (R / Python) | Was er sagt |
 |---|---|---|---|
-| `ar1` beziehungsweise `ar.L1` | **0.554 / 0.534** | 0.101 / 0.163 | Trägheit auf der gewöhnlichen Ebene: Gut die Hälfte der Abweichung überträgt sich auf den Folgemonat. Schätzung geteilt durch Standardfehler ergibt 5.5 beziehungsweise 3.3 — deutlich von null verschieden. |
+| `ar1` beziehungsweise `ar.L1` | **0.554 / 0.534** | 0.101 / 0.163 | Trägheit auf der gewöhnlichen Ebene: Gut die Hälfte der Abweichung überträgt sich auf den Folgemonat. Schätzung geteilt durch Standardfehler ergibt 5.5 beziehungsweise 3.3, deutlich von null verschieden. |
 | `ma1` beziehungsweise `ma.L1` | **-1.000 / -1.000** | 0.073 / **1393** | Beide landen **exakt auf -1**. Hier stimmt etwas nicht. |
-| `sma1` beziehungsweise `ma.S.L12` | -1.000 / -1.000 | 0.271 / 3098 | Ebenfalls am Rand — hier aber der Normalfall. |
+| `sma1` beziehungsweise `ma.S.L12` | -1.000 / -1.000 | 0.271 / 3098 | Ebenfalls am Rand, hier aber der Normalfall. |
 | `sigma^2` | 249.6 / 247.8 | | Streuung der Residuen, Grundlage der Prognoseintervalle. |
 
 | Befund | Erklärung |
 |---|---|
 | **Der MA-Koeffizient liegt exakt bei -1.000** | Auf dem Rand des zulässigen Bereichs; Invertierbarkeit verlangt einen Betrag unter eins. Dass **beide** Umgebungen dort landen, ist der eigentliche Befund. |
-| Die Standardfehler unterscheiden sich um vier Grössenordnungen | R erzwingt Invertierbarkeit und meldet einen unauffälligen Wert von 0.073; Python hat die Schranke hier abgeschaltet, läuft frei in den Rand und meldet 1393 — also "an dieser Stelle ist die Likelihood flach, der Wert ist unbestimmt". **Die ehrlichere Ausgabe ist die von Python**, weil sie das Problem sichtbar macht statt es wegzuklemmen. |
-| Was das inhaltlich bedeutet | Ein MA(1)-Koeffizient von -1 hebt eine Differenz genau wieder auf. Das Modell sagt also: **die gewöhnliche Differenz war unnötig.** Und das stimmt — die Reihe wurde mit einem *deterministischen* Trend erzeugt, der nicht wegdifferenziert gehört, siehe [Stationarität](stationaritaet-acf-pacf.qmd), Beispiel 3. |
+| Die Standardfehler unterscheiden sich um vier Grössenordnungen | R erzwingt Invertierbarkeit und meldet einen unauffälligen Wert von 0.073; Python hat die Schranke hier abgeschaltet, läuft frei in den Rand und meldet 1393, also "an dieser Stelle ist die Likelihood flach, der Wert ist unbestimmt". **Die ehrlichere Ausgabe ist die von Python**, weil sie das Problem sichtbar macht statt es wegzuklemmen. |
+| Was das inhaltlich bedeutet | Ein MA(1)-Koeffizient von -1 hebt eine Differenz genau wieder auf. Das Modell sagt also: **die gewöhnliche Differenz war unnötig.** Und das stimmt, die Reihe wurde mit einem *deterministischen* Trend erzeugt, der nicht wegdifferenziert gehört, siehe [Stationarität](stationaritaet-acf-pacf.qmd), Beispiel 3. |
 | `ma.S.L12 = -1.000` ist dagegen unauffällig | Bei saisonal differenzierten Reihen ist ein saisonaler MA-Koeffizient nahe -1 der Regelfall und kein Warnzeichen. |
 | Die Alternative ohne gewöhnliche Differenz | `(1,0,0)(0,1,1)` mit Drift kommt ohne Randwert aus. In R lautet der Drift 3.96 je Monat (nahe an den eingebauten 4), in Python nennt `trend="c"` stattdessen ein Absolutglied. |
 
@@ -451,7 +451,7 @@ print(ohne_d.params.round(4))
 **Warum die Informationskriterien das nicht zeigen:** Ein Modell, das eine
 überflüssige Differenz durch einen MA-Term von -1 wieder aufhebt, passt genauso
 gut wie das Modell ohne beides. Die Likelihood ist gleich, die Parameterzahl um
-eins höher — der AIC-Nachteil beträgt magere zwei Punkte und verschwindet im
+eins höher, der AIC-Nachteil beträgt magere zwei Punkte und verschwindet im
 Vergleich mit anderen Ordnungen.
 
 **Woran man es erkennt**, ist deshalb immer der Blick auf die Koeffizienten:
@@ -487,7 +487,7 @@ Saison und das vollständige Modell.
 
 ```{r}
 #| label: fig-b4-ar-r
-#| fig-cap: "Beispiel 4: Residuendiagnostik ohne saisonale Anteile — die ACF zeigt Spitzen bei Vielfachen von zwölf."
+#| fig-cap: "Beispiel 4: Residuendiagnostik ohne saisonale Anteile, die ACF zeigt Spitzen bei Vielfachen von zwölf."
 #| fig-height: 4
 zu_einfach <- Arima(training, order = c(1, 1, 0))
 
@@ -528,13 +528,13 @@ for name, m in [("ohne Saison", zu_einfach), ("mit Saison", modell)]:
 | **ohne Saison** | **0.0001** | **< 0.0001** | **+0.284** | **+0.193** |
 | mit Saison | 0.240 | 0.123 | -0.054 | -0.106 |
 
-(Python-Werte. `checkresiduals()` in R wählt die Anzahl Abstände selbst — für das
-Modell ohne Saison 17 statt 12 — und kommt auf $Q^* = 70.8$ mit p = 7·10⁻⁹, also
+(Python-Werte. `checkresiduals()` in R wählt die Anzahl Abstände selbst, für das
+Modell ohne Saison 17 statt 12 und kommt auf $Q^* = 70.8$ mit p = 7·10⁻⁹, also
 zum selben Schluss.)
 
 | Befund | Erklärung |
 |---|---|
-| **ACF(12) = +0.284 ohne Saison** | Die Residuen von vor zwölf Monaten sagen etwas über die heutigen — genau die Saisonstruktur, die das Modell nicht kennt. Bei 24 noch +0.193. |
+| **ACF(12) = +0.284 ohne Saison** | Die Residuen von vor zwölf Monaten sagen etwas über die heutigen, genau die Saisonstruktur, die das Modell nicht kennt. Bei 24 noch +0.193. |
 | Ljung-Box p = 0.0001 | Der Test verwirft die Annahme unkorrelierter Residuen deutlich. Er prüft **alle** Abstände bis 12 gemeinsam. |
 | Mit Saison: ACF(12) = -0.054, p = 0.24 | Innerhalb der Konfidenzgrenzen, der Test unauffällig. Die Struktur ist erfasst. |
 | Die Punktprognosen sind dabei **nicht** das Hauptproblem | Verzerrt sind vor allem die **Intervalle**: Das Modell behandelt verbleibende Struktur als Rauschen und schätzt die Unsicherheit falsch ein. |
@@ -544,7 +544,7 @@ zum selben Schluss.)
 
 | Wo die Spitze liegt | Was fehlt |
 |---|---|
-| bei Vielfachen der Periode (12, 24) | saisonale Anteile — $P$, $Q$ oder $D$ |
+| bei Vielfachen der Periode (12, 24) | saisonale Anteile, $P$, $Q$ oder $D$ |
 | beim ersten Abstand | ein gewöhnlicher AR- oder MA-Term |
 | langsam abfallend über viele Abstände | eine Differenz |
 | überall verstreut, einzelne knapp draussen | nichts; bei 24 Abständen ist ein Ausreisser zufällig zu erwarten |
@@ -564,7 +564,7 @@ keine Schwelle.
 
 #### Frage und Datenlage
 
-Zwölf Monate Prognose gegen die tatsächlichen Werte — und gegen drei einfachere
+Zwölf Monate Prognose gegen die tatsächlichen Werte und gegen drei einfachere
 Modelle. Rechtfertigt der Aufwand sich?
 
 #### Rechnung
@@ -654,7 +654,7 @@ print("Bandbreite Monat 12:", round(float(band.iloc[-1, 1] - band.iloc[-1, 0]), 
 | Modell | RMSE (Python / R) | MAPE (Python / R) |
 |---|---|---|
 | naiv saisonal | 50.29 / 50.29 | 5.62 / 5.62 % |
-| ARIMA ohne Saison | 72.63 / — | 7.35 / — % |
+| ARIMA ohne Saison | 72.63 /, | 7.35 /, % |
 | Holt-Winters | 18.17 / 19.22 | 1.84 / 2.02 % |
 | **SARIMA(1,1,1)(0,1,1)** | **17.07 / 16.96** | **1.68 / 1.67 %** |
 
@@ -663,14 +663,14 @@ print("Bandbreite Monat 12:", round(float(band.iloc[-1, 1] - band.iloc[-1, 0]), 
 | SARIMA schlägt die naive Prognose um den **Faktor 3** | Das rechtfertigt den Aufwand gegenüber "gar kein Modell". |
 | Gegenüber **Holt-Winters** beträgt der Vorsprung rund einen Punkt RMSE | Also 6 Prozent in Python, 12 Prozent in R. Das ist der Vergleich, der wirklich zählt: gegen das einfachere Verfahren, das dieselbe Aufgabe löst. Ob der Gewinn den zusätzlichen Aufwand aus Ordnungswahl und Diagnostik wert ist, ist eine Sachfrage, keine statistische. |
 | Das Modell **ohne Saison** ist schlechter als die naive Prognose | 72.6 gegen 50.3. Ein Modell kann alles andere unterbieten, wenn ihm der wichtigste Bestandteil fehlt. |
-| Bandbreite Monat 1 gegen Monat 12 | 67.7 gegen 83.4 | Das Intervall wächst um rund ein Viertel. Bei ARIMA-Modellen mit Differenzen wächst es mit dem Horizont unbegrenzt weiter — deshalb gehört der Horizont begrenzt und die Bandbreite mitberichtet. |
+| Bandbreite Monat 1 gegen Monat 12 | 67.7 gegen 83.4 | Das Intervall wächst um rund ein Viertel. Bei ARIMA-Modellen mit Differenzen wächst es mit dem Horizont unbegrenzt weiter, deshalb gehört der Horizont begrenzt und die Bandbreite mitberichtet. |
 
 ::: {.note-box}
 **Warum SARIMA hier nur knapp gewinnt**, obwohl die Reihe mit einem
 autokorrelierten Fehler konstruiert wurde: Der AR(1)-Anteil mit Koeffizient 0.6
 trägt zwar zur Prognose bei, aber nur für die ersten Monate. Danach ist sein
 Beitrag abgeklungen ($0.6^{6} = 0.05$), und übrig bleibt dasselbe, was
-Holt-Winters auch kann — Trend und Saison fortschreiben.
+Holt-Winters auch kann, Trend und Saison fortschreiben.
 
 Die allgemeine Lehre: **Der Vorsprung eines Modells über eine explizite
 Abhängigkeitsstruktur ist bei kurzen Horizonten gross und bei langen klein.**
@@ -740,9 +740,9 @@ print({"RMSE_rollierend": round(float(np.sqrt((alle ** 2).mean())), 2),
 
 | Beobachtung | Deutung |
 |---|---|
-| Die Werte liegen nahe beieinander | 17.1 gegen 18.1 in Python, 17.0 gegen 19.0 in R. Der einmalige Testteil war also nicht ungewöhnlich günstig — ein beruhigender Befund. |
+| Die Werte liegen nahe beieinander | 17.1 gegen 18.1 in Python, 17.0 gegen 19.0 in R. Der einmalige Testteil war also nicht ungewöhnlich günstig, ein beruhigender Befund. |
 | Die rollierende Zahl beruht auf **mehr** Prognosen | und ist damit weniger vom gewählten Abschnitt abhängig. Bei knapp beieinander liegenden Modellen ist sie die richtige Grundlage. |
-| Der Horizont unterscheidet sich | 6 statt 12 Monate. Kürzere Horizonte sind leichter, deshalb sind die Zahlen nicht direkt vergleichbar — nur die Grössenordnung. |
+| Der Horizont unterscheidet sich | 6 statt 12 Monate. Kürzere Horizonte sind leichter, deshalb sind die Zahlen nicht direkt vergleichbar, nur die Grössenordnung. |
 | Der Preis | Das Modell wird für jedes Fenster neu geschätzt. Bei drei Fenstern ist das harmlos, bei einer langen Reihe mit Schrittweite eins nicht. |
 
 ::: {.note-box}
@@ -753,7 +753,7 @@ Zahlen sind deshalb nicht direkt vergleichbar, wohl aber jede für sich mit dem
 einmaligen Testfehler.
 
 **Wann sich der Aufwand lohnt:** wenn zwei Modelle im einmaligen Testfehler
-weniger als etwa zehn Prozent auseinanderliegen — wie hier SARIMA und
+weniger als etwa zehn Prozent auseinanderliegen, wie hier SARIMA und
 Holt-Winters. Dann entscheidet ein einzelner Testabschnitt zufällig.
 :::
 

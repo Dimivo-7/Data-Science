@@ -138,7 +138,7 @@ deshalb muss es nie geschätzt werden.
 Prädiktorwerten haben Hazard-Kurven, die zu jedem Zeitpunkt im **selben
 Verhältnis** stehen. Steigt und fällt das Grundrisiko im Lauf der Zeit, tun das
 beide Kurven gemeinsam; ihr Abstand auf der Log-Skala bleibt konstant. Genau
-diese Annahme macht ein einzelnes Hazard Ratio überhaupt erst sinnvoll — und
+diese Annahme macht ein einzelnes Hazard Ratio überhaupt erst sinnvoll und
 genau sie wird in Beispiel 4 verletzt.
 :::
 
@@ -289,18 +289,18 @@ print("Konkordanz:", round(cox.concordance_index_, 3))
 
 | Prädiktor | `coef` $\beta$ | `se(coef)` | `exp(coef)` = HR | 95-Prozent-Intervall | z | p |
 |---|---|---|---|---|---|---|
-| Monatsvertrag | **1.1184** | 0.1470 | **3.060** | 2.294 – 4.082 | 7.61 | < .001 |
-| Distanz (je km) | **0.0467** | 0.0158 | **1.048** | 1.016 – 1.081 | 2.96 | .003 |
+| Monatsvertrag | **1.1184** | 0.1470 | **3.060** | 2.294 bis 4.082 | 7.61 | < .001 |
+| Distanz (je km) | **0.0467** | 0.0158 | **1.048** | 1.016 bis 1.081 | 2.96 | .003 |
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
 | `coef` = 1.1184 | Effekt auf den **logarithmierten** Hazard | Auf dieser Skala wird gerechnet, und dort ist der Effekt additiv. Berichtet wird die exponierte Fassung. |
 | `exp(coef)` = **3.060** | Monatsverträge haben das rund Dreifache des momentanen Kündigungsrisikos | **Bei gleicher Distanz.** Das ist der Kern des Modells: Der Vergleich gilt zwischen zwei Personen, die sich nur in der Vertragsart unterscheiden. |
-| Intervall 2.294 – 4.082 | schliesst die 1 nicht ein | Es ist **nicht symmetrisch** um 3.06, weil es auf der Log-Skala gebildet und dann exponiert wird: $e^{1.1184 \pm 1.96 \cdot 0.1470}$. |
-| `exp(coef)` = **1.048** für die Distanz | 4.8 Prozent mehr Risiko **je Kilometer** | Je Einheit klein — aber die Einheit ist hier winzig gegenüber der Spannweite. |
+| Intervall 2.294 bis 4.082 | schliesst die 1 nicht ein | Es ist **nicht symmetrisch** um 3.06, weil es auf der Log-Skala gebildet und dann exponiert wird: $e^{1.1184 \pm 1.96 \cdot 0.1470}$. |
+| `exp(coef)` = **1.048** für die Distanz | 4.8 Prozent mehr Risiko **je Kilometer** | Je Einheit klein, aber die Einheit ist hier winzig gegenüber der Spannweite. |
 | Distanz über die Spannweite | $e^{0.0467 \cdot 14.5} = 1.97$ | Zwischen der nächsten und der entferntesten Person liegt fast der Faktor 2. **Das** ist die berichtbare Grösse, nicht die 1.048. |
 | z und p | 7.61 und 2.96 | Wald-Tests je Koeffizient, jeweils gegen die Nullhypothese $\beta = 0$, also HR = 1. |
-| Konkordanz | **0.663** | Von allen Paaren, deren Reihenfolge bestimmbar ist, ordnet das Modell 66 Prozent richtig. 0.5 wäre Zufall. Ein brauchbarer, kein guter Wert — und das bei zwei Prädiktoren, die den Prozess tatsächlich erzeugt haben. |
+| Konkordanz | **0.663** | Von allen Paaren, deren Reihenfolge bestimmbar ist, ordnet das Modell 66 Prozent richtig. 0.5 wäre Zufall. Ein brauchbarer, kein guter Wert und das bei zwei Prädiktoren, die den Prozess tatsächlich erzeugt haben. |
 | Likelihood-Ratio-Test | $\chi^2$(2) = 80.9, p < .001 | Der Gesamttest gegen das Nullmodell, das Gegenstück zum F-Test der linearen Regression. |
 
 ::: {.note-box}
@@ -314,8 +314,8 @@ aus einer Exponentialverteilung mit individueller Rate erzeugt, das Cox-Modell
 schätzt aber unter der Annahme, dass **alle** Unterschiede zwischen Personen in
 den Prädiktoren stehen. Nicht modellierte Heterogenität lässt Hazard Ratios über
 die Zeit schrumpfen und wird vom Modell teilweise in den stärksten Prädiktor
-gezogen. Bei einer einzelnen Stichprobe ist das nicht von Zufall zu unterscheiden
-— der Punkt ist, dass die 3.06 mit ihrem Intervall 2.29 bis 4.08 die
+gezogen. Bei einer einzelnen Stichprobe ist das nicht von Zufall zu unterscheiden,
+der Punkt ist, dass die 3.06 mit ihrem Intervall 2.29 bis 4.08 die
 **Modellschätzung** ist und nicht der wahre Erzeugungsparameter.
 :::
 
@@ -377,12 +377,12 @@ print("Ereignisse:", ereignisse,
 |---|---|---|
 | Monatsvertrag | 0.197 | **0.145** |
 | Distanz | **0.054** | **0.040** |
-| global | 0.057 | — |
+| global | 0.057 |   |
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
 | Was der Test prüft | Ob die Schoenfeld-Residuen mit der Zeit **korrelieren**. Ein Residuum je Ereignis und Prädiktor sagt, ob die Person, die zu diesem Zeitpunkt das Ereignis hatte, einen höheren oder tieferen Prädiktorwert hatte als vom Modell erwartet. Steigen oder fallen diese Abweichungen systematisch, ändert sich der Effekt über die Zeit. |
-| Vertragsart, p = 0.15 bis 0.20 | Kein Hinweis auf eine Verletzung. Der grosse p-Wert **bestätigt die Annahme nicht** — er widerlegt sie nur nicht. |
+| Vertragsart, p = 0.15 bis 0.20 | Kein Hinweis auf eine Verletzung. Der grosse p-Wert **bestätigt die Annahme nicht**, er widerlegt sie nur nicht. |
 | Distanz, p = 0.040 in Python und 0.054 in R | Ein Grenzfall, und ein doppelt lehrreicher: Derselbe Sachverhalt fällt in der einen Umgebung unter die 5-Prozent-Schwelle und in der anderen darüber. |
 | Was mit dem Grenzfall zu tun ist | **Nicht** reflexartig das Modell verwerfen. Der Test wird mit wachsender Ereigniszahl empfindlich; bei 247 Ereignissen werden auch winzige, praktisch bedeutungslose Zeittrends signifikant. Entscheidend ist das **Bild**: Fällt die Residuenkurve über den Beobachtungszeitraum um einen Betrag, der die Deutung ändern würde, oder schwankt sie nur leicht um die waagrechte Linie des geschätzten Koeffizienten? |
 | Ereignisse je Koeffizient | 247 / 2 = 123.5 | Weit über der Faustregel von zehn. Das Modell ist nicht überfrachtet. |
@@ -391,7 +391,7 @@ print("Ereignisse:", ereignisse,
 **R und Python geben hier verschiedene p-Werte aus**, und beide haben recht: Der
 Test hängt davon ab, gegen welche Funktion der Zeit die Residuen korreliert
 werden. `cox.zph()` verwendet standardmässig eine Kaplan-Meier-Transformation,
-`proportional_hazard_test()` das in `time_transform` Angegebene — oben `"rank"`.
+`proportional_hazard_test()` das in `time_transform` Angegebene, oben `"rank"`.
 Wer den Test berichtet, nennt die Transformation dazu.
 
 Ein Test, der auf die Wahl der Zeitachse reagiert, ist ohnehin ein Anlass, das
@@ -459,26 +459,26 @@ print("Partial AIC ohne:", round(cox.AIC_partial_, 2),
 
 | Prädiktor | Hazard Ratio | 95-Prozent-Intervall | p |
 |---|---|---|---|
-| Monatsvertrag | 3.06 | 2.29 – 4.08 | < .001 |
-| Distanz | 1.048 | 1.016 – 1.081 | .003 |
-| **Trainingsminuten** | **0.9984** | **0.9904 – 1.0065** | **.697** |
+| Monatsvertrag | 3.06 | 2.29 bis 4.08 | < .001 |
+| Distanz | 1.048 | 1.016 bis 1.081 | .003 |
+| **Trainingsminuten** | **0.9984** | **0.9904 bis 1.0065** | **.697** |
 
 | Vergleich | ohne | mit | Deutung |
 |---|---|---|---|
-| Konkordanz | 0.6630 | **0.6594** | Sie **sinkt** leicht. Anders als das $R^2$ der linearen Regression steigt die Konkordanz nicht automatisch mit jedem Prädiktor — sie kann sich verschlechtern, wenn eine Variable nur Rauschen beisteuert. |
+| Konkordanz | 0.6630 | **0.6594** | Sie **sinkt** leicht. Anders als das $R^2$ der linearen Regression steigt die Konkordanz nicht automatisch mit jedem Prädiktor, sie kann sich verschlechtern, wenn eine Variable nur Rauschen beisteuert. |
 | Partial AIC | 2683.93 | **2685.78** | Steigt um 1.85. Das Informationskriterium bestraft den zusätzlichen Parameter stärker, als der minimale Gewinn an Likelihood ihn rechtfertigt: Das kleinere Modell ist vorzuziehen. Siehe [Modellauswahl](../regression/modellauswahl.qmd). |
-| Hazard Ratios der übrigen | 3.060 / 1.0478 | 3.063 / 1.0480 | Praktisch unverändert. Das ist zu erwarten, weil die neue Variable mit den bestehenden nicht korreliert — im Gegensatz zu Beispiel 5. |
+| Hazard Ratios der übrigen | 3.060 / 1.0478 | 3.063 / 1.0480 | Praktisch unverändert. Das ist zu erwarten, weil die neue Variable mit den bestehenden nicht korreliert, im Gegensatz zu Beispiel 5. |
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
 | HR = 0.9984 | Rechnerisch ein winziger Schutzeffekt: 0.16 Prozent weniger Risiko je Minute. |
-| Intervall 0.9904 bis 1.0065 | **Enthält die 1** — und zwar mit reichlich Abstand auf beiden Seiten. Das ist die eigentliche Aussage: Die Daten sind mit allem zwischen einem Prozent Schutz und 0.65 Prozent Risiko je Minute vereinbar. |
-| p = .697 | Kein Nachweis eines Effekts. **Kein Nachweis der Abwesenheit** eines Effekts — den liefert das enge Intervall, nicht der p-Wert. |
+| Intervall 0.9904 bis 1.0065 | **Enthält die 1** und zwar mit reichlich Abstand auf beiden Seiten. Das ist die eigentliche Aussage: Die Daten sind mit allem zwischen einem Prozent Schutz und 0.65 Prozent Risiko je Minute vereinbar. |
+| p = .697 | Kein Nachweis eines Effekts. **Kein Nachweis der Abwesenheit** eines Effekts, den liefert das enge Intervall, nicht der p-Wert. |
 
 ::: {.note-box}
 Bei einem metrischen Prädiktor ist das Intervall je Einheit irreführend eng. Über
 die Spannweite von rund 60 Minuten gerechnet, lässt es Faktoren zwischen
-$0.9904^{60} = 0.56$ und $1.0065^{60} = 1.48$ zu — also von "halbiert das Risiko"
+$0.9904^{60} = 0.56$ und $1.0065^{60} = 1.48$ zu, also von "halbiert das Risiko"
 bis "erhöht es um die Hälfte". Ein enges Intervall je Einheit heisst nicht, dass
 die Variable ausgeschlossen ist.
 :::
@@ -508,7 +508,7 @@ Die Kurven kreuzen sich. Was macht das Cox-Modell daraus?
 
 ```{r}
 #| label: fig-b4-cox-r
-#| fig-cap: "Beispiel 4: Schoenfeld-Residuen bei verletzter Annahme — der Effekt fällt sichtbar mit der Zeit."
+#| fig-cap: "Beispiel 4: Schoenfeld-Residuen bei verletzter Annahme, der Effekt fällt sichtbar mit der Zeit."
 #| fig-height: 3.2
 m <- 250
 frueh <- -log(lehmer(5151, m)) / 0.16
@@ -588,7 +588,7 @@ print(f"Hazard Ratio Monate 6 bis 24: {hr_spaet:.3f}")
 
 | Modell | Hazard Ratio (A gegenüber B) | 95-Prozent-Intervall | p |
 |---|---|---|---|
-| **Gesamter Zeitraum** | **0.994** | 0.806 – 1.225 | **.952** |
+| **Gesamter Zeitraum** | **0.994** | 0.806 bis 1.225 | **.952** |
 | Monate 0 bis 6 | **2.199** | | < .001 |
 | Monate 6 bis 24 | **0.040** | | < .001 |
 
@@ -598,14 +598,14 @@ Prüfung auf Proportionalität: $\chi^2$ = 90.8, p < .001.
 |---|---|
 | Das Gesamtmodell schätzt **HR = 0.99** | Also "kein Unterschied". Das ist keine Mittelung im Sinne eines vernünftigen Kompromisses, sondern eine Zahl, die **keinen der beiden Zeiträume beschreibt**. |
 | Abschnittsweise: **2.20 und 0.04** | Früh hat A mehr als das Doppelte des Risikos, später ein Fünfundzwanzigstel. Zwischen den beiden Zahlen liegt ein Faktor von 55. |
-| Der Test auf Proportionalität | $\chi^2$ = 90.8 bei einem Prädiktor — unübersehbar. Hier ist das kein Grenzfall wie in Beispiel 2. |
+| Der Test auf Proportionalität | $\chi^2$ = 90.8 bei einem Prädiktor, unübersehbar. Hier ist das kein Grenzfall wie in Beispiel 2. |
 | Die Schoenfeld-Residuen | fallen im Bild deutlich von oben nach unten, statt um eine Waagrechte zu schwanken. Das ist die Verletzung, **sichtbar** statt getestet. |
 | Konfidenzintervall des Gesamtmodells | 0.81 bis 1.23 | Es sieht aus wie ein sauber ausgeschlossener Effekt. Beide wahren Werte liegen weit ausserhalb. |
 
 ::: {.note-box}
 **Warum das gefährlicher ist als ein einfach falscher Wert:** Das Gesamtmodell
 liefert eine unauffällige Ausgabe. Kein Wert ist absurd, das Intervall ist eng,
-der p-Wert klar. Nichts an dieser Tabelle deutet auf ein Problem hin — die
+der p-Wert klar. Nichts an dieser Tabelle deutet auf ein Problem hin, die
 Verletzung ist nur über den Test und den Residuenplot zu sehen. Deshalb ist die
 Prüfung der Proportionalität kein optionaler Zusatz, sondern Teil der Rechnung.
 
@@ -618,7 +618,7 @@ Drei zulässige Wege bei verletzter Proportionalität:
 
 | Weg | Wann |
 |---|---|
-| **Stratifizieren** nach der betroffenen Variablen | ihr Effekt interessiert nicht, sie ist nur eine Störgrösse — siehe Beispiel 5 |
+| **Stratifizieren** nach der betroffenen Variablen | ihr Effekt interessiert nicht, sie ist nur eine Störgrösse, siehe Beispiel 5 |
 | **Zeitabhängigen Effekt** aufnehmen (`tt()` in R, `CoxTimeVaryingFitter`) | der Wechsel des Effekts ist selbst das Ergebnis |
 | **Zeitabschnitte** getrennt schätzen | die Grenze ist aus der Sache heraus begründet, nicht aus den Daten |
 
@@ -681,8 +681,8 @@ print("Konkordanz:", round(cox_strat.concordance_index_, 3))
 
 | Modell | HR Distanz | 95-Prozent-Intervall | p | HR Vertragsart |
 |---|---|---|---|---|
-| ungeschichtet | 1.0478 | 1.0156 – 1.0807 | .003 | 3.060 |
-| **geschichtet** | **1.0472** | 1.0154 – 1.0801 | .003 | **nicht geschätzt** |
+| ungeschichtet | 1.0478 | 1.0156 bis 1.0807 | .003 | 3.060 |
+| **geschichtet** | **1.0472** | 1.0154 bis 1.0801 | .003 | **nicht geschätzt** |
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
@@ -700,7 +700,7 @@ Drei praktische Folgen:
   eigentliche Frage, ist ein zeitabhängiger Effekt der richtige Weg.
 - Zu viele Schichten zerlegen die Risikomengen. Bei zehn Schichten mit je zwei
   Ereignissen bleibt kaum Information übrig.
-- Metrische Variablen müssen dafür in Klassen zerlegt werden — mit allen Nachteilen
+- Metrische Variablen müssen dafür in Klassen zerlegt werden, mit allen Nachteilen
   willkürlicher Grenzen.
 :::
 
@@ -749,7 +749,7 @@ Warum ist das Konfidenzintervall 2.29 bis 4.08 nicht symmetrisch um 3.06?
 - [x] Sein Effekt ändert sich über die Zeit, ein einzelnes Hazard Ratio genügt
       nicht ~ Richtig. Der Test prüft die Annahme proportionaler Hazards. Bei
       Verletzung wird stratifiziert, ein zeitabhängiger Effekt aufgenommen oder
-      nach Zeitabschnitten berichtet — und zwar mit einer vorab begründeten
+      nach Zeitabschnitten berichtet und zwar mit einer vorab begründeten
       Grenze.
 - [ ] Das Modell ist insgesamt schlecht angepasst ~ Die Anpassung kann gut sein;
       verletzt ist eine bestimmte Annahme über einen bestimmten Prädiktor.
@@ -763,7 +763,7 @@ passiert?
 - [x] Die Proportionalität ist verletzt; die 0.99 beschreibt keinen der Zeiträume
       ~ Richtig. Der Effekt kehrt sich über die Zeit um, und das Modell mittelt
       ihn zu einer Zahl, die nirgends gilt. Am Ergebnis selbst ist das nicht zu
-      sehen — nur am Test und am Residuenplot.
+      sehen, nur am Test und am Residuenplot.
 - [ ] Die abschnittsweisen Modelle sind überangepasst ~ Sie beruhen auf 249
       beziehungsweise 111 Ereignissen; das ist reichlich.
 - [ ] Das Gesamtmodell ist präziser, weil es alle Daten nutzt ~ Präzision nützt

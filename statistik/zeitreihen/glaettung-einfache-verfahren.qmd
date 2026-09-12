@@ -262,13 +262,13 @@ print(pd.DataFrame({
 | Fenster | Was es glättet | Was es stehen lässt |
 |---|---|---|
 | **MA(3)** | das monatliche Rauschen | Trend **und** Saison. Die Streuung sinkt nur von 94.5 auf 90.0, weil die Saison den grössten Teil der Schwankung ausmacht und unberührt bleibt. |
-| **MA(12)** | Rauschen und Saison vollständig | nur den Trend. Die Streuung fällt auf rund 72 — was übrig bleibt, ist der Anstieg über sechs Jahre. |
+| **MA(12)** | Rauschen und Saison vollständig | nur den Trend. Die Streuung fällt auf rund 72, was übrig bleibt, ist der Anstieg über sechs Jahre. |
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
 | Fensterbreite = Periode | Der entscheidende Punkt: Ein Fenster von genau **einer Periode** mittelt jeden Monat des Jahres genau einmal und löscht die Saison damit exakt aus. Jede andere Breite lässt einen Rest stehen. |
 | fehlende Werte: 2 und 11 | Ein zentriertes Fenster braucht Nachbarn auf beiden Seiten. Bei MA(3) fehlt je einer am Rand, bei MA(12) je rund ein halbes Jahr. |
-| Die fehlenden Werte am **rechten** Rand | sind der eigentliche Haken: Für die aktuellsten Monate gibt es keinen geglätteten Wert. **Ein gleitender Durchschnitt prognostiziert nicht** — er beschreibt. |
+| Die fehlenden Werte am **rechten** Rand | sind der eigentliche Haken: Für die aktuellsten Monate gibt es keinen geglätteten Wert. **Ein gleitender Durchschnitt prognostiziert nicht**, er beschreibt. |
 
 ::: {.note-box}
 Bei gerader Fensterbreite gibt es ein Zentrierungsproblem: Ein Fenster über 12
@@ -399,20 +399,19 @@ Prognosen von 799.7 bis 802.6 statt 802.5 bis 805.1. Siehe den Kasten unten.)
 
 ::: {.note-box}
 **Die Glättungsparameter fallen in Python auf null.** Das Verfahren entscheidet
-also, dass Niveau, Trend und Saisonfigur **gar nicht** nachgeführt werden müssen —
-und das ist richtig, denn die Reihe wurde mit einem festen Trend und einer festen
+also, dass Niveau, Trend und Saisonfigur **gar nicht** nachgeführt werden müssen und das ist richtig, denn die Reihe wurde mit einem festen Trend und einer festen
 Saisonfigur konstruiert. Aus Holt-Winters wird damit faktisch eine Regression mit
 Gerade und Saisondummies.
 
 R lässt exakte Nullen nicht zu (die Optimierung läuft in den Grenzen 0.0001 bis
 0.9999) und schätzt deshalb alle drei Parameter zu 0.0001. Zusätzlich bestimmt R
-die Startwerte anders — sichtbar an `Initial states` mit einem Niveau von 494.68
+die Startwerte anders, sichtbar an `Initial states` mit einem Niveau von 494.68
 und einem Trend von 4.12, die den eingebauten 500 und 4 sehr nahe kommen. Daraus
 ergeben sich leicht andere Prognosen und ein etwas höherer Testfehler (RMSE 23.3
 statt 21.6).
 
 In echten Daten sind Werte nahe null ein Hinweis, dass ein einfacheres Modell
-genügt — und Werte nahe eins einer, dass das Modell dem Rauschen folgt.
+genügt und Werte nahe eins einer, dass das Modell dem Rauschen folgt.
 :::
 
 #### Interpretation und Ergebnissatz
@@ -509,8 +508,8 @@ Sprachen dieselbe.
 | Beobachtung | Erklärung |
 |---|---|
 | Holt-Winters ist **mehr als doppelt so gut** wie alles andere | Die Reihe hat Trend **und** Saison; nur ein Modell, das beides kennt, kann sie prognostizieren. |
-| **Holt ist schlechter als die einfache Glättung** | In beiden Sprachen. Überraschend, aber erklärbar: Holt schreibt den Trend als Gerade fort und ignoriert die Saison — die Prognose läuft also mitten durch die Saisonzacken hindurch und verfehlt Hoch- wie Tiefpunkte. Die einfache Glättung liegt mit ihrer waagrechten Linie zufällig näher. **Ein zusätzlicher Modellbestandteil verbessert nicht automatisch.** |
-| Die einfache Glättung schätzt $\alpha = 1$ | Damit ist sie die naive Prognose "der letzte Wert" — die Vorhersage für alle zwölf Monate ist der Dezemberwert von 2024. |
+| **Holt ist schlechter als die einfache Glättung** | In beiden Sprachen. Überraschend, aber erklärbar: Holt schreibt den Trend als Gerade fort und ignoriert die Saison, die Prognose läuft also mitten durch die Saisonzacken hindurch und verfehlt Hoch- wie Tiefpunkte. Die einfache Glättung liegt mit ihrer waagrechten Linie zufällig näher. **Ein zusätzlicher Modellbestandteil verbessert nicht automatisch.** |
+| Die einfache Glättung schätzt $\alpha = 1$ | Damit ist sie die naive Prognose "der letzte Wert", die Vorhersage für alle zwölf Monate ist der Dezemberwert von 2024. |
 | Die naive saisonale Prognose | ist der eigentliche Massstab: Sie kostet nichts und erreicht 5.58 Prozent MAPE. Ein Modell, das sie nicht deutlich schlägt, ist den Aufwand nicht wert. |
 
 ::: {.note-box}
@@ -592,7 +591,7 @@ print("geschätzt   ", masse(test.values, modell_ses.forecast(12).values))
 | $\alpha$ | RMSE | MAE | Verhalten |
 |---|---|---|---|
 | **0.05** | **105.68** | 96.84 | Das Niveau folgt dem Trend viel zu träge und bleibt am Ende weit unter der Reihe. Der Fehler ist fünfmal so gross wie nötig. |
-| 0.5 | 45.10 | 37.56 | Schon nahe am Optimum — die Kurve ist flach. |
+| 0.5 | 45.10 | 37.56 | Schon nahe am Optimum, die Kurve ist flach. |
 | **0.95** | **43.31** | 36.58 | Minimal besser als der geschätzte Wert. |
 | geschätzt ($\alpha = 1$) | 43.54 | 36.58 | |
 
@@ -603,11 +602,11 @@ der Startwert in beiden Fällen auf den ersten Beobachtungswert gesetzt wurde.
 |---|---|
 | Ein kleines $\alpha$ ist hier **klar schlecht** | Bei einer Reihe mit Trend muss das Niveau ständig nachgeführt werden. Mit $\alpha = 0.05$ zählt der jüngste Wert nur zu fünf Prozent, und das geglättete Niveau hinkt Jahre hinterher. |
 | Ein grosses $\alpha$ ist hier **fast optimal** | Weil die Reihe stark steigt, ist "der letzte Wert" die beste Schätzung, die ein Modell ohne Trendkomponente abgeben kann. |
-| Der geschätzte Wert ist $\alpha = 1$ | Die Optimierung landet am Rand des zulässigen Bereichs. Das ist selbst ein Befund: **Das Modell passt nicht.** Eine einfache Glättung, die $\alpha = 1$ wählt, sagt "ich kann nichts glätten" — die Reihe braucht eine Trendkomponente. |
+| Der geschätzte Wert ist $\alpha = 1$ | Die Optimierung landet am Rand des zulässigen Bereichs. Das ist selbst ein Befund: **Das Modell passt nicht.** Eine einfache Glättung, die $\alpha = 1$ wählt, sagt "ich kann nichts glätten", die Reihe braucht eine Trendkomponente. |
 
 ::: {.note-box}
 **Die übliche Lehrbuchwarnung "$\alpha$ nahe eins heisst, das Modell folgt dem
-Rauschen" gilt hier nicht** — und das zeigt, warum Faustregeln über
+Rauschen" gilt hier nicht** und das zeigt, warum Faustregeln über
 Parameterwerte mit Vorsicht zu geniessen sind. Ein $\alpha$ nahe eins bedeutet
 nur: Der jüngste Wert ist die beste verfügbare Information. Bei einer
 rauschenden Reihe ohne Trend ist das ein Warnzeichen, bei einer stark steigenden
@@ -621,7 +620,7 @@ gegen eine Schwelle geprüft.
 #### Interpretation
 
 Ein von Hand gesetzter Parameter liegt fast immer daneben. Interessanter als sein
-Wert ist, was er über das Modell verrät — hier, dass die einfache Glättung für
+Wert ist, was er über das Modell verrät, hier, dass die einfache Glättung für
 diese Reihe die falsche Wahl ist.
 
 ### Beispiel 5: Die Residuen prüfen
@@ -640,7 +639,7 @@ sind zu schmal.
 
 ```{r}
 #| label: fig-b5-gl-r
-#| fig-cap: "Beispiel 5: Residuen des Holt-Winters-Modells — Verlauf, ACF und Verteilung."
+#| fig-cap: "Beispiel 5: Residuen des Holt-Winters-Modells, Verlauf, ACF und Verteilung."
 #| fig-height: 4
 checkresiduals(modell_hw$model)
 ```
@@ -688,7 +687,7 @@ p = 0.077 bei 18.
 | Prüfpunkt | Befund | Wie er zu lesen ist |
 |---|---|---|
 | **Ljung-Box** | 0.044 in Python, 0.086 in R | Der Test prüft, ob **irgendeine** der ersten zwölf Autokorrelationen von null verschieden ist. Die Nullhypothese lautet "keine Autokorrelation"; ein kleiner p-Wert heisst also, dass Struktur übrig ist. Hier: ein Grenzfall. |
-| **ACF der Residuen** | ein bis zwei Balken knapp ausserhalb | Bei 20 angezeigten Abständen ist ein Ausreisser zufällig zu erwarten. Entscheidend ist, ob er an einer **deutbaren** Stelle liegt — etwa bei 12, was auf eine unerfasste Saison hinweisen würde. |
+| **ACF der Residuen** | ein bis zwei Balken knapp ausserhalb | Bei 20 angezeigten Abständen ist ein Ausreisser zufällig zu erwarten. Entscheidend ist, ob er an einer **deutbaren** Stelle liegt, etwa bei 12, was auf eine unerfasste Saison hinweisen würde. |
 | **Verlauf** | schwankt um null, keine Trichterform | Keine wachsende Streuung, kein Muster. |
 | **Verteilung** | ungefähr symmetrisch | Grundlage der Prognoseintervalle; starke Schiefe würde sie unbrauchbar machen. |
 | Mittelwert der Residuen | nahe null | Ein deutlich von null verschiedener Mittelwert wäre ein systematischer Versatz. |
@@ -698,10 +697,10 @@ p = 0.077 bei 18.
 
 1. Der Test wird mit wachsender Reihenlänge empfindlich und findet dann auch
    praktisch bedeutungslose Autokorrelationen.
-2. Die Anzahl geprüfter Abstände ist eine Wahl — hier ergeben 6, 12 und 18
+2. Die Anzahl geprüfter Abstände ist eine Wahl, hier ergeben 6, 12 und 18
    Abstände p-Werte von 0.055, 0.044 und 0.077.
 3. **R und Python kommen auf verschiedene Teststatistiken** (19.09 gegen 21.50)
-   und damit auf 0.086 gegen 0.044 — einmal über und einmal unter der Schwelle.
+   und damit auf 0.086 gegen 0.044, einmal über und einmal unter der Schwelle.
    Der Grund liegt in den leicht verschiedenen Modellanpassungen.
    **Ein Befund, der an der Wahl der Umgebung kippt, ist kein Befund.**
 

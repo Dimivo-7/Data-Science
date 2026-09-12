@@ -78,7 +78,7 @@ absatz = pd.Series(np.round(trend + saison + rest),
 
 - Die **Reihenfolge** der Beobachtungen ist Information, nicht Zufall.
 - Die Annahme unabhängiger Beobachtungen fällt weg, und mit ihr viele
-  Standardverfahren — insbesondere jede naive Korrelation zwischen zwei Reihen.
+  Standardverfahren, insbesondere jede naive Korrelation zwischen zwei Reihen.
 - Eine Zeitreihe zerfällt in Trend, Saison und Rest.
 - Additiv oder multiplikativ ist eine Entscheidung, die man an der Grafik trifft.
 - Der Rest soll strukturlos sein; ist er es nicht, fehlt dem Modell etwas.
@@ -119,7 +119,7 @@ Zwei praktische Folgen:
 
 Manche Reihen haben zusätzlich einen **Zyklus**: Auf und Ab ohne feste Periode,
 etwa Konjunkturwellen. Der Unterschied zur Saison ist die Vorhersagbarkeit der
-Länge — eine Saison kommt immer im Dezember, ein Zyklus irgendwann in den
+Länge, eine Saison kommt immer im Dezember, ein Zyklus irgendwann in den
 nächsten Jahren.
 
 ### Additiv oder multiplikativ
@@ -144,7 +144,7 @@ Das klassische Verfahren (`decompose()` beziehungsweise `seasonal_decompose()`)
 arbeitet in drei Schritten:
 
 1. **Trend** über ein zentriertes gleitendes Mittel der Periodenlänge. Bei
-   gerader Periode wird es zweimal geglättet, damit es zentriert bleibt — bei
+   gerader Periode wird es zweimal geglättet, damit es zentriert bleibt, bei
    zwölf Monaten also mit den Gewichten $\tfrac{1}{2}, 1, \dots, 1, \tfrac{1}{2}$
    geteilt durch 12.
 2. **Saison** als Mittelwert der trendbereinigten Werte je Monat, anschliessend
@@ -263,14 +263,14 @@ print(pd.DataFrame({
 | Frage | Antwort aus dem Bild | Woran |
 |---|---|---|
 | **Trend?** | Ja, steigend | Der Zeitplot steigt über sechs Jahre um rund 250 Einheiten; die Jahresmittel wachsen gleichmässig um etwa 50 je Jahr, also gut 4 je Monat. |
-| **Saison?** | Ja, mit Jahresperiode | Im Saisonplot liegen alle sechs Linien **parallel** übereinander: dieselbe Form, nur nach oben verschoben. Das ist die klarste Art, Saisonalität zu sehen — im Zeitplot verdeckt der Trend sie leicht. |
-| **Additiv oder multiplikativ?** | Additiv | Das Mittel steigt um 48 Prozent, die Spannweite schwankt dabei ohne Richtung um 150 herum (154, 187, 141, 149, 147, 105). Bei multiplikativer Struktur müsste sie **mitwachsen** — in Beispiel 4 tut sie das, von 179 auf 284. |
+| **Saison?** | Ja, mit Jahresperiode | Im Saisonplot liegen alle sechs Linien **parallel** übereinander: dieselbe Form, nur nach oben verschoben. Das ist die klarste Art, Saisonalität zu sehen, im Zeitplot verdeckt der Trend sie leicht. |
+| **Additiv oder multiplikativ?** | Additiv | Das Mittel steigt um 48 Prozent, die Spannweite schwankt dabei ohne Richtung um 150 herum (154, 187, 141, 149, 147, 105). Bei multiplikativer Struktur müsste sie **mitwachsen**, in Beispiel 4 tut sie das, von 179 auf 284. |
 | **Ausreisser oder Brüche?** | Keine | Kein einzelner Punkt fällt aus dem Muster, kein Niveausprung. |
 
 ::: {.note-box}
 **Der Saisonplot ist die wichtigste Grafik dieses Beispiels.** Im Zeitplot sind
 Trend und Saison überlagert und schwer zu trennen; legt man die Jahre
-übereinander, wird die Saisonfigur unmittelbar sichtbar — und ebenso, ob sie sich
+übereinander, wird die Saisonfigur unmittelbar sichtbar und ebenso, ob sie sich
 über die Jahre verändert (Beispiel 3) oder ob ein einzelnes Jahr aus der Reihe
 fällt.
 :::
@@ -365,17 +365,17 @@ zählt, ist die **Richtung** über die Jahre, nicht der einzelne Wert.
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
-| Trend bei $t = 13$ | **559.625**, von Hand wie aus der Funktion | Das zentrierte gleitende Mittel über 13 Werte mit halbem Gewicht an den Enden. Die 13 Werte reichen von Juli 2020 bis Juli 2021 — der Trendwert für Januar 2021 nutzt also ein halbes Jahr Zukunft. |
-| fehlende Trendwerte | **12** | Sechs am Anfang, sechs am Ende. Bei einer Periode von 12 fehlt an jedem Rand eine halbe Periode. **Deshalb taugt `decompose()` nicht zur Vorhersage** — für den aktuellsten Monat gibt es keinen Trend. |
+| Trend bei $t = 13$ | **559.625**, von Hand wie aus der Funktion | Das zentrierte gleitende Mittel über 13 Werte mit halbem Gewicht an den Enden. Die 13 Werte reichen von Juli 2020 bis Juli 2021, der Trendwert für Januar 2021 nutzt also ein halbes Jahr Zukunft. |
+| fehlende Trendwerte | **12** | Sechs am Anfang, sechs am Ende. Bei einer Periode von 12 fehlt an jedem Rand eine halbe Periode. **Deshalb taugt `decompose()` nicht zur Vorhersage**, für den aktuellsten Monat gibt es keinen Trend. |
 | Summe der Saisonfigur | **0.000** | Per Konstruktion. Die Figur wird so verschoben, dass sie sich über ein Jahr aufhebt; das Niveau steckt vollständig im Trend. |
-| Abweichungen der Figur | bis zu **11 Einheiten** | Die geschätzte Figur trifft die eingebaute nicht genau — bei sechs Wiederholungen und einem Rest mit Streuung 20 ist der Standardfehler je Monat etwa $20/\sqrt{6} = 8.2$. Die Abweichungen liegen in dieser Grössenordnung. |
+| Abweichungen der Figur | bis zu **11 Einheiten** | Die geschätzte Figur trifft die eingebaute nicht genau, bei sechs Wiederholungen und einem Rest mit Streuung 20 ist der Standardfehler je Monat etwa $20/\sqrt{6} = 8.2$. Die Abweichungen liegen in dieser Grössenordnung. |
 | Rest, Standardabweichung | **20.685** | Sehr nahe an der eingebauten 20. Die Zerlegung hat also im Wesentlichen alles gefunden, was es zu finden gab. |
 
 ::: {.note-box}
 **Die Abweichungen in der Saisonfigur sind kein Fehler des Verfahrens, sondern
 Stichprobenzufall.** Sie sind aber ein Grund, eine Saisonfigur nicht auf die
 Nachkommastelle zu deuten: Dass der Februar mit 75.5 statt 64.5 geschätzt wird,
-heisst nicht, dass der Februar besonders stark ist — es heisst, dass sechs
+heisst nicht, dass der Februar besonders stark ist, es heisst, dass sechs
 Februare für eine genaue Schätzung wenig sind.
 
 Die Faustregel "mindestens drei, besser vier Perioden" ist eine **Untergrenze für
@@ -493,11 +493,11 @@ Die Spannweite der geschätzten Saisonfigur, Jahr für Jahr:
 
 | Ausgabe | Wert hier | Wie er zu lesen ist |
 |---|---|---|
-| `decompose`: achtmal **111.3** | | Nicht ähnlich, sondern **identisch** — die Figur wird einmal geschätzt und in jedem Jahr wiederholt. Der Wert ist der Mittelwert über acht Jahre und beschreibt kein einziges davon richtig. |
+| `decompose`: achtmal **111.3** | | Nicht ähnlich, sondern **identisch**, die Figur wird einmal geschätzt und in jedem Jahr wiederholt. Der Wert ist der Mittelwert über acht Jahre und beschreibt kein einziges davon richtig. |
 | STL: von rund 100 auf 140 bis 194 wachsend | | Das Verfahren folgt der tatsächlichen Entwicklung. |
-| R und Python weichen dabei ab | 140.1 gegen 193.8 im letzten Jahr | Beide verwenden ein Glättungsfenster von 7 für die Saison, aber verschiedene Voreinstellungen für die inneren Iterationen und die Trendglättung. Das Fenster steuert, **wie schnell** sich die Figur ändern darf — R glättet hier stärker. Wer STL berichtet, nennt Fensterbreite und Umgebung dazu. |
+| R und Python weichen dabei ab | 140.1 gegen 193.8 im letzten Jahr | Beide verwenden ein Glättungsfenster von 7 für die Saison, aber verschiedene Voreinstellungen für die inneren Iterationen und die Trendglättung. Das Fenster steuert, **wie schnell** sich die Figur ändern darf, R glättet hier stärker. Wer STL berichtet, nennt Fensterbreite und Umgebung dazu. |
 | Rest sd `decompose` | **21.24** in beiden | |
-| Rest sd STL | **16.81** in R, **11.17** in Python | In beiden Fällen deutlich kleiner. Was `decompose()` nicht in die Saison stecken kann, landet im Rest — dort steht also Struktur, die keine sein sollte. |
+| Rest sd STL | **16.81** in R, **11.17** in Python | In beiden Fällen deutlich kleiner. Was `decompose()` nicht in die Saison stecken kann, landet im Rest, dort steht also Struktur, die keine sein sollte. |
 
 Damit ist auch die Diagnose beschrieben: **Ein Rest, dessen Schwankungsbreite sich
 über die Jahre systematisch ändert, ist das Erkennungszeichen einer
@@ -511,7 +511,7 @@ getrennt mit lokalen Regressionen; die Fensterbreite `s.window` beziehungsweise
 Fenster folgt jedem Jahr, ein grosses nähert sich der starren Figur an;
 `s.window = "periodic"` in R erzwingt sie ganz.
 
-Der Preis ist eine Entscheidung mehr — und die Gefahr, mit einem zu kleinen
+Der Preis ist eine Entscheidung mehr und die Gefahr, mit einem zu kleinen
 Fenster Rauschen in die Saison zu ziehen. Mit `robust = TRUE` werden Ausreisser
 zudem heruntergewichtet, statt die Figur zu verbiegen.
 :::
@@ -622,12 +622,12 @@ Spannweite je Jahr:
 
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
-| Roh: 179 wächst auf 284 | Die Zacken werden mit dem Niveau höher — das Erkennungszeichen multiplikativer Struktur. Der Umsatz steigt im selben Zeitraum von rund 520 auf 1200, also um den Faktor 2.3; die Spannweite um den Faktor 1.6. |
+| Roh: 179 wächst auf 284 | Die Zacken werden mit dem Niveau höher, das Erkennungszeichen multiplikativer Struktur. Der Umsatz steigt im selben Zeitraum von rund 520 auf 1200, also um den Faktor 2.3; die Spannweite um den Faktor 1.6. |
 | Logarithmiert: zwischen **0.226 und 0.320**, ohne Richtung | Nach dem Logarithmieren schwankt die Breite nur noch zufällig, statt zu wachsen. Genau das ist der Zweck: Aus einem konstanten **Verhältnis** wird eine konstante **Differenz**. |
 | Rest sd additiv: 23.01 | Auf der Skala der Rohdaten. |
 | Rest sd multiplikativ: 0.0227 | Ein Faktor, kein Betrag: Der Rest schwankt um 2.3 Prozent um den Wert 1. |
 
-Die beiden Reste sind nicht direkt vergleichbar — sie stehen auf verschiedenen
+Die beiden Reste sind nicht direkt vergleichbar, sie stehen auf verschiedenen
 Skalen. Vergleichbar wird es über die **Struktur** im Rest: Beim additiven Modell
 wächst der Betrag des Rests mit dem Niveau (Korrelation 0.20), beim
 multiplikativen nicht (-0.11).
@@ -731,26 +731,26 @@ for name, x, y in [("roh", reihe_a, reihe_b),
 | Ausgabe | Wie sie zu lesen ist |
 |---|---|
 | $r = 0.964$ auf den Rohreihen | Ein Wert, der in jeder Querschnittsauswertung als sehr starker Zusammenhang gälte. Hier ist er **vollständig durch die Konstruktion erzeugt**: Beide Reihen steigen, also sind beide früh klein und spät gross. Die Korrelation misst nur das. |
-| $p < .001$ | Der Test macht es nicht besser, sondern schlimmer: Er verleiht dem Artefakt den Anschein von Verlässlichkeit. Seine Voraussetzung — unabhängige Beobachtungen — ist bei Zeitreihen verletzt, der p-Wert also ohnehin nicht gültig. |
+| $p < .001$ | Der Test macht es nicht besser, sondern schlimmer: Er verleiht dem Artefakt den Anschein von Verlässlichkeit. Seine Voraussetzung, unabhängige Beobachtungen, ist bei Zeitreihen verletzt, der p-Wert also ohnehin nicht gültig. |
 | $r = 0.031$ auf den Differenzen | Nach Entfernen des Trends bleibt nichts übrig. Das ist die richtige Antwort. |
 | $p = 0.798$ | Ebenfalls unauffällig. |
-| Das rechte Streudiagramm | zeigt eine strukturlose Punktwolke — im Gegensatz zu den beiden parallel steigenden Linien links. |
+| Das rechte Streudiagramm | zeigt eine strukturlose Punktwolke, im Gegensatz zu den beiden parallel steigenden Linien links. |
 
 ::: {.note-box}
 **Warum die Differenzenbildung hilft:** $\Delta y_t = y_t - y_{t-1}$ entfernt
 einen linearen Trend vollständig, denn die konstante Steigung fällt beim
-Subtrahieren heraus. Was bleibt, sind die Abweichungen von Monat zu Monat — und
+Subtrahieren heraus. Was bleibt, sind die Abweichungen von Monat zu Monat und
 genau dort sitzt der Zusammenhang, wenn es einen gibt.
 
 **Warum das nicht die ganze Lösung ist:** Auch differenzierte Reihen können
 gemeinsame Zyklen haben, und die Unabhängigkeitsannahme des Korrelationstests
 bleibt fraglich. Die saubere Behandlung von Zusammenhängen zwischen Zeitreihen
-läuft über Modelle, die die Autokorrelation ausdrücklich abbilden — siehe
+läuft über Modelle, die die Autokorrelation ausdrücklich abbilden, siehe
 [Stationarität](stationaritaet-acf-pacf.qmd) und
 [ARIMA](arima-sarima.qmd).
 
 Und der Sonderfall, in dem gerade der gemeinsame Trend echt ist, heisst
-**Kointegration** — dann ist das Differenzieren zu viel des Guten. Erkennbar
+**Kointegration**, dann ist das Differenzieren zu viel des Guten. Erkennbar
 daran, dass die Differenz der beiden Reihen selbst stationär ist.
 :::
 
