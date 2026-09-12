@@ -1,7 +1,7 @@
 ---
 title: "Tidy Data"
 description: "Eine Zeile je Beobachtung, eine Spalte je Variable, und warum das trägt."
-categories: ["Data Wrangling", "Datenqualität"]
+categories: ["Data Wrangling", "Datenqualität", "R", "Python"]
 quelle: ["ESDS"]
 seitentyp: konzept
 stand: entwurf
@@ -13,103 +13,400 @@ order: 20
 #| include: false
 library(dplyr)
 library(tidyr)
-library(readr)
-library(lubridate)
-library(ggplot2)
-
-theme_set(theme_minimal(base_size = 12))
-set.seed(42)
 ```
 
 ```{python}
 #| label: setup-python
 #| include: false
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
-                     "savefig.dpi": 288, "figure.dpi": 288})
-rng = np.random.default_rng(42)
 ```
 
 ## Kernideen
 
-- Eine Zeile je Beobachtung, eine Spalte je Merkmal, eine Zelle je Wert
-- Dieselben Daten lassen sich in vielen Formen ablegen, nur eine passt zu den Werkzeugen
-- Langes Format für die Auswertung, breites Format für die Anzeige
-- Wer die Form richtig wählt, spart sich Sonderfälle in jedem Schritt
-- Untidy erkennt man an Werten in Spaltennamen und an mehreren Werten in einer Zelle
+- **Eine Zeile je Beobachtung, eine Spalte je Merkmal, ein Wert je Zelle.**
+- Steht in einem **Spaltennamen** eine Information, die ein Wert ist (ein
+  Jahr, ein Monat, ein Gerätename), ist die Tabelle breit und die Auswertung
+  will sie lang.
+- **Langes Format** zum Rechnen, Filtern und Zeichnen, **breites Format** für
+  die Anzeige. Die Umformung ins Breite ist der letzte Schritt, nicht der
+  erste.
+- Mehrere Werte in einer Zelle werden **aufgeteilt**, bevor gerechnet wird.
+- Beschreibt eine Tabelle **zwei Beobachtungseinheiten**, gehört sie getrennt.
+  Wiederholte Angaben widersprechen sich sonst irgendwann.
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** [R-Grundlagen](../programmierung/r-grundlagen.qmd) oder
 [pandas](../programmierung/pandas.qmd) für den Data Frame. Wie man Daten in
-diese Form bringt, steht unter [Data Wrangling](data-wrangling.qmd).
+diese Form bringt, steht unter [Data Wrangling](data-wrangling.qmd), woher
+sie kommen unter [Datenimport](datenimport-formate.qmd), und was man vor dem
+Umformen prüft unter [Datenqualität](datenqualitaet.qmd).
 :::
 
 ### Warum die Aufbereitung den grössten Teil der Zeit frisst
 
 Daten kommen so, wie sie irgendwo entstanden sind, und nicht so, wie eine
-Auswertung sie braucht. Eine Exportdatei aus einer Maschinensteuerung hat
-Datumsangaben als Text, Messwerte mit Dezimalkomma, Kategorien mit Tippfehlern
-und irgendwo einen Strich für einen fehlenden Wert. Nichts davon ist ein Fehler
-der Daten; es ist der Normalzustand.
+Auswertung sie braucht. Ein Export aus einer Maschinensteuerung hat
+Datumsangaben als Text, Messwerte mit Dezimalkomma, Kategorien mit
+Tippfehlern und irgendwo einen Strich für einen fehlenden Wert. Nichts davon
+ist ein Fehler; es ist der Normalzustand.
 
-Das Werkzeug dagegen erwartet eine bestimmte Form. Wird sie hergestellt, läuft
-alles Weitere glatt. Wird sie nicht hergestellt, kostet jeder einzelne Schritt
+Das Werkzeug dagegen erwartet eine bestimmte Form. Wird sie hergestellt,
+läuft alles Weitere glatt. Wird sie nicht hergestellt, kostet jeder Schritt
 Sonderbehandlung, und diese Sonderbehandlungen summieren sich zu genau dem
 Aufwand, der in Projektplänen fehlt.
 
-### Tidy data: die Form, auf die alles passt
+### Die drei Regeln
 
-Das Prinzip klingt banal und ist es nicht. Eine Tabelle heisst aufgeräumt, wenn
-jede Zeile eine Beobachtung ist, jede Spalte ein Merkmal und jede Tabelle eine
-Beobachtungseinheit beschreibt.
+| Regel | verletzt, wenn | Beispiel |
+|---|---|---|
+| Eine Spalte je Merkmal | ein Wert im Spaltennamen steht | `jahr_2024`, `jahr_2025` |
+| Eine Zeile je Beobachtung | mehrere Werte in einer Zelle stehen | `12,4/13,1` |
+| Eine Tabelle je Beobachtungseinheit | zwei Einheiten gemischt sind | Messungen und Standortstammdaten in einer Tabelle |
 
-Der Unterschied wird sichtbar, sobald dieselben Zahlen in beiden Formen
-nebeneinander stehen. Diese Tabelle ist nicht aufgeräumt, weil die Spaltennamen
-selbst eine Information tragen, nämlich das Jahr:
+### Lang und breit
+
+| | langes Format | breites Format |
+|---|---|---|
+| Aufbau | `standort`, `jahr`, `menge` | `standort`, `2024`, `2025` |
+| Zeilen | eine je Messung | eine je Standort |
+| gut für | filtern, gruppieren, zeichnen, modellieren | lesen und vergleichen im Bericht |
+| Umformung | `pivot_longer()` / `melt()` | `pivot_wider()` / `pivot()` |
+
+Der Grund für die Vorliebe der Werkzeuge ist einfach: Im langen Format ist
+jede Grösse ansprechbar. Ein Filter auf das Jahr ist eine Bedingung auf einer
+Spalte, im breiten Format wäre es eine Auswahl von Spaltennamen. Eine Grafik
+nach Jahr einzufärben braucht eine Spalte `jahr`; im breiten Format gibt es
+sie nicht.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R (tidyr) | pandas |
+|---|---|---|
+| breit zu lang | `pivot_longer(cols, names_to, values_to)` | `melt(id_vars, var_name, value_name)` |
+| lang zu breit | `pivot_wider(names_from, values_from)` | `pivot(index, columns, values)` |
+| mit Aggregation ins Breite | `pivot_wider(values_fn = mean)` | `pivot_table(aggfunc="mean")` |
+| Zelle mit Liste aufteilen | `separate_rows(spalte, sep = "/")` | `.str.split("/")` und `.explode()` |
+| Spalte in zwei teilen | `separate_wider_delim()` | `.str.split(expand=True)` |
+| Eindeutigkeit prüfen | `n_distinct()` je Gruppe | `.groupby(...).nunique()` |
+| Stammdaten herausziehen | `distinct(a, b)` | `.drop_duplicates()` |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Breit, lang und was erst dann geht
+
+#### Frage und Datenlage
+
+Mengen für drei Standorte in zwei Jahren, abgelegt mit einer Spalte je Jahr
+(Bern 120 und 131, Chur 95 und 92, Sion 143 und 150). Gesucht sind das Mittel
+je Jahr und die Veränderung je Standort in Prozent.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: untidy-r
-breit <- data.frame(
-  standort  = c("Bern", "Chur", "Sion"),
-  jahr_2024 = c(120, 95, 143),
-  jahr_2025 = c(131, 92, 150)
-)
+#| label: b1-td-r
+breit <- data.frame(standort = c("Bern", "Chur", "Sion"),
+                    jahr_2024 = c(120, 95, 143),
+                    jahr_2025 = c(131, 92, 150))
 breit
-```
 
-Aufgeräumt sieht dasselbe so aus:
-
-```{r}
-#| label: tidy-r
-lang <- breit |>
-  pivot_longer(cols = starts_with("jahr_"),
-               names_to = "jahr", values_to = "menge",
-               names_prefix = "jahr_")
+lang <- pivot_longer(breit, cols = starts_with("jahr_"),
+                     names_to = "jahr", values_to = "menge",
+                     names_prefix = "jahr_")
 lang
+dim(lang)
+
+lang |> group_by(jahr) |> summarise(mittel = round(mean(menge), 2))
+
+breit |>
+  mutate(wachstum = round((jahr_2025 - jahr_2024) / jahr_2024 * 100, 2)) |>
+  select(standort, wachstum)
 ```
 
-Jetzt ist das Jahr ein Merkmal wie jedes andere, und damit lässt sich danach
-filtern, gruppieren und gruppenweise zeichnen. In der breiten Form ginge das
-nur über Spaltennamen, also über Umwege.
+##### Python
 
-::: {.note-box}
-Merkhilfe für den Zweifelsfall: Steht in einem Spaltennamen eine Information,
-die eigentlich ein Wert ist, etwa ein Jahr, ein Monat oder ein Gerätename, dann
-ist die Tabelle breit und die Auswertung will sie lang.
+```{python}
+#| label: b1-td-py
+breit = pd.DataFrame({"standort": ["Bern", "Chur", "Sion"],
+                      "jahr_2024": [120, 95, 143],
+                      "jahr_2025": [131, 92, 150]})
+print(breit.to_string(index=False))
+
+lang = breit.melt(id_vars="standort", var_name="jahr", value_name="menge")
+lang["jahr"] = lang["jahr"].str.removeprefix("jahr_").astype(int)
+print(lang.to_string(index=False))
+print(lang.shape)
+
+print(lang.groupby("jahr")["menge"].mean().round(2).to_dict())
+
+w = lang.pivot(index="standort", columns="jahr", values="menge")
+print(((w[2025] - w[2024]) / w[2024] * 100).round(2).to_dict())
+```
+
 :::
 
-::: {.quiz}
-Eine Tabelle hat die Spalten `patient`, `blutdruck_vorher`, `blutdruck_nachher`.
-Warum ist sie nicht aufgeräumt?
+#### Output Zeile für Zeile
 
-- [x] Der Messzeitpunkt steckt im Spaltennamen, ist aber ein Merkmal ~ Richtig.
-      Aufgeräumt hiessen die Spalten `patient`, `zeitpunkt` und `blutdruck`.
-      Jede Zeile wäre dann eine Messung statt eines Patienten.
+| Grösse | Wert | Erklärung |
+|---|---|---|
+| breite Tabelle | 3 Zeilen, 3 Spalten | Eine Zeile je Standort, das Jahr steckt im Spaltennamen. |
+| lange Tabelle | **6 Zeilen, 3 Spalten** | Eine Zeile je Messung. Aus zwei Wertespalten werden zwei Spalten `jahr` und `menge`. |
+| Mittel 2024 | **119.33** | (120 + 95 + 143) / 3 |
+| Mittel 2025 | **124.33** | (131 + 92 + 150) / 3 |
+| Wachstum Bern | **+9.17 Prozent** | von 120 auf 131 |
+| Wachstum Chur | **−3.16 Prozent** | von 95 auf 92, der einzige Rückgang |
+| Wachstum Sion | **+4.90 Prozent** | von 143 auf 150 |
+
+Die beiden Auswertungen zeigen, wofür welche Form taugt. Das Mittel je Jahr
+ist im langen Format ein `group_by(jahr)`, im breiten müsste man zwei Spalten
+einzeln mitteln und die Ergebnisse zusammensetzen. Die Veränderung dagegen
+vergleicht zwei Jahre **in einer Zeile** und ist deshalb im breiten Format
+einfacher. Beide Formen haben ihren Platz, man muss nur wechseln können.
+
+#### Interpretation und Ergebnissatz
+
+Im langen Format ist das Jahr ein Merkmal wie jedes andere. Alles, was
+gruppiert, filtert oder zeichnet, arbeitet damit ohne Sonderfall; Werkzeuge
+wie ggplot2 und seaborn setzen es voraus.
+
+> Aus der breiten Tabelle mit drei Zeilen wird im langen Format eine mit sechs
+> Zeilen. Im Mittel stieg die Menge von 119.33 auf 124.33; nur Chur ging mit
+> −3.16 Prozent zurück, während Bern um 9.17 Prozent zulegte.
+
+### Beispiel 2: Mehrere Werte in einer Zelle
+
+#### Frage und Datenlage
+
+In einer Exporttabelle stehen alle Messungen eines Standorts in einer Zelle,
+durch Schrägstrich getrennt: Bern `12,4/13,1`, Chur `9,8`. Wie wird daraus
+eine Zeile je Messung, und was ist die Summe?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-td-r
+roh <- data.frame(standort = c("Bern", "Chur"),
+                  messungen = c("12,4/13,1", "9,8"))
+roh
+
+geteilt <- roh |>
+  separate_rows(messungen, sep = "/") |>
+  mutate(messung = as.numeric(sub(",", ".", messungen, fixed = TRUE))) |>
+  select(standort, messung)
+geteilt
+c(zeilen = nrow(geteilt), summe = sum(geteilt$messung))
+```
+
+##### Python
+
+```{python}
+#| label: b2-td-py
+roh = pd.DataFrame({"standort": ["Bern", "Chur"],
+                    "messungen": ["12,4/13,1", "9,8"]})
+print(roh.to_string(index=False))
+
+geteilt = roh.assign(messung=roh["messungen"].str.split("/")).explode("messung")
+geteilt["messung"] = geteilt["messung"].str.replace(",", ".").astype(float)
+print(geteilt[["standort", "messung"]].to_string(index=False))
+print(len(geteilt), geteilt["messung"].sum().round(2))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Ergebnis | Erklärung |
+|---|---|---|
+| Rohtabelle | 2 Zeilen | Bern trägt zwei Messungen in einer Zelle. |
+| aufgeteilt | **3 Zeilen**: Bern 12.4, Bern 13.1, Chur 9.8 | `separate_rows` beziehungsweise `.str.split()` mit `.explode()`. Der Standort wird dabei wiederholt. |
+| umgewandelt | Zahlen statt Text | Das Dezimalkomma muss ersetzt werden, sonst bleibt es Text. |
+| Summe | **35.3** | 12.4 + 13.1 + 9.8. Auf der Rohtabelle wäre sie gar nicht zu bilden. |
+
+#### Interpretation und Ergebnissatz
+
+Solche Zellen entstehen, wenn ein Export für das Auge gemacht wurde. Solange
+sie bestehen, ist jede Kennzahl blockiert: Man kann weder zählen noch
+summieren noch gruppieren. Das Aufteilen ist deshalb kein Schönheitsschritt,
+sondern die Voraussetzung für alles Weitere. Die Zeilenzahl steigt dabei, und
+Werte, die vorher einmal dastanden (hier der Standort), wiederholen sich.
+
+> Aus zwei Zeilen mit zusammengefassten Messungen werden drei Zeilen mit je
+> einem Wert; erst danach lässt sich die Summe von 35.3 bilden.
+
+### Beispiel 3: Zwei Beobachtungseinheiten in einer Tabelle
+
+#### Frage und Datenlage
+
+Eine Tabelle führt je Standort und Jahr die Menge, dazu in jeder Zeile den
+Kanton. Der Kanton gehört aber zum Standort, nicht zur Messung. In der
+zweiten Chur-Zeile steht `GH` statt `GR`. Wie fällt das auf?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-td-r
+gemischt <- data.frame(
+  standort = c("Bern", "Bern", "Chur", "Chur"),
+  kanton   = c("BE", "BE", "GR", "GH"),
+  jahr     = c(2024, 2025, 2024, 2025),
+  menge    = c(120, 131, 95, 92))
+gemischt
+
+gemischt |> group_by(standort) |> summarise(kantone = n_distinct(kanton))
+
+orte <- distinct(gemischt, standort, kanton)
+orte
+nrow(orte)
+```
+
+##### Python
+
+```{python}
+#| label: b3-td-py
+gemischt = pd.DataFrame({
+    "standort": ["Bern", "Bern", "Chur", "Chur"],
+    "kanton": ["BE", "BE", "GR", "GH"],
+    "jahr": [2024, 2025, 2024, 2025],
+    "menge": [120, 131, 95, 92]})
+print(gemischt.to_string(index=False))
+
+print(gemischt.groupby("standort")["kanton"].nunique().to_dict())
+
+orte = gemischt[["standort", "kanton"]].drop_duplicates()
+print(orte.to_string(index=False))
+print(len(orte))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Prüfung | Ergebnis | Erklärung |
+|---|---|---|
+| Kantone je Standort | **Bern 1, Chur 2** | Ein Standort kann nur in einem Kanton liegen. Die 2 ist der Widerspruch. |
+| Stammdaten herausgezogen | **3 Zeilen** statt 2 | Hätte jeder Standort genau einen Kanton, stünden hier zwei Zeilen. Die dritte ist der Tippfehler `GH`. |
+
+Die Prüfung `n_distinct` je Gruppe beziehungsweise `nunique` ist der
+Standardgriff für diese Fehlerklasse: Für jedes Merkmal, das zu einer
+übergeordneten Einheit gehört, darf es je Einheit nur einen Wert geben.
+
+#### Interpretation und Ergebnissatz
+
+Der Tippfehler ist nur möglich, weil der Kanton in jeder Messzeile wiederholt
+wird. In zwei Tabellen, einer für Standorte und einer für Messungen, gäbe es
+den Kanton genau einmal, und die Frage "welcher gilt" stellte sich nicht. Das
+ist derselbe Gedanke wie die Normalisierung in der
+[Datenmodellierung](../datenbanken/datenmodellierung.qmd): Jede Tatsache
+gehört an genau eine Stelle.
+
+> Chur hat in der Tabelle zwei verschiedene Kantone, `GR` und `GH`, und die
+> herausgezogenen Stammdaten haben drei statt zwei Zeilen. Der Widerspruch
+> entsteht durch die Wiederholung und verschwindet, sobald Standorte und
+> Messungen getrennte Tabellen sind.
+
+### Beispiel 4: Zurück ins Breite, für den Bericht
+
+#### Frage und Datenlage
+
+Die lange Tabelle aus Beispiel 1 soll als Berichtstabelle mit einer Spalte je
+Jahr erscheinen. Und was passiert, wenn eine Zeile versehentlich doppelt
+vorkommt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-td-r
+bericht <- pivot_wider(lang, names_from = jahr, values_from = menge)
+bericht
+
+doppelt <- bind_rows(lang, lang[1, ])
+nrow(doppelt)
+
+# Ohne Angabe, wie zusammenzufassen ist, entsteht eine Listenspalte
+pivot_wider(doppelt, names_from = jahr, values_from = menge)
+
+pivot_wider(doppelt, names_from = jahr, values_from = menge,
+            values_fn = length)
+pivot_wider(doppelt, names_from = jahr, values_from = menge,
+            values_fn = mean)
+```
+
+##### Python
+
+```{python}
+#| label: b4-td-py
+bericht = lang.pivot(index="standort", columns="jahr", values="menge")
+print(bericht.to_string())
+
+doppelt = pd.concat([lang, lang.iloc[[0]]], ignore_index=True)
+print(doppelt.shape)
+
+try:
+    doppelt.pivot(index="standort", columns="jahr", values="menge")
+except ValueError as fehler:
+    print(type(fehler).__name__, str(fehler)[:55])
+
+print(doppelt.pivot_table(index="standort", columns="jahr", values="menge",
+                          aggfunc="size").to_string())
+print(doppelt.pivot_table(index="standort", columns="jahr", values="menge",
+                          aggfunc="mean").to_string())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Python | R | Erklärung |
+|---|---|---|---|
+| Berichtstabelle | 3 Zeilen, Spalten `2024` und `2025` | dieselbe Tabelle | Genau die Ausgangstabelle aus Beispiel 1. Die Umformung ist umkehrbar. |
+| mit Duplikat | 7 Zeilen | 7 Zeilen | Eine Zeile (Bern 2024) steht zweimal. |
+| `pivot` | **`ValueError`: Index contains duplicate entries** | Warnung und eine **Listenspalte** | pandas bricht ab, tidyr liefert eine Zelle mit zwei Werten darin. Beide sagen damit dasselbe: Der Schlüssel ist nicht eindeutig. |
+| mit `aggfunc="size"` bzw. `values_fn = length` | Bern 2024 = **2**, alle anderen 1 | dieselbe Tabelle | So findet man die betroffene Zelle. |
+| mit Mittelwert | Bern 2024 = 120.0 | 120 | Hier harmlos, weil beide Werte gleich sind. Bei verschiedenen Werten wäre der Mittelwert eine stille Entscheidung. |
+
+#### Interpretation und Ergebnissatz
+
+Das Umformen ins Breite ist der Moment, in dem doppelte Schlüssel auffallen,
+und das ist sein zweiter Nutzen. Wer die Meldung mit einer
+Aggregationsfunktion wegdrückt, ohne nachzusehen, hat die Warnung in eine
+stille Annahme verwandelt. Erst zählen, dann entscheiden, ob Mittelwert,
+Summe oder das Beseitigen des Duplikats richtig ist.
+
+> Die lange Tabelle lässt sich verlustfrei ins breite Format zurückformen. Mit
+> einer doppelten Zeile bricht `pivot` in pandas mit einem `ValueError` ab,
+> während tidyr eine Listenspalte erzeugt; `aggfunc="size"` zeigt, dass die
+> Zelle Bern 2024 zwei Werte enthält.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Eine Tabelle hat die Spalten `patient`, `blutdruck_vorher`,
+`blutdruck_nachher`. Warum ist sie nicht aufgeräumt?
+
+- [x] Der Messzeitpunkt steckt im Spaltennamen, ist aber ein Merkmal ~
+      Richtig. Aufgeräumt hiessen die Spalten `patient`, `zeitpunkt` und
+      `blutdruck`. Jede Zeile wäre dann eine Messung statt eines Patienten.
 - [ ] Sie enthält zu wenige Spalten ~ Die Anzahl ist nicht das Kriterium,
       sondern was in den Spaltennamen steht.
 - [ ] Blutdruck gehört in zwei getrennte Tabellen ~ Eine Tabelle genügt, sie
@@ -119,15 +416,54 @@ Warum ist sie nicht aufgeräumt?
 ::: {.quiz}
 Wann ist die breite Form trotzdem die richtige?
 
-- [ ] Immer, sie ist kompakter ~ Kompakter ja, aber für Filtern, Gruppieren und
-      Zeichnen unbrauchbar.
-- [x] Für eine Berichtstabelle, die ein Mensch liest ~ Richtig. Der Vergleich
-      fällt zeilenweise ins Auge. Die Umformung ins Breite ist deshalb
-      typischerweise der letzte Schritt, nicht der erste.
-- [ ] Wenn viele fehlende Werte vorliegen ~ Damit hat die Form nichts zu tun,
-      fehlende Werte gibt es in beiden.
+- [ ] Immer, sie ist kompakter ~ Kompakter ja, aber für Filtern, Gruppieren
+      und Zeichnen unbrauchbar.
+- [x] Für eine Berichtstabelle, die ein Mensch liest, und für
+      zeilenweise Vergleiche ~ Richtig. Die Veränderung zwischen zwei Jahren
+      ist im breiten Format eine Subtraktion in einer Zeile, wie in
+      Beispiel 1.
+- [ ] Wenn viele fehlende Werte vorliegen ~ Damit hat die Form nichts zu tun.
+:::
+
+::: {.quiz}
+`pivot` beziehungsweise `pivot_wider` meldet doppelte Schlüssel. Was ist der
+erste Schritt?
+
+- [ ] Eine Aggregationsfunktion angeben, damit es durchläuft ~ Das beseitigt
+      die Meldung, nicht die Ursache, und trifft eine stille Entscheidung.
+- [x] Zählen, welche Zelle mehrfach belegt ist ~ Richtig, mit
+      `aggfunc="size"` beziehungsweise `values_fn = length`. Erst wenn klar
+      ist, warum es zwei Werte gibt, lässt sich entscheiden.
+- [ ] Die Tabelle vorher sortieren ~ Die Reihenfolge spielt keine Rolle.
+:::
+
+::: {.quiz}
+In einer Messtabelle steht in jeder Zeile auch der Kanton des Standorts. Was
+ist das Risiko?
+
+- [x] Die wiederholte Angabe kann sich widersprechen ~ Richtig, wie das `GH`
+      in Beispiel 3. Eine Tatsache, die an vielen Stellen steht, wird
+      irgendwann an einer Stelle falsch. Prüfen mit `nunique` je Standort.
+- [ ] Die Tabelle wird zu gross ~ Speicher ist hier nicht das Problem.
+- [ ] Kantone gehören nie in eine Auswertung ~ Sie gehören dazu, nur in eine
+      eigene Tabelle, die man bei Bedarf verknüpft.
+:::
+
+::: {.quiz}
+In einer Zelle stehen mehrere Messwerte, durch Schrägstrich getrennt. Warum
+ist das ein Problem, obwohl alle Werte vorhanden sind?
+
+- [x] Solange sie in einer Zelle stehen, sind sie Text und keine Zahlen ~
+      Richtig. Weder Summe noch Mittelwert noch eine Grafik sind möglich; erst
+      das Aufteilen in eine Zeile je Wert macht sie zugänglich.
+- [ ] Die Werte könnten in falscher Reihenfolge stehen ~ Die Reihenfolge ist
+      nicht das Hindernis.
+- [ ] Es fehlt eine Kennung ~ Die Kennung steht in der Zeile und wird beim
+      Aufteilen wiederholt.
 :::
 
 ## Verlinkte Ressourcen
 
 - [Tidy Data, das Kapitel in R for Data Science](https://r4ds.hadley.nz/data-tidy)
+- [tidyr: Umformen in R](https://tidyr.tidyverse.org/)
+- [pandas: Reshaping](https://pandas.pydata.org/docs/user_guide/reshaping.html)
