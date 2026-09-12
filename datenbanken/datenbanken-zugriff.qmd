@@ -1,6 +1,6 @@
 ---
-title: "Datenbankzugriff aus R und Python"
-description: "DBI und RSQLite, sqlite3 und SQLAlchemy im praktischen Einsatz."
+title: "Datenbankzugriff"
+description: "Aus R und Python verbinden, abfragen, schreiben und sauber schliessen."
 categories: ["Datenbanken", "SQL", "R", "Python"]
 quelle: ["PYFR"]
 seitentyp: werkzeug
@@ -14,159 +14,521 @@ order: 30
 library(DBI)
 library(RSQLite)
 
-# Eine echte Datenbank im Arbeitsspeicher. Alle Abfragen dieser Seite laufen
-# wirklich; die Ausgaben sind keine abgeschriebenen Beispiele.
 con <- dbConnect(RSQLite::SQLite(), ":memory:")
+frage <- function(sql, ...) knitr::kable(dbGetQuery(con, sql, ...))
+tue <- function(sql, ...) invisible(dbExecute(con, sql, ...))
 
-dbExecute(con, "
-  CREATE TABLE artikel (
-    artikel_id INTEGER PRIMARY KEY,
-    bezeichnung TEXT NOT NULL,
-    kategorie   TEXT NOT NULL
-  )")
-
-dbExecute(con, "
-  CREATE TABLE bestellung (
-    bestell_id INTEGER PRIMARY KEY,
-    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
-    datum      TEXT NOT NULL,
-    menge      INTEGER NOT NULL,
-    betrag     REAL NOT NULL
-  )")
-
-dbExecute(con, "INSERT INTO artikel VALUES
-  (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
-  (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
-  (5,'Sensor induktiv','Elektronik')")
-
-dbExecute(con, "INSERT INTO bestellung VALUES
-  (1,1,'2026-01-14',10, 240.0), (2,1,'2026-02-03',25, 600.0),
-  (3,2,'2026-01-22', 4, 512.0), (4,3,'2026-02-11',100, 350.0),
-  (5,3,'2026-03-02', 60, 210.0), (6,4,'2026-01-30',200, 180.0),
-  (7,5,'2026-02-19', 8, 960.0), (8,5,'2026-03-08',12,1440.0),
-  (9,2,'2026-03-15', 2, 256.0), (10,1,'2026-03-20',15, 360.0)")
-
+tue("CREATE TABLE artikel (artikel_id INTEGER PRIMARY KEY,
+       bezeichnung TEXT NOT NULL, kategorie TEXT NOT NULL)")
+tue("CREATE TABLE bestellung (bestell_id INTEGER PRIMARY KEY,
+       artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+       datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL)")
+tue("INSERT INTO artikel VALUES (1,'Ventil 3/8','Pneumatik'),
+      (2,'Zylinder 40','Pneumatik'), (3,'Kugellager 608','Mechanik'),
+      (4,'Dichtring','Mechanik'), (5,'Sensor induktiv','Elektronik')")
+tue("INSERT INTO bestellung VALUES (1,1,'2026-01-14',10,240.0),
+      (2,1,'2026-02-03',25,600.0), (3,2,'2026-01-22',4,512.0),
+      (4,3,'2026-02-11',100,350.0), (5,3,'2026-03-02',60,210.0),
+      (6,4,'2026-01-30',200,180.0), (7,5,'2026-02-19',8,960.0),
+      (8,5,'2026-03-08',12,1440.0), (9,2,'2026-03-15',2,256.0),
+      (10,1,'2026-03-20',15,360.0)")
 ```
 
 ```{python}
 #| label: setup-python
 #| include: false
 import sqlite3
+
 import pandas as pd
 
 verbindung = sqlite3.connect(":memory:")
 verbindung.executescript("""
-  CREATE TABLE artikel (
-    artikel_id INTEGER PRIMARY KEY,
-    bezeichnung TEXT NOT NULL,
-    kategorie   TEXT NOT NULL);
-  CREATE TABLE bestellung (
-    bestell_id INTEGER PRIMARY KEY,
-    artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
-    datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
-  INSERT INTO artikel VALUES
-    (1,'Ventil 3/8','Pneumatik'), (2,'Zylinder 40','Pneumatik'),
-    (3,'Kugellager 608','Mechanik'), (4,'Dichtring','Mechanik'),
-    (5,'Sensor induktiv','Elektronik');
-  INSERT INTO bestellung VALUES
-    (1,1,'2026-01-14',10,240.0), (2,1,'2026-02-03',25,600.0),
-    (3,2,'2026-01-22',4,512.0), (4,3,'2026-02-11',100,350.0),
-    (5,3,'2026-03-02',60,210.0), (6,4,'2026-01-30',200,180.0),
-    (7,5,'2026-02-19',8,960.0), (8,5,'2026-03-08',12,1440.0),
-    (9,2,'2026-03-15',2,256.0), (10,1,'2026-03-20',15,360.0);
+CREATE TABLE artikel (artikel_id INTEGER PRIMARY KEY, bezeichnung TEXT NOT NULL,
+                      kategorie TEXT NOT NULL);
+CREATE TABLE bestellung (bestell_id INTEGER PRIMARY KEY,
+  artikel_id INTEGER NOT NULL REFERENCES artikel(artikel_id),
+  datum TEXT NOT NULL, menge INTEGER NOT NULL, betrag REAL NOT NULL);
+INSERT INTO artikel VALUES (1,'Ventil 3/8','Pneumatik'),(2,'Zylinder 40','Pneumatik'),
+ (3,'Kugellager 608','Mechanik'),(4,'Dichtring','Mechanik'),
+ (5,'Sensor induktiv','Elektronik');
+INSERT INTO bestellung VALUES (1,1,'2026-01-14',10,240.0),(2,1,'2026-02-03',25,600.0),
+ (3,2,'2026-01-22',4,512.0),(4,3,'2026-02-11',100,350.0),(5,3,'2026-03-02',60,210.0),
+ (6,4,'2026-01-30',200,180.0),(7,5,'2026-02-19',8,960.0),(8,5,'2026-03-08',12,1440.0),
+ (9,2,'2026-03-15',2,256.0),(10,1,'2026-03-20',15,360.0);
 """)
 verbindung.commit()
+
+
+def frage(sql, params=None):
+    return pd.read_sql_query(sql, verbindung, params=params)
 ```
 
 ## Kernideen
 
-- Verbindung aufbauen, Abfrage senden, Ergebnis als Data Frame entgegennehmen
-- Parameter statt zusammengebauter Zeichenketten, sonst droht SQL-Injektion
-- Verbindungen gehören geschlossen, am besten im Kontextmanager
-- SQLite als Datei ohne Server, MySQL und PostgreSQL mit Server
-- Aggregieren gehört in die Datenbank, nicht in den Arbeitsspeicher
+- Verbindung aufbauen, Abfrage senden, Ergebnis als Data Frame
+  entgegennehmen. Danach wird gearbeitet wie mit jeder anderen Tabelle.
+- **Werte gehören als Parameter in die Abfrage**, nie in eine zusammengebaute
+  Zeichenkette. Sonst drohen SQL-Injektion und Fehler bei Apostrophen.
+- **Filtern und Aggregieren in der Datenbank**, Modellieren und Zeichnen
+  danach in R oder Python.
+- Die Datenbank kennt **eigene Typen**. SQLite speichert Datum als Text und
+  Wahrheitswerte als 0 und 1.
+- **Transaktionen** sind ganz oder gar nicht. Nach einem Fehler bleibt nichts
+  halb Geschriebenes zurück.
+- Verbindungen gehören **geschlossen**, am besten über einen Kontextmanager.
 
 ## Erklärung
 
 ::: {.note-box}
 **Vorwissen:** [SQL](sql.qmd) für die Abfragen selbst und
-[Datenmodellierung](datenmodellierung.qmd) für den Aufbau der Tabellen.
+[Datenmodellierung](datenmodellierung.qmd) für den Aufbau der Tabellen. Was
+mit dem Ergebnis danach geschieht, steht unter
+[Data Wrangling](../daten/data-wrangling.qmd).
 :::
 
-### Zugriff aus beiden Sprachen
+### Die Bausteine
 
-::: panel-tabset
-## R
+| Schritt | R (DBI) | Python |
+|---|---|---|
+| verbinden | `dbConnect(RSQLite::SQLite(), "laden.sqlite")` | `sqlite3.connect("laden.sqlite")` |
+| abfragen | `dbGetQuery(con, sql)` | `pd.read_sql_query(sql, verbindung)` |
+| ändern | `dbExecute(con, sql)` | `verbindung.execute(sql)` |
+| Parameter | `params = list(wert)` | `params=(wert,)` |
+| schreiben | `dbWriteTable(con, "tabelle", df)` | `df.to_sql("tabelle", verbindung)` |
+| Tabellen auflisten | `dbListTables(con)` | `SELECT name FROM sqlite_master` |
+| schliessen | `dbDisconnect(con)` | `verbindung.close()` |
+
+Für andere Datenbanken wechselt nur der Treiber: `RPostgres::Postgres()`
+beziehungsweise `psycopg`, `RMariaDB::MariaDB()` beziehungsweise
+`mysql-connector`. Die Abfragen selbst bleiben gleich, siehe
+[PostgreSQL](postgresql.qmd) und [MySQL](mysql-mariadb.qmd).
+
+### Wieviel gehört in die Datenbank
+
+Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte Menge
+über die Leitung geht. Modellierung, Grafik und alles Iterative danach in R
+oder Python. Eine Million Zeilen zu laden, um daraus fünf Gruppensummen zu
+bilden, ist die häufigste vermeidbare Wartezeit.
+
+### Zeichenketten nie selbst zusammenbauen
+
+Ein Wert, der aus einer Eingabe stammt, wird als **Parameter** übergeben. Die
+Datenbank behandelt ihn dann als Wert und nie als Teil der Abfrage. Das
+verhindert zweierlei: die absichtliche Manipulation (SQL-Injektion) und den
+alltäglichen Fehler, dass ein Apostroph im Namen die Abfrage zerlegt.
+
+### Typen an der Grenze
+
+SQLite kennt nur wenige Typen. Ein Datum wird als Text gespeichert, ein
+Wahrheitswert als 0 oder 1, und beim Lesen kommt genau das zurück. Wer
+Datumsangaben weiterverarbeiten will, wandelt sie nach dem Lesen um
+(`parse_dates` beziehungsweise `as.Date`), siehe
+[Datum und Zeit](../daten/datum-zeit.qmd). Grössere Datenbanken haben echte
+Datums- und Wahrheitstypen, aber auch dort lohnt der Blick auf die Typen
+nach dem ersten Import.
+
+### Kurz nachgeschlagen
+
+| Aufgabe | R | Python |
+|---|---|---|
+| Verbindung mit Kontextmanager | `on.exit(dbDisconnect(con))` | `with sqlite3.connect(...) as v:` |
+| Transaktion | `dbBegin(con)`, `dbCommit(con)`, `dbRollback(con)` | `with verbindung:` |
+| viele Zeilen einfügen | `dbAppendTable(con, "t", df)` | `executemany(sql, zeilen)` |
+| Tabelle überschreiben | `dbWriteTable(..., overwrite = TRUE)` | `to_sql(..., if_exists="replace")` |
+| Ergebnis stückweise lesen | `dbSendQuery` mit `dbFetch(n = 1000)` | `pd.read_sql_query(..., chunksize=1000)` |
+| Spaltentypen ansehen | `dbGetQuery(con, "PRAGMA table_info(t)")` | dieselbe Abfrage |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Abfragen und was zurückkommt
+
+#### Frage und Datenlage
+
+Der Umsatz je Kategorie, und ein Blick auf die Typen: Was macht die Datenbank
+aus dem Datum?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: zugriff-r
+#| label: b1-dz-r
 ergebnis <- dbGetQuery(con, "
   SELECT a.kategorie, SUM(b.betrag) AS umsatz
   FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
-  GROUP BY a.kategorie")
+  GROUP BY a.kategorie ORDER BY umsatz DESC")
+ergebnis
+sapply(ergebnis, class)
 
-str(ergebnis)      # ein gewoehnlicher Data Frame
+roh <- dbGetQuery(con, "SELECT * FROM bestellung LIMIT 2")
+sapply(roh, class)
+
+roh$datum <- as.Date(roh$datum)
+sapply(roh, class)
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: zugriff-py
-df = pd.read_sql_query("""
-  SELECT a.kategorie, SUM(b.betrag) AS umsatz
-  FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
-  GROUP BY a.kategorie
-""", verbindung)
+#| label: b1-dz-py
+ergebnis = frage("""SELECT a.kategorie, SUM(b.betrag) AS umsatz
+                    FROM bestellung b JOIN artikel a ON a.artikel_id = b.artikel_id
+                    GROUP BY a.kategorie ORDER BY umsatz DESC""")
+print(ergebnis.to_string(index=False))
+print(ergebnis.dtypes.astype(str).to_dict())
 
-print(df)
-print(df.dtypes)
+roh = frage("SELECT * FROM bestellung LIMIT 2")
+print(roh.dtypes.astype(str).to_dict())
+
+mit_datum = pd.read_sql_query("SELECT * FROM bestellung LIMIT 2", verbindung,
+                              parse_dates=["datum"])
+print(mit_datum.dtypes.astype(str).to_dict())
 ```
+
 :::
 
-Das Ergebnis ist in beiden Fällen die vertraute Tabelle, mit der weitergearbeitet
-wird wie mit jedem anderen Data Frame.
+#### Output Zeile für Zeile
 
-::: {.note-box}
-Wieviel gehört in die Datenbank, wieviel in die Auswertung? Meine Regel:
-Filtern und Aggregieren möglichst früh in SQL, damit nur die benötigte
-Datenmenge über die Leitung geht. Modellierung, Grafik und alles Iterative
-danach in R oder Python. Eine Million Zeilen zu laden, um daraus fünf
-Gruppensummen zu bilden, ist die häufigste vermeidbare Wartezeit.
-:::
+| Kategorie | Umsatz | Erklärung |
+|---|---|---|
+| Elektronik | 2400.0 | |
+| Pneumatik | 1968.0 | |
+| Mechanik | 740.0 | dieselben Zahlen wie unter [SQL](sql.qmd), Beispiel 3 |
 
-### Parameter statt Zeichenkettenbau
+| Spalte | Typ nach dem Lesen | Erklärung |
+|---|---|---|
+| `kategorie` | Text | |
+| `umsatz` | `numeric` beziehungsweise `float64` | Die Summe kommt als Zahl zurück. |
+| `datum` | **Text**, nicht Datum | SQLite hat keinen Datumstyp; gespeichert ist die Zeichenkette `2026-01-14`. |
+| `datum` nach der Umwandlung | `Date` beziehungsweise `datetime64[ns]` | `as.Date()` beziehungsweise `parse_dates=["datum"]` beim Lesen. |
 
-Eine Abfrage aus Nutzereingaben zusammenzukleben ist die klassische
-Sicherheitslücke und erzeugt ausserdem Fehler bei Anführungszeichen. Beide
-Sprachen bieten Platzhalter:
+#### Interpretation und Ergebnissatz
 
-::: panel-tabset
-## R
+Das Ergebnis einer Abfrage ist ein gewöhnlicher Data Frame, und damit endet
+die Datenbankarbeit. Der einzige Punkt, der Aufmerksamkeit braucht, sind die
+Typen an der Grenze: Ein Datum, das als Text ankommt, sortiert und gruppiert
+falsch, sobald das Format nicht `JJJJ-MM-TT` ist.
+
+> Die Abfrage liefert drei Zeilen mit Elektronik an der Spitze (2400.0). Die
+> Spalte `datum` kommt als Text zurück, weil SQLite keinen Datumstyp kennt,
+> und muss nach dem Lesen umgewandelt werden.
+
+### Beispiel 2: Parameter statt zusammengebauter Zeichenkette
+
+#### Frage und Datenlage
+
+Eine Abfrage filtert nach einer Kategorie, die aus einer Eingabe stammt. Was
+passiert bei der Eingabe `x' OR '1'='1`, und was bei einer Bezeichnung mit
+Apostroph?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
 
 ```{r}
-#| label: parameter-r
-dbGetQuery(con,
-  "SELECT bezeichnung FROM artikel WHERE kategorie = ?",
-  params = list("Mechanik"))
+#| label: b2-dz-r
+eingabe <- "Pneumatik"
+nrow(dbGetQuery(con, paste0("SELECT * FROM artikel WHERE kategorie = '",
+                            eingabe, "'")))
+
+boese <- "x' OR '1'='1"
+gebaut <- paste0("SELECT * FROM artikel WHERE kategorie = '", boese, "'")
+gebaut
+nrow(dbGetQuery(con, gebaut))                                   # alle Zeilen
+
+nrow(dbGetQuery(con, "SELECT * FROM artikel WHERE kategorie = ?",
+                params = list(boese)))                          # keine
+
+tue("INSERT INTO artikel VALUES (6, ?, 'Mechanik')", params = list("Winkel 90'"))
+versuch <- try(dbGetQuery(con, paste0(
+  "SELECT * FROM artikel WHERE bezeichnung = '", "Winkel 90'", "'")), silent = TRUE)
+if (inherits(versuch, "try-error")) "Syntaxfehler" else "gelungen"
+nrow(dbGetQuery(con, "SELECT * FROM artikel WHERE bezeichnung = ?",
+                params = list("Winkel 90'")))
 ```
 
-## Python
+##### Python
 
 ```{python}
-#| label: parameter-py
-print(pd.read_sql_query(
-    "SELECT bezeichnung FROM artikel WHERE kategorie = ?",
-    verbindung, params=("Mechanik",)))
+#| label: b2-dz-py
+eingabe = "Pneumatik"
+print(len(frage(f"SELECT * FROM artikel WHERE kategorie = '{eingabe}'")))
+
+boese = "x' OR '1'='1"
+gebaut = f"SELECT * FROM artikel WHERE kategorie = '{boese}'"
+print(gebaut)
+print("zusammengebaut:", len(frage(gebaut)), "Zeilen")
+
+print("mit Parameter:", len(frage("SELECT * FROM artikel WHERE kategorie = ?",
+                                  params=(boese,))), "Zeilen")
+
+verbindung.execute("INSERT INTO artikel VALUES (6, ?, 'Mechanik')", ("Winkel 90'",))
+verbindung.commit()
+try:
+    frage("SELECT * FROM artikel WHERE bezeichnung = 'Winkel 90''")
+except Exception as fehler:
+    print("zusammengebaut:", type(fehler).__name__)
+print("mit Parameter:", len(frage("SELECT * FROM artikel WHERE bezeichnung = ?",
+                                  params=("Winkel 90'",))))
 ```
+
 :::
 
-### SQLite oder MySQL
+#### Output Zeile für Zeile
 
-SQLite braucht keinen Server und liegt als einzelne Datei vor, oder wie hier
-nur im Arbeitsspeicher. Zum Üben, für Zwischenstände und für kleine Projekte
-ist es ideal. MySQL und PostgreSQL sind der Serverfall mit Nutzerverwaltung,
-gleichzeitigen Zugriffen und Rechtevergabe. Die SQL-Grundlagen sind dieselben,
-die Unterschiede liegen in Datentypen und Erweiterungen.
+| Fall | Ergebnis | Erklärung |
+|---|---|---|
+| harmlose Eingabe, zusammengebaut | **2** Zeilen | Funktioniert, solange niemand etwas Ungewöhnliches eingibt. |
+| Eingabe `x' OR '1'='1`, zusammengebaut | **alle** Zeilen der Tabelle | Der Apostroph beendet die Zeichenkette, der Rest wird zur Bedingung: `WHERE kategorie = 'x' OR '1'='1'`. Das ist immer wahr. |
+| dieselbe Eingabe als Parameter | **0** Zeilen | Die Datenbank sucht nach einer Kategorie, die wörtlich so heisst. Es gibt keine. |
+| Bezeichnung `Winkel 90'`, zusammengebaut | **Syntaxfehler** | Derselbe Mechanismus, nur ohne böse Absicht: Der Apostroph im Namen zerlegt die Abfrage. |
+| dieselbe als Parameter | **1** Zeile | |
+
+#### Interpretation und Ergebnissatz
+
+Beide Zeilen der Tabelle, die Manipulation und der Apostroph, haben dieselbe
+Ursache: Werte und Anweisung werden vermischt. Mit Parametern ist die
+Trennung eingebaut, und das ist der einzige zuverlässige Schutz.
+Selbstgebautes Maskieren von Anführungszeichen ist fehleranfällig. Die Regel
+gilt unabhängig davon, ob eine Anwendung öffentlich erreichbar ist: Der
+Apostroph in `O'Brien` kommt auch ohne Angreifer vor.
+
+> Die Eingabe `x' OR '1'='1` liefert über eine zusammengebaute Abfrage alle
+> Artikel statt keinem; als Parameter übergeben liefert sie null Zeilen. Ein
+> Apostroph im Namen führt beim Zusammenbauen zu einem Syntaxfehler, als
+> Parameter funktioniert er.
+
+### Beispiel 3: Aggregieren in der Datenbank oder im Speicher
+
+#### Frage und Datenlage
+
+Der Umsatz je Artikel. Einmal, indem alle Bestellungen geladen und in
+pandas beziehungsweise dplyr gruppiert werden, einmal, indem die Datenbank
+gruppiert.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-dz-r
+alles <- dbGetQuery(con, "SELECT * FROM bestellung")
+nrow(alles)
+tapply(alles$betrag, alles$artikel_id, sum)
+
+in_db <- dbGetQuery(con, "SELECT artikel_id, SUM(betrag) AS umsatz
+                          FROM bestellung GROUP BY artikel_id")
+nrow(in_db)
+in_db
+```
+
+##### Python
+
+```{python}
+#| label: b3-dz-py
+alles = frage("SELECT * FROM bestellung")
+print(len(alles))
+print(alles.groupby("artikel_id")["betrag"].sum().to_dict())
+
+in_db = frage("""SELECT artikel_id, SUM(betrag) AS umsatz
+                 FROM bestellung GROUP BY artikel_id""")
+print(len(in_db))
+print(dict(zip(in_db["artikel_id"], in_db["umsatz"])))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Weg | übertragene Zeilen | Ergebnis |
+|---|---|---|
+| alles laden, dann gruppieren | **10** | 1200.0, 768.0, 560.0, 180.0, 2400.0 |
+| in der Datenbank gruppieren | **5** | dieselben Zahlen |
+
+Bei zehn Bestellungen ist der Unterschied zwei gegen fünf Zeilen und damit
+belanglos. Der Punkt ist das Verhältnis: Übertragen wird einmal die
+**Datenmenge**, einmal das **Ergebnis**. Bei einer Million Bestellungen und
+fünf Artikeln bleibt das Ergebnis fünf Zeilen gross, während der andere Weg
+eine Million Zeilen durch die Leitung und in den Arbeitsspeicher schiebt.
+
+#### Interpretation und Ergebnissatz
+
+Die Regel lautet deshalb: Alles, was die Datenmenge verkleinert (filtern,
+gruppieren, zusammenfassen), gehört in die Abfrage. Alles, was Ausprobieren
+verlangt (Modelle, Grafiken, Kennzahlen), gehört danach in R oder Python. Wer
+unsicher ist, wie teuer eine Abfrage ist, sieht sie sich mit `EXPLAIN QUERY
+PLAN` an.
+
+> Beide Wege liefern dieselben fünf Umsätze, der eine überträgt dafür zehn
+> Zeilen, der andere fünf. Das Verhältnis bleibt gleich, wenn die Tabelle
+> wächst; die Gruppierung in der Datenbank ist dann der einzige gangbare Weg.
+
+### Beispiel 4: Einen Data Frame schreiben
+
+#### Frage und Datenlage
+
+Eine kleine Tabelle mit einem Wahrheitswert und einem fehlenden Wert wird in
+die Datenbank geschrieben und wieder gelesen. Kommt dasselbe zurück?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-dz-r
+neu <- data.frame(artikel_id = c(1L, 2L),
+                  aktiv = c(TRUE, FALSE),
+                  notiz = c("a", NA))
+sapply(neu, class)
+
+invisible(dbWriteTable(con, "zusatz", neu, overwrite = TRUE))
+zurueck <- dbGetQuery(con, "SELECT * FROM zusatz")
+zurueck
+sapply(zurueck, class)
+
+frage("SELECT name, type FROM pragma_table_info('zusatz')")
+```
+
+##### Python
+
+```{python}
+#| label: b4-dz-py
+neu = pd.DataFrame({"artikel_id": [1, 2], "aktiv": [True, False],
+                    "notiz": ["a", None]})
+print(neu.dtypes.astype(str).to_dict())
+
+_ = neu.to_sql("zusatz_py", verbindung, index=False, if_exists="replace")
+zurueck = frage("SELECT * FROM zusatz_py")
+print(zurueck.to_string(index=False))
+print(zurueck.dtypes.astype(str).to_dict())
+
+print(frage("SELECT name, type FROM pragma_table_info('zusatz_py')"
+            ).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Spalte | vorher | in der Datenbank | nach dem Lesen | Erklärung |
+|---|---|---|---|---|
+| `artikel_id` | ganze Zahl | `INTEGER` | ganze Zahl | |
+| `aktiv` | `TRUE`, `FALSE` | `INTEGER` | **1 und 0** | SQLite hat keinen Wahrheitstyp. Wer `TRUE` zurück will, wandelt nach dem Lesen um. |
+| `notiz` | `"a"`, fehlend | `TEXT` | `"a"`, `NA` beziehungsweise `None` | Der fehlende Wert überlebt als `NULL`. |
+
+#### Interpretation und Ergebnissatz
+
+Schreiben ist bequem und hat dieselbe Grenze wie CSV, nur eine Stufe höher:
+Die Datenbank speichert, was ihre Typen hergeben. Bei SQLite sind das fünf
+Typen, weshalb Wahrheitswerte zu Zahlen und Datumsangaben zu Text werden.
+Für Zwischenstände einer Auswertung ist das in Ordnung, solange man die
+Umwandlung beim Lesen wieder einbaut. Wichtiger ist die Wahl von
+`overwrite` beziehungsweise `if_exists`: Voreingestellt ist das Anhängen
+oder ein Fehler, nicht das Ersetzen.
+
+> Der Wahrheitswert `TRUE` kommt als 1 zurück, weil SQLite nur `INTEGER`
+> dafür hat; der fehlende Wert bleibt als `NULL` erhalten. Die
+> Spaltentypen der erzeugten Tabelle lassen sich mit `pragma_table_info`
+> nachsehen.
+
+### Beispiel 5: Transaktion und Verbindung
+
+#### Frage und Datenlage
+
+Zwei Bestellungen sollen zusammen eingefügt werden, die zweite verweist auf
+einen nicht existierenden Artikel. Was steht danach in der Tabelle?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b5-dz-r
+tue("PRAGMA foreign_keys = ON")
+vorher <- dbGetQuery(con, "SELECT COUNT(*) AS n FROM bestellung")$n
+
+dbBegin(con)
+versuch <- try({
+  dbExecute(con, "INSERT INTO bestellung VALUES (20,1,'2026-04-01',5,100.0)")
+  dbExecute(con, "INSERT INTO bestellung VALUES (21,999,'2026-04-02',5,100.0)")
+}, silent = TRUE)
+
+if (inherits(versuch, "try-error")) {
+  dbRollback(con)
+  "abgebrochen und zurueckgerollt"
+} else {
+  dbCommit(con)
+  "durchgelaufen"
+}
+
+c(vorher = vorher,
+  nachher = dbGetQuery(con, "SELECT COUNT(*) AS n FROM bestellung")$n)
+```
+
+##### Python
+
+```{python}
+#| label: b5-dz-py
+verbindung.execute("PRAGMA foreign_keys = ON")
+vorher = frage("SELECT COUNT(*) AS n FROM bestellung").iloc[0, 0]
+
+try:
+    with verbindung:                      # commit am Ende, rollback bei Fehler
+        verbindung.execute("INSERT INTO bestellung VALUES (20,1,'2026-04-01',5,100.0)")
+        verbindung.execute("INSERT INTO bestellung VALUES (21,999,'2026-04-02',5,100.0)")
+except sqlite3.IntegrityError as fehler:
+    print("abgebrochen:", fehler)
+
+nachher = frage("SELECT COUNT(*) AS n FROM bestellung").iloc[0, 0]
+print(vorher, nachher)
+
+with verbindung:
+    verbindung.execute("INSERT INTO bestellung VALUES (22,1,'2026-04-03',5,100.0)")
+print(frage("SELECT COUNT(*) AS n FROM bestellung").iloc[0, 0])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schritt | Ergebnis | Erklärung |
+|---|---|---|
+| vor der Transaktion | **10** Bestellungen | |
+| zweiter Einfügeversuch | **`FOREIGN KEY constraint failed`** | Der Artikel 999 existiert nicht. |
+| nach dem Abbruch | **10**, unverändert | Auch die **erste** Einfügung ist zurückgenommen. Genau das macht die Transaktion aus: ganz oder gar nicht. |
+| nach einer erfolgreichen Transaktion | **11** | |
+
+Ohne Transaktion stünde die erste Bestellung jetzt in der Tabelle und die
+zweite nicht, und niemand wüsste, dass der Vorgang unvollständig ist. Der
+`with`-Block in Python und `dbBegin`/`dbRollback` in R leisten dasselbe.
+
+#### Interpretation und Ergebnissatz
+
+Transaktionen sind kein Thema für Fortgeschrittene, sondern die Antwort auf
+eine alltägliche Frage: Was passiert, wenn es mittendrin schiefgeht? Alles,
+was fachlich zusammengehört (eine Bestellung mit ihren Positionen, ein
+Import mit mehreren Tabellen), gehört in eine Transaktion. Und die Verbindung
+gehört danach geschlossen, in Python am einfachsten über den
+Kontextmanager, in R mit `dbDisconnect()` und `on.exit()`.
+
+> Nach dem fehlgeschlagenen zweiten Einfügen enthält die Tabelle
+> unverändert zehn Bestellungen: Die Transaktion hat auch die bereits
+> gelungene erste Einfügung zurückgenommen. Erst die erfolgreiche
+> Transaktion erhöht den Bestand auf elf.
+
+::::
 
 ```{r}
 #| label: aufraeumen-r
@@ -180,109 +542,78 @@ dbDisconnect(con)
 verbindung.close()
 ```
 
-## Typische Aufgaben
+## Verständnisfragen
 
-**Verbinden, abfragen, schliessen**
+::: {.quiz}
+Warum sollen Werte als Parameter übergeben und nicht in die Abfrage
+geschrieben werden?
 
-::: {.panel-tabset}
-
-## R
-
-```r
-con <- DBI::dbConnect(RSQLite::SQLite(), "laden.sqlite")
-df <- DBI::dbGetQuery(con, "SELECT * FROM artikel")
-DBI::dbDisconnect(con)
-```
-
-## Python
-
-```python
-import sqlite3
-import pandas as pd
-
-with sqlite3.connect("laden.sqlite") as verbindung:
-    df = pd.read_sql_query("SELECT * FROM artikel", verbindung)
-```
-
+- [x] Sonst kann eine Eingabe die Abfrage verändern, und ein Apostroph zerlegt
+      sie ~ Richtig. In Beispiel 2 liefert `x' OR '1'='1` alle Zeilen statt
+      keiner, und `Winkel 90'` erzeugt einen Syntaxfehler. Parameter trennen
+      Wert und Anweisung.
+- [ ] Parameter sind schneller ~ Sie sind es oft, weil der Abfrageplan
+      wiederverwendet wird, aber das ist nicht der Hauptgrund.
+- [ ] Nur bei öffentlichen Anwendungen nötig ~ Der Apostroph in einem Namen
+      kommt auch ohne Angreifer vor.
 :::
 
-**Werte als Parameter übergeben**
+::: {.quiz}
+Eine Auswertung lädt eine Million Zeilen und bildet daraus zwölf
+Monatssummen. Was ist daran ungünstig?
 
-::: {.panel-tabset}
-
-## R
-
-```r
-DBI::dbGetQuery(con, "SELECT * FROM artikel WHERE preis > ?", params = list(100))
-```
-
-## Python
-
-```python
-pd.read_sql_query("SELECT * FROM artikel WHERE preis > ?", verbindung, params=(100,))
-```
-
+- [x] Die Aggregation hätte in der Datenbank stattfinden können, dann wären
+      zwölf Zeilen übertragen worden ~ Richtig. Filtern und Gruppieren
+      möglichst früh in SQL; danach kommt die Auswertung.
+- [ ] Nichts, pandas kann eine Million Zeilen verarbeiten ~ Kann es, nur
+      werden Übertragung und Arbeitsspeicher unnötig belastet.
+- [ ] Monatssummen gehören nicht in eine Datenbank ~ Genau dafür ist sie
+      gemacht.
 :::
 
-Zeichenketten selbst zusammenzubauen ist die Ursache von SQL-Injektion und
-zusätzlich fehleranfällig bei Anführungszeichen und Datumsformaten.
+::: {.quiz}
+Eine Spalte wurde mit `TRUE` und `FALSE` in eine SQLite-Datenbank
+geschrieben und kommt als 1 und 0 zurück. Ist das ein Fehler?
 
-**Einen Data Frame in eine Tabelle schreiben**
-
-::: {.panel-tabset}
-
-## R
-
-```r
-DBI::dbWriteTable(con, "ergebnis", df, overwrite = TRUE)
-```
-
-## Python
-
-```python
-df.to_sql("ergebnis", verbindung, if_exists="replace", index=False)
-```
-
+- [x] Nein, SQLite hat keinen Wahrheitstyp und speichert `INTEGER` ~ Richtig.
+      Die Umwandlung gehört nach dem Lesen in den Code, wie beim Datum, das
+      als Text zurückkommt.
+- [ ] Ja, die Spalte wurde falsch angelegt ~ Auch mit `BOOLEAN` in der
+      Definition speichert SQLite eine Zahl.
+- [ ] Ja, `to_sql` beziehungsweise `dbWriteTable` hat einen Fehler ~ Beide
+      tun, was die Datenbank zulässt.
 :::
 
-**Nachsehen, was in der Datenbank liegt**
+::: {.quiz}
+Ein Import schreibt zwei zusammengehörige Zeilen, und die zweite scheitert.
+Ohne Transaktion steht die erste in der Tabelle. Warum ist das schlimmer als
+ein vollständiger Abbruch?
 
-::: {.panel-tabset}
-
-## R
-
-```r
-DBI::dbListTables(con)
-DBI::dbListFields(con, "artikel")
-```
-
-## Python
-
-```python
-pd.read_sql_query("SELECT name FROM sqlite_master WHERE type = 'table'", verbindung)
-```
-
+- [x] Der Datenbestand ist halb geschrieben, und niemand sieht es ihm an ~
+      Richtig. Eine Transaktion macht daraus ganz oder gar nicht, wie in
+      Beispiel 5: nach dem Abbruch stehen unverändert zehn Zeilen da.
+- [ ] Es ist nicht schlimmer, man kann die zweite Zeile nachtragen ~ Nur wenn
+      jemand merkt, dass sie fehlt.
+- [ ] Die Datenbank wird dadurch langsamer ~ Die Geschwindigkeit ist hier
+      nicht das Thema.
 :::
 
-**Grosse Tabellen in Portionen lesen**
+::: {.quiz}
+Eine Abfrage gibt die Spalte `datum` zurück, und die Sortierung nach Monat
+ist falsch. Was ist zu prüfen?
 
-```python
-for teil in pd.read_sql_query("SELECT * FROM bestellung", verbindung, chunksize=10_000):
-    verarbeite(teil)
-```
-
-Besser noch: aggregieren lassen, wo die Daten liegen, und nur das Ergebnis
-holen. Eine Datenbank ist darin schneller als jede Schleife im Arbeitsspeicher.
-
-**Verbindung zu einem Server statt zu einer Datei**
-
-```python
-from sqlalchemy import create_engine
-motor = create_engine("postgresql+psycopg://benutzer:passwort@host:5432/datenbank")
-df = pd.read_sql_query("SELECT * FROM artikel", motor)
-```
+- [x] Ob das Datum als Text zurückkommt und in welchem Format ~ Richtig.
+      SQLite speichert Datumsangaben als Text. Im Format `JJJJ-MM-TT` sortiert
+      Text zufällig richtig, in jedem anderen Format nicht. Nach dem Lesen
+      umwandeln.
+- [ ] Ob die Datenbank einen Index auf `datum` hat ~ Ein Index ändert die
+      Sortierreihenfolge nicht.
+- [ ] Ob `ORDER BY` vor `GROUP BY` steht ~ Die Reihenfolge im Text spielt
+      keine Rolle, die Auswertungsreihenfolge ist festgelegt.
+:::
 
 ## Verlinkte Ressourcen
 
-- [SQLite: SQL-Referenz](https://www.sqlite.org/lang.html)
-- [Use The Index, Luke: SQL-Performance erklärt](https://use-the-index-luke.com/)
+- [DBI: Datenbankzugriff in R](https://dbi.r-dbi.org/)
+- [sqlite3 in der Python-Dokumentation](https://docs.python.org/3/library/sqlite3.html)
+- [SQLAlchemy für andere Datenbanken](https://docs.sqlalchemy.org/)
