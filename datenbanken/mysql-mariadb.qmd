@@ -74,20 +74,6 @@ SHOW VARIABLES LIKE 'collation%';
 - **`LIMIT` ohne `ORDER BY`** liefert keine definierte Auswahl, auch wenn es in
   der Praxis oft stabil aussieht.
 
-::: {.quiz}
-Eine Abfrage `WHERE bezeichnung = 'pneumatik'` findet in MySQL Zeilen mit
-`Pneumatik`, in PostgreSQL nicht. Woran liegt das?
-
-- [x] An der Sortierung, die in MySQL üblicherweise nicht zwischen Gross- und
-      Kleinschreibung unterscheidet ~ Richtig. Die Collation steuert Vergleiche
-      mit. Wer portabel schreiben will, vergleicht ausdrücklich, etwa über
-      `LOWER(bezeichnung) = 'pneumatik'`.
-- [ ] An unterschiedlichen Zeichensätzen ~ Der Zeichensatz betrifft die
-      Speicherung, nicht die Gross- und Kleinschreibung beim Vergleich.
-- [ ] PostgreSQL hat den Index nicht genutzt ~ Der Index ändert das Ergebnis
-      nicht, nur die Geschwindigkeit.
-:::
-
 ## Typische Aufgaben
 
 **Verbinden**
@@ -184,6 +170,68 @@ docker exec -it mariadb mariadb -uroot -pgeheim
 ```
 
 Siehe auch [Docker und Virtualisierung](../werkzeuge/docker-virtualisierung.qmd).
+
+## Verständnisfragen
+
+::: {.note-box}
+Im Build dieser Website läuft kein MySQL-Server, deshalb sind die
+Beispiele hier Listings und es wird nichts gerechnet. Die SQL-Grundlagen
+selbst laufen echt unter [SQL](sql.qmd) gegen SQLite.
+:::
+
+::: {.quiz}
+Eine Abfrage `WHERE bezeichnung = 'pneumatik'` findet in MySQL Zeilen mit
+`Pneumatik`, in PostgreSQL nicht. Woran liegt das?
+
+- [x] An der Sortierung, die in MySQL üblicherweise nicht zwischen Gross- und
+      Kleinschreibung unterscheidet ~ Richtig. Die Collation steuert Vergleiche
+      mit. Wer portabel schreiben will, vergleicht ausdrücklich, etwa über
+      `LOWER(bezeichnung) = 'pneumatik'`.
+- [ ] An unterschiedlichen Zeichensätzen ~ Der Zeichensatz betrifft die
+      Speicherung, nicht die Gross- und Kleinschreibung beim Vergleich.
+- [ ] PostgreSQL hat den Index nicht genutzt ~ Der Index ändert das Ergebnis
+      nicht, nur die Geschwindigkeit.
+:::
+
+::: {.quiz}
+Eine Tabelle wurde mit der Speicher-Engine MyISAM angelegt. Was fehlt
+gegenüber InnoDB?
+
+- [x] Transaktionen und Fremdschlüssel ~ Richtig. Ein abgebrochener Vorgang
+      hinterlässt dort halb geschriebene Daten, und Verweise werden nicht
+      geprüft. Für alles, was fachlich zusammengehört, ist InnoDB die
+      richtige Wahl.
+- [ ] Indizes ~ Die gibt es in beiden.
+- [ ] Die Möglichkeit, SQL zu verwenden ~ Die Abfragesprache ist dieselbe.
+:::
+
+::: {.quiz}
+Beim Auswerten einer MySQL-Quelle stehen in einer Textspalte Fragezeichen
+statt Umlauten. Was ist zu prüfen?
+
+- [x] Zeichensatz der Spalte und der Verbindung ~ Richtig. Steht die Spalte
+      auf `latin1` oder die Verbindung auf einem anderen Zeichensatz als die
+      Daten, gehen Zeichen verloren, und zwar beim Schreiben unwiderruflich.
+      Heute ist `utf8mb4` die richtige Wahl.
+- [ ] Die Schriftart der Anzeige ~ Die Fragezeichen stehen bereits in den
+      Daten.
+- [ ] Die Sortierung ~ Sie steuert Vergleiche, nicht die Speicherung.
+:::
+
+::: {.quiz}
+Eine Auswertung soll aus einer MySQL-Quelle gelesen und dann analytisch
+weiterverarbeitet werden. Was spricht dafür, sie nicht vollständig in MySQL
+zu rechnen?
+
+- [x] Analytisch ist MySQL schwächer, und die Quelle ist meist ein
+      Produktivsystem ~ Richtig. Filtern und Aggregieren gehören trotzdem in
+      die Abfrage; alles Weitere besser daneben, etwa mit
+      [DuckDB](duckdb.qmd) oder in R und Python, um das Quellsystem nicht zu
+      belasten.
+- [ ] MySQL kann nicht gruppieren ~ Kann es; es fehlen eher Komfort und
+      Geschwindigkeit bei komplexen analytischen Abfragen.
+- [ ] Lesen aus MySQL ist unzuverlässig ~ Das Lesen ist unproblematisch.
+:::
 
 ## Verlinkte Ressourcen
 

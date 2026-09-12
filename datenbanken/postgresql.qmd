@@ -93,19 +93,6 @@ gehören in die Datenbank, weil sie das schneller kann und weil dann weniger
 Daten über das Netz gehen. In R oder Python landet, was ausgewertet und
 dargestellt wird.
 
-::: {.quiz}
-Eine Auswertung liest 20 Millionen Zeilen nach Python und gruppiert sie dort
-mit pandas. Was ist daran falsch?
-
-- [ ] Nichts, pandas ist schnell genug ~ Es ist nicht die Geschwindigkeit von
-      pandas, die hier das Problem ist.
-- [x] Die Gruppierung gehört in die Datenbank ~ Richtig. Der Server aggregiert
-      auf indizierten Spalten deutlich schneller und überträgt statt Millionen
-      Zeilen nur das Ergebnis. Das spart Netz, Speicher und Zeit.
-- [ ] Man hätte SQLite nehmen sollen ~ Das ändert nichts daran, wo aggregiert
-      wird.
-:::
-
 ## Typische Aufgaben
 
 **Verbinden**
@@ -200,6 +187,70 @@ der Filterspalte die häufigste Abhilfe.
 pg_dump -h host -U benutzer -d produktion -F c -f sicherung.dump
 pg_restore -h host -U benutzer -d produktion sicherung.dump
 ```
+
+## Verständnisfragen
+
+::: {.note-box}
+Die Beispiele auf dieser Seite sind Listings: Im Build dieser Website läuft
+kein PostgreSQL-Server, deshalb wird hier nichts gerechnet. Dieselben
+Sprachmittel laufen echt unter [SQL](sql.qmd) gegen SQLite, das Fenster- und
+Tabellenausdrücke ebenfalls beherrscht.
+:::
+
+::: {.quiz}
+Eine Auswertung liest 20 Millionen Zeilen nach Python und gruppiert sie dort
+mit pandas. Was ist daran falsch?
+
+- [ ] Nichts, pandas ist schnell genug ~ Es ist nicht die Geschwindigkeit von
+      pandas, die hier das Problem ist.
+- [x] Die Gruppierung gehört in die Datenbank ~ Richtig. Der Server aggregiert
+      auf indizierten Spalten deutlich schneller und überträgt statt Millionen
+      Zeilen nur das Ergebnis. Das spart Netz, Speicher und Zeit.
+- [ ] Man hätte SQLite nehmen sollen ~ Das ändert nichts daran, wo aggregiert
+      wird.
+:::
+
+::: {.quiz}
+Derselbe Datenbestand liegt einmal als CSV-Sammlung und einmal in PostgreSQL.
+Welche Prüfungen kann man sich im zweiten Fall sparen?
+
+- [x] Typen, fehlende Pflichtfelder und Verweise ins Leere ~ Richtig. Der
+      Server setzt Typen, `NOT NULL` und Fremdschlüssel durch, anders als
+      SQLite, wo die Fremdschlüsselprüfung erst eingeschaltet werden muss.
+      Fachliche Plausibilität (unmögliche Werte, Ausreisser) prüft er
+      trotzdem nicht.
+- [ ] Alle, die Datenbank garantiert saubere Daten ~ Sie garantiert die
+      Struktur, nicht den Inhalt: Ein Gewicht von 999 kg ist typrichtig.
+- [ ] Keine, Prüfungen gehören immer in die Auswertung ~ Die strukturellen
+      Prüfungen sind dort bereits erledigt.
+:::
+
+::: {.quiz}
+Ein Skript verbindet sich in einer Schleife für jede von 5000 Kennungen neu
+mit dem Server. Was ist die Folge?
+
+- [x] Die Verbindungen sind teuer und begrenzt; der Server geht in die Knie ~
+      Richtig. Einmal verbinden und alles Nötige in einer Abfrage holen, oder
+      einen Verbindungspool verwenden. 5000 Einzelabfragen ersetzt man
+      typischerweise durch ein `WHERE kennung IN (...)` oder einen Join.
+- [ ] Nichts, Verbindungen sind billig ~ Bei SQLite trifft das eher zu, bei
+      einem Server nicht.
+- [ ] Die Abfragen werden automatisch gebündelt ~ Das tut niemand von selbst.
+:::
+
+::: {.quiz}
+`EXPLAIN ANALYZE` zeigt bei einer langsamen Abfrage `Seq Scan` auf einer
+Tabelle mit zehn Millionen Zeilen. Was heisst das?
+
+- [x] Die Tabelle wird vollständig gelesen, ein passender Index fehlt ~
+      Richtig. Das Gegenstück in SQLite heisst `SCAN`, siehe
+      [SQLite](sqlite.qmd), Beispiel 4. Ein Index auf der Filterspalte ist die
+      häufigste Abhilfe.
+- [ ] Die Abfrage ist fehlerhaft ~ Sie liefert das richtige Ergebnis, nur
+      langsam.
+- [ ] Der Server hat zu wenig Arbeitsspeicher ~ Möglich, aber der Befund sagt
+      zunächst etwas über den Zugriffsweg.
+:::
 
 ## Verlinkte Ressourcen
 

@@ -106,20 +106,6 @@ sich über Positionen gruppieren.
 | Nur ein paar Felder sind halbstrukturiert | PostgreSQL mit JSON-Spalte |
 | Grosse Auswertungen über Dateien | [DuckDB](duckdb.qmd) |
 
-::: {.quiz}
-Eine Sammlung enthält Bestellungen mit einer Liste von Positionen. Gesucht ist
-der Umsatz je Artikel. Was ist der erste Schritt in der Pipeline?
-
-- [ ] `$group` über den Artikel ~ Das geht noch nicht: Der Artikel steckt in
-      einer Liste, und die Gruppierung sähe ganze Dokumente.
-- [x] `$unwind` auf die Positionen ~ Richtig. Erst wird aus jedem Dokument je
-      Position ein eigenes Dokument, danach lässt sich gruppieren. Das ist der
-      Schritt, den SQL nicht braucht, weil dort Positionen ohnehin eigene Zeilen
-      sind.
-- [ ] `$lookup` auf die Artikeltabelle ~ Das verbindet mit einer anderen
-      Sammlung und löst das Problem der Liste nicht.
-:::
-
 ## Typische Aufgaben
 
 **Verbinden**
@@ -233,6 +219,58 @@ print(sammlung.index_information())
 docker run --name mongo -p 27017:27017 -d mongo
 docker exec -it mongo mongosh
 ```
+
+## Verständnisfragen
+
+::: {.note-box}
+Im Build dieser Website läuft kein MongoDB-Server, deshalb sind die
+Beispiele hier Listings. Wie verschachtelte Strukturen in eine Tabelle
+kommen, zeigt [Datenimport und Formate](../daten/datenimport-formate.qmd),
+Beispiel 4, mit echten Ausgaben.
+:::
+
+::: {.quiz}
+Eine Sammlung enthält Bestellungen mit einer Liste von Positionen. Gesucht ist
+der Umsatz je Artikel. Was ist der erste Schritt in der Pipeline?
+
+- [ ] `$group` über den Artikel ~ Das geht noch nicht: Der Artikel steckt in
+      einer Liste, und die Gruppierung sähe ganze Dokumente.
+- [x] `$unwind` auf die Positionen ~ Richtig. Erst wird aus jedem Dokument je
+      Position ein eigenes Dokument, danach lässt sich gruppieren. Das ist der
+      Schritt, den SQL nicht braucht, weil dort Positionen ohnehin eigene Zeilen
+      sind.
+- [ ] `$lookup` auf die Artikeltabelle ~ Das verbindet mit einer anderen
+      Sammlung und löst das Problem der Liste nicht.
+:::
+
+::: {.quiz}
+"Kein Schema" heisst, dass in derselben Sammlung Dokumente mit
+unterschiedlichen Feldern liegen können. Was folgt daraus für eine
+Auswertung?
+
+- [x] Die Struktur muss beim Lesen geprüft werden, denn niemand hat sie
+      erzwungen ~ Richtig. Ein Feld kann fehlen, anders heissen oder einen
+      anderen Typ haben. Die Prüfung, die eine relationale Datenbank beim
+      Schreiben macht, verschiebt sich auf die Auswertung.
+- [ ] Die Daten sind unstrukturiert ~ Sie haben Struktur, nur keine
+      erzwungene.
+- [ ] Man kann keine Kennzahlen berechnen ~ Man kann, muss aber zuerst
+      sicherstellen, dass die Felder überall vorhanden sind.
+:::
+
+::: {.quiz}
+Wann ist eine Dokumentdatenbank gegenüber PostgreSQL mit einer
+JSON-Spalte im Vorteil?
+
+- [x] Wenn die Dokumente das eigentliche Datenmodell sind und stark variieren
+      ~ Richtig. Sind es einzelne halbstrukturierte Felder in einem sonst
+      relationalen Modell, genügt der JSON-Typ von PostgreSQL, siehe
+      [PostgreSQL](postgresql.qmd).
+- [ ] Immer, wenn JSON im Spiel ist ~ Relationale Systeme beherrschen JSON
+      inzwischen ebenfalls.
+- [ ] Wenn Transaktionen gebraucht werden ~ Das ist eher ein Argument für das
+      relationale System.
+:::
 
 ## Verlinkte Ressourcen
 

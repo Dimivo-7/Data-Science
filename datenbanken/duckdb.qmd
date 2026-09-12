@@ -105,19 +105,6 @@ eine Registrierung ist nicht nötig.
 | Daten liegen bereits in einer Serverdatenbank | Dort aggregieren, siehe [PostgreSQL](postgresql.qmd) |
 | Ergebnisse langfristig aufbewahren und pflegen | Serverdatenbank |
 
-::: {.quiz}
-Eine Parquet-Datei mit 80 Millionen Zeilen und 60 Spalten soll nach Monat
-aggregiert werden; drei Spalten werden gebraucht. Was ist der schnellste Weg?
-
-- [ ] Die Datei mit pandas laden und gruppieren ~ Der Speicher reicht dafür
-      selten, und geladen würden alle 60 Spalten.
-- [x] Die Datei direkt mit DuckDB abfragen ~ Richtig. Gelesen werden nur die drei
-      benötigten Spalten und nur die benötigten Abschnitte der Datei; ein Import
-      entfällt.
-- [ ] Die Datei in PostgreSQL importieren und dort aggregieren ~ Funktioniert,
-      kostet aber Importzeit und Infrastruktur für eine einmalige Auswertung.
-:::
-
 ## Typische Aufgaben
 
 **Eine Datei ansehen, ohne sie zu laden**
@@ -190,6 +177,65 @@ SELECT COUNT(*) FROM pg.public.bestellung;
 
 So lassen sich Daten aus einer Serverdatenbank mit lokalen Dateien in einer
 einzigen Abfrage verbinden.
+
+## Verständnisfragen
+
+::: {.note-box}
+Die Beispiele auf dieser Seite sind Listings: DuckDB ist in der Umgebung, die
+diese Website baut, nicht installiert, deshalb wird hier nichts gerechnet. Wo
+Abfragen wirklich laufen, steht es dabei, etwa unter [SQL](sql.qmd) und
+[SQLite](sqlite.qmd).
+:::
+
+::: {.quiz}
+Eine Parquet-Datei mit 80 Millionen Zeilen und 60 Spalten soll nach Monat
+aggregiert werden; drei Spalten werden gebraucht. Was ist der schnellste Weg?
+
+- [ ] Die Datei mit pandas laden und gruppieren ~ Der Speicher reicht dafür
+      selten, und geladen würden alle 60 Spalten.
+- [x] Die Datei direkt mit DuckDB abfragen ~ Richtig. Gelesen werden nur die
+      drei benötigten Spalten und nur die benötigten Abschnitte der Datei; ein
+      Import entfällt.
+- [ ] Die Datei in PostgreSQL importieren und dort aggregieren ~ Funktioniert,
+      kostet aber Importzeit und Infrastruktur für eine einmalige Auswertung.
+:::
+
+::: {.quiz}
+Warum ist die spaltenweise Speicherung für Auswertungen im Vorteil, für eine
+Bestellanwendung aber nicht?
+
+- [x] Auswertungen lesen wenige Spalten über viele Zeilen, Anwendungen ganze
+      Datensätze einzeln ~ Richtig. Spaltenweise muss für einen Mittelwert nur
+      eine Spalte gelesen werden; für eine einzelne Bestellung müssten dagegen
+      alle Spalten aus verschiedenen Bereichen zusammengesucht werden.
+- [ ] Spaltenweise Speicherung ist generell schneller ~ Sie ist es für
+      Aggregate, nicht für Einzelzugriffe und laufendes Schreiben.
+- [ ] Der Unterschied betrifft nur die Dateigrösse ~ Komprimierung ist ein
+      Nebeneffekt, der Punkt ist die gelesene Datenmenge.
+:::
+
+::: {.quiz}
+Wann ist SQLite die bessere Wahl als DuckDB?
+
+- [x] Wenn laufend einzelne Zeilen gelesen und geschrieben werden ~ Richtig.
+      SQLite ist auf Einzelzugriffe ausgelegt, DuckDB auf Auswertungen über
+      viele Zeilen. Beide laufen serverlos im eigenen Prozess.
+- [ ] Wenn die Datei sehr gross ist ~ Gerade dann spielt DuckDB seine Stärke
+      aus.
+- [ ] Wenn SQL verwendet werden soll ~ Beide sprechen SQL.
+:::
+
+::: {.quiz}
+In Python lässt sich ein pandas-DataFrame in DuckDB über seinen Namen
+abfragen, ohne ihn zu importieren. Was bedeutet das für den Arbeitsspeicher?
+
+- [x] Die Daten werden nicht kopiert, DuckDB liest sie an Ort und Stelle ~
+      Richtig. Deshalb ist der Wechsel zwischen SQL und pandas billig, und man
+      kann den Teil in SQL schreiben, der dort klarer ist.
+- [ ] Der DataFrame wird intern in eine Datei geschrieben ~ Das wäre der Weg
+      über einen Import, und genau den spart man sich.
+- [ ] Der Speicherbedarf verdoppelt sich ~ Das wäre bei einer Kopie der Fall.
+:::
 
 ## Verlinkte Ressourcen
 
