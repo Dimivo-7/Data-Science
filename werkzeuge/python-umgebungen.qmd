@@ -1,0 +1,205 @@
+---
+title: "Python-Umgebungen"
+description: "Anaconda, Jupyter, VS Code und Colab: welches Python läuft, welcher Kernel rechnet und warum der Import scheitert."
+categories: ["Python", "Tooling", "Reproduzierbarkeit"]
+quelle: ["PYFR"]
+seitentyp: werkzeug
+stand: entwurf
+order: 50
+---
+
+```{python}
+#| label: setup-python
+#| include: false
+import sys
+```
+
+## Kernideen
+
+- Auf einem Rechner liegen oft mehrere Pythons; entscheidend ist, welches gerade läuft
+- Anaconda ist eine Distribution: Python, conda und viele Pakete in einem Paket
+- Ein Notebook rechnet mit seinem Kernel, nicht mit dem Python im Terminal
+- Zellen laufen in der Reihenfolge, in der sie ausgeführt werden, nicht in der, in der sie stehen
+- Vor dem Weitergeben: Kernel neu starten und alles von oben ausführen
+- Colab ist ein Notebook ohne Installation, aber mit flüchtigem Speicher
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Python-Grundlagen](../programmierung/python-grundlagen.qmd) für
+die Sprache und [Pakete und Umgebungen](../programmierung/pakete-umgebungen.qmd)
+für `venv`, `pip` und `conda`. Die Programme auf dieser Seite laufen im Build
+nicht; ausgeführt ist nur, was Python über sich selbst verrät.
+:::
+
+### Welches Python läuft hier
+
+Die meisten Probleme mit Python-Umgebungen sind dasselbe Problem: Ein Paket
+wurde in das eine Python installiert und in einem anderen importiert. Auf einem
+gewöhnlichen Rechner liegen schnell drei davon, etwa das des Betriebssystems,
+eines aus Anaconda und eines in einer virtuellen Umgebung.
+
+Welches gerade läuft, beantwortet Python selbst:
+
+```{python}
+#| label: welches-python
+print("Version:", sys.version.split()[0])
+print("in virtueller Umgebung:", sys.prefix != sys.base_prefix)
+```
+
+`sys.executable` zeigt zusätzlich den vollständigen Pfad zum Interpreter. Er
+steht hier nicht, weil er vom Rechner abhängt, der diese Website baut. Auf dem
+eigenen Rechner ist er die erste Zeile, die bei einem Importfehler geprüft wird.
+
+### Distributionen
+
+| | python.org | Anaconda | Miniconda | Miniforge |
+|---|---|---|---|---|
+| Enthält | nur Python und pip | Python, conda, Navigator, über 300 Pakete | Python und conda | Python, conda und mamba |
+| Grösse | klein | mehrere Gigabyte | klein | klein |
+| Pakete aus | PyPI | Anaconda-Kanal | Anaconda-Kanal | conda-forge |
+| Geeignet | schlanke Projekte mit `venv` | Einstieg mit Oberfläche, alles sofort da | conda ohne Ballast | conda ohne Lizenzfrage |
+
+Anaconda ist bequem, weil pandas, NumPy, Jupyter und Matplotlib nach der
+Installation sofort da sind. Der Preis ist die Grösse, und für Organisationen
+ab einer bestimmten Grösse ist der Anaconda-Kanal kostenpflichtig. Miniforge
+bezieht die Pakete aus dem freien Kanal conda-forge und umgeht das.
+
+::: {.note-box}
+Eine Regel verhindert die meisten Verwicklungen: **nicht in die Basisumgebung
+installieren.** Für jedes Projekt eine eigene Umgebung anlegen, mit `conda
+create` oder `python -m venv`. Die Basisumgebung bleibt, wie sie installiert
+wurde, und lässt sich im Notfall nicht versehentlich zerstören.
+:::
+
+### Jupyter: Notebook, Lab und Kernel
+
+Ein Notebook besteht aus Zellen mit Code oder Text. **JupyterLab** ist die
+heutige Oberfläche dafür, das klassische **Jupyter Notebook** die ältere,
+schlankere. Beide öffnen dieselben `.ipynb`-Dateien.
+
+Gerechnet wird nicht in der Oberfläche, sondern im **Kernel**, einem laufenden
+Python-Prozess im Hintergrund. Jupyter selbst kann in einer anderen Umgebung
+installiert sein als der Kernel, der rechnet. Genau daraus entsteht der
+klassische Fehler: `pip install pandas` im Terminal meldet Erfolg, `import
+pandas` im Notebook scheitert, weil das Terminal ein anderes Python meint als
+der Kernel.
+
+Die sichere Installation aus dem Notebook heraus trifft immer den Kernel:
+
+```python
+%pip install pandas
+```
+
+### Die Ausführungsreihenfolge
+
+Die Zahl in eckigen Klammern links neben einer Zelle, etwa `[7]`, gibt an, als
+wievielte sie ausgeführt wurde. Ein Notebook, dessen Zahlen nicht von oben nach
+unten steigen, wurde kreuz und quer ausgeführt, und sein Ergebnis hängt davon ab.
+
+Ein Beispiel: Zelle 1 setzt `x = 10`, Zelle 2 rechnet `x * 2`. Wird danach
+Zelle 1 auf `x = 5` geändert, aber nicht neu ausgeführt, zeigt Zelle 2
+weiterhin 20. Wer das Notebook später von oben ausführt, bekommt 10.
+
+Deshalb vor dem Speichern oder Weitergeben: *Kernel > Restart Kernel and Run All
+Cells*. Läuft das durch und zeigt dieselben Ergebnisse, ist das Notebook
+reproduzierbar.
+
+### VS Code und Colab
+
+**VS Code** öffnet Skripte und Notebooks gleichermassen, sobald die
+Erweiterungen *Python* und *Jupyter* installiert sind. Unten rechts in der
+Statusleiste steht, welches Python verwendet wird; ein Klick darauf wählt ein
+anderes. Das ist die Stelle, an der ein Importfehler meistens gelöst wird.
+
+**Google Colab** ist ein Jupyter-Notebook im Browser, ohne Installation und mit
+Zugang zu GPUs. Zwei Eigenheiten muss man kennen:
+
+- Die Maschine wird nach einer Zeit ohne Aktivität zurückgesetzt. Installierte
+  Pakete und hochgeladene Dateien sind dann weg; das Notebook selbst bleibt in
+  Google Drive.
+- Daten, die bleiben sollen, gehören in Google Drive, eingebunden mit
+  `from google.colab import drive; drive.mount("/content/drive")`.
+
+::: {.quiz}
+`pip install seaborn` im Terminal meldet Erfolg, `import seaborn` im Notebook
+scheitert mit `ModuleNotFoundError`. Was ist die wahrscheinlichste Ursache?
+
+- [x] Terminal und Notebook-Kernel verwenden verschiedene Python-Installationen
+      ~ Richtig. Das Paket liegt im Python des Terminals, der Kernel rechnet mit
+      einem anderen. `%pip install seaborn` im Notebook installiert in den
+      Kernel.
+- [ ] Das Notebook muss gespeichert werden, bevor neue Pakete sichtbar sind ~
+      Speichern ändert nichts daran, welches Python rechnet.
+- [ ] seaborn läuft nur in JupyterLab, nicht im klassischen Notebook ~ Beide
+      Oberflächen verwenden denselben Kernel und dieselben Pakete.
+:::
+
+::: {.quiz}
+Ein Notebook zeigt korrekte Ergebnisse. Nach *Restart Kernel and Run All
+Cells* bricht es in der Mitte ab. Was sagt das?
+
+- [x] Das Ergebnis hing an einer Ausführungsreihenfolge oder an Objekten, die
+      nicht mehr im Notebook erzeugt werden ~ Richtig. Der Neustart zeigt den
+      Zustand, den jede andere Person beim Öffnen vorfindet.
+- [ ] Der Kernel ist beschädigt und muss neu installiert werden ~ Ein
+      Abbruch nach dem Neustart deutet auf das Notebook hin, nicht auf den
+      Kernel.
+- [ ] Beim Neustart gehen installierte Pakete verloren ~ Lokal bleiben Pakete
+      installiert. Nur in Colab verschwinden sie beim Zurücksetzen der
+      Maschine.
+:::
+
+## Typische Aufgaben
+
+**Projektumgebung mit conda anlegen und in Jupyter verfügbar machen**
+
+```bash
+conda create -n auswertung python=3.12 pandas matplotlib ipykernel
+conda activate auswertung
+python -m ipykernel install --user --name auswertung
+```
+
+Danach erscheint `auswertung` in JupyterLab und VS Code als wählbarer Kernel.
+
+**Dasselbe mit venv**
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install pandas matplotlib ipykernel
+python -m ipykernel install --user --name auswertung
+```
+
+**Herausfinden, welches Python ein Notebook verwendet**
+
+```python
+import sys
+print(sys.executable)
+```
+
+**JupyterLab starten**
+
+```bash
+jupyter lab
+```
+
+Das Arbeitsverzeichnis ist der Ordner, aus dem der Befehl gestartet wurde.
+
+**Registrierte Kernel auflisten und einen entfernen**
+
+```bash
+jupyter kernelspec list
+jupyter kernelspec uninstall auswertung
+```
+
+## Verlinkte Ressourcen
+
+- [Jupyter-Dokumentation](https://docs.jupyter.org): Notebook, Lab und Kernel im Überblick
+- [JupyterLab-Dokumentation](https://jupyterlab.readthedocs.io): Oberfläche und Tastenkürzel
+- [Anaconda-Dokumentation](https://www.anaconda.com/docs): Installation, Navigator und conda
+- [Miniforge](https://github.com/conda-forge/miniforge): conda mit dem freien Kanal conda-forge
+- [Python in VS Code](https://code.visualstudio.com/docs/python/python-tutorial): Einrichten und Interpreter wählen
+- [Jupyter-Notebooks in VS Code](https://code.visualstudio.com/docs/datascience/jupyter-notebooks): Kernel wählen, Variablen ansehen
+- [Colab FAQ](https://research.google.com/colaboratory/faq.html): Laufzeiten, Grenzen und Speicher
+- [Jupyter Notebook: An Introduction](https://realpython.com/jupyter-notebook-introduction/): Einführung von Real Python
