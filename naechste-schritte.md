@@ -187,6 +187,33 @@ Stolpersteine dieses Teils:
 - Dateigrössen (CSV gegen Parquet) hängen an Bibliothek und Version; nicht in
   den Text schreiben, sondern auf die Ausgabe verweisen.
 
+### Erledigt am 14.09.2026, dritter Teil: externer Prüfbericht
+
+Ein Prüfbericht mit Claude im Chat (Datei `pruefbericht-2026-09-14.md`
+ausserhalb des Repos) nannte 52 Befunde. Jeder wurde am Quelltext und an der
+veröffentlichten Seite nachgeprüft: 34 bestätigt, 12 teilweise, 6 nicht
+bestätigt (Konzeptseiten an der Methoden-Schablone gemessen, zwei stimmige
+Quizfragen, ein korrekter exakter Wilcoxon-Test).
+
+- **80 Korrekturen** an Zahlen, Verweisen, Formeln, Tabellenzellen, Listings
+  (`tags.qmd`, `stand.qmd` um Wissenschaftliches Arbeiten ergänzt) und
+  Feldnamen, eingespielt per Skript mit Prüfung jedes Originaltexts.
+- **Wichtigster Fund:** Auf 18 Seiten fehlten Python-Ausgaben, weil `_` ein
+  matplotlib-Objekt hielt. Ursache mit einer Testseite im Build nachgewiesen,
+  476 Stellen auf `_x` umgestellt, `pruefe-chunks.py` meldet `_` jetzt. Details
+  in `build-fehler.md`.
+- Fehlende Python-Grafiken auf hierarchisches Clustering und k-Means ergänzt.
+- Neue Seite **Äquivalenztests** (TOST), von den t-Test-Seiten und der
+  Power-Seite verlinkt.
+
+Nicht umgesetzt, weil ohne Regel dahinter: einheitliche Überschrift
+„Interpretation und Ergebnissatz" und eine eigene Überschrift
+„Verständnisfragen" auf Werkzeugseiten (Nr. 27, 28).
+
+Die übrigen Themenvorschläge des Berichts (Permutationstest, McNemar,
+Ridge/Lasso, DBSCAN, Unit-Tests, Profiling, Barrierefreiheit und weitere) sind
+Erweiterungen und bleiben als Ideen offen.
+
 ### Erledigt am 12.09.2026
 
 - **pandas ist in `publish.yml` auf 2.3.3 festgeschrieben.** Grund und
