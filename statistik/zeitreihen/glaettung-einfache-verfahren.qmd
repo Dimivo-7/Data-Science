@@ -502,8 +502,11 @@ print("alpha der einfachen Glättung:",
 
 Die beiden Spalten unterscheiden sich genau dort, wo Parameter geschätzt werden
 müssen: Bei der naiven Prognose und der einfachen Glättung stimmen die Zahlen
-exakt überein, bei Holt und Holt-Winters nicht. Die **Rangfolge** ist in beiden
-Sprachen dieselbe.
+exakt überein, bei Holt und Holt-Winters nicht. Der Grund: das Paket `forecast`
+in R und `ExponentialSmoothing` in statsmodels schätzen Glättungsparameter und
+Startwerte (Anfangsniveau, Anfangstrend) mit verschiedenen Verfahren, und bei
+Holt reagiert die Prognose über zwölf Monate empfindlich auf den Anfangstrend.
+Die **Rangfolge** ist in beiden Sprachen dieselbe.
 
 | Beobachtung | Erklärung |
 |---|---|
@@ -528,7 +531,7 @@ ihn in `accuracy()` mit aus.
 > Holt-Winters mit additivem Trend und additiver Saison erreicht auf den letzten
 > zwölf Monaten einen RMSE von 21.6 (MAPE 2.4 Prozent) gegenüber 50.7 (5.6
 > Prozent) bei der naiven saisonalen Prognose. Modelle ohne Saisonkomponente
-> bleiben deutlich zurück (Holt: RMSE 56.9).
+> bleiben deutlich zurück (Holt: RMSE 56.9 in Python, 45.4 in R).
 
 ### Beispiel 4: Alpha von Hand gesetzt
 
@@ -730,7 +733,9 @@ ist [ARIMA](arima-sarima.qmd) der nächste Schritt.
   braucht Werte aus der Zukunft.
 - **MAPE ist tückisch.** Bei Werten nahe null explodiert er, und er bestraft
   Überschätzung anders als Unterschätzung.
-- **Alpha nahe eins ist keine gute Anpassung**, sondern Folgen des Rauschens.
+- **Alpha nahe eins ist nicht automatisch eine gute Anpassung.** Bei einer
+  rauschenden Reihe ohne Trend folgt das Modell dem Rauschen; bei einer stark
+  steigenden Reihe kann es die richtige Antwort sein, siehe Beispiel 4.
 - **Glättung erklärt nichts.** Sie beschreibt die Reihe aus sich selbst; für
   Ursachen braucht es Einflussgrössen.
 

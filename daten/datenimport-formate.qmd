@@ -279,7 +279,7 @@ print(genau["plz"].tolist(), genau["menge"].tolist(), genau["menge"].sum())
 
 | Spalte | geraten in pandas | geraten in R | Erklärung |
 |---|---|---|---|
-| `plz` | **`[8001, 815, 3011]`** | **815** statt `0815` | Beide machen aus der Kennung eine Zahl, und die führende Null ist weg. Eine Postleitzahl ist Text. |
+| `plz` | **`[8001, 815, 3011]`** | `"0815"` bleibt | pandas macht aus der Kennung eine Zahl, und die führende Null ist weg. `read_csv2` rät hier Text und hat Glück. Eine Postleitzahl ist Text und gehört ausdrücklich so eingelesen. |
 | `menge` | Text: `['1.234', '987', nan]` | **1234**, 987, `NA` | Hier trennen sich die Sprachen: `read_csv2` kennt den Punkt als Tausenderzeichen, pandas braucht `thousands="."` und liest die Spalte sonst als Text. |
 | `preis` | `float64` | `numeric` | Das Dezimalkomma war angegeben. |
 | `thousands` mit `dtype="Int64"` | **`TypeError`** | | pandas wandelt zuerst in Gleitkomma und kann dann nicht mehr verlustfrei in die ganzzahlige Spalte giessen. Erst lesen, dann `astype("Int64")`. |
@@ -288,13 +288,13 @@ print(genau["plz"].tolist(), genau["menge"].tolist(), genau["menge"].sum())
 
 #### Interpretation und Ergebnissatz
 
-Zwei Fehler entstehen hier stumm: die verlorene führende Null und die
-Mengenspalte, die in pandas Text bleibt. Die erste fällt später auf, wenn ein
+Zwei Fehler entstehen hier in pandas stumm: die verlorene führende Null und
+die Mengenspalte, die Text bleibt. Die erste fällt später auf, wenn ein
 Join auf die Postleitzahl nichts findet, die zweite beim ersten Rechnen.
 `read_csv2` nimmt einem in R mehr ab, dafür ist in pandas jede Annahme im
 Aufruf sichtbar.
 
-> Ohne Vorgaben wird aus der Kennung `0815` die Zahl 815, und die Menge
+> Ohne Vorgaben wird in pandas aus der Kennung `0815` die Zahl 815, und die Menge
 > `1.234` bleibt in pandas Text, während `read_csv2` daraus 1234 macht. Mit
 > `dtype`, `thousands` und `Int64` stehen am Ende die Mengen 1234, 987 und ein
 > fehlender Wert mit der Summe 2221.
