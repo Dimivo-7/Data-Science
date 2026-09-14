@@ -530,3 +530,26 @@ Seite `farbe.qmd`, die im selben Lauf haette gebaut werden sollen, kam deshalb
 gar nicht mehr dran und sah zwei Durchgaenge lang wie "Zahlen stimmen nicht"
 aus. **Ein Render-Log-Commit der Action ist das Zeichen, dass der Build
 abgebrochen ist** -- dann zuerst `render.log` lesen, nicht die Zahlen pruefen.
+
+### 2026-09-14 -- Seite nur mit Python-Chunks bricht den ganzen Build ab
+
+**Symptom:** Der Build brach bei `werkzeuge/python-umgebungen.qmd` ab mit
+
+```
+Starting python3 kernel...
+ERROR: Error executing '.../python3': Broken pipe (os error 32)
+Jupyter is not available in this Python installation.
+```
+
+**Ursache:** Quarto waehlt die Engine je Dokument. Steht kein einziger R-Chunk
+darin, nimmt es Jupyter statt knitr, und Jupyter ist im Build nicht
+installiert. Die neue Seite hatte nur einen Python-Chunk. Dasselbe Problem war
+auf `visualisierung/seaborn-plotly.qmd` schon geloest, aber nirgends als Regel
+festgehalten.
+
+**Regel:** Jede Seite mit ausfuehrbarem Python braucht mindestens einen
+R-Chunk, notfalls leer mit `#| include: false` und einem Kommentar, warum er
+dasteht. `pruefe-chunks.py` meldet Seiten, auf die das nicht zutrifft.
+
+**Nebenwirkung:** Quarto haelt beim ersten Fehler an, alle spaeteren Seiten
+dieses Laufs (hier ab Nummer 38 von 126) wurden nicht gebaut.

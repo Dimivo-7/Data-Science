@@ -68,8 +68,17 @@ CHUNK = re.compile(r"^```\{(r|python)[^}]*\}\n(.*?)^```", re.S | re.M)
 def pruefe(pfad):
     quelle = io.open(pfad, encoding="utf-8").read()
     fehler = []
+    chunks = CHUNK.findall(quelle)
 
-    for sprache, code in CHUNK.findall(quelle):
+    # Ohne einen einzigen R-Chunk waehlt Quarto die Jupyter-Engine, die im
+    # Build nicht installiert ist, und bricht den ganzen Lauf ab. Siehe
+    # build-fehler.md, Eintrag vom 14.09.2026.
+    sprachen = {sprache for sprache, _ in chunks}
+    if "python" in sprachen and "r" not in sprachen:
+        fehler.append("nur Python-Chunks: ein R-Chunk fehlt, sonst waehlt "
+                      "Quarto Jupyter (leerer Chunk mit include: false genuegt)")
+
+    for sprache, code in chunks:
         if sprache == "python":
             for kuerzel, noetig in PYTHON_KUERZEL.items():
                 muster = r"(?<![\w.])" + re.escape(kuerzel)
