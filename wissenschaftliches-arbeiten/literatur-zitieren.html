@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Python und R als Handwerkszeug, dazu Pakete, Umgebungen und reproduzierbares Arbeiten.">
+<meta name="description" content="Quellen mit Zotero sammeln, als BibTeX exportieren und in Quarto zitieren, mit Literaturverzeichnis und Zitierstil.">
 
-<title>Programmierung – Data Science Notizen</title>
+<title>Literatur verwalten und zitieren – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -27,7 +27,61 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-</style>
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="../site_libs/quarto-nav/quarto-nav.js"></script>
@@ -38,8 +92,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../favicon.svg" rel="icon" type="image/svg+xml">
-<script src="../site_libs/quarto-listing/list.min.js"></script>
-<script src="../site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -81,66 +133,8 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Suchen"
   }
 }</script>
-<script>
-
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-seiten .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
-
-    const options = {
-      valueNames: ['listing-title','listing-description','listing-stand',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
-      
-      searchColumns: ["listing-project","listing-lang","listing-website","listing-execute","listing-knitr","listing-format","listing-glossary","listing-engines","listing-language","listing-title","listing-description","listing-categories","listing-seitentyp","listing-stand","listing-order","listing-path","listing-outputHref","listing-author","listing-filename","listing-file-modified","listing-reading-time","listing-word-count","listing-quelle"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-seiten'] = new List('listing-seiten', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -340,7 +334,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../programmierung/index.html">Programmierung</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/index.html">Wissenschaftliches Arbeiten</a></li><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/literatur-zitieren.html">Literatur verwalten und zitieren</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -384,13 +378,13 @@ window.Quarto = {
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../programmierung/index.html" class="sidebar-item-text sidebar-link active">
+            <a href="../programmierung/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Programmierung</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../programmierung/python-grundlagen.html" class="sidebar-item-text sidebar-link">
@@ -1223,11 +1217,11 @@ window.Quarto = {
       <div class="sidebar-item-container"> 
             <a href="../wissenschaftliches-arbeiten/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Wissenschaftliches Arbeiten</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-16" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-16" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-16" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-16" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../wissenschaftliches-arbeiten/ergebnisse-berichten.html" class="sidebar-item-text sidebar-link">
@@ -1236,7 +1230,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../wissenschaftliches-arbeiten/literatur-zitieren.html" class="sidebar-item-text sidebar-link">
+  <a href="../wissenschaftliches-arbeiten/literatur-zitieren.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Literatur verwalten und zitieren</span></a>
   </div>
 </li>
@@ -1282,21 +1276,44 @@ window.Quarto = {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Auf dieser Seite</h2>
+   
+  <ul>
+  <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#der-weg-einer-quelle" id="toc-der-weg-einer-quelle" class="nav-link" data-scroll-target="#der-weg-einer-quelle">Der Weg einer Quelle</a></li>
+  <li><a href="#zitieren-in-quarto" id="toc-zitieren-in-quarto" class="nav-link" data-scroll-target="#zitieren-in-quarto">Zitieren in Quarto</a></li>
+  <li><a href="#die-datei-literatur.bib" id="toc-die-datei-literatur.bib" class="nav-link" data-scroll-target="#die-datei-literatur.bib">Die Datei <code>literatur.bib</code></a></li>
+  <li><a href="#zitierstil-wählen" id="toc-zitierstil-wählen" class="nav-link" data-scroll-target="#zitierstil-wählen">Zitierstil wählen</a></li>
+  <li><a href="#zotero-einrichten" id="toc-zotero-einrichten" class="nav-link" data-scroll-target="#zotero-einrichten">Zotero einrichten</a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
+  <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
+  <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
+  <li><a href="#literatur" id="toc-literatur" class="nav-link" data-scroll-target="#literatur">Literatur</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/index.html">Wissenschaftliches Arbeiten</a></li><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/literatur-zitieren.html">Literatur verwalten und zitieren</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Programmierung</h1>
-</div>
+<h1 class="title">Literatur verwalten und zitieren</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Kommunikation</div>
+    <div class="quarto-category">Tooling</div>
+    <div class="quarto-category">Reproduzierbarkeit</div>
+  </div>
+  </div>
 
 <div>
   <div class="description">
-    Python und R als Handwerkszeug, dazu Pakete, Umgebungen und reproduzierbares Arbeiten.
+    Quellen mit Zotero sammeln, als BibTeX exportieren und in Quarto zitieren, mit Literaturverzeichnis und Zitierstil.
   </div>
 </div>
 
@@ -1313,97 +1330,308 @@ window.Quarto = {
 </header>
 
 
-<p>Hier steht das Handwerkszeug, nicht die Statistik. Die Reihenfolge geht von den Sprachgrundlagen über die numerischen Bibliotheken zu der Frage, wie eine Auswertung so abgelegt wird, dass sie in einem Jahr noch dasselbe Ergebnis liefert.</p>
-<p>Python und R stehen nebeneinander, nicht gegeneinander. Beide Sprachen kommen in den Beispielen der ganzen Seite vor, deshalb lohnt sich in beiden ein Grundverständnis von Datenstrukturen und Funktionen.</p>
-<div id="listing-seiten" class="quarto-listing quarto-listing-container-custom">
-<div class="card-grid">
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-grundlagen.html">Python-Grundlagen</a>
-</h3>
-<p>
-Datentypen, Kontrollfluss, Listen und <span class="glossary-term" data-def="Container, der Werte über Schlüssel statt über Positionen anspricht. Die Schlüssel müssen unveränderlich sein, weshalb dort ein Tupel stehen darf, eine Liste aber nicht." data-topic="Programmierung" tabindex="0">Dictionaries</span> als Arbeitsbasis.
-</p>
+<div class="placeholder-notice">
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-funktionen-module.html">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</a>
-</h3>
-<p>
-Eigene Funktionen, Gültigkeitsbereiche, Import und Modulstruktur.
-</p>
+<section id="kernideen" class="level2">
+<h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Quellen gehören <strong>einmal</strong> in eine Literaturverwaltung, nicht in jedes Dokument einzeln</li>
+<li><strong>Zotero</strong> sammelt Quellen aus dem Browser, speichert PDFs und exportiert als BibTeX</li>
+<li>Jede Quelle hat einen <strong>Zitierschlüssel</strong>, etwa <code>wickham2014</code>; im Text steht nur der Schlüssel</li>
+<li><span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig.">Quarto</span> setzt aus den Schlüsseln die <strong>Zitate und das Literaturverzeichnis</strong> zusammen</li>
+<li>Der <strong>Zitierstil</strong> (APA, Harvard, IEEE) ist eine austauschbare Datei, kein Handwerk</li>
+<li>Zitiert wird die <strong>Primärquelle</strong>, die man gelesen hat; nicht das Werkzeug, das sie gefunden hat</li>
+</ul>
+</section>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
+<div class="note-box">
+<p>Diese Seite zitiert tatsächlich: Im Frontmatter steht <code>bibliography: literatur.bib</code>, und die Zitate unten erzeugt <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig.">Quarto</span> beim Rendern aus dieser Datei. Das Literaturverzeichnis steht am Ende der Seite. Wo man Quellen findet, steht in der <a href="../links.html">Linkliste</a> unter „Recherche und Literatur”.</p>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-objektorientierung.html">Objektorientierung in Python</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Programmierung: Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.  ·  Statistik: Zusammengefasster Wertebereich bei der Darstellung eines stetigen Merkmals. Die Zahl der Klassen bestimmt, wie viel Struktur ein Histogramm zeigt." data-topic="Programmierung, Statistik" tabindex="0">Klassen</span>, <span class="glossary-term" data-def="Ein konkretes Objekt, das nach dem Bauplan einer Klasse erzeugt wurde. Es trägt eigene Attributwerte und teilt sich die Methoden mit allen anderen Instanzen derselben Klasse." data-topic="Programmierung" tabindex="0">Instanzen</span>, <span class="glossary-term" data-def="Eine Klasse übernimmt Verhalten einer anderen und ändert nur die Unterschiede. Sinnvoll bei einer echten ist-ein-Beziehung, sonst ist Enthalten der klarere Weg." data-topic="Programmierung" tabindex="0">Vererbung</span> und wann sich der Aufwand lohnt.
-</p>
+<section id="der-weg-einer-quelle" class="level3">
+<h3 class="anchored" data-anchor-id="der-weg-einer-quelle">Der Weg einer Quelle</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Schritt</th>
+<th>Werkzeug</th>
+<th>Was passiert</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Finden</td>
+<td>Suchmaschinen, Datenbanken, siehe Linkliste</td>
+<td>Artikel, Buch oder Datensatz identifiziert</td>
+</tr>
+<tr class="even">
+<td>Erfassen</td>
+<td>Zotero Connector im Browser</td>
+<td>Metadaten und, falls zugänglich, PDF landen in Zotero</td>
+</tr>
+<tr class="odd">
+<td>Prüfen</td>
+<td>Zotero</td>
+<td>Autorinnen, Jahr, DOI kontrollieren; automatische Erfassung ist oft unvollständig</td>
+</tr>
+<tr class="even">
+<td>Exportieren</td>
+<td>Better BibTeX für Zotero</td>
+<td><code>.bib</code>-Datei mit stabilen Zitierschlüsseln, bei Änderungen automatisch aktualisiert</td>
+</tr>
+<tr class="odd">
+<td>Zitieren</td>
+<td>Quarto</td>
+<td><code>[@schluessel]</code> im Text</td>
+</tr>
+<tr class="even">
+<td>Verzeichnis</td>
+<td>Quarto mit CSL-Stil</td>
+<td>Liste am Ende, im gewählten Stil</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="zitieren-in-quarto" class="level3">
+<h3 class="anchored" data-anchor-id="zitieren-in-quarto">Zitieren in Quarto</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Schreibweise im Text</th>
+<th>Ergebnis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>[@wickham2014]</code></td>
+<td>Zitat in Klammern</td>
+</tr>
+<tr class="even">
+<td><code>@wickham2014</code></td>
+<td>Autor im Satz, Jahr in Klammern</td>
+</tr>
+<tr class="odd">
+<td><code>[@wickham2014, S. 5]</code></td>
+<td>mit Seitenangabe</td>
+</tr>
+<tr class="even">
+<td><code>[@cohen1988; @wasserstein2016]</code></td>
+<td>mehrere Quellen</td>
+</tr>
+<tr class="odd">
+<td><code>[-@cohen1988]</code></td>
+<td>nur das Jahr, wenn der Name schon im Satz steht</td>
+</tr>
+</tbody>
+</table>
+<p>So sieht das gerendert aus. Das Konzept ordentlicher Tabellen geht auf <span class="citation" data-cites="wickham2014">Wickham (<a href="#ref-wickham2014" role="doc-biblioref">2014</a>)</span> zurück. Die üblichen Anhaltspunkte für kleine, mittlere und grosse Effekte stammen von Cohen <span class="citation" data-cites="cohen1988">(<a href="#ref-cohen1988" role="doc-biblioref">1988</a>)</span>, der selbst davor warnte, sie mechanisch anzuwenden. Zur Deutung von p-Werten gibt es eine Stellungnahme der amerikanischen Statistikgesellschaft <span class="citation" data-cites="wasserstein2016">(<a href="#ref-wasserstein2016" role="doc-biblioref">Wasserstein und Lazar 2016</a>)</span>.</p>
+</section>
+<section id="die-datei-literatur.bib" class="level3">
+<h3 class="anchored" data-anchor-id="die-datei-literatur.bib">Die Datei <code>literatur.bib</code></h3>
+<p>Ein Eintrag im BibTeX-Format, wie ihn Better BibTeX exportiert:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bibtex code-with-copy"><code class="sourceCode bibtex"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="va">@article</span>{<span class="ot">wickham2014</span>,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">author</span>  = {Wickham, Hadley},</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">title</span>   = {Tidy Data},</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">journal</span> = {Journal of Statistical Software},</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">year</span>    = {2014},</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">volume</span>  = {59},</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">number</span>  = {10},</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">pages</span>   = {1--23},</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">doi</span>     = {10.18637/jss.v059.i10}</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Feld</th>
+<th>Hinweis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Schlüssel <code>wickham2014</code></td>
+<td>stabil halten; ändert er sich, brechen alle Zitate</td>
+</tr>
+<tr class="even">
+<td><code>author</code></td>
+<td>Nachname, Vorname; mehrere mit <code>and</code> getrennt</td>
+</tr>
+<tr class="odd">
+<td><code>title</code></td>
+<td>Gross geschriebene Eigennamen in <code>{}</code> schützen, sonst macht der Stil sie klein</td>
+</tr>
+<tr class="even">
+<td><code>doi</code></td>
+<td>wo vorhanden immer angeben, er macht die Quelle eindeutig auffindbar</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="zitierstil-wählen" class="level3">
+<h3 class="anchored" data-anchor-id="zitierstil-wählen">Zitierstil wählen</h3>
+<p>Ohne Angabe verwendet <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig.">Quarto</span> einen Autor-Jahr-Stil. Ein anderer Stil ist eine CSL-Datei, die neben dem Dokument liegt:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">bibliography</span><span class="kw">:</span><span class="at"> literatur.bib</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">csl</span><span class="kw">:</span><span class="at"> apa.csl</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Die Stildateien für APA, Harvard, IEEE und über zehntausend Zeitschriften stehen im offiziellen CSL-Verzeichnis. Institutionen geben oft einen Stil vor; dann wird genau dieser eingebunden, statt das Verzeichnis von Hand anzupassen.</p>
+</section>
+<section id="zotero-einrichten" class="level3">
+<h3 class="anchored" data-anchor-id="zotero-einrichten">Zotero einrichten</h3>
+<ol type="1">
+<li>Zotero und den Zotero Connector für den Browser installieren.</li>
+<li>Die Erweiterung <strong>Better BibTeX</strong> installieren.</li>
+<li>In Better BibTeX das Muster für Zitierschlüssel festlegen, etwa <code>auth.lower + year</code>.</li>
+<li>Eine Sammlung für das Projekt anlegen, Rechtsklick, <em>Export Collection</em>, Format <em>Better BibLaTeX</em> oder <em>Better BibTeX</em>, <strong>Keep updated</strong> anhaken.</li>
+<li>Die exportierte Datei in den Projektordner legen und im Frontmatter angeben.</li>
+</ol>
+<p>Mit <em>Keep updated</em> schreibt Zotero die Datei bei jeder Änderung neu. Die Literatur bleibt so an einer Stelle gepflegt.</p>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Nur zitierte Quellen im Verzeichnis, eine zusätzliche aufnehmen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">nocite</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  @cohen1988</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Verzeichnis an eine bestimmte Stelle setzen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">## Literatur</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>::: {#refs}</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>:::</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Einen Eintrag aus einer DOI erzeugen</strong></p>
+<p>In Zotero auf den Zauberstab <em>Add Item by Identifier</em> klicken und die DOI einfügen. Metadaten danach prüfen.</p>
+<p><strong>Doppelte Einträge finden</strong></p>
+<p>In Zotero unter <em>Duplicate Items</em>; zusammenführen, bevor exportiert wird, sonst entstehen zwei Schlüssel für dieselbe Quelle.</p>
+</section>
+<section id="verständnisfragen" class="level2">
+<h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Titel erscheint im Literaturverzeichnis als „The asa statement on p-values”, obwohl in Zotero „ASA” steht. Was hilft?</p>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-exceptions-io.html">Fehlerbehandlung und Dateizugriff</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Fehler, der die Ausführung unterbricht, statt einen besonderen Rückgabewert zu liefern. Gefangen werden sollte nur, was erwartet wird und sinnvoll behandelt werden kann." data-topic="Programmierung" tabindex="0">Exceptions</span> gezielt abfangen, Dateien lesen und schreiben.
-</p>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Das Wort in der <code>.bib</code>-Datei mit geschweiften Klammern schützen: <code>{ASA}</code>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/r-grundlagen.html">R-Grundlagen</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins." data-topic="Programmierung" tabindex="0">Vektoren</span>, <span class="glossary-term" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale." data-topic="Programmierung" tabindex="0">Data Frames</span>, Funktionen und die Eigenheiten von R.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/numpy-scipy.html">NumPy und SciPy</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Datenstruktur für Werte desselben Typs in zusammenhängendem Speicher. Grundlage der Vektorisierung und damit des Geschwindigkeitsvorteils von NumPy gegenüber Listen." data-topic="Programmierung" tabindex="0">Arrays</span>, <span class="glossary-term" data-def="Eine Operation wirkt auf eine ganze Folge von Werten statt auf einzelne Elemente. Das ersetzt ausgeschriebene Schleifen und ist in der Regel deutlich schneller." data-topic="Programmierung" tabindex="0">Vektorisierung</span> und die wichtigsten numerischen Werkzeuge.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/pandas.html">pandas</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position." data-topic="Programmierung" tabindex="0">Series</span> und <span class="glossary-term" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale." data-topic="Programmierung" tabindex="0">DataFrame</span>, Auswahl, Aggregation und Zusammenführen.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/pakete-umgebungen.html">Pakete und Umgebungen</a>
-</h3>
-<p>
-pip, conda, <span class="glossary-term" data-def="Eigenes Verzeichnis mit eigenem Interpreter und eigenen Paketen, das zu genau einem Projekt gehört. Verhindert, dass zwei Projekte sich über Paketversionen in die Quere kommen." data-topic="Programmierung" tabindex="0">venv</span> und renv, und warum Umgebungen getrennt gehören.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/fragen.html">Fragen zur Programmierung</a>
-</h3>
-<p>
-Übergreifende Fragen zu Python, R, Paketen und reproduzierbarem Arbeiten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/reproduzierbarkeit.html"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></a>
-</h3>
-<p>
-Projekte, Notebooks, Seeds und <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> als durchgehender Arbeitsweg.
-</p>
+<div class="quiz__erklaerung">
+Richtig. Viele Stile setzen Titel in Satzschreibung und machen alles klein, was nicht geschützt ist. Better BibTeX kann das beim Export automatisch tun.
 </div>
 </div>
-<div class="listing-no-matching d-none">Keine Treffer</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Einen anderen Zitierstil wählen
 </div>
-<p>Die <a href="../programmierung/fragen.html">Fragen zu diesem Bereich</a> prüfen die Verbindungen zwischen den Themen.</p>
+<div class="quiz__erklaerung">
+Das verschiebt das Problem nur, sobald der vorgegebene Stil wieder verlangt wird.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Den Titel in Grossbuchstaben erfassen
+</div>
+<div class="quiz__erklaerung">
+Dann würde der ganze Titel falsch erscheinen.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Sprachmodell hat eine Studie zusammengefasst und eine Quelle genannt. Was wird zitiert?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Die Studie selbst, nachdem man sie geöffnet und die Aussage darin geprüft hat
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das Werkzeug, das die Quelle gefunden hat, ist keine Quelle; und genannte Quellen können erfunden sein, siehe <a href="../ki/modelle-und-grenzen.html">Modelle und ihre Grenzen</a>.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Das Sprachmodell, weil die Zusammenfassung von dort stammt
+</div>
+<div class="quiz__erklaerung">
+Zitiert wird, worauf sich die Aussage stützt, und das ist die Studie.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Beides ohne Prüfung
+</div>
+<div class="quiz__erklaerung">
+Eine ungeprüfte Quellenangabe ist das Risiko, nicht die Lösung.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum ist <em>Keep updated</em> beim Export aus Zotero sinnvoll?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Änderungen in Zotero landen automatisch in der <code>.bib</code>-Datei des Projekts
+</div>
+<div class="quiz__erklaerung">
+Richtig. Es gibt nur eine gepflegte Stelle, und Korrekturen gehen nicht verloren.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Zotero lädt dann automatisch neue Literatur zum Thema
+</div>
+<div class="quiz__erklaerung">
+Zotero sucht keine Literatur, es verwaltet, was man hinzufügt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+Ohne diese Option funktionieren Zitate in <span class="glossary-term" data-topic="Programmierung" tabindex="0" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig.">Quarto</span> nicht
+</div>
+<div class="quiz__erklaerung">
+Sie funktionieren mit jeder <code>.bib</code>-Datei, auch einer von Hand geschriebenen.
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="verlinkte-ressourcen" class="level2">
+<h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://quarto.org/docs/authoring/citations.html">Quarto: Citations</a></li>
+<li><a href="https://www.zotero.org/">Zotero</a></li>
+<li><a href="https://retorque.re/zotero-better-bibtex/">Better BibTeX für Zotero</a></li>
+<li><a href="https://www.zotero.org/styles">Zotero Style Repository</a></li>
+<li><a href="https://citationstyles.org/">Citation Style Language</a></li>
+</ul>
+</section>
+<section id="literatur" class="level2">
+<h2 class="anchored" data-anchor-id="literatur">Literatur</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-cohen1988" class="csl-entry" role="listitem">
+Cohen, Jacob. 1988. <em>Statistical Power Analysis for the Behavioral Sciences</em>. 2. Aufl. Lawrence Erlbaum Associates.
+</div>
+<div id="ref-wasserstein2016" class="csl-entry" role="listitem">
+Wasserstein, Ronald L., und Nicole A. Lazar. 2016. <span>„The <span>ASA</span> Statement on p-Values: Context, Process, and Purpose“</span>. <em>The American Statistician</em> 70 (2): 129–33. <a href="https://doi.org/10.1080/00031305.2016.1154108">https://doi.org/10.1080/00031305.2016.1154108</a>.
+</div>
+<div id="ref-wickham2014" class="csl-entry" role="listitem">
+Wickham, Hadley. 2014. <span>„Tidy Data“</span>. <em>Journal of Statistical Software</em> 59 (10): 1–23. <a href="https://doi.org/10.18637/jss.v059.i10">https://doi.org/10.18637/jss.v059.i10</a>.
+</div>
+</div>
 
 
-
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -1845,9 +2073,42 @@ Projekte, Notebooks, Seeds und <span class="glossary-term" data-def="Publikation
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 11:31</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 11:35</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 

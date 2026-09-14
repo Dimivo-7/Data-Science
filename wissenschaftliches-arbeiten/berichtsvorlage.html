@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Python und R als Handwerkszeug, dazu Pakete, Umgebungen und reproduzierbares Arbeiten.">
+<meta name="description" content="Aufbau eines reproduzierbaren Berichts in Quarto: Ordner, Kopf, Gliederung und Zahlen im Text, die aus dem Code kommen.">
 
-<title>Programmierung – Data Science Notizen</title>
+<title>Berichtsvorlage – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -27,6 +27,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -38,8 +73,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../favicon.svg" rel="icon" type="image/svg+xml">
-<script src="../site_libs/quarto-listing/list.min.js"></script>
-<script src="../site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -81,66 +114,8 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Suchen"
   }
 }</script>
-<script>
-
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-seiten .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
-
-    const options = {
-      valueNames: ['listing-title','listing-description','listing-stand',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
-      
-      searchColumns: ["listing-project","listing-lang","listing-website","listing-execute","listing-knitr","listing-format","listing-glossary","listing-engines","listing-language","listing-title","listing-description","listing-categories","listing-seitentyp","listing-stand","listing-order","listing-path","listing-outputHref","listing-author","listing-filename","listing-file-modified","listing-reading-time","listing-word-count","listing-quelle"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-seiten'] = new List('listing-seiten', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -340,7 +315,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../programmierung/index.html">Programmierung</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/index.html">Wissenschaftliches Arbeiten</a></li><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/berichtsvorlage.html">Berichtsvorlage</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -384,13 +359,13 @@ window.Quarto = {
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../programmierung/index.html" class="sidebar-item-text sidebar-link active">
+            <a href="../programmierung/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Programmierung</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../programmierung/python-grundlagen.html" class="sidebar-item-text sidebar-link">
@@ -1223,11 +1198,11 @@ window.Quarto = {
       <div class="sidebar-item-container"> 
             <a href="../wissenschaftliches-arbeiten/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Wissenschaftliches Arbeiten</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-16" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-16" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-16" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-16" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../wissenschaftliches-arbeiten/ergebnisse-berichten.html" class="sidebar-item-text sidebar-link">
@@ -1242,7 +1217,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../wissenschaftliches-arbeiten/berichtsvorlage.html" class="sidebar-item-text sidebar-link">
+  <a href="../wissenschaftliches-arbeiten/berichtsvorlage.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Berichtsvorlage</span></a>
   </div>
 </li>
@@ -1282,21 +1257,44 @@ window.Quarto = {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Auf dieser Seite</h2>
+   
+  <ul>
+  <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#ordnerstruktur" id="toc-ordnerstruktur" class="nav-link" data-scroll-target="#ordnerstruktur">Ordnerstruktur</a></li>
+  <li><a href="#der-kopf-des-berichts" id="toc-der-kopf-des-berichts" class="nav-link" data-scroll-target="#der-kopf-des-berichts">Der Kopf des Berichts</a></li>
+  <li><a href="#gliederung" id="toc-gliederung" class="nav-link" data-scroll-target="#gliederung">Gliederung</a></li>
+  <li><a href="#zahlen-im-text" id="toc-zahlen-im-text" class="nav-link" data-scroll-target="#zahlen-im-text">Zahlen im Text</a></li>
+  <li><a href="#vor-dem-abgeben" id="toc-vor-dem-abgeben" class="nav-link" data-scroll-target="#vor-dem-abgeben">Vor dem Abgeben</a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
+  <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
+  <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/index.html">Wissenschaftliches Arbeiten</a></li><li class="breadcrumb-item"><a href="../wissenschaftliches-arbeiten/berichtsvorlage.html">Berichtsvorlage</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Programmierung</h1>
-</div>
+<h1 class="title">Berichtsvorlage</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Kommunikation</div>
+    <div class="quarto-category">Reproduzierbarkeit</div>
+    <div class="quarto-category">Tooling</div>
+    <div class="quarto-category">R</div>
+  </div>
+  </div>
 
 <div>
   <div class="description">
-    Python und R als Handwerkszeug, dazu Pakete, Umgebungen und reproduzierbares Arbeiten.
+    Aufbau eines reproduzierbaren Berichts in Quarto: Ordner, Kopf, Gliederung und Zahlen im Text, die aus dem Code kommen.
   </div>
 </div>
 
@@ -1313,97 +1311,328 @@ window.Quarto = {
 </header>
 
 
-<p>Hier steht das Handwerkszeug, nicht die Statistik. Die Reihenfolge geht von den Sprachgrundlagen über die numerischen Bibliotheken zu der Frage, wie eine Auswertung so abgelegt wird, dass sie in einem Jahr noch dasselbe Ergebnis liefert.</p>
-<p>Python und R stehen nebeneinander, nicht gegeneinander. Beide Sprachen kommen in den Beispielen der ganzen Seite vor, deshalb lohnt sich in beiden ein Grundverständnis von Datenstrukturen und Funktionen.</p>
-<div id="listing-seiten" class="quarto-listing quarto-listing-container-custom">
-<div class="card-grid">
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-grundlagen.html">Python-Grundlagen</a>
-</h3>
-<p>
-Datentypen, Kontrollfluss, Listen und <span class="glossary-term" data-def="Container, der Werte über Schlüssel statt über Positionen anspricht. Die Schlüssel müssen unveränderlich sein, weshalb dort ein Tupel stehen darf, eine Liste aber nicht." data-topic="Programmierung" tabindex="0">Dictionaries</span> als Arbeitsbasis.
-</p>
+<div class="placeholder-notice">
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-funktionen-module.html">Funktionen und <span class="glossary-term" data-def="Eine Datei mit Code, die sich in anderen Dateien importieren lässt. Der Block unter dem Namen main trennt den ausführbaren Teil vom importierbaren." data-topic="Programmierung" tabindex="0">Module</span> in Python</a>
-</h3>
-<p>
-Eigene Funktionen, Gültigkeitsbereiche, Import und Modulstruktur.
-</p>
+<section id="kernideen" class="level2">
+<h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Ein Bericht ist <strong>ein Projekt</strong>: Daten, Code und Text in einem Ordner mit fester Struktur</li>
+<li><strong>Rohdaten werden nie verändert</strong>; bereinigte Daten entstehen aus einem Skript</li>
+<li>Jede Zahl im Text kommt <strong>aus einer Rechnung im Dokument</strong>, nicht aus der Zwischenablage</li>
+<li>Die Gliederung folgt der Frage: Fragestellung, Daten, Methode, Ergebnisse, Einordnung</li>
+<li>Der Bericht muss <strong>von einem leeren Zustand aus</strong> fehlerfrei rendern</li>
+<li>Umgebung und Versionen werden festgehalten, damit der Bericht in einem Jahr noch läuft</li>
+</ul>
+</section>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
+<div class="note-box">
+<p><strong>Vorwissen:</strong> <a href="../werkzeuge/quarto.html">Quarto</a> für das Werkzeug, <a href="../programmierung/reproduzierbarkeit.html">Reproduzierbarkeit</a> für die Gründe, <a href="../wissenschaftliches-arbeiten/ergebnisse-berichten.html">Ergebnisse berichten</a> für die Sätze und <a href="../wissenschaftliches-arbeiten/literatur-zitieren.html">Literatur verwalten und zitieren</a> für die Quellen. Die Zahlen im Abschnitt „Zahlen im Text” unten entstehen beim Rendern dieser Seite.</p>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-objektorientierung.html">Objektorientierung in Python</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Programmierung: Bauplan für Objekte, der Daten und die Operationen darauf zu einer Einheit bündelt. Aus ihm entstehen Instanzen, die je eigene Attributwerte tragen.  ·  Statistik: Zusammengefasster Wertebereich bei der Darstellung eines stetigen Merkmals. Die Zahl der Klassen bestimmt, wie viel Struktur ein Histogramm zeigt." data-topic="Programmierung, Statistik" tabindex="0">Klassen</span>, <span class="glossary-term" data-def="Ein konkretes Objekt, das nach dem Bauplan einer Klasse erzeugt wurde. Es trägt eigene Attributwerte und teilt sich die Methoden mit allen anderen Instanzen derselben Klasse." data-topic="Programmierung" tabindex="0">Instanzen</span>, <span class="glossary-term" data-def="Eine Klasse übernimmt Verhalten einer anderen und ändert nur die Unterschiede. Sinnvoll bei einer echten ist-ein-Beziehung, sonst ist Enthalten der klarere Weg." data-topic="Programmierung" tabindex="0">Vererbung</span> und wann sich der Aufwand lohnt.
-</p>
+<section id="ordnerstruktur" class="level3">
+<h3 class="anchored" data-anchor-id="ordnerstruktur">Ordnerstruktur</h3>
+<pre><code>bericht-dicke/
+├── bericht-dicke.Rproj        (oder ein Ordner in Positron, VS Code)
+├── _quarto.yml                 gemeinsame Einstellungen
+├── bericht.qmd                 der Bericht
+├── daten/
+│   ├── roh/                    unverändert, wie geliefert
+│   └── bereinigt/              entsteht aus skripte/01-bereinigen.R
+├── skripte/
+│   └── 01-bereinigen.R
+├── abbildungen/                wird beim Rendern erzeugt
+├── literatur.bib
+├── renv.lock                   oder requirements.txt
+└── README.md                   wie man den Bericht erzeugt</code></pre>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Ordner</th>
+<th>Regel</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>daten/roh/</code></td>
+<td>nur lesen; nie von Hand ändern, nie überschreiben</td>
+</tr>
+<tr class="even">
+<td><code>daten/bereinigt/</code></td>
+<td>kann jederzeit gelöscht und neu erzeugt werden</td>
+</tr>
+<tr class="odd">
+<td><code>skripte/</code></td>
+<td>nummeriert in der Reihenfolge, in der sie laufen</td>
+</tr>
+<tr class="even">
+<td><code>abbildungen/</code></td>
+<td>nicht ins Repository, entsteht neu</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="der-kopf-des-berichts" class="level3">
+<h3 class="anchored" data-anchor-id="der-kopf-des-berichts">Der Kopf des Berichts</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>title: "Dicke der Blechteile: Maschine A gegen B"</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>author: "Name"</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>date: today</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>lang: de</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>format:</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  html:</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    toc: true</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    embed-resources: true</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  docx: default</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>execute:</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  echo: false</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  warning: false</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>bibliography: literatur.bib</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>---</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Einstellung</th>
+<th>Wozu</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>date: today</code></td>
+<td>Datum des Renderns, nicht des Schreibens</td>
+</tr>
+<tr class="even">
+<td><code>lang: de</code></td>
+<td>deutsche Beschriftungen wie „Abbildung” und „Tabelle”</td>
+</tr>
+<tr class="odd">
+<td><code>embed-resources: true</code></td>
+<td>eine einzige HTML-Datei, die sich per E-Mail verschicken lässt</td>
+</tr>
+<tr class="even">
+<td><code>echo: false</code></td>
+<td>Code ausblenden; im Bericht interessieren die Ergebnisse</td>
+</tr>
+<tr class="odd">
+<td><code>bibliography</code></td>
+<td>Quellen, siehe <a href="../wissenschaftliches-arbeiten/literatur-zitieren.html">Literatur verwalten und zitieren</a></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="gliederung" class="level3">
+<h3 class="anchored" data-anchor-id="gliederung">Gliederung</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Abschnitt</th>
+<th>Inhalt</th>
+<th>Umfang</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Zusammenfassung</td>
+<td>Frage, wichtigstes Ergebnis mit Zahl, Konsequenz</td>
+<td>drei bis fünf Sätze</td>
+</tr>
+<tr class="even">
+<td>Fragestellung</td>
+<td>was entschieden werden soll, welcher Unterschied relevant wäre</td>
+<td>kurz</td>
+</tr>
+<tr class="odd">
+<td>Daten</td>
+<td>Herkunft, Umfang, Bereinigung, Ausschlüsse mit Anzahl</td>
+<td>eine Tabelle genügt oft</td>
+</tr>
+<tr class="even">
+<td>Methode</td>
+<td>Verfahren, Voraussetzungen, Software und Versionen</td>
+<td>knapp, mit Verweisen</td>
+</tr>
+<tr class="odd">
+<td>Ergebnisse</td>
+<td>Grafik, Ergebnissätze, Tabellen</td>
+<td>Hauptteil</td>
+</tr>
+<tr class="even">
+<td>Einordnung</td>
+<td>was folgt, was nicht, Grenzen der Auswertung</td>
+<td>ehrlich</td>
+</tr>
+<tr class="odd">
+<td>Anhang</td>
+<td>Sitzungsinformation, zusätzliche Grafiken</td>
+<td>nach Bedarf</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="zahlen-im-text" class="level3">
+<h3 class="anchored" data-anchor-id="zahlen-im-text">Zahlen im Text</h3>
+<p>In einem R-Chunk wird gerechnet, im Satz steht Inline-Code. Der Quelltext:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>```{r}</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>#| label: kennzahlen</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>differenz &lt;- mean(dicke_b) - mean(dicke_a)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>test &lt;- t.test(dicke_a, dicke_b)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>```</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>Maschine B fertigt im Mittel `r round(differenz, 2)` mm dicker</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>(95%-KI `r round(-test$conf.int[2], 2)` bis `r round(-test$conf.int[1], 2)` mm).</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Und so erscheint es, gerechnet beim Rendern dieser Seite:</p>
+<blockquote class="blockquote">
+<p>Maschine B fertigt im Mittel 0.2 mm dicker (95%-KI 0.05 bis 0.36 mm).</p>
+</blockquote>
+<p>Ändert sich ein Messwert, ändert sich der Satz beim nächsten Rendern. Inline-Code in dieser Form gibt es mit der knitr-Engine; mit Jupyter lautet die Schreibweise <code>`{python} ausdruck`</code>.</p>
+</section>
+<section id="vor-dem-abgeben" class="level3">
+<h3 class="anchored" data-anchor-id="vor-dem-abgeben">Vor dem Abgeben</h3>
+<ul class="task-list">
+<li><label><input type="checkbox">Projekt in einem frischen Zustand rendern: R neu starten oder den Ordner <code>_freeze</code> löschen, dann <code>quarto render</code></label></li>
+<li><label><input type="checkbox">Jede Zahl in Zusammenfassung und Text stammt aus Inline-Code oder ist gegen die Ausgabe geprüft</label></li>
+<li><label><input type="checkbox">Abbildungen haben Titel, Achsenbeschriftung mit Einheit und eine Bildunterschrift</label></li>
+<li><label><input type="checkbox">Ausschlüsse und Bereinigungen sind mit Anzahl beschrieben</label></li>
+<li><label><input type="checkbox">Sitzungsinformation im Anhang (<code>sessionInfo()</code> oder die Paketliste)</label></li>
+<li><label><input type="checkbox">Quellen zitiert, Literaturverzeichnis vollständig</label></li>
+<li><label><input type="checkbox">Die Frage aus der Einleitung wird in der Zusammenfassung beantwortet</label></li>
+</ul>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Neues Berichtsprojekt anlegen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> create project default bericht-dicke</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Sitzungsinformation im Anhang</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>## Anhang: Umgebung</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>```{r}</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>#| echo: true</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>sessionInfo()</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>```</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Bericht mit verschiedenen Datenständen rendern (Parameter)</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>params:</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  monat: "2026-03"</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>---</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render bericht.qmd <span class="at">-P</span> monat:2026-04</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Word-Fassung mit eigener Vorlage</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">format</span><span class="kw">:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">docx</span><span class="kw">:</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">reference-doc</span><span class="kw">:</span><span class="at"> vorlage.docx</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="verständnisfragen" class="level2">
+<h2 class="anchored" data-anchor-id="verständnisfragen">Verständnisfragen</h2>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Eine Kollegin korrigiert zwei Werte direkt in der Rohdatei. Warum ist das ein Problem?</p>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/python-exceptions-io.html">Fehlerbehandlung und Dateizugriff</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Fehler, der die Ausführung unterbricht, statt einen besonderen Rückgabewert zu liefern. Gefangen werden sollte nur, was erwartet wird und sinnvoll behandelt werden kann." data-topic="Programmierung" tabindex="0">Exceptions</span> gezielt abfangen, Dateien lesen und schreiben.
-</p>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Die Korrektur ist nicht nachvollziehbar und geht bei einer neuen Lieferung der Rohdaten verloren
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/r-grundlagen.html">R-Grundlagen</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Folge von Werten desselben Typs, die als Einheit behandelt wird. In R ist der Vektor die Grundstruktur; auch ein einzelner Wert ist ein Vektor der Länge eins." data-topic="Programmierung" tabindex="0">Vektoren</span>, <span class="glossary-term" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale." data-topic="Programmierung" tabindex="0">Data Frames</span>, Funktionen und die Eigenheiten von R.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/numpy-scipy.html">NumPy und SciPy</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Datenstruktur für Werte desselben Typs in zusammenhängendem Speicher. Grundlage der Vektorisierung und damit des Geschwindigkeitsvorteils von NumPy gegenüber Listen." data-topic="Programmierung" tabindex="0">Arrays</span>, <span class="glossary-term" data-def="Eine Operation wirkt auf eine ganze Folge von Werten statt auf einzelne Elemente. Das ersetzt ausgeschriebene Schleifen und ist in der Regel deutlich schneller." data-topic="Programmierung" tabindex="0">Vektorisierung</span> und die wichtigsten numerischen Werkzeuge.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/pandas.html">pandas</a>
-</h3>
-<p>
-<span class="glossary-term" data-def="Eindimensionale beschriftete Datenstruktur in pandas. Rechnungen zwischen zwei Series richten sich nach dem Index aus, nicht nach der Position." data-topic="Programmierung" tabindex="0">Series</span> und <span class="glossary-term" data-def="Tabellenartige Datenstruktur aus gleich langen Spalten, die je einen eigenen Typ tragen dürfen. Zeilen sind Beobachtungen, Spalten sind Merkmale." data-topic="Programmierung" tabindex="0">DataFrame</span>, Auswahl, Aggregation und Zusammenführen.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/pakete-umgebungen.html">Pakete und Umgebungen</a>
-</h3>
-<p>
-pip, conda, <span class="glossary-term" data-def="Eigenes Verzeichnis mit eigenem Interpreter und eigenen Paketen, das zu genau einem Projekt gehört. Verhindert, dass zwei Projekte sich über Paketversionen in die Quere kommen." data-topic="Programmierung" tabindex="0">venv</span> und renv, und warum Umgebungen getrennt gehören.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/fragen.html">Fragen zur Programmierung</a>
-</h3>
-<p>
-Übergreifende Fragen zu Python, R, Paketen und reproduzierbarem Arbeiten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../programmierung/reproduzierbarkeit.html"><span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." data-topic="Programmierung" tabindex="0">Reproduzierbarkeit</span></a>
-</h3>
-<p>
-Projekte, Notebooks, Seeds und <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> als durchgehender Arbeitsweg.
-</p>
+<div class="quiz__erklaerung">
+Richtig. Korrekturen gehören in das Bereinigungsskript, mit Kommentar, warum.
 </div>
 </div>
-<div class="listing-no-matching d-none">Keine Treffer</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Rohdateien lassen sich nicht bearbeiten
 </div>
-<p>Die <a href="../programmierung/fragen.html">Fragen zu diesem Bereich</a> prüfen die Verbindungen zwischen den Themen.</p>
+<div class="quiz__erklaerung">
+Technisch lassen sie sich, das ist genau das Risiko.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+<span class="glossary-term" data-topic="Programmierung" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." tabindex="0">Quarto</span> liest geänderte Dateien nicht
+</div>
+<div class="quiz__erklaerung">
+<span class="glossary-term" data-topic="Programmierung" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." tabindex="0">Quarto</span> liest, was da ist; das Problem ist die fehlende Nachvollziehbarkeit.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Bericht rendert auf dem eigenen Rechner, bei einer Kollegin bricht er ab. Was ist der erste Schritt?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Selbst in einem frischen Zustand rendern: R neu starten, Freeze löschen
+</div>
+<div class="quiz__erklaerung">
+Richtig. Läuft es dann auch selbst nicht, hing der Erfolg an Objekten oder Dateien, die nur auf dem eigenen Rechner existieren.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Die R-Version der Kollegin anpassen
+</div>
+<div class="quiz__erklaerung">
+Möglich, aber erst nach der Prüfung, ob der Bericht überhaupt eigenständig läuft.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+Den Bericht als PDF schicken
+</div>
+<div class="quiz__erklaerung">
+Das umgeht das Problem, statt es zu lösen.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum steht in der Zusammenfassung eine Zahl aus Inline-Code und nicht aus der Konsole abgetippt?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" tabindex="0" role="button">
+Weil sich die Zusammenfassung sonst nicht mitändert, wenn die Daten sich ändern
+</div>
+<div class="quiz__erklaerung">
+Richtig. Gerade die Zusammenfassung wird am häufigsten gelesen und am seltensten nachgeführt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" tabindex="0" role="button">
+Weil Inline-Code genauer rundet
+</div>
+<div class="quiz__erklaerung">
+Die Rundung legt man selbst fest.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" tabindex="0" role="button">
+Weil Word keine Zahlen darstellen kann
+</div>
+<div class="quiz__erklaerung">
+Das kann es.
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="verlinkte-ressourcen" class="level2">
+<h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://quarto.org/docs/get-started/">Quarto: Get Started</a></li>
+<li><a href="https://quarto.org/docs/computations/parameters.html">Quarto: Parameters</a></li>
+<li><a href="https://rstats.wtf/projects">What They Forgot to Teach You About R: Projekte</a></li>
+<li><a href="https://book.the-turing-way.org/reproducible-research/reproducible-research">The Turing Way: Guide for Reproducible Research</a></li>
+</ul>
 
 
-
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -1845,9 +2074,42 @@ Projekte, Notebooks, Seeds und <span class="glossary-term" data-def="Publikation
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 11:31</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 11:35</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 
