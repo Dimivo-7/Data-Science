@@ -149,10 +149,14 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
   Zahl hängt daran). Die Visualisierung war sauber. `pruefe-zahlen.py` meldet
   gedruckte Objekte künftig nach jedem Build.
 
-**Offen danach:** die Ausgaben der neuen und geänderten Seiten nach dem Build
-prüfen und die fünf neuen Seiten von `entwurf` auf `fertig` setzen. Die
-inhaltliche zweite Durchsicht (Text gegen heutigen Kenntnisstand) steht für
-`statistik/` weiterhin aus.
+Nach dem Build geprüft: Die fünf neuen Seiten zeigen die erwarteten Ausgaben
+(R 4.6.1, Python 3.12.14, `echo: fenced` mit Label) und stehen auf `fertig`.
+Die sieben Statistikseiten sind im Freeze und live ohne gedruckte Objekte.
+Achtung: Direkt nach dem Build lieferte GitHub Pages noch die alte Fassung aus;
+beim Nachprüfen einen Cache-Parameter an die Adresse hängen.
+
+**Offen:** die inhaltliche zweite Durchsicht (Text gegen heutigen
+Kenntnisstand) für `statistik/`.
 
 ### Erledigt am 12.09.2026
 
