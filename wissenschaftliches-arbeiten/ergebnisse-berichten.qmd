@@ -1,0 +1,272 @@
+---
+title: "Ergebnisse berichten"
+description: "Statistische Ergebnisse vollständig und im APA-Stil berichten: was in den Satz gehört, wie Zahlen formatiert werden und was nicht."
+categories: ["Kommunikation", "Interpretation", "Hypothesentests", "Effektstärke", "R", "Python"]
+seitentyp: konzept
+stand: entwurf
+order: 10
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+p_apa <- function(p) {
+  if (p < 0.001) return("p < .001")
+  paste0("p = ", sub("^0", "", formatC(p, format = "f", digits = 3)))
+}
+ohne_null <- function(x, stellen = 2) sub("^(-?)0\\.", "\\1.", formatC(x, format = "f", digits = stellen))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+from scipy import stats
+
+
+def p_apa(p):
+    if p < 0.001:
+        return "p < .001"
+    return "p = " + f"{p:.3f}".lstrip("0")
+```
+
+## Kernideen
+
+- Ein Ergebnissatz beantwortet **die Frage in Worten** und belegt die Antwort mit Zahlen in Klammern
+- Zur Teststatistik gehören immer **Freiheitsgrade, p-Wert, Effektstärke und Konfidenzintervall**
+- Die **Grösse des Effekts in seiner Einheit** ist wichtiger als der p-Wert
+- p-Werte **exakt** berichten, nur unter .001 als Schranke; nie „n.s." oder Sternchen allein
+- Zahlen, die höchstens 1 werden können (p, r, R²), ohne führende Null: `p = .013`
+- Die Zahlen im Satz kommen **aus dem Code**, nicht aus der abgetippten Konsole
+
+## Erklärung
+
+::: {.note-box}
+Jede Methodenseite im Bereich [Statistik](../statistik/index.qmd) hat einen
+Abschnitt „Ergebnis berichten" mit der passenden Vorlage. Diese Seite fasst
+zusammen, was für alle gilt. Die Formatregeln folgen dem Stil der American
+Psychological Association (APA, 7. Auflage), der in den Sozial-, Wirtschafts-
+und Lebenswissenschaften am weitesten verbreitet ist.
+:::
+
+### Was in einen Ergebnissatz gehört
+
+| Bestandteil | Warum | Beispiel |
+|---|---|---|
+| Antwort auf die Frage | Leserin soll ohne Zahlen verstehen, was herauskam | „Maschine A fertigt dünner als Maschine B" |
+| deskriptive Werte je Gruppe | ohne sie ist die Richtung nicht prüfbar | M = 12.05 mm, SD = 0.16 |
+| Effekt in seiner Einheit mit Intervall | beantwortet „wie viel" | Differenz 0.20 mm, 95% KI [0.05, 0.36] |
+| Teststatistik mit Freiheitsgraden | macht das Verfahren nachvollziehbar | t(24.38) = -2.67 |
+| p-Wert | Evidenz gegen die Nullhypothese | p = .013 |
+| standardisierte Effektstärke | vergleichbar über Studien | d = -0.97 |
+| Verfahren und Voraussetzungen | was genau gerechnet wurde | Welch-Test, Normalverteilung per QQ-Plot geprüft |
+
+### Formatregeln
+
+| Regel | richtig | falsch |
+|---|---|---|
+| Statistiksymbole kursiv | *t*, *F*, *p*, *M*, *SD* | t, F, p |
+| führende Null nur, wenn der Wert über 1 steigen kann | *p* = .013, *r* = .45, *M* = 0.97 | *p* = 0.013 |
+| p-Werte exakt, auf drei Stellen | *p* = .013 | *p* < .05 |
+| sehr kleine p-Werte als Schranke | *p* < .001 | *p* = .000 |
+| Teststatistiken und Effekte auf zwei Stellen | *t* = -2.67, *d* = -0.97 | *t* mit sechs Nachkommastellen |
+| Freiheitsgrade in Klammern | *t*(24.38), *F*(2, 42) | t = 2.67, df = 24.38 |
+| Konfidenzintervall in eckigen Klammern | 95% KI [0.05, 0.36] | (0.05-0.36) |
+
+In deutschsprachigen Texten wird oft das Dezimalkomma verwendet. Wichtig ist
+nicht, welche Variante gewählt wird, sondern dass sie im ganzen Text einheitlich
+ist und zu den Vorgaben der Zeitschrift oder Institution passt.
+
+### Muster für häufige Verfahren
+
+| Verfahren | Muster |
+|---|---|
+| t-Test | *t*(df) = t, *p* = .xxx, *d* = x.xx, 95% KI [u, o] |
+| ANOVA | *F*(df1, df2) = F, *p* = .xxx, η² = .xx |
+| Chi-Quadrat | χ²(df, *N* = n) = x.xx, *p* = .xxx, *V* = .xx |
+| Korrelation | *r*(df) = .xx, *p* = .xxx, 95% KI [.u, .o] |
+| Regression, Koeffizient | *b* = x.xx, *SE* = x.xx, *t*(df) = x.xx, *p* = .xxx |
+| Regression, Modell | *R*² = .xx, *F*(df1, df2) = x.xx, *p* = .xxx |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: p-Werte formatieren
+
+#### Frage und Datenlage
+
+Fünf p-Werte aus Auswertungen sollen im APA-Stil erscheinen: 0.0133, 0.0004,
+0.049999, 0.5 und 0.05.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-apa-r
+werte <- c(0.0133, 0.0004, 0.049999, 0.5, 0.05)
+data.frame(p = werte, apa = sapply(werte, p_apa))
+```
+
+##### Python
+
+```{python}
+#| label: b1-apa-py
+for p in [0.0133, 0.0004, 0.049999, 0.5, 0.05]:
+    print(f"{p:<10} {p_apa(p)}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Eingabe | Ausgabe | Regel |
+|---|---|---|
+| 0.0133 | `p = .013` | drei Stellen, ohne führende Null |
+| 0.0004 | `p < .001` | unter .001 als Schranke |
+| 0.049999 | `p = .050` | gerundet; der Wert liegt knapp unter .05, gerundet sieht er aus wie die Grenze |
+| 0.5 | `p = .500` | Nullen werden aufgefüllt |
+
+#### Interpretation
+
+Der dritte Fall zeigt, warum exakte p-Werte besser sind als „signifikant ja oder
+nein": .050 gerundet ist praktisch dieselbe Evidenz wie .0500001. Wer an einer
+harten Grenze entscheidet, macht aus einer kontinuierlichen Grösse eine
+Schwarz-Weiss-Aussage, siehe [Hypothesentests: Grundlagen](../statistik/inferenz/hypothesentests-grundlagen.qmd).
+
+### Beispiel 2: Der Satz entsteht aus dem Code
+
+#### Frage und Datenlage
+
+Der Welch-Test aus [t-Test für zwei Stichproben](../statistik/tests/t-test-zwei-stichproben.qmd)
+soll als vollständiger Ergebnissatz berichtet werden, und zwar so, dass sich der
+Satz bei neuen Daten von selbst anpasst.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-apa-r
+a <- c(11.86, 12.24, 12.02, 11.95, 12.31, 12.10, 11.78, 12.18,
+       12.05, 11.90, 12.27, 11.99, 12.14, 11.83, 12.08)
+b <- c(12.34, 11.97, 12.51, 12.20, 11.88, 12.42, 12.09, 12.67,
+       12.26, 11.94, 12.45, 12.13, 12.30, 12.01, 12.58)
+
+test <- t.test(a, b)
+d <- (mean(a) - mean(b)) / sqrt((var(a) + var(b)) / 2)
+
+round(c(m_a = mean(a), sd_a = sd(a), m_b = mean(b), sd_b = sd(b),
+        differenz = mean(b) - mean(a)), 2)
+
+sprintf("t(%.2f) = %.2f, %s, d = %.2f, 95%% KI [%.2f, %.2f]",
+        test$parameter, test$statistic, p_apa(test$p.value), d,
+        test$conf.int[1], test$conf.int[2])
+```
+
+##### Python
+
+```{python}
+#| label: b2-apa-py
+a = np.array([11.86, 12.24, 12.02, 11.95, 12.31, 12.10, 11.78, 12.18,
+              12.05, 11.90, 12.27, 11.99, 12.14, 11.83, 12.08])
+b = np.array([12.34, 11.97, 12.51, 12.20, 11.88, 12.42, 12.09, 12.67,
+              12.26, 11.94, 12.45, 12.13, 12.30, 12.01, 12.58])
+
+test = stats.ttest_ind(a, b, equal_var=False)
+d = (a.mean() - b.mean()) / np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2)
+ki = test.confidence_interval()
+
+print("M_A:", round(a.mean(), 2), " SD_A:", round(a.std(ddof=1), 2),
+      " M_B:", round(b.mean(), 2), " SD_B:", round(b.std(ddof=1), 2),
+      " Differenz:", round(b.mean() - a.mean(), 2))
+
+print(f"t({test.df:.2f}) = {test.statistic:.2f}, {p_apa(test.pvalue)}, "
+      f"d = {d:.2f}, 95% KI [{ki.low:.2f}, {ki.high:.2f}]")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Teil | Wert | Wie er entsteht |
+|---|---|---|
+| Freiheitsgrade | 24.38 | Welch, deshalb keine ganze Zahl |
+| t | -2.67 | Vorzeichen, weil A minus B gerechnet wird |
+| p | `p = .013` | über die Formatfunktion |
+| d | -0.97 | Differenz durch die gemittelte Standardabweichung |
+| Intervall | [-0.36, -0.05] | Differenz A minus B in Millimetern |
+
+#### Interpretation und Ergebnissatz
+
+In einem Quarto-Bericht steht dieser Ausdruck nicht in einem sichtbaren Chunk,
+sondern als Inline-Code mitten im Satz. Ändern sich die Daten, ändert sich der
+Satz beim nächsten Rendern mit, siehe
+[Reproduzierbarkeit](../programmierung/reproduzierbarkeit.qmd) und
+[Berichtsvorlage](berichtsvorlage.qmd).
+
+> Maschine A fertigte im Mittel dünnere Teile als Maschine B (*M* = 12.05 mm,
+> *SD* = 0.16, gegenüber *M* = 12.25 mm, *SD* = 0.25; je *n* = 15), *t*(24.38) =
+> -2.67, *p* = .013, *d* = -0.97, 95% KI [-0.36, -0.05].
+
+::::
+
+## Was nicht in den Bericht gehört
+
+- **Nur Sternchen oder „signifikant"** ohne Zahlen. Der Leser kann nichts prüfen.
+- **„Der Effekt war hochsignifikant"** als Grössenaussage. Ein kleiner p-Wert
+  sagt nichts über die Grösse, siehe [Effektstärken](../statistik/inferenz/effektstaerken.qmd).
+- **„Es gibt keinen Unterschied"** nach einem nicht signifikanten Test. Richtig
+  ist: Ein Unterschied liess sich nicht nachweisen; dazu das Intervall.
+- **Ungerundete Softwareausgabe** wie `t = -2.669121`. Mehr Stellen täuschen eine
+  Genauigkeit vor, die die Daten nicht haben.
+- **Tests, die nachträglich ausgewählt wurden**, ohne das zu sagen, siehe
+  [multiples Testen](../statistik/inferenz/multiples-testen.qmd).
+
+## Verständnisfragen
+
+::: {.quiz}
+Welche Schreibweise folgt dem APA-Stil?
+
+- [x] *r*(48) = .32, *p* = .024 ~ Richtig. Korrelation und p-Wert können nicht
+      über 1 steigen und stehen deshalb ohne führende Null, beide exakt.
+- [ ] Dieselben Werte mit führender Null bei r und nur *p* < .05 ~ Die Null
+      gehört weg, und der p-Wert ist nicht exakt angegeben.
+- [ ] *r*(48) = .32 mit Sternchen statt p-Wert ~ Sternchen ersetzen keine
+      Angabe.
+:::
+
+::: {.quiz}
+Ein Test ergibt p = .38. Welcher Satz ist korrekt?
+
+- [x] Ein Unterschied liess sich nicht nachweisen, Differenz 1.2 Punkte, 95% KI
+      [-1.5, 3.9] ~ Richtig. Das Intervall zeigt, welche Unterschiede mit den
+      Daten vereinbar bleiben, auch recht grosse.
+- [ ] Die Gruppen unterscheiden sich nicht ~ Das behauptet Gleichheit, die ein
+      nicht signifikanter Test nicht belegen kann.
+- [ ] Es gab einen nicht signifikanten Trend ~ Ein Trend ist bei p = .38 keine
+      sinnvolle Beschreibung.
+:::
+
+::: {.quiz}
+Warum sollte ein Ergebnissatz in einem Bericht mit Inline-Code statt mit
+abgetippten Zahlen geschrieben werden?
+
+- [x] Bei neuen oder korrigierten Daten bleibt der Satz automatisch richtig ~
+      Richtig. Abgetippte Zahlen veralten still, sobald sich die Daten ändern.
+- [ ] Inline-Code rechnet genauer ~ Die Rechnung ist dieselbe; der Unterschied
+      ist, dass sie beim Rendern wiederholt wird.
+- [ ] APA verlangt Inline-Code ~ Der Stil regelt die Darstellung, nicht das
+      Werkzeug.
+:::
+
+## Verlinkte Ressourcen
+
+- [APA Style: Numbers and Statistics](https://apastyle.apa.org/instructional-aids/numbers-statistics-guide.pdf)
+- [APA Style: Statistical Reporting](https://apastyle.apa.org/style-grammar-guidelines/tables-figures/sample-tables)
+- [report: automatische Ergebnissätze in R](https://easystats.github.io/report/)

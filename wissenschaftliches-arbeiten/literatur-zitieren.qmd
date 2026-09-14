@@ -1,0 +1,189 @@
+---
+title: "Literatur verwalten und zitieren"
+description: "Quellen mit Zotero sammeln, als BibTeX exportieren und in Quarto zitieren, mit Literaturverzeichnis und Zitierstil."
+categories: ["Kommunikation", "Tooling", "Reproduzierbarkeit"]
+seitentyp: werkzeug
+stand: entwurf
+order: 20
+bibliography: literatur.bib
+---
+
+## Kernideen
+
+- Quellen gehören **einmal** in eine Literaturverwaltung, nicht in jedes Dokument einzeln
+- **Zotero** sammelt Quellen aus dem Browser, speichert PDFs und exportiert als BibTeX
+- Jede Quelle hat einen **Zitierschlüssel**, etwa `wickham2014`; im Text steht nur der Schlüssel
+- Quarto setzt aus den Schlüsseln die **Zitate und das Literaturverzeichnis** zusammen
+- Der **Zitierstil** (APA, Harvard, IEEE) ist eine austauschbare Datei, kein Handwerk
+- Zitiert wird die **Primärquelle**, die man gelesen hat; nicht das Werkzeug, das sie gefunden hat
+
+## Erklärung
+
+::: {.note-box}
+Diese Seite zitiert tatsächlich: Im Frontmatter steht
+`bibliography: literatur.bib`, und die Zitate unten erzeugt Quarto beim Rendern
+aus dieser Datei. Das Literaturverzeichnis steht am Ende der Seite. Wo man
+Quellen findet, steht in der [Linkliste](../links.qmd) unter „Recherche und
+Literatur".
+:::
+
+### Der Weg einer Quelle
+
+| Schritt | Werkzeug | Was passiert |
+|---|---|---|
+| Finden | Suchmaschinen, Datenbanken, siehe Linkliste | Artikel, Buch oder Datensatz identifiziert |
+| Erfassen | Zotero Connector im Browser | Metadaten und, falls zugänglich, PDF landen in Zotero |
+| Prüfen | Zotero | Autorinnen, Jahr, DOI kontrollieren; automatische Erfassung ist oft unvollständig |
+| Exportieren | Better BibTeX für Zotero | `.bib`-Datei mit stabilen Zitierschlüsseln, bei Änderungen automatisch aktualisiert |
+| Zitieren | Quarto | `[@schluessel]` im Text |
+| Verzeichnis | Quarto mit CSL-Stil | Liste am Ende, im gewählten Stil |
+
+### Zitieren in Quarto
+
+| Schreibweise im Text | Ergebnis |
+|---|---|
+| `[@wickham2014]` | Zitat in Klammern |
+| `@wickham2014` | Autor im Satz, Jahr in Klammern |
+| `[@wickham2014, S. 5]` | mit Seitenangabe |
+| `[@cohen1988; @wasserstein2016]` | mehrere Quellen |
+| `[-@cohen1988]` | nur das Jahr, wenn der Name schon im Satz steht |
+
+So sieht das gerendert aus. Das Konzept ordentlicher Tabellen geht auf
+@wickham2014 zurück. Die üblichen Anhaltspunkte für kleine, mittlere und grosse
+Effekte stammen von Cohen [-@cohen1988], der selbst davor warnte, sie
+mechanisch anzuwenden. Zur Deutung von p-Werten gibt es eine Stellungnahme der
+amerikanischen Statistikgesellschaft [@wasserstein2016].
+
+### Die Datei `literatur.bib`
+
+Ein Eintrag im BibTeX-Format, wie ihn Better BibTeX exportiert:
+
+```bibtex
+@article{wickham2014,
+  author  = {Wickham, Hadley},
+  title   = {Tidy Data},
+  journal = {Journal of Statistical Software},
+  year    = {2014},
+  volume  = {59},
+  number  = {10},
+  pages   = {1--23},
+  doi     = {10.18637/jss.v059.i10}
+}
+```
+
+| Feld | Hinweis |
+|---|---|
+| Schlüssel `wickham2014` | stabil halten; ändert er sich, brechen alle Zitate |
+| `author` | Nachname, Vorname; mehrere mit `and` getrennt |
+| `title` | Gross geschriebene Eigennamen in `{}` schützen, sonst macht der Stil sie klein |
+| `doi` | wo vorhanden immer angeben, er macht die Quelle eindeutig auffindbar |
+
+### Zitierstil wählen
+
+Ohne Angabe verwendet Quarto einen Autor-Jahr-Stil. Ein anderer Stil ist eine
+CSL-Datei, die neben dem Dokument liegt:
+
+```yaml
+bibliography: literatur.bib
+csl: apa.csl
+```
+
+Die Stildateien für APA, Harvard, IEEE und über zehntausend Zeitschriften
+stehen im offiziellen CSL-Verzeichnis. Institutionen geben oft einen Stil vor;
+dann wird genau dieser eingebunden, statt das Verzeichnis von Hand anzupassen.
+
+### Zotero einrichten
+
+1. Zotero und den Zotero Connector für den Browser installieren.
+2. Die Erweiterung **Better BibTeX** installieren.
+3. In Better BibTeX das Muster für Zitierschlüssel festlegen, etwa
+   `auth.lower + year`.
+4. Eine Sammlung für das Projekt anlegen, Rechtsklick, *Export Collection*,
+   Format *Better BibLaTeX* oder *Better BibTeX*, **Keep updated** anhaken.
+5. Die exportierte Datei in den Projektordner legen und im Frontmatter angeben.
+
+Mit *Keep updated* schreibt Zotero die Datei bei jeder Änderung neu. Die
+Literatur bleibt so an einer Stelle gepflegt.
+
+## Typische Aufgaben
+
+**Nur zitierte Quellen im Verzeichnis, eine zusätzliche aufnehmen**
+
+```yaml
+nocite: |
+  @cohen1988
+```
+
+**Verzeichnis an eine bestimmte Stelle setzen**
+
+```markdown
+## Literatur
+
+::: {#refs}
+:::
+```
+
+**Einen Eintrag aus einer DOI erzeugen**
+
+In Zotero auf den Zauberstab *Add Item by Identifier* klicken und die DOI
+einfügen. Metadaten danach prüfen.
+
+**Doppelte Einträge finden**
+
+In Zotero unter *Duplicate Items*; zusammenführen, bevor exportiert wird,
+sonst entstehen zwei Schlüssel für dieselbe Quelle.
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein Titel erscheint im Literaturverzeichnis als „The asa statement on p-values",
+obwohl in Zotero „ASA" steht. Was hilft?
+
+- [x] Das Wort in der `.bib`-Datei mit geschweiften Klammern schützen:
+      `{ASA}` ~ Richtig. Viele Stile setzen Titel in Satzschreibung und machen
+      alles klein, was nicht geschützt ist. Better BibTeX kann das beim Export
+      automatisch tun.
+- [ ] Einen anderen Zitierstil wählen ~ Das verschiebt das Problem nur, sobald
+      der vorgegebene Stil wieder verlangt wird.
+- [ ] Den Titel in Grossbuchstaben erfassen ~ Dann würde der ganze Titel falsch
+      erscheinen.
+:::
+
+::: {.quiz}
+Ein Sprachmodell hat eine Studie zusammengefasst und eine Quelle genannt. Was
+wird zitiert?
+
+- [x] Die Studie selbst, nachdem man sie geöffnet und die Aussage darin geprüft
+      hat ~ Richtig. Das Werkzeug, das die Quelle gefunden hat, ist keine
+      Quelle; und genannte Quellen können erfunden sein, siehe
+      [Modelle und ihre Grenzen](../ki/modelle-und-grenzen.qmd).
+- [ ] Das Sprachmodell, weil die Zusammenfassung von dort stammt ~ Zitiert wird,
+      worauf sich die Aussage stützt, und das ist die Studie.
+- [ ] Beides ohne Prüfung ~ Eine ungeprüfte Quellenangabe ist das Risiko, nicht
+      die Lösung.
+:::
+
+::: {.quiz}
+Warum ist *Keep updated* beim Export aus Zotero sinnvoll?
+
+- [x] Änderungen in Zotero landen automatisch in der `.bib`-Datei des Projekts ~
+      Richtig. Es gibt nur eine gepflegte Stelle, und Korrekturen gehen nicht
+      verloren.
+- [ ] Zotero lädt dann automatisch neue Literatur zum Thema ~ Zotero sucht keine
+      Literatur, es verwaltet, was man hinzufügt.
+- [ ] Ohne diese Option funktionieren Zitate in Quarto nicht ~ Sie funktionieren
+      mit jeder `.bib`-Datei, auch einer von Hand geschriebenen.
+:::
+
+## Verlinkte Ressourcen
+
+- [Quarto: Citations](https://quarto.org/docs/authoring/citations.html)
+- [Zotero](https://www.zotero.org/)
+- [Better BibTeX für Zotero](https://retorque.re/zotero-better-bibtex/)
+- [Zotero Style Repository](https://www.zotero.org/styles)
+- [Citation Style Language](https://citationstyles.org/)
+
+## Literatur
+
+::: {#refs}
+:::

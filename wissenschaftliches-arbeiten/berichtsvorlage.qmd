@@ -1,0 +1,230 @@
+---
+title: "Berichtsvorlage"
+description: "Aufbau eines reproduzierbaren Berichts in Quarto: Ordner, Kopf, Gliederung und Zahlen im Text, die aus dem Code kommen."
+categories: ["Kommunikation", "Reproduzierbarkeit", "Tooling", "R"]
+seitentyp: werkzeug
+stand: entwurf
+order: 30
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+dicke_a <- c(11.86, 12.24, 12.02, 11.95, 12.31, 12.10, 11.78, 12.18,
+             12.05, 11.90, 12.27, 11.99, 12.14, 11.83, 12.08)
+dicke_b <- c(12.34, 11.97, 12.51, 12.20, 11.88, 12.42, 12.09, 12.67,
+             12.26, 11.94, 12.45, 12.13, 12.30, 12.01, 12.58)
+```
+
+## Kernideen
+
+- Ein Bericht ist **ein Projekt**: Daten, Code und Text in einem Ordner mit fester Struktur
+- **Rohdaten werden nie verändert**; bereinigte Daten entstehen aus einem Skript
+- Jede Zahl im Text kommt **aus einer Rechnung im Dokument**, nicht aus der Zwischenablage
+- Die Gliederung folgt der Frage: Fragestellung, Daten, Methode, Ergebnisse, Einordnung
+- Der Bericht muss **von einem leeren Zustand aus** fehlerfrei rendern
+- Umgebung und Versionen werden festgehalten, damit der Bericht in einem Jahr noch läuft
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Quarto](../werkzeuge/quarto.qmd) für das Werkzeug,
+[Reproduzierbarkeit](../programmierung/reproduzierbarkeit.qmd) für die Gründe,
+[Ergebnisse berichten](ergebnisse-berichten.qmd) für die Sätze und
+[Literatur verwalten und zitieren](literatur-zitieren.qmd) für die Quellen. Die
+Zahlen im Abschnitt „Zahlen im Text" unten entstehen beim Rendern dieser Seite.
+:::
+
+### Ordnerstruktur
+
+```
+bericht-dicke/
+├── bericht-dicke.Rproj        (oder ein Ordner in Positron, VS Code)
+├── _quarto.yml                 gemeinsame Einstellungen
+├── bericht.qmd                 der Bericht
+├── daten/
+│   ├── roh/                    unverändert, wie geliefert
+│   └── bereinigt/              entsteht aus skripte/01-bereinigen.R
+├── skripte/
+│   └── 01-bereinigen.R
+├── abbildungen/                wird beim Rendern erzeugt
+├── literatur.bib
+├── renv.lock                   oder requirements.txt
+└── README.md                   wie man den Bericht erzeugt
+```
+
+| Ordner | Regel |
+|---|---|
+| `daten/roh/` | nur lesen; nie von Hand ändern, nie überschreiben |
+| `daten/bereinigt/` | kann jederzeit gelöscht und neu erzeugt werden |
+| `skripte/` | nummeriert in der Reihenfolge, in der sie laufen |
+| `abbildungen/` | nicht ins Repository, entsteht neu |
+
+### Der Kopf des Berichts
+
+````{verbatim}
+---
+title: "Dicke der Blechteile: Maschine A gegen B"
+author: "Name"
+date: today
+lang: de
+format:
+  html:
+    toc: true
+    embed-resources: true
+  docx: default
+execute:
+  echo: false
+  warning: false
+bibliography: literatur.bib
+---
+````
+
+| Einstellung | Wozu |
+|---|---|
+| `date: today` | Datum des Renderns, nicht des Schreibens |
+| `lang: de` | deutsche Beschriftungen wie „Abbildung" und „Tabelle" |
+| `embed-resources: true` | eine einzige HTML-Datei, die sich per E-Mail verschicken lässt |
+| `echo: false` | Code ausblenden; im Bericht interessieren die Ergebnisse |
+| `bibliography` | Quellen, siehe [Literatur verwalten und zitieren](literatur-zitieren.qmd) |
+
+### Gliederung
+
+| Abschnitt | Inhalt | Umfang |
+|---|---|---|
+| Zusammenfassung | Frage, wichtigstes Ergebnis mit Zahl, Konsequenz | drei bis fünf Sätze |
+| Fragestellung | was entschieden werden soll, welcher Unterschied relevant wäre | kurz |
+| Daten | Herkunft, Umfang, Bereinigung, Ausschlüsse mit Anzahl | eine Tabelle genügt oft |
+| Methode | Verfahren, Voraussetzungen, Software und Versionen | knapp, mit Verweisen |
+| Ergebnisse | Grafik, Ergebnissätze, Tabellen | Hauptteil |
+| Einordnung | was folgt, was nicht, Grenzen der Auswertung | ehrlich |
+| Anhang | Sitzungsinformation, zusätzliche Grafiken | nach Bedarf |
+
+### Zahlen im Text
+
+In einem R-Chunk wird gerechnet, im Satz steht Inline-Code. Der Quelltext:
+
+````{verbatim}
+```{r}
+#| label: kennzahlen
+differenz <- mean(dicke_b) - mean(dicke_a)
+test <- t.test(dicke_a, dicke_b)
+```
+
+Maschine B fertigt im Mittel `r round(differenz, 2)` mm dicker
+(95%-KI `r round(-test$conf.int[2], 2)` bis `r round(-test$conf.int[1], 2)` mm).
+````
+
+Und so erscheint es, gerechnet beim Rendern dieser Seite:
+
+```{r}
+#| label: kennzahlen-beispiel
+#| echo: false
+differenz <- mean(dicke_b) - mean(dicke_a)
+test <- t.test(dicke_a, dicke_b)
+```
+
+> Maschine B fertigt im Mittel `r round(differenz, 2)` mm dicker
+> (95%-KI `r round(-test$conf.int[2], 2)` bis `r round(-test$conf.int[1], 2)` mm).
+
+Ändert sich ein Messwert, ändert sich der Satz beim nächsten Rendern. Inline-Code
+in dieser Form gibt es mit der knitr-Engine; mit Jupyter lautet die
+Schreibweise `` `{python} ausdruck` ``.
+
+### Vor dem Abgeben
+
+- [ ] Projekt in einem frischen Zustand rendern: R neu starten oder den Ordner
+      `_freeze` löschen, dann `quarto render`
+- [ ] Jede Zahl in Zusammenfassung und Text stammt aus Inline-Code oder ist
+      gegen die Ausgabe geprüft
+- [ ] Abbildungen haben Titel, Achsenbeschriftung mit Einheit und eine
+      Bildunterschrift
+- [ ] Ausschlüsse und Bereinigungen sind mit Anzahl beschrieben
+- [ ] Sitzungsinformation im Anhang (`sessionInfo()` oder die Paketliste)
+- [ ] Quellen zitiert, Literaturverzeichnis vollständig
+- [ ] Die Frage aus der Einleitung wird in der Zusammenfassung beantwortet
+
+## Typische Aufgaben
+
+**Neues Berichtsprojekt anlegen**
+
+```bash
+quarto create project default bericht-dicke
+```
+
+**Sitzungsinformation im Anhang**
+
+````{verbatim}
+## Anhang: Umgebung
+
+```{r}
+#| echo: true
+sessionInfo()
+```
+````
+
+**Bericht mit verschiedenen Datenständen rendern (Parameter)**
+
+````{verbatim}
+---
+params:
+  monat: "2026-03"
+---
+````
+
+```bash
+quarto render bericht.qmd -P monat:2026-04
+```
+
+**Word-Fassung mit eigener Vorlage**
+
+```yaml
+format:
+  docx:
+    reference-doc: vorlage.docx
+```
+
+## Verständnisfragen
+
+::: {.quiz}
+Eine Kollegin korrigiert zwei Werte direkt in der Rohdatei. Warum ist das ein
+Problem?
+
+- [x] Die Korrektur ist nicht nachvollziehbar und geht bei einer neuen Lieferung
+      der Rohdaten verloren ~ Richtig. Korrekturen gehören in das
+      Bereinigungsskript, mit Kommentar, warum.
+- [ ] Rohdateien lassen sich nicht bearbeiten ~ Technisch lassen sie sich, das
+      ist genau das Risiko.
+- [ ] Quarto liest geänderte Dateien nicht ~ Quarto liest, was da ist; das
+      Problem ist die fehlende Nachvollziehbarkeit.
+:::
+
+::: {.quiz}
+Ein Bericht rendert auf dem eigenen Rechner, bei einer Kollegin bricht er ab.
+Was ist der erste Schritt?
+
+- [x] Selbst in einem frischen Zustand rendern: R neu starten, Freeze löschen ~
+      Richtig. Läuft es dann auch selbst nicht, hing der Erfolg an Objekten
+      oder Dateien, die nur auf dem eigenen Rechner existieren.
+- [ ] Die R-Version der Kollegin anpassen ~ Möglich, aber erst nach der
+      Prüfung, ob der Bericht überhaupt eigenständig läuft.
+- [ ] Den Bericht als PDF schicken ~ Das umgeht das Problem, statt es zu lösen.
+:::
+
+::: {.quiz}
+Warum steht in der Zusammenfassung eine Zahl aus Inline-Code und nicht aus der
+Konsole abgetippt?
+
+- [x] Weil sich die Zusammenfassung sonst nicht mitändert, wenn die Daten sich
+      ändern ~ Richtig. Gerade die Zusammenfassung wird am häufigsten gelesen
+      und am seltensten nachgeführt.
+- [ ] Weil Inline-Code genauer rundet ~ Die Rundung legt man selbst fest.
+- [ ] Weil Word keine Zahlen darstellen kann ~ Das kann es.
+:::
+
+## Verlinkte Ressourcen
+
+- [Quarto: Get Started](https://quarto.org/docs/get-started/)
+- [Quarto: Parameters](https://quarto.org/docs/computations/parameters.html)
+- [What They Forgot to Teach You About R: Projekte](https://rstats.wtf/projects)
+- [The Turing Way: Guide for Reproducible Research](https://book.the-turing-way.org/reproducible-research/reproducible-research)
