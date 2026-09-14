@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Sprachmodelle im Arbeitsalltag: Prompts, Patterns, Grenzen und der Weg zum Kontext.">
+<meta name="description" content="RStudio, Positron und Posit Cloud: Oberfläche, Projekte und die Einstellungen, die man ändern sollte.">
 
-<title>KI – Data Science Notizen</title>
+<title>R-Umgebungen – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -27,6 +27,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -38,8 +73,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../favicon.svg" rel="icon" type="image/svg+xml">
-<script src="../site_libs/quarto-listing/list.min.js"></script>
-<script src="../site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -81,66 +114,8 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Suchen"
   }
 }</script>
-<script>
-
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-seiten .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
-
-    const options = {
-      valueNames: ['listing-title','listing-description','listing-stand',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
-      
-      searchColumns: ["listing-project","listing-lang","listing-website","listing-execute","listing-knitr","listing-format","listing-glossary","listing-engines","listing-language","listing-title","listing-description","listing-categories","listing-seitentyp","listing-stand","listing-order","listing-path","listing-outputHref","listing-author","listing-filename","listing-file-modified","listing-reading-time","listing-word-count"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-seiten'] = new List('listing-seiten', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -340,7 +315,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../ki/index.html">KI</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../werkzeuge/index.html">Werkzeuge</a></li><li class="breadcrumb-item"><a href="../werkzeuge/r-umgebungen.html">R-Umgebungen</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -569,11 +544,11 @@ window.Quarto = {
       <div class="sidebar-item-container"> 
             <a href="../werkzeuge/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Werkzeuge</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
@@ -594,7 +569,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../werkzeuge/r-umgebungen.html" class="sidebar-item-text sidebar-link">
+  <a href="../werkzeuge/r-umgebungen.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">R-Umgebungen</span></a>
   </div>
 </li>
@@ -1019,13 +994,13 @@ window.Quarto = {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../ki/index.html" class="sidebar-item-text sidebar-link active">
+            <a href="../ki/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">KI</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../ki/wann-was.html" class="sidebar-item-text sidebar-link">
@@ -1199,21 +1174,44 @@ window.Quarto = {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Auf dieser Seite</h2>
+   
+  <ul>
+  <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#sprache-und-programm-auseinanderhalten" id="toc-sprache-und-programm-auseinanderhalten" class="nav-link" data-scroll-target="#sprache-und-programm-auseinanderhalten">Sprache und Programm auseinanderhalten</a></li>
+  <li><a href="#drei-programme-im-vergleich" id="toc-drei-programme-im-vergleich" class="nav-link" data-scroll-target="#drei-programme-im-vergleich">Drei Programme im Vergleich</a></li>
+  <li><a href="#die-vier-bereiche-in-rstudio" id="toc-die-vier-bereiche-in-rstudio" class="nav-link" data-scroll-target="#die-vier-bereiche-in-rstudio">Die vier Bereiche in RStudio</a></li>
+  <li><a href="#projekte-statt-setwd" id="toc-projekte-statt-setwd" class="nav-link" data-scroll-target="#projekte-statt-setwd">Projekte statt <code>setwd()</code></a></li>
+  <li><a href="#die-einstellung-die-man-zuerst-ändert" id="toc-die-einstellung-die-man-zuerst-ändert" class="nav-link" data-scroll-target="#die-einstellung-die-man-zuerst-ändert">Die Einstellung, die man zuerst ändert</a></li>
+  <li><a href="#regelmässig-neu-starten" id="toc-regelmässig-neu-starten" class="nav-link" data-scroll-target="#regelmässig-neu-starten">Regelmässig neu starten</a></li>
+  <li><a href="#tastenkürzel-die-sich-lohnen" id="toc-tastenkürzel-die-sich-lohnen" class="nav-link" data-scroll-target="#tastenkürzel-die-sich-lohnen">Tastenkürzel, die sich lohnen</a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
+  <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../werkzeuge/index.html">Werkzeuge</a></li><li class="breadcrumb-item"><a href="../werkzeuge/r-umgebungen.html">R-Umgebungen</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">KI</h1>
-</div>
+<h1 class="title">R-Umgebungen</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">R</div>
+    <div class="quarto-category">Tooling</div>
+    <div class="quarto-category">Reproduzierbarkeit</div>
+  </div>
+  </div>
 
 <div>
   <div class="description">
-    Sprachmodelle im Arbeitsalltag: Prompts, Patterns, Grenzen und der Weg zum Kontext.
+    RStudio, Positron und Posit Cloud: Oberfläche, Projekte und die Einstellungen, die man ändern sollte.
   </div>
 </div>
 
@@ -1230,101 +1228,297 @@ window.Quarto = {
 </header>
 
 
-<p>Sprachmodelle sind in der Datenarbeit ein Werkzeug unter anderen, mit einem eigenen Anwendungsbereich und klaren Grenzen. Sie sind stark beim Formulieren, Strukturieren, Erklären und beim Entwerfen von Code. Sie sind schwach überall dort, wo eine Zahl exakt stimmen muss oder wo Wissen fehlt, das sie nicht haben.</p>
-<p>Der Einstieg ist deshalb nicht ein Katalog von Tricks, sondern die Frage, welche Art von Aufgabe vorliegt: <a href="../ki/wann-was.html">Wann was verwenden</a> ordnet Aufgabenart, Vorgehen und Modellkategorie einander zu und nennt auch die Fälle, in denen kein Sprachmodell die richtige Wahl ist.</p>
-<p>Danach folgen die Werkzeugseiten mit fertigen Prompts. Sie lassen sich über das Symbol oben rechts an jedem Block kopieren; Platzhalter stehen in eckigen Klammern und werden vor dem Absenden ersetzt.</p>
+<div class="placeholder-notice">
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
+</div>
+<section id="kernideen" class="level2">
+<h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>R ist die Sprache, RStudio und Positron sind Programme, in denen man sie schreibt</li>
+<li>Ein Projekt legt das <span class="glossary-term" data-def="Ordner, auf den sich relative Pfade in einer Sitzung beziehen. Steht er durch ein Projekt fest, laufen Skripte unabhängig vom einzelnen Rechner." tabindex="0" data-topic="Programmierung">Arbeitsverzeichnis</span> fest und macht Pfade übertragbar</li>
+<li>Der Arbeitsbereich wird nicht gespeichert; was zählt, steht im Skript</li>
+<li>Regelmässig mit einer frischen R-Sitzung neu starten, sonst hängt das Ergebnis an alten Objekten</li>
+<li>Positron, wenn R und Python gleichermassen gebraucht werden; RStudio, wenn es nur R ist</li>
+<li>Posit Cloud, wenn nichts installiert werden kann oder soll</li>
+</ul>
+</section>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
 <div class="note-box">
-<p>Wer schnell etwas braucht: die <a href="../ki/prompts-datenarbeit.html">Prompts für die Datenarbeit</a> decken den Ablauf eines Datenprojekts ab, von der ersten Sichtung über die Methodenwahl bis zum Ergebnissatz im Bericht.</p>
+<p><strong>Vorwissen:</strong> <a href="../programmierung/r-grundlagen.html">R-Grundlagen</a> für die Sprache selbst und <a href="../programmierung/pakete-umgebungen.html">Pakete und Umgebungen</a> für <code>renv</code>. Die Programme auf dieser Seite laufen im Build nicht; ausgeführt ist nur, was R über seine eigene Sitzung verrät.</p>
 </div>
-<div id="listing-seiten" class="quarto-listing quarto-listing-container-custom">
-<div class="card-grid">
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/wann-was.html">Wann was verwenden</a>
-</h3>
-<p>
-Entscheidungshilfe: welches Vorgehen, welches Pattern und welches Modell für welche Aufgabe.
-</p>
+<section id="sprache-und-programm-auseinanderhalten" class="level3">
+<h3 class="anchored" data-anchor-id="sprache-und-programm-auseinanderhalten">Sprache und Programm auseinanderhalten</h3>
+<p>R wird zweimal installiert, und die Verwechslung ist die häufigste Ursache für Anfangsprobleme. Zuerst kommt <strong>R</strong> selbst von <a href="https://cran.r-project.org">CRAN</a>: der Interpreter, der rechnet. Danach eine <strong>Entwicklungsumgebung</strong> wie RStudio oder Positron, die R nur aufruft. Ohne R startet RStudio zwar, meldet aber, dass es keine R-Installation findet.</p>
+<p>Daraus folgt auch: Eine neue RStudio-Version bringt keine neue R-Version mit. Welche R-Version tatsächlich läuft, sagt R selbst:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(R.version.string, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R version 4.6.1 (2026-06-24) </code></pre>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/prompt-bausteine.html">Bausteine eines Prompts</a>
-</h3>
-<p>
-Rolle, Aufgabe, Kontext, Format und Randbedingungen, mit Vorlage zum Kopieren.
-</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Paketbibliotheken:"</span>, <span class="fu">length</span>(<span class="fu">.libPaths</span>()), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Paketbibliotheken: 2 </code></pre>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-grundlagen.html">Grundlegende Patterns</a>
-</h3>
-<p>
-Persona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-denkfuehrung.html">Denkführende Patterns</a>
-</h3>
-<p>
-Schrittweises Denken, Abstraktion, Zerlegung und Code als Denkwerkzeug.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-pruefung.html">Prüfende Patterns</a>
-</h3>
-<p>
-Antworten gegenprüfen, mehrfach rechnen lassen und gezielt überarbeiten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/prompts-datenarbeit.html">Prompts für die Datenarbeit</a>
-</h3>
-<p>
-Fertige Prompts für Import, Aufbereitung, Analyse, Grafik und Bericht.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/modelle-und-grenzen.html">Modelle und ihre Grenzen</a>
-</h3>
-<p>
-Wie Sprachmodelle antworten, welche Kategorien es gibt und wo sie zuverlässig scheitern.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/context-engineering.html">Vom Prompt zum Kontext</a>
-</h3>
-<p>
-Wenn die Formulierung nicht mehr reicht: Kontext, Wissensanbindung und Agenten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/ki-texte-ueberarbeiten.html">KI-Entwürfe überarbeiten</a>
-</h3>
-<p>
-Typische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/fragen.html">Fragen zu KI</a>
-</h3>
-<p>
-Übergreifende Fragen zu Einordnung, Patterns, Grenzen und Prüfung.
-</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Arbeitsverzeichnis gesetzt:"</span>, <span class="fu">nzchar</span>(<span class="fu">getwd</span>()), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Arbeitsverzeichnis gesetzt: TRUE </code></pre>
 </div>
 </div>
-<div class="listing-no-matching d-none">Keine Treffer</div>
+<p>Diese Angaben stammen vom Rechner, der diese Website baut, nicht von einer RStudio-Installation.</p>
+</section>
+<section id="drei-programme-im-vergleich" class="level3">
+<h3 class="anchored" data-anchor-id="drei-programme-im-vergleich">Drei Programme im Vergleich</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>RStudio</th>
+<th>Positron</th>
+<th>Posit Cloud</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Was</td>
+<td>klassische IDE für R</td>
+<td>IDE auf Basis von VS Code</td>
+<td>RStudio im Browser</td>
+</tr>
+<tr class="even">
+<td>Sprachen</td>
+<td>R, Python nur nebenbei</td>
+<td>R und Python gleichwertig</td>
+<td>R, auch Python und Quarto</td>
+</tr>
+<tr class="odd">
+<td>Installation</td>
+<td>lokal</td>
+<td>lokal</td>
+<td>keine</td>
+</tr>
+<tr class="even">
+<td>Stärke</td>
+<td>ausgereift, sehr viele Anleitungen</td>
+<td>VS-Code-Erweiterungen, ein Werkzeug für beide Sprachen</td>
+<td>läuft überall, gut zum Teilen und Unterrichten</td>
+</tr>
+<tr class="odd">
+<td>Grenze</td>
+<td>für Python umständlich</td>
+<td>jünger, manche RStudio-Funktionen fehlen</td>
+<td>Rechenzeit und Speicher im Gratisangebot knapp</td>
+</tr>
+</tbody>
+</table>
+<p>Alle drei stammen von Posit, der Firma, die früher selbst RStudio hiess.</p>
+</section>
+<section id="die-vier-bereiche-in-rstudio" class="level3">
+<h3 class="anchored" data-anchor-id="die-vier-bereiche-in-rstudio">Die vier Bereiche in RStudio</h3>
+<p>RStudio teilt das Fenster in vier Bereiche. Die Anordnung lässt sich ändern, die Aufgaben bleiben:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Bereich</th>
+<th>Inhalt</th>
+<th>Wozu</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Quelltext (oben links)</td>
+<td>Skripte, Quarto-Dokumente</td>
+<td>Hier wird geschrieben, was bleiben soll</td>
+</tr>
+<tr class="even">
+<td>Konsole (unten links)</td>
+<td>laufende R-Sitzung</td>
+<td>Ausprobieren; nichts davon wird gespeichert</td>
+</tr>
+<tr class="odd">
+<td>Umgebung (oben rechts)</td>
+<td>Objekte der Sitzung, Verlauf</td>
+<td>Nachsehen, was gerade existiert</td>
+</tr>
+<tr class="even">
+<td>Dateien und Ausgabe (unten rechts)</td>
+<td>Dateien, Grafiken, Pakete, Hilfe</td>
+<td>Grafiken ansehen, Hilfe lesen</td>
+</tr>
+</tbody>
+</table>
+<p>Positron hat dieselben Bereiche, angeordnet wie in VS Code: Editor in der Mitte, Konsole darunter, Variablen und Grafiken in einer Seitenleiste.</p>
+</section>
+<section id="projekte-statt-setwd" class="level3">
+<h3 class="anchored" data-anchor-id="projekte-statt-setwd">Projekte statt <code>setwd()</code></h3>
+<p>Ein Skript, das mit <code>setwd("C:/Users/...")</code> beginnt, läuft nur auf genau einem Rechner. Ein <strong>Projekt</strong> löst das: RStudio legt eine Datei <code>name.Rproj</code> in den Ordner und setzt beim Öffnen das <span class="glossary-term" data-def="Ordner, auf den sich relative Pfade in einer Sitzung beziehen. Steht er durch ein Projekt fest, laufen Skripte unabhängig vom einzelnen Rechner." tabindex="0" data-topic="Programmierung">Arbeitsverzeichnis</span> auf diesen Ordner. Pfade werden dann relativ geschrieben, <code>daten/messungen.csv</code> statt eines vollständigen Pfads, und das Projekt läuft nach dem Kopieren auf jedem Rechner.</p>
+<p>Positron kennt keine <code>.Rproj</code>-Datei. Dort ist der geöffnete Ordner das Projekt, mit derselben Wirkung.</p>
+<div class="note-box">
+<p>Für Pfade innerhalb eines Projekts hilft das Paket <code>here</code>: <code>here("daten", "messungen.csv")</code> findet die Datei vom Projektordner aus, auch wenn ein Quarto-Dokument in einem Unterordner liegt und dort ein anderes <span class="glossary-term" data-def="Ordner, auf den sich relative Pfade in einer Sitzung beziehen. Steht er durch ein Projekt fest, laufen Skripte unabhängig vom einzelnen Rechner." tabindex="0" data-topic="Programmierung">Arbeitsverzeichnis</span> gilt.</p>
 </div>
-<p>Die <a href="../ki/fragen.html">Fragen zu diesem Bereich</a> prüfen, ob die Einordnung sitzt: wann ein Pattern hilft, wann Kontext fehlt und wann das Ergebnis ungeprüft nicht verwendbar ist.</p>
+</section>
+<section id="die-einstellung-die-man-zuerst-ändert" class="level3">
+<h3 class="anchored" data-anchor-id="die-einstellung-die-man-zuerst-ändert">Die Einstellung, die man zuerst ändert</h3>
+<p>RStudio fragt in der Grundeinstellung beim Beenden, ob der Arbeitsbereich in <code>.RData</code> gespeichert werden soll, und lädt ihn beim nächsten Start still wieder. Das klingt bequem und ist die Quelle schwer auffindbarer Fehler: Ein Skript scheint zu laufen, weil ein Objekt noch aus einer früheren Sitzung herumliegt, das das Skript selbst nie erzeugt.</p>
+<p>Unter <em>Tools &gt; Global Options &gt; General</em>:</p>
+<ul>
+<li><em>Restore .RData into workspace at startup</em>: ausschalten</li>
+<li><em>Save workspace to .RData on exit</em>: auf <em>Never</em></li>
+</ul>
+<p>Danach gilt: Was nicht im Skript steht, existiert nach dem Neustart nicht mehr. Genau das ist gewollt.</p>
+</section>
+<section id="regelmässig-neu-starten" class="level3">
+<h3 class="anchored" data-anchor-id="regelmässig-neu-starten">Regelmässig neu starten</h3>
+<p><em>Session &gt; Restart R</em> (Strg+Shift+F10) beendet die Sitzung und beginnt leer. Läuft ein Skript danach von oben bis unten durch, ist es <span class="glossary-term" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner." tabindex="0" data-topic="Programmierung">reproduzierbar</span>. Läuft es nur in der alten Sitzung, fehlt irgendwo eine Zeile. Der Test kostet Sekunden und findet diese Fehler, bevor jemand anders sie findet.</p>
+</section>
+<section id="tastenkürzel-die-sich-lohnen" class="level3">
+<h3 class="anchored" data-anchor-id="tastenkürzel-die-sich-lohnen">Tastenkürzel, die sich lohnen</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Kürzel (Windows, Linux)</th>
+<th>Wirkung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Strg+Enter</td>
+<td>aktuelle Zeile oder Auswahl ausführen</td>
+</tr>
+<tr class="even">
+<td>Strg+Shift+Enter</td>
+<td>ganzes Skript ausführen</td>
+</tr>
+<tr class="odd">
+<td>Alt+-</td>
+<td>Zuweisungspfeil <code>&lt;-</code></td>
+</tr>
+<tr class="even">
+<td>Strg+Shift+M</td>
+<td>Pipe-Operator einfügen</td>
+</tr>
+<tr class="odd">
+<td>Strg+Shift+C</td>
+<td>Zeilen aus- und einkommentieren</td>
+</tr>
+<tr class="even">
+<td>Strg+Shift+F10</td>
+<td>R neu starten</td>
+</tr>
+<tr class="odd">
+<td>F1 auf einem Funktionsnamen</td>
+<td>Hilfe öffnen</td>
+</tr>
+</tbody>
+</table>
+<p>Auf dem Mac steht Cmd statt Strg. Welche <span class="glossary-term" data-def="Programmierung: Operator, der das Ergebnis links als erstes Argument an die Funktion rechts weitergibt, in R geschrieben als |>. Er lässt eine Verarbeitungskette in der Reihenfolge lesen, in der sie gedacht wird.  ·  Werkzeuge: Verbindung zweier Programme in der Shell, bei der die Ausgabe des einen zur Eingabe des nächsten wird. Damit entstehen aus kleinen Werkzeugen ganze Verarbeitungsketten." tabindex="0" data-topic="Programmierung, Werkzeuge">Pipe</span> Strg+Shift+M einfügt, legt <em>Global Options &gt; Code &gt; Use native <span class="glossary-term" data-def="Programmierung: Operator, der das Ergebnis links als erstes Argument an die Funktion rechts weitergibt, in R geschrieben als |>. Er lässt eine Verarbeitungskette in der Reihenfolge lesen, in der sie gedacht wird.  ·  Werkzeuge: Verbindung zweier Programme in der Shell, bei der die Ausgabe des einen zur Eingabe des nächsten wird. Damit entstehen aus kleinen Werkzeugen ganze Verarbeitungsketten." tabindex="0" data-topic="Programmierung, Werkzeuge">pipe</span> operator</em> fest.</p>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Skript läuft in RStudio fehlerfrei. Nach <em>Restart R</em> bricht es mit „Objekt nicht gefunden” ab. Was ist passiert?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Das Objekt stammte aus einer früheren Sitzung, das Skript erzeugt es nicht selbst
+</div>
+<div class="quiz__erklaerung">
+Richtig. Die alte Sitzung hat den Fehler verdeckt. Der Neustart zeigt, dass im Skript eine Zeile fehlt.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Der Neustart hat Pakete deinstalliert
+</div>
+<div class="quiz__erklaerung">
+Pakete bleiben installiert. Sie müssen nur mit <code>library()</code> neu geladen werden, und das steht im Skript.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+RStudio hat das Skript beim Neustart verändert
+</div>
+<div class="quiz__erklaerung">
+Der Neustart betrifft nur die R-Sitzung, nicht die Dateien.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Warum läuft ein Skript mit relativen Pfaden in einem RStudio-Projekt auf einem anderen Rechner, eines mit <code>setwd("C:/Users/...")</code> nicht?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="1">
+Das Projekt setzt das <span class="glossary-term" data-def="Ordner, auf den sich relative Pfade in einer Sitzung beziehen. Steht er durch ein Projekt fest, laufen Skripte unabhängig vom einzelnen Rechner." tabindex="0" data-topic="Programmierung">Arbeitsverzeichnis</span> auf seinen eigenen Ordner, wo immer dieser liegt
+</div>
+<div class="quiz__erklaerung">
+Richtig. Relative Pfade gehen von dort aus und bleiben beim Kopieren gültig.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="2">
+Relative Pfade funktionieren nur unter Windows
+</div>
+<div class="quiz__erklaerung">
+Sie funktionieren auf jedem System; gerade absolute Pfade sind systemabhängig.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" tabindex="0" role="button" data-nummer="3">
+<code>setwd()</code> ist in neuen R-Versionen entfernt
+</div>
+<div class="quiz__erklaerung">
+Die Funktion gibt es weiterhin. Das Problem ist der fest eingetragene Pfad.
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Neues Projekt anlegen</strong></p>
+<p>In RStudio <em>File &gt; New Project &gt; New Directory</em>, in Positron einen leeren Ordner öffnen. Aus der Konsole geht es auch:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>usethis<span class="sc">::</span><span class="fu">create_project</span>(<span class="st">"~/projekte/auswertung"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Projekt mit festen Paketversionen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>renv<span class="sc">::</span><span class="fu">init</span>()       <span class="co"># projekteigene Bibliothek anlegen</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>renv<span class="sc">::</span><span class="fu">snapshot</span>()   <span class="co"># Versionen in renv.lock festhalten</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>renv<span class="sc">::</span><span class="fu">restore</span>()    <span class="co"># auf einem anderen Rechner wiederherstellen</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Mehr dazu unter <a href="../programmierung/pakete-umgebungen.html">Pakete und Umgebungen</a>.</p>
+<p><strong>Prüfen, welche R-Version und welche Pakete laufen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Ein Paket aktualisieren, das gerade geladen ist</strong></p>
+<p>Zuerst R neu starten, dann <code>install.packages("paketname")</code>. Unter Windows schlägt die Installation sonst oft fehl, weil die geladene DLL gesperrt ist.</p>
+<p><strong>Python in RStudio verwenden</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"reticulate"</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>reticulate<span class="sc">::</span><span class="fu">use_virtualenv</span>(<span class="st">"~/projekte/auswertung/.venv"</span>)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Wer regelmässig beide Sprachen braucht, ist mit Positron besser bedient.</p>
+</section>
+<section id="verlinkte-ressourcen" class="level2">
+<h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://docs.posit.co/ide/user/">RStudio User Guide</a>: offizielle Dokumentation der Oberfläche</li>
+<li><a href="https://positron.posit.co">Positron</a>: Dokumentation und Download</li>
+<li><a href="https://docs.posit.co/cloud/">Posit Cloud Guide</a>: Arbeiten im Browser</li>
+<li><a href="https://r4ds.hadley.nz/workflow-scripts.html">R for Data Science, Kapitel Workflow: Projekte</a>: Skripte und Projekte, sehr gut erklärt</li>
+<li><a href="https://rstudio.github.io/cheatsheets/html/rstudio-ide.html">RStudio IDE Cheatsheet</a>: alle Bereiche und Kürzel auf zwei Seiten</li>
+<li><a href="https://rstats.wtf">What They Forgot to Teach You About R</a>: Projekte, Pfade und Arbeitsbereich, genau die Themen dieser Seite</li>
+</ul>
 
 
-
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -1766,9 +1960,42 @@ Typische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 09:09</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 09:07</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 

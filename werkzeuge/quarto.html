@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Sprachmodelle im Arbeitsalltag: Prompts, Patterns, Grenzen und der Weg zum Kontext.">
+<meta name="description" content="Dokumente, Berichte und Websites aus Text und Code: Aufbau, Chunk-Optionen, Formate und Veröffentlichen.">
 
-<title>KI – Data Science Notizen</title>
+<title>Quarto – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -27,6 +27,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -38,8 +73,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../favicon.svg" rel="icon" type="image/svg+xml">
-<script src="../site_libs/quarto-listing/list.min.js"></script>
-<script src="../site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -81,66 +114,8 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Suchen"
   }
 }</script>
-<script>
-
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-seiten .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
-
-    const options = {
-      valueNames: ['listing-title','listing-description','listing-stand',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
-      
-      searchColumns: ["listing-project","listing-lang","listing-website","listing-execute","listing-knitr","listing-format","listing-glossary","listing-engines","listing-language","listing-title","listing-description","listing-categories","listing-seitentyp","listing-stand","listing-order","listing-path","listing-outputHref","listing-author","listing-filename","listing-file-modified","listing-reading-time","listing-word-count"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-seiten'] = new List('listing-seiten', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -340,7 +315,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../ki/index.html">KI</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../werkzeuge/index.html">Werkzeuge</a></li><li class="breadcrumb-item"><a href="../werkzeuge/quarto.html">Quarto</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -569,11 +544,11 @@ window.Quarto = {
       <div class="sidebar-item-container"> 
             <a href="../werkzeuge/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Werkzeuge</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
@@ -606,7 +581,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../werkzeuge/quarto.html" class="sidebar-item-text sidebar-link">
+  <a href="../werkzeuge/quarto.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Quarto</span></a>
   </div>
 </li>
@@ -1019,13 +994,13 @@ window.Quarto = {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../ki/index.html" class="sidebar-item-text sidebar-link active">
+            <a href="../ki/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">KI</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../ki/wann-was.html" class="sidebar-item-text sidebar-link">
@@ -1199,21 +1174,43 @@ window.Quarto = {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Auf dieser Seite</h2>
+   
+  <ul>
+  <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#was-quarto-ist" id="toc-was-quarto-ist" class="nav-link" data-scroll-target="#was-quarto-ist">Was Quarto ist</a></li>
+  <li><a href="#aufbau-eines-dokuments" id="toc-aufbau-eines-dokuments" class="nav-link" data-scroll-target="#aufbau-eines-dokuments">Aufbau eines Dokuments</a></li>
+  <li><a href="#chunk-optionen" id="toc-chunk-optionen" class="nav-link" data-scroll-target="#chunk-optionen">Chunk-Optionen</a></li>
+  <li><a href="#formate" id="toc-formate" class="nav-link" data-scroll-target="#formate">Formate</a></li>
+  <li><a href="#querverweise-hinweise-reiter" id="toc-querverweise-hinweise-reiter" class="nav-link" data-scroll-target="#querverweise-hinweise-reiter">Querverweise, Hinweise, Reiter</a></li>
+  <li><a href="#projekte-websites-und-freeze" id="toc-projekte-websites-und-freeze" class="nav-link" data-scroll-target="#projekte-websites-und-freeze">Projekte, Websites und <code>freeze</code></a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
+  <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../werkzeuge/index.html">Werkzeuge</a></li><li class="breadcrumb-item"><a href="../werkzeuge/quarto.html">Quarto</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">KI</h1>
-</div>
+<h1 class="title">Quarto</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Tooling</div>
+    <div class="quarto-category">Reproduzierbarkeit</div>
+    <div class="quarto-category">Kommunikation</div>
+  </div>
+  </div>
 
 <div>
   <div class="description">
-    Sprachmodelle im Arbeitsalltag: Prompts, Patterns, Grenzen und der Weg zum Kontext.
+    Dokumente, Berichte und Websites aus Text und Code: Aufbau, Chunk-Optionen, Formate und Veröffentlichen.
   </div>
 </div>
 
@@ -1230,101 +1227,342 @@ window.Quarto = {
 </header>
 
 
-<p>Sprachmodelle sind in der Datenarbeit ein Werkzeug unter anderen, mit einem eigenen Anwendungsbereich und klaren Grenzen. Sie sind stark beim Formulieren, Strukturieren, Erklären und beim Entwerfen von Code. Sie sind schwach überall dort, wo eine Zahl exakt stimmen muss oder wo Wissen fehlt, das sie nicht haben.</p>
-<p>Der Einstieg ist deshalb nicht ein Katalog von Tricks, sondern die Frage, welche Art von Aufgabe vorliegt: <a href="../ki/wann-was.html">Wann was verwenden</a> ordnet Aufgabenart, Vorgehen und Modellkategorie einander zu und nennt auch die Fälle, in denen kein Sprachmodell die richtige Wahl ist.</p>
-<p>Danach folgen die Werkzeugseiten mit fertigen Prompts. Sie lassen sich über das Symbol oben rechts an jedem Block kopieren; Platzhalter stehen in eckigen Klammern und werden vor dem Absenden ersetzt.</p>
+<div class="placeholder-notice">
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
+</div>
+<section id="kernideen" class="level2">
+<h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Eine Quelldatei, viele Ausgabeformate: HTML, PDF, Word, Folien, Websites</li>
+<li>Text, Code und Ergebnis stehen in derselben Datei, die Zahlen entstehen beim Rendern</li>
+<li>Oben der YAML-Kopf, darunter Markdown, dazwischen Code-Chunks</li>
+<li>Chunk-Optionen stehen als <code>#|</code>-Zeilen im <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> und steuern, was sichtbar wird</li>
+<li>Querverweise brauchen ein Label mit festem Präfix: <code>fig-</code>, <code>tbl-</code>, <code>sec-</code></li>
+<li><code>freeze</code> spart Rechenzeit, merkt aber nicht, wenn sich nur die Daten ändern</li>
+</ul>
+</section>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
 <div class="note-box">
-<p>Wer schnell etwas braucht: die <a href="../ki/prompts-datenarbeit.html">Prompts für die Datenarbeit</a> decken den Ablauf eines Datenprojekts ab, von der ersten Sichtung über die Methodenwahl bis zum Ergebnissatz im Bericht.</p>
+<p><strong>Vorwissen:</strong> Warum Text und Rechnung in dieselbe Datei gehören, steht unter <a href="../programmierung/reproduzierbarkeit.html">Reproduzierbarkeit</a>. Diese Seite beschreibt das Werkzeug selbst. Sie ist mit <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> gebaut, und die <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunks</span> unten laufen beim Rendern tatsächlich.</p>
 </div>
-<div id="listing-seiten" class="quarto-listing quarto-listing-container-custom">
-<div class="card-grid">
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/wann-was.html">Wann was verwenden</a>
-</h3>
-<p>
-Entscheidungshilfe: welches Vorgehen, welches Pattern und welches Modell für welche Aufgabe.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/prompt-bausteine.html">Bausteine eines Prompts</a>
-</h3>
-<p>
-Rolle, Aufgabe, Kontext, Format und Randbedingungen, mit Vorlage zum Kopieren.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-grundlagen.html">Grundlegende Patterns</a>
-</h3>
-<p>
-Persona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-denkfuehrung.html">Denkführende Patterns</a>
-</h3>
-<p>
-Schrittweises Denken, Abstraktion, Zerlegung und Code als Denkwerkzeug.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-pruefung.html">Prüfende Patterns</a>
-</h3>
-<p>
-Antworten gegenprüfen, mehrfach rechnen lassen und gezielt überarbeiten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/prompts-datenarbeit.html">Prompts für die Datenarbeit</a>
-</h3>
-<p>
-Fertige Prompts für Import, Aufbereitung, Analyse, Grafik und Bericht.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/modelle-und-grenzen.html">Modelle und ihre Grenzen</a>
-</h3>
-<p>
-Wie Sprachmodelle antworten, welche Kategorien es gibt und wo sie zuverlässig scheitern.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/context-engineering.html">Vom Prompt zum Kontext</a>
-</h3>
-<p>
-Wenn die Formulierung nicht mehr reicht: Kontext, Wissensanbindung und Agenten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/ki-texte-ueberarbeiten.html">KI-Entwürfe überarbeiten</a>
-</h3>
-<p>
-Typische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/fragen.html">Fragen zu KI</a>
-</h3>
-<p>
-Übergreifende Fragen zu Einordnung, Patterns, Grenzen und Prüfung.
-</p>
+<section id="was-quarto-ist" class="level3">
+<h3 class="anchored" data-anchor-id="was-quarto-ist">Was Quarto ist</h3>
+<p><span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> ist ein Kommandozeilenprogramm von Posit und der Nachfolger von R Markdown. Es liest eine <code>.qmd</code>-Datei, lässt den Code von einer <strong>Engine</strong> ausführen und übergibt das Ergebnis an Pandoc, das daraus das Zielformat erzeugt. Zwei Engines sind üblich:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Engine</th>
+<th>Wann</th>
+<th>Eigenheit</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>knitr</td>
+<td>sobald ein R-Chunk im Dokument steht</td>
+<td>Python läuft über reticulate in derselben Sitzung mit; Inline-Code mit <code>r</code></td>
+</tr>
+<tr class="even">
+<td>jupyter</td>
+<td>reines Python-Dokument oder <code>.ipynb</code></td>
+<td>Inline-Code in der Form <code>{python}</code></td>
+</tr>
+</tbody>
+</table>
+<p>RStudio, Positron und VS Code rufen <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> nur auf. Installiert wird es einmal von <a href="https://quarto.org">quarto.org</a>, in RStudio ist es bereits dabei.</p>
+</section>
+<section id="aufbau-eines-dokuments" class="level3">
+<h3 class="anchored" data-anchor-id="aufbau-eines-dokuments">Aufbau eines Dokuments</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>title: "Messreihe März"</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>author: "Name"</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>format: html</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>## Ergebnis</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>```{r}</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>#| label: fig-verlauf</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>#| fig-cap: "Verlauf der Messwerte"</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>#| echo: false</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>plot(c(12.1, 14.3, 11.8, 15.0, 13.6), type = "b")</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>```</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>Der Verlauf in @fig-verlauf zeigt keinen Trend.</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Der Kopf zwischen den drei Strichen legt Titel und Format fest. Darunter steht gewöhnliches Markdown. Code-Chunks beginnen mit der Sprache in geschweiften Klammern; die Zeilen mit <code>#|</code> am Anfang sind Optionen für diesen <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span>.</p>
+</section>
+<section id="chunk-optionen" class="level3">
+<h3 class="anchored" data-anchor-id="chunk-optionen">Chunk-Optionen</h3>
+<p>Mit <code>echo: fenced</code> zeigt <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> einen <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> samt seinen Optionen. So sieht der folgende <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> im Quelltext aus, und darunter steht, was er beim Rendern ausgibt:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: optionen-zeigen</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>werte <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">12.1</span>, <span class="fl">14.3</span>, <span class="fl">11.8</span>, <span class="fl">15.0</span>, <span class="fl">13.6</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">mean</span>(werte), <span class="dv">2</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 13.36</code></pre>
 </div>
 </div>
-<div class="listing-no-matching d-none">Keine Treffer</div>
+<p>Die Optionen, die man ständig braucht:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Option</th>
+<th>Wirkung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>label</code></td>
+<td>Name des Chunks; mit <code>fig-</code> oder <code>tbl-</code> davor auch Ziel für Querverweise</td>
+</tr>
+<tr class="even">
+<td><code>echo: false</code></td>
+<td>Code ausblenden, Ergebnis zeigen</td>
+</tr>
+<tr class="odd">
+<td><code>eval: false</code></td>
+<td>Code zeigen, nicht ausführen</td>
+</tr>
+<tr class="even">
+<td><code>include: false</code></td>
+<td>ausführen, aber weder Code noch Ergebnis zeigen, etwa für das Laden von Paketen</td>
+</tr>
+<tr class="odd">
+<td><code>output: false</code></td>
+<td>ausführen, Code zeigen, Ergebnis ausblenden</td>
+</tr>
+<tr class="even">
+<td><code>warning: false</code>, <code>message: false</code></td>
+<td>Warnungen und Paketmeldungen unterdrücken</td>
+</tr>
+<tr class="odd">
+<td><code>fig-cap</code>, <code>fig-width</code>, <code>fig-height</code></td>
+<td>Bildunterschrift und Grösse einer Grafik</td>
+</tr>
+</tbody>
+</table>
+<p>Was für alle <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunks</span> gelten soll, gehört einmal in den Kopf unter <code>execute:</code> statt in jeden <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span>.</p>
+</section>
+<section id="formate" class="level3">
+<h3 class="anchored" data-anchor-id="formate">Formate</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Format</th>
+<th>Kopfzeile</th>
+<th>Voraussetzung</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Webseite</td>
+<td><code>format: html</code></td>
+<td>nichts</td>
+</tr>
+<tr class="even">
+<td>PDF über Typst</td>
+<td><code>format: typst</code></td>
+<td>nichts, Typst ist in Quarto enthalten</td>
+</tr>
+<tr class="odd">
+<td>PDF über LaTeX</td>
+<td><code>format: pdf</code></td>
+<td>eine LaTeX-Installation, am einfachsten <code>quarto install tinytex</code></td>
+</tr>
+<tr class="even">
+<td>Word</td>
+<td><code>format: docx</code></td>
+<td>nichts; Vorlage über <code>reference-doc</code></td>
+</tr>
+<tr class="odd">
+<td>Folien</td>
+<td><code>format: revealjs</code></td>
+<td>nichts, Ergebnis ist eine HTML-Datei</td>
+</tr>
+<tr class="even">
+<td>Dashboard</td>
+<td><code>format: dashboard</code></td>
+<td>nichts</td>
+</tr>
+</tbody>
+</table>
+<p>Mehrere Formate gleichzeitig sind möglich; <code>quarto render bericht.qmd</code> erzeugt dann alle.</p>
+</section>
+<section id="querverweise-hinweise-reiter" class="level3">
+<h3 class="anchored" data-anchor-id="querverweise-hinweise-reiter">Querverweise, Hinweise, Reiter</h3>
+<p>Querverweise funktionieren nur mit dem richtigen Präfix im Label. Ein <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> mit <code>label: verlauf</code> und ein Verweis <code>@verlauf</code> ergeben im Text ein Fragezeichen; richtig ist <code>label: fig-verlauf</code> und <code>@fig-verlauf</code>, was als „Abbildung 1” erscheint. Dasselbe gilt für Tabellen mit <code>tbl-</code> und Abschnitte mit <code>sec-</code>.</p>
+<p>Zwei Bausteine ohne Code:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>Die Werte vor März sind unvollständig.</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>## R</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>Code für R</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>## Python</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>Code für Python</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>:::</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Der erste setzt einen hervorgehobenen Hinweiskasten, der zweite macht aus den Überschriften darin anklickbare Reiter. Diese Sammlung verwendet Reiter für jedes Beispiel in R und Python.</p>
+</section>
+<section id="projekte-websites-und-freeze" class="level3">
+<h3 class="anchored" data-anchor-id="projekte-websites-und-freeze">Projekte, Websites und <code>freeze</code></h3>
+<p>Eine Datei <code>_quarto.yml</code> im Ordner macht aus mehreren Dokumenten ein <strong>Projekt</strong>. Dort stehen gemeinsame Einstellungen, bei einer Website auch Navigation und Seitenleiste. <code>quarto render</code> rendert dann alles, <code>quarto preview</code> startet einen lokalen Server und rendert bei jedem Speichern neu.</p>
+<p>In Projekten mit viel Rechenzeit hilft <code>freeze: auto</code> unter <code>execute:</code>. <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> speichert die Ergebnisse jedes Dokuments im Ordner <code>_freeze</code> und rechnet es nur neu, wenn sich die Quelldatei geändert hat.</p>
+<div class="note-box">
+<p>Genau darin liegt die Falle: Ändert sich nur die eingelesene Datendatei, bleibt das Dokument unverändert, und <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> zeigt die alten Ergebnisse. Nach neuen Daten den passenden Ordner unter <code>_freeze</code> löschen; beim nächsten Rendern wird das Dokument dann neu gerechnet.</p>
 </div>
-<p>Die <a href="../ki/fragen.html">Fragen zu diesem Bereich</a> prüfen, ob die Einordnung sitzt: wann ein Pattern hilft, wann Kontext fehlt und wann das Ergebnis ungeprüft nicht verwendbar ist.</p>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Bericht verweist mit <code>@verlauf</code> auf eine Grafik, deren <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> <code>#| label: verlauf</code> trägt. Im gerenderten Dokument steht statt „Abbildung 1” nur <code>?@verlauf</code>. Was fehlt?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Das Präfix <code>fig-</code> im Label und im Verweis
+</div>
+<div class="quiz__erklaerung">
+Richtig. <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> erkennt am Präfix, dass es sich um eine Abbildung handelt, und nummeriert nur dann. <code>label: fig-verlauf</code> und <code>@fig-verlauf</code> lösen das. Eine Bildunterschrift mit <code>fig-cap</code> gehört dazu.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Der <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> muss <code>echo: true</code> haben
+</div>
+<div class="quiz__erklaerung">
+Ob der Code sichtbar ist, spielt für den Verweis keine Rolle.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Querverweise funktionieren nur im PDF
+</div>
+<div class="quiz__erklaerung">
+Sie funktionieren in allen Formaten.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Website-Projekt nutzt <code>freeze: auto</code>. Die CSV-Datei mit den Daten wurde ersetzt, das Dokument nicht angefasst. Was zeigt die Website nach dem nächsten Rendern?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+Die Ergebnisse mit den alten Daten
+</div>
+<div class="quiz__erklaerung">
+Richtig. <code>freeze: auto</code> rechnet nur neu, wenn sich die <code>.qmd</code>-Datei ändert. Eine Änderung an eingelesenen Dateien bemerkt es nicht. Den Ordner des Dokuments unter <code>_freeze</code> löschen, dann wird neu gerechnet.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+Die neuen Ergebnisse, weil <span class="glossary-term" data-def="Publikationssystem, das Text, Code und dessen Ausgabe in einem Dokument vereint und daraus HTML, PDF oder Folien erzeugt. Nachfolger von R Markdown, sprachunabhängig." data-topic="Programmierung" tabindex="0">Quarto</span> die Datei beim Rendern liest
+</div>
+<div class="quiz__erklaerung">
+Mit Freeze wird der Code gar nicht ausgeführt, also auch nichts gelesen.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+Eine Fehlermeldung
+</div>
+<div class="quiz__erklaerung">
+Es gibt keinen Fehler, das ist gerade das Tückische.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> lädt nur Pakete und setzt Einstellungen. Weder Code noch Ausgabe sollen im Dokument erscheinen, ausgeführt werden muss er trotzdem. Welche Option passt?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<code>include: false</code>
+</div>
+<div class="quiz__erklaerung">
+Richtig. Der <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> läuft, und nichts davon erscheint.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<code>eval: false</code>
+</div>
+<div class="quiz__erklaerung">
+Dann läuft der <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunk</span> nicht, und die Pakete fehlen weiter unten.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+<code>echo: false</code>
+</div>
+<div class="quiz__erklaerung">
+Das blendet nur den Code aus. Meldungen und Ausgaben erschienen weiterhin.
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong>Ein Dokument rendern und laufend ansehen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render bericht.qmd            <span class="co"># einmal rendern</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> preview bericht.qmd           <span class="co"># lokaler Server, rendert bei jedem Speichern</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render bericht.qmd <span class="at">--to</span> docx  <span class="co"># nur ein bestimmtes Format</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>PDF ohne LaTeX</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">format</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">typst</span><span class="kw">:</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">papersize</span><span class="kw">:</span><span class="at"> a4</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Einstellungen für alle <span class="glossary-term" data-def="Abschnitt ausführbaren Codes in einem Quarto- oder R-Markdown-Dokument. Beim Rendern wird er ausgeführt; Ausgabe und Grafiken erscheinen an seiner Stelle." data-topic="Programmierung" tabindex="0">Chunks</span> festlegen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">execute</span><span class="kw">:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">echo</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">warning</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">message</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Neues Website-Projekt anlegen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> create project website notizen</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Website auf GitHub Pages veröffentlichen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> publish gh-pages</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Der Befehl rendert und schreibt das Ergebnis in den Zweig <code>gh-pages</code>, aus dem GitHub Pages die Website ausliefert. Automatisch bei jedem Push geht es mit einer GitHub Action; diese Sammlung wird so gebaut.</p>
+<p><strong>Freeze für ein einzelnes Dokument aufheben</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span> <span class="at">-r</span> _freeze/pfad/zum/dokument</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">quarto</span> render pfad/zum/dokument.qmd</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="verlinkte-ressourcen" class="level2">
+<h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://quarto.org/docs/get-started/">Quarto: Get Started</a>: Installation und erste Schritte mit RStudio, VS Code oder Jupyter</li>
+<li><a href="https://quarto.org/docs/guide/">Quarto Guide</a>: die vollständige Dokumentation</li>
+<li><a href="https://quarto.org/docs/reference/cells/cells-knitr.html">Chunk-Optionen für knitr</a>: alle Optionen nachschlagen</li>
+<li><a href="https://r4ds.hadley.nz/quarto.html">R for Data Science, Kapitel Quarto</a>: Einführung mit Übungen</li>
+<li><a href="https://rstudio.github.io/cheatsheets/html/quarto.html">Quarto Cheatsheet</a>: das Wichtigste auf zwei Seiten</li>
+<li><a href="https://quarto.org/docs/publishing/github-pages.html">Veröffentlichen auf GitHub Pages</a>: mit und ohne GitHub Action</li>
+<li><a href="https://quarto.org/docs/output-formats/typst.html">Typst mit Quarto</a>: PDF ohne LaTeX</li>
+<li><a href="https://quarto.org/docs/gallery/">Quarto Gallery</a>: Beispiele für Berichte, Folien, Bücher und Websites</li>
+<li><a href="https://github.com/mcanouil/awesome-quarto">Awesome Quarto</a>: gesammelte Vorlagen, Erweiterungen und Tutorials</li>
+</ul>
 
 
-
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -1766,9 +2004,42 @@ Typische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 09:09</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 09:07</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 

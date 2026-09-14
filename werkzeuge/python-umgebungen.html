@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="description" content="Sprachmodelle im Arbeitsalltag: Prompts, Patterns, Grenzen und der Weg zum Kontext.">
+<meta name="description" content="Anaconda, Jupyter, VS Code und Colab: welches Python läuft, welcher Kernel rechnet und warum der Import scheitert.">
 
-<title>KI – Data Science Notizen</title>
+<title>Python-Umgebungen – Data Science Notizen</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -27,6 +27,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -38,8 +73,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../favicon.svg" rel="icon" type="image/svg+xml">
-<script src="../site_libs/quarto-listing/list.min.js"></script>
-<script src="../site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -81,66 +114,8 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Suchen"
   }
 }</script>
-<script>
-
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-seiten .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
-
-    const options = {
-      valueNames: ['listing-title','listing-description','listing-stand',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-file-modified-sort'] },{ data: ['listing-reading-time-sort'] },{ data: ['listing-word-count-sort'] }],
-      
-      searchColumns: ["listing-project","listing-lang","listing-website","listing-execute","listing-knitr","listing-format","listing-glossary","listing-engines","listing-language","listing-title","listing-description","listing-categories","listing-seitentyp","listing-stand","listing-order","listing-path","listing-outputHref","listing-author","listing-filename","listing-file-modified","listing-reading-time","listing-word-count"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-seiten'] = new List('listing-seiten', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -340,7 +315,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../ki/index.html">KI</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../werkzeuge/index.html">Werkzeuge</a></li><li class="breadcrumb-item"><a href="../werkzeuge/python-umgebungen.html">Python-Umgebungen</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Seitenleiste umschalten" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -569,11 +544,11 @@ window.Quarto = {
       <div class="sidebar-item-container"> 
             <a href="../werkzeuge/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Werkzeuge</span></a>
-          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../werkzeuge/linux-shell.html" class="sidebar-item-text sidebar-link">
@@ -600,7 +575,7 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../werkzeuge/python-umgebungen.html" class="sidebar-item-text sidebar-link">
+  <a href="../werkzeuge/python-umgebungen.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Python-Umgebungen</span></a>
   </div>
 </li>
@@ -1019,13 +994,13 @@ window.Quarto = {
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../ki/index.html" class="sidebar-item-text sidebar-link active">
+            <a href="../ki/index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">KI</span></a>
-          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="true" aria-label="Abschnitt umschalten">
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-14" role="navigation" aria-expanded="false" aria-label="Abschnitt umschalten">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
-      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 show">  
+      <ul id="quarto-sidebar-section-14" class="collapse list-unstyled sidebar-section depth1 ">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="../ki/wann-was.html" class="sidebar-item-text sidebar-link">
@@ -1199,21 +1174,42 @@ window.Quarto = {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Auf dieser Seite</h2>
+   
+  <ul>
+  <li><a href="#kernideen" id="toc-kernideen" class="nav-link active" data-scroll-target="#kernideen">Kernideen</a></li>
+  <li><a href="#erklärung" id="toc-erklärung" class="nav-link" data-scroll-target="#erklärung">Erklärung</a>
+  <ul class="collapse">
+  <li><a href="#welches-python-läuft-hier" id="toc-welches-python-läuft-hier" class="nav-link" data-scroll-target="#welches-python-läuft-hier">Welches Python läuft hier</a></li>
+  <li><a href="#distributionen" id="toc-distributionen" class="nav-link" data-scroll-target="#distributionen">Distributionen</a></li>
+  <li><a href="#jupyter-notebook-lab-und-kernel" id="toc-jupyter-notebook-lab-und-kernel" class="nav-link" data-scroll-target="#jupyter-notebook-lab-und-kernel">Jupyter: Notebook, Lab und Kernel</a></li>
+  <li><a href="#die-ausführungsreihenfolge" id="toc-die-ausführungsreihenfolge" class="nav-link" data-scroll-target="#die-ausführungsreihenfolge">Die Ausführungsreihenfolge</a></li>
+  <li><a href="#vs-code-und-colab" id="toc-vs-code-und-colab" class="nav-link" data-scroll-target="#vs-code-und-colab">VS Code und Colab</a></li>
+  </ul></li>
+  <li><a href="#typische-aufgaben" id="toc-typische-aufgaben" class="nav-link" data-scroll-target="#typische-aufgaben">Typische Aufgaben</a></li>
+  <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../werkzeuge/index.html">Werkzeuge</a></li><li class="breadcrumb-item"><a href="../werkzeuge/python-umgebungen.html">Python-Umgebungen</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">KI</h1>
-</div>
+<h1 class="title">Python-Umgebungen</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">Python</div>
+    <div class="quarto-category">Tooling</div>
+    <div class="quarto-category">Reproduzierbarkeit</div>
+  </div>
+  </div>
 
 <div>
   <div class="description">
-    Sprachmodelle im Arbeitsalltag: Prompts, Patterns, Grenzen und der Weg zum Kontext.
+    Anaconda, Jupyter, VS Code und Colab: welches Python läuft, welcher Kernel rechnet und warum der Import scheitert.
   </div>
 </div>
 
@@ -1230,101 +1226,218 @@ window.Quarto = {
 </header>
 
 
-<p>Sprachmodelle sind in der Datenarbeit ein Werkzeug unter anderen, mit einem eigenen Anwendungsbereich und klaren Grenzen. Sie sind stark beim Formulieren, Strukturieren, Erklären und beim Entwerfen von Code. Sie sind schwach überall dort, wo eine Zahl exakt stimmen muss oder wo Wissen fehlt, das sie nicht haben.</p>
-<p>Der Einstieg ist deshalb nicht ein Katalog von Tricks, sondern die Frage, welche Art von Aufgabe vorliegt: <a href="../ki/wann-was.html">Wann was verwenden</a> ordnet Aufgabenart, Vorgehen und Modellkategorie einander zu und nennt auch die Fälle, in denen kein Sprachmodell die richtige Wahl ist.</p>
-<p>Danach folgen die Werkzeugseiten mit fertigen Prompts. Sie lassen sich über das Symbol oben rechts an jedem Block kopieren; Platzhalter stehen in eckigen Klammern und werden vor dem Absenden ersetzt.</p>
+<div class="placeholder-notice">
+<p>Diese Seite ist ein Entwurf. Der Inhalt steht, ist aber noch nicht durchgeprüft.</p>
+</div>
+<section id="kernideen" class="level2">
+<h2 class="anchored" data-anchor-id="kernideen">Kernideen</h2>
+<ul>
+<li>Auf einem Rechner liegen oft mehrere Pythons; entscheidend ist, welches gerade läuft</li>
+<li>Anaconda ist eine <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Das, was installiert wird, im Unterschied zum Namen, unter dem importiert wird. Beide können voneinander abweichen, etwa bei scikit-learn und sklearn.">Distribution</span>: Python, conda und viele Pakete in einem Paket</li>
+<li>Ein Notebook rechnet mit seinem Kernel, nicht mit dem Python im Terminal</li>
+<li>Zellen laufen in der Reihenfolge, in der sie ausgeführt werden, nicht in der, in der sie stehen</li>
+<li>Vor dem Weitergeben: Kernel neu starten und alles von oben ausführen</li>
+<li>Colab ist ein Notebook ohne Installation, aber mit flüchtigem Speicher</li>
+</ul>
+</section>
+<section id="erklärung" class="level2">
+<h2 class="anchored" data-anchor-id="erklärung">Erklärung</h2>
 <div class="note-box">
-<p>Wer schnell etwas braucht: die <a href="../ki/prompts-datenarbeit.html">Prompts für die Datenarbeit</a> decken den Ablauf eines Datenprojekts ab, von der ersten Sichtung über die Methodenwahl bis zum Ergebnissatz im Bericht.</p>
+<p><strong>Vorwissen:</strong> <a href="../programmierung/python-grundlagen.html">Python-Grundlagen</a> für die Sprache und <a href="../programmierung/pakete-umgebungen.html">Pakete und Umgebungen</a> für <code>venv</code>, <code>pip</code> und <code>conda</code>. Die Programme auf dieser Seite laufen im Build nicht; ausgeführt ist nur, was Python über sich selbst verrät.</p>
 </div>
-<div id="listing-seiten" class="quarto-listing quarto-listing-container-custom">
-<div class="card-grid">
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/wann-was.html">Wann was verwenden</a>
-</h3>
-<p>
-Entscheidungshilfe: welches Vorgehen, welches Pattern und welches Modell für welche Aufgabe.
-</p>
+<section id="welches-python-läuft-hier" class="level3">
+<h3 class="anchored" data-anchor-id="welches-python-läuft-hier">Welches Python läuft hier</h3>
+<p>Die meisten Probleme mit Python-Umgebungen sind dasselbe Problem: Ein Paket wurde in das eine Python installiert und in einem anderen importiert. Auf einem gewöhnlichen Rechner liegen schnell drei davon, etwa das des Betriebssystems, eines aus Anaconda und eines in einer virtuellen Umgebung.</p>
+<p>Welches gerade läuft, beantwortet Python selbst:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Version:"</span>, sys.version.split()[<span class="dv">0</span>])</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Version: 3.12.14</code></pre>
 </div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/prompt-bausteine.html">Bausteine eines Prompts</a>
-</h3>
-<p>
-Rolle, Aufgabe, Kontext, Format und Randbedingungen, mit Vorlage zum Kopieren.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-grundlagen.html">Grundlegende Patterns</a>
-</h3>
-<p>
-Persona, Rückfragen, Beispiele, Ballast entfernen und Umformulieren, mit fertigen Prompts.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-denkfuehrung.html">Denkführende Patterns</a>
-</h3>
-<p>
-Schrittweises Denken, Abstraktion, Zerlegung und Code als Denkwerkzeug.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/patterns-pruefung.html">Prüfende Patterns</a>
-</h3>
-<p>
-Antworten gegenprüfen, mehrfach rechnen lassen und gezielt überarbeiten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/prompts-datenarbeit.html">Prompts für die Datenarbeit</a>
-</h3>
-<p>
-Fertige Prompts für Import, Aufbereitung, Analyse, Grafik und Bericht.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/modelle-und-grenzen.html">Modelle und ihre Grenzen</a>
-</h3>
-<p>
-Wie Sprachmodelle antworten, welche Kategorien es gibt und wo sie zuverlässig scheitern.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/context-engineering.html">Vom Prompt zum Kontext</a>
-</h3>
-<p>
-Wenn die Formulierung nicht mehr reicht: Kontext, Wissensanbindung und Agenten.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/ki-texte-ueberarbeiten.html">KI-Entwürfe überarbeiten</a>
-</h3>
-<p>
-Typische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.
-</p>
-</div>
-<div class="lesson-card">
-<h3 class="anchored">
-<a href="../ki/fragen.html">Fragen zu KI</a>
-</h3>
-<p>
-Übergreifende Fragen zu Einordnung, Patterns, Grenzen und Prüfung.
-</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"in virtueller Umgebung:"</span>, sys.prefix <span class="op">!=</span> sys.base_prefix)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>in virtueller Umgebung: False</code></pre>
 </div>
 </div>
-<div class="listing-no-matching d-none">Keine Treffer</div>
+<p><code>sys.executable</code> zeigt zusätzlich den vollständigen Pfad zum Interpreter. Er steht hier nicht, weil er vom Rechner abhängt, der diese Website baut. Auf dem eigenen Rechner ist er die erste Zeile, die bei einem Importfehler geprüft wird.</p>
+</section>
+<section id="distributionen" class="level3">
+<h3 class="anchored" data-anchor-id="distributionen">Distributionen</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>python.org</th>
+<th>Anaconda</th>
+<th>Miniconda</th>
+<th>Miniforge</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Enthält</td>
+<td>nur Python und pip</td>
+<td>Python, conda, Navigator, über 300 Pakete</td>
+<td>Python und conda</td>
+<td>Python, conda und mamba</td>
+</tr>
+<tr class="even">
+<td>Grösse</td>
+<td>klein</td>
+<td>mehrere Gigabyte</td>
+<td>klein</td>
+<td>klein</td>
+</tr>
+<tr class="odd">
+<td>Pakete aus</td>
+<td>PyPI</td>
+<td>Anaconda-Kanal</td>
+<td>Anaconda-Kanal</td>
+<td>conda-forge</td>
+</tr>
+<tr class="even">
+<td>Geeignet</td>
+<td>schlanke Projekte mit <code>venv</code></td>
+<td>Einstieg mit Oberfläche, alles sofort da</td>
+<td>conda ohne Ballast</td>
+<td>conda ohne Lizenzfrage</td>
+</tr>
+</tbody>
+</table>
+<p>Anaconda ist bequem, weil pandas, NumPy, Jupyter und Matplotlib nach der Installation sofort da sind. Der Preis ist die Grösse, und für Organisationen ab einer bestimmten Grösse ist der Anaconda-Kanal kostenpflichtig. Miniforge bezieht die Pakete aus dem freien Kanal conda-forge und umgeht das.</p>
+<div class="note-box">
+<p>Eine Regel verhindert die meisten Verwicklungen: <strong>nicht in die Basisumgebung installieren.</strong> Für jedes Projekt eine eigene Umgebung anlegen, mit <code>conda create</code> oder <code>python -m venv</code>. Die Basisumgebung bleibt, wie sie installiert wurde, und lässt sich im Notfall nicht versehentlich zerstören.</p>
 </div>
-<p>Die <a href="../ki/fragen.html">Fragen zu diesem Bereich</a> prüfen, ob die Einordnung sitzt: wann ein Pattern hilft, wann Kontext fehlt und wann das Ergebnis ungeprüft nicht verwendbar ist.</p>
+</section>
+<section id="jupyter-notebook-lab-und-kernel" class="level3">
+<h3 class="anchored" data-anchor-id="jupyter-notebook-lab-und-kernel">Jupyter: Notebook, Lab und Kernel</h3>
+<p>Ein Notebook besteht aus Zellen mit Code oder Text. <strong>JupyterLab</strong> ist die heutige Oberfläche dafür, das klassische <strong>Jupyter Notebook</strong> die ältere, schlankere. Beide öffnen dieselben <code>.ipynb</code>-Dateien.</p>
+<p>Gerechnet wird nicht in der Oberfläche, sondern im <strong>Kernel</strong>, einem laufenden Python-Prozess im Hintergrund. Jupyter selbst kann in einer anderen Umgebung installiert sein als der Kernel, der rechnet. Genau daraus entsteht der klassische Fehler: <code>pip install pandas</code> im Terminal meldet Erfolg, <code>import pandas</code> im Notebook scheitert, weil das Terminal ein anderes Python meint als der Kernel.</p>
+<p>Die sichere Installation aus dem Notebook heraus trifft immer den Kernel:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span>pip install pandas</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="die-ausführungsreihenfolge" class="level3">
+<h3 class="anchored" data-anchor-id="die-ausführungsreihenfolge">Die Ausführungsreihenfolge</h3>
+<p>Die Zahl in eckigen Klammern links neben einer Zelle, etwa <code>[7]</code>, gibt an, als wievielte sie ausgeführt wurde. Ein Notebook, dessen Zahlen nicht von oben nach unten steigen, wurde kreuz und quer ausgeführt, und sein Ergebnis hängt davon ab.</p>
+<p>Ein Beispiel: Zelle 1 setzt <code>x = 10</code>, Zelle 2 rechnet <code>x * 2</code>. Wird danach Zelle 1 auf <code>x = 5</code> geändert, aber nicht neu ausgeführt, zeigt Zelle 2 weiterhin 20. Wer das Notebook später von oben ausführt, bekommt 10.</p>
+<p>Deshalb vor dem Speichern oder Weitergeben: <em>Kernel &gt; Restart Kernel and Run All Cells</em>. Läuft das durch und zeigt dieselben Ergebnisse, ist das Notebook <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eigenschaft einer Auswertung, aus denselben Daten und demselben Code jederzeit dasselbe Ergebnis zu liefern, auch auf einem anderen Rechner.">reproduzierbar</span>.</p>
+</section>
+<section id="vs-code-und-colab" class="level3">
+<h3 class="anchored" data-anchor-id="vs-code-und-colab">VS Code und Colab</h3>
+<p><strong>VS Code</strong> öffnet Skripte und Notebooks gleichermassen, sobald die Erweiterungen <em>Python</em> und <em>Jupyter</em> installiert sind. Unten rechts in der Statusleiste steht, welches Python verwendet wird; ein Klick darauf wählt ein anderes. Das ist die Stelle, an der ein Importfehler meistens gelöst wird.</p>
+<p><strong>Google Colab</strong> ist ein Jupyter-Notebook im Browser, ohne Installation und mit Zugang zu GPUs. Zwei Eigenheiten muss man kennen:</p>
+<ul>
+<li>Die Maschine wird nach einer Zeit ohne Aktivität zurückgesetzt. Installierte Pakete und hochgeladene Dateien sind dann weg; das Notebook selbst bleibt in Google Drive.</li>
+<li>Daten, die bleiben sollen, gehören in Google Drive, eingebunden mit <code>from google.colab import drive; drive.mount("/content/drive")</code>.</li>
+</ul>
+<div class="quiz">
+<div class="quiz__frage">
+<p><code>pip install seaborn</code> im Terminal meldet Erfolg, <code>import seaborn</code> im Notebook scheitert mit <code>ModuleNotFoundError</code>. Was ist die wahrscheinlichste Ursache?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Terminal und Notebook-Kernel verwenden verschiedene Python-Installationen
+</div>
+<div class="quiz__erklaerung">
+Richtig. Das Paket liegt im Python des Terminals, der Kernel rechnet mit einem anderen. <code>%pip install seaborn</code> im Notebook installiert in den Kernel.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Das Notebook muss gespeichert werden, bevor neue Pakete sichtbar sind
+</div>
+<div class="quiz__erklaerung">
+Speichern ändert nichts daran, welches Python rechnet.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+seaborn läuft nur in JupyterLab, nicht im klassischen Notebook
+</div>
+<div class="quiz__erklaerung">
+Beide Oberflächen verwenden denselben Kernel und dieselben Pakete.
+</div>
+</div>
+</div>
+</div>
+<div class="quiz">
+<div class="quiz__frage">
+<p>Ein Notebook zeigt korrekte Ergebnisse. Nach <em>Restart Kernel and Run All Cells</em> bricht es in der Mitte ab. Was sagt das?</p>
+</div>
+<div class="quiz__optionen">
+<div class="quiz__option" data-richtig="1">
+<div class="quiz__antwort" data-nummer="1" role="button" tabindex="0">
+Das Ergebnis hing an einer Ausführungsreihenfolge oder an Objekten, die nicht mehr im Notebook erzeugt werden
+</div>
+<div class="quiz__erklaerung">
+Richtig. Der Neustart zeigt den Zustand, den jede andere Person beim Öffnen vorfindet.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="2" role="button" tabindex="0">
+Der Kernel ist beschädigt und muss neu installiert werden
+</div>
+<div class="quiz__erklaerung">
+Ein Abbruch nach dem Neustart deutet auf das Notebook hin, nicht auf den Kernel.
+</div>
+</div>
+<div class="quiz__option" data-richtig="0">
+<div class="quiz__antwort" data-nummer="3" role="button" tabindex="0">
+Beim Neustart gehen installierte Pakete verloren
+</div>
+<div class="quiz__erklaerung">
+Lokal bleiben Pakete installiert. Nur in Colab verschwinden sie beim Zurücksetzen der Maschine.
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="typische-aufgaben" class="level2">
+<h2 class="anchored" data-anchor-id="typische-aufgaben">Typische Aufgaben</h2>
+<p><strong><span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eigenes Verzeichnis mit eigenem Interpreter und eigenen Paketen, das zu genau einem Projekt gehört. Verhindert, dass zwei Projekte sich über Paketversionen in die Quere kommen.">Projektumgebung</span> mit conda anlegen und in Jupyter verfügbar machen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">conda</span> create <span class="at">-n</span> auswertung python=3.12 pandas matplotlib ipykernel</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">conda</span> activate auswertung</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> ipykernel install <span class="at">--user</span> <span class="at">--name</span> auswertung</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Danach erscheint <code>auswertung</code> in JupyterLab und VS Code als wählbarer Kernel.</p>
+<p><strong>Dasselbe mit <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Eigenes Verzeichnis mit eigenem Interpreter und eigenen Paketen, das zu genau einem Projekt gehört. Verhindert, dass zwei Projekte sich über Paketversionen in die Quere kommen.">venv</span></strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> venv .venv</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="bu">source</span> .venv/bin/activate        <span class="co"># Windows: .venv\Scripts\activate</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install pandas matplotlib ipykernel</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> ipykernel install <span class="at">--user</span> <span class="at">--name</span> auswertung</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Herausfinden, welches Python ein Notebook verwendet</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(sys.executable)</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>JupyterLab starten</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">jupyter</span> lab</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Das <span class="glossary-term" tabindex="0" data-topic="Programmierung" data-def="Ordner, auf den sich relative Pfade in einer Sitzung beziehen. Steht er durch ein Projekt fest, laufen Skripte unabhängig vom einzelnen Rechner.">Arbeitsverzeichnis</span> ist der Ordner, aus dem der Befehl gestartet wurde.</p>
+<p><strong>Registrierte Kernel auflisten und einen entfernen</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">jupyter</span> kernelspec list</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">jupyter</span> kernelspec uninstall auswertung</span></code></pre></div><button title="In die Zwischenablage kopieren" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="verlinkte-ressourcen" class="level2">
+<h2 class="anchored" data-anchor-id="verlinkte-ressourcen">Verlinkte Ressourcen</h2>
+<ul>
+<li><a href="https://docs.jupyter.org">Jupyter-Dokumentation</a>: Notebook, Lab und Kernel im Überblick</li>
+<li><a href="https://jupyterlab.readthedocs.io">JupyterLab-Dokumentation</a>: Oberfläche und Tastenkürzel</li>
+<li><a href="https://www.anaconda.com/docs">Anaconda-Dokumentation</a>: Installation, Navigator und conda</li>
+<li><a href="https://github.com/conda-forge/miniforge">Miniforge</a>: conda mit dem freien Kanal conda-forge</li>
+<li><a href="https://code.visualstudio.com/docs/python/python-tutorial">Python in VS Code</a>: Einrichten und Interpreter wählen</li>
+<li><a href="https://code.visualstudio.com/docs/datascience/jupyter-notebooks">Jupyter-Notebooks in VS Code</a>: Kernel wählen, Variablen ansehen</li>
+<li><a href="https://research.google.com/colaboratory/faq.html">Colab FAQ</a>: Laufzeiten, Grenzen und Speicher</li>
+<li><a href="https://realpython.com/jupyter-notebook-introduction/">Jupyter Notebook: An Introduction</a>: Einführung von Real Python</li>
+</ul>
 
 
-
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -1766,9 +1879,42 @@ Typische Schreibmuster maschineller Entwürfe erkennen und gezielt beseitigen.
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 09:09</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">14. September 2026, 09:07</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
+})();
+</script>
+<script>
+(function () {
+  function auswerten(option, quiz) {
+    var richtig = option.getAttribute("data-richtig") === "1";
+    option.classList.add(richtig ? "is-richtig" : "is-falsch");
+    option.classList.add("is-beantwortet");
+
+    if (richtig) {
+      quiz.classList.add("is-geloest");
+      // Bei richtiger Antwort die uebrigen Erklaerungen mit aufdecken,
+      // damit auch klar wird, warum die anderen nicht stimmen.
+      quiz.querySelectorAll(".quiz__option").forEach(function (o) {
+        o.classList.add("is-beantwortet");
+        if (o !== option) { o.classList.add("is-verworfen"); }
+      });
+    }
+  }
+
+  document.querySelectorAll(".quiz").forEach(function (quiz) {
+    quiz.querySelectorAll(".quiz__antwort").forEach(function (knopf) {
+      var option = knopf.closest(".quiz__option");
+
+      knopf.addEventListener("click", function () { auswerten(option, quiz); });
+      knopf.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          auswerten(option, quiz);
+        }
+      });
+    });
+  });
 })();
 </script>
 
