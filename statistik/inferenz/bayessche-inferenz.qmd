@@ -1,0 +1,394 @@
+---
+title: "Bayessche Inferenz"
+description: "Prior, Likelihood und Posterior: Glaubwürdigkeitsintervalle, der Einfluss des Priors und Wahrscheinlichkeiten für Hypothesen."
+categories: ["Bayes", "Schätzen", "A/B-Testing", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 80
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+# Alle Rechnungen auf dieser Seite sind exakt: Beta-Verteilungen und eine
+# numerische Integration, keine Simulation. R und Python muessen deshalb auf
+# alle gezeigten Stellen uebereinstimmen.
+beta_bericht <- function(a, b) {
+  round(c(a = a, b = b, mittel = a / (a + b), median = qbeta(0.5, a, b),
+          unten = qbeta(0.025, a, b), oben = qbeta(0.975, a, b)), 4)
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+from scipy import stats, integrate
+
+
+def beta_bericht(a, b):
+    d = stats.beta(a, b)
+    return {"a": a, "b": b, "mittel": round(float(d.mean()), 4),
+            "median": round(float(d.median()), 4),
+            "unten": round(float(d.ppf(0.025)), 4), "oben": round(float(d.ppf(0.975)), 4)}
+```
+
+Alle Beispiele rechnen exakt mit Beta-Verteilungen, ohne Simulation. R und
+Python geben deshalb dieselben Zahlen aus.
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie plausibel ist ein Parameterwert, gegeben die Daten und das Vorwissen? |
+| Ergebnis | eine ganze Verteilung für den Parameter, die Posterior |
+| Was die Methode liefert | Posterior-Mittel oder -Median, Glaubwürdigkeitsintervall, Wahrscheinlichkeiten wie P(Anteil > 10 %) |
+| R | Beta-Binomial exakt mit `qbeta()`, `pbeta()`; allgemeine Modelle mit `brms` oder `rstanarm` |
+| Python | `scipy.stats.beta`; allgemeine Modelle mit `PyMC` |
+| Verwandte Seiten | [Schätzen und Konfidenzintervalle](schaetzen-konfidenzintervalle.qmd), [bedingte Wahrscheinlichkeit und Bayes](../wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.qmd), [Hypothesentests: Grundlagen](hypothesentests-grundlagen.qmd) |
+
+## Wann diese Methode, wann nicht
+
+Bayessche Inferenz beantwortet die Frage, die viele eigentlich stellen, wenn
+sie einen p-Wert berechnen: Wie wahrscheinlich ist es, dass der Effekt positiv
+ist? Das kann ein frequentistisches Verfahren nicht, weil dort der Parameter fest
+ist und nur die Daten zufällig sind.
+
+Sie lohnt sich besonders, wenn Vorwissen vorhanden ist und genutzt werden soll,
+wenn Entscheidungen direkt an Wahrscheinlichkeiten hängen („Variante B ist mit
+96 Prozent besser"), und wenn wenige Daten vorliegen, sodass ein vernünftiger
+Prior die Schätzung stabilisiert.
+
+| Situation | Stattdessen oder zusätzlich |
+|---|---|
+| Vorwissen soll ausdrücklich keine Rolle spielen, Regulierung verlangt Fehlerraten | [frequentistische Tests](hypothesentests-grundlagen.qmd) mit festgelegtem Niveau |
+| Das Modell ist komplex (Regression, gemischte Modelle) | dieselbe Logik mit `brms` oder `PyMC`, gerechnet per MCMC |
+| Nur eine Punktschätzung mit Intervall ist gefragt, viele Daten | [Konfidenzintervall](schaetzen-konfidenzintervalle.qmd); bei flachem Prior fast dieselben Zahlen |
+
+## Grundidee und Modell
+
+Der Satz von Bayes auf einen Parameter $\theta$ angewandt:
+
+$$\underbrace{p(\theta \mid \text{Daten})}_{\text{Posterior}} \;\propto\; \underbrace{p(\text{Daten} \mid \theta)}_{\text{Likelihood}} \cdot \underbrace{p(\theta)}_{\text{Prior}}$$
+
+Für einen Anteil (Konversionsrate, Fehlerquote) gibt es eine besonders
+einfache Form. Ist der Prior eine Beta-Verteilung und sind die Daten $k$
+Erfolge in $n$ Versuchen, dann ist auch die Posterior eine Beta-Verteilung:
+
+$$\text{Beta}(a, b) \;\xrightarrow{\;k \text{ von } n\;}\; \text{Beta}(a + k,\; b + n - k)$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $a, b$ des Priors | Vorwissen, gelesen als $a$ frühere Erfolge und $b$ frühere Misserfolge |
+| $\text{Beta}(1, 1)$ | flacher Prior: jeder Anteil zwischen 0 und 1 gleich plausibel |
+| Posterior-Mittel $a/(a+b)$ | Punktschätzung, liegt zwischen Prior-Mittel und beobachtetem Anteil |
+| 95-Prozent-Glaubwürdigkeitsintervall | Bereich, in dem der Parameter **mit 95 Prozent Wahrscheinlichkeit** liegt |
+
+Genau der letzte Satz ist der Unterschied zum
+[Konfidenzintervall](schaetzen-konfidenzintervalle.qmd), das eine Aussage über
+das Verfahren macht, nicht über den Parameter.
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Passendes Datenmodell | hier: unabhängige Versuche mit gleichem Anteil | Erhebungsdesign | Posterior zu schmal | hierarchisches Modell, Gruppen einbeziehen |
+| Prior vor den Daten festgelegt | kein Anpassen des Priors an das gewünschte Ergebnis | Dokumentation | Ergebnis beliebig | Prior begründen und vorab festhalten |
+| Prior-Sensitivität geprüft | Ergebnis hängt nicht nur am Prior | mit flachem und informativem Prior rechnen | Schlussfolgerung nicht belastbar | beide Ergebnisse berichten, Beispiel 2 |
+
+## Output lesen
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| Posterior-Mittel | Punktschätzung | bei schiefer Posterior lieber den Median berichten |
+| Glaubwürdigkeitsintervall | 2.5- und 97.5-Prozent-Quantil der Posterior | darf wörtlich als Wahrscheinlichkeitsaussage gelesen werden |
+| $P(\theta > c)$ | Wahrscheinlichkeit, dass der Parameter eine Schwelle überschreitet | direkt entscheidungsrelevant, kein p-Wert |
+| $P(\theta_B > \theta_A)$ | Wahrscheinlichkeit, dass B besser ist als A | sagt nichts darüber, **wie viel** besser; dafür die Differenz ansehen |
+
+## Interpretationsfallen
+
+- **Der Prior ist keine Meinung, die man frei wählt**, sondern Teil des Modells.
+  Er gehört begründet und im Bericht genannt.
+- **Ein flacher Prior ist nicht „ohne Annahme".** Er sagt, dass ein Anteil von
+  0.95 genauso plausibel ist wie 0.10. Für Konversionsraten ist das oft
+  unrealistisch.
+- **$P(B > A) = 0.96$ heisst nicht, dass B um viel besser ist.** Eine winzige,
+  aber sichere Differenz ergibt dieselbe Wahrscheinlichkeit.
+- **Bei vielen Daten verschwindet der Einfluss des Priors**, bei wenigen Daten
+  dominiert er. Beispiel 2 zeigt beides.
+- **Glaubwürdigkeits- und Konfidenzintervall liegen oft nah beieinander**, sie
+  bedeuten trotzdem Verschiedenes.
+
+## Ergebnis berichten
+
+> Mit einem [flachen / informativen, Beta(a, b)] Prior ergibt sich für
+> [Parameter] ein Posterior-Mittel von [Wert] (95-Prozent-Glaubwürdigkeitsintervall
+> [unten] bis [oben]). Die Wahrscheinlichkeit, dass [Parameter] [Schwelle]
+> überschreitet, beträgt [Wert].
+
+Immer genannt werden: Prior mit Begründung, Datenmodell, Posterior-Kennzahl
+mit Intervall und bei Entscheidungen die relevante Wahrscheinlichkeit.
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt der bayesschen Auswertung |
+|---|---|
+| [Schätzen und Konfidenzintervalle](schaetzen-konfidenzintervalle.qmd) | kein Vorwissen, Fehlerraten über viele Wiederholungen stehen im Vordergrund |
+| [Hypothesentests](hypothesentests-grundlagen.qmd) | Entscheidung mit festgelegter Irrtumswahrscheinlichkeit verlangt |
+| [Bootstrap](bootstrap-resampling.qmd) | Unsicherheit einer beliebigen Kennzahl ohne Verteilungsannahme |
+| [Bedingte Wahrscheinlichkeit und Bayes](../wahrscheinlichkeit/bedingte-wahrscheinlichkeit-bayes.qmd) | der Satz von Bayes für Ereignisse statt für Parameter |
+
+## Beispiele
+
+Jedes Beispiel steht in einem eigenen Reiter.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Eine Konversionsrate
+
+#### Frage und Datenlage
+
+Eine neue Landingpage wurde 120 Mal aufgerufen, 18 Besuche endeten mit einer
+Anmeldung. Wie hoch ist die Anmelderate, und wie wahrscheinlich liegt sie über
+10 Prozent, der Rate der alten Seite? Ausgegangen wird von einem flachen Prior.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-bayes-r
+k <- 18; n <- 120
+beta_bericht(1 + k, 1 + n - k)
+
+# Wahrscheinlichkeit fuer eine Rate ueber 10 Prozent
+round(pbeta(0.10, 1 + k, 1 + n - k, lower.tail = FALSE), 4)
+
+# zum Vergleich: beobachteter Anteil, Wald- und exaktes Konfidenzintervall
+anteil <- k / n
+wald <- anteil + c(-1, 1) * qnorm(0.975) * sqrt(anteil * (1 - anteil) / n)
+round(c(anteil = anteil, wald = wald, exakt = binom.test(k, n)$conf.int), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b1-bayes-py
+from statsmodels.stats.proportion import proportion_confint
+
+k, n = 18, 120
+print(beta_bericht(1 + k, 1 + n - k))
+
+print("P(Rate > 0.10):", round(stats.beta(1 + k, 1 + n - k).sf(0.10), 4))
+
+print("Anteil:", round(k / n, 4),
+      " Wald:", np.round(proportion_confint(k, n, method="normal"), 4),
+      " exakt:", np.round(proportion_confint(k, n, method="beta"), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Posterior | Beta(19, 103) | flacher Prior plus 18 Erfolge und 102 Misserfolge | einfach zu rechnen, weil Beta und Binomial zusammenpassen |
+| `mittel` | 0.1557 | Posterior-Mittel | etwas über dem beobachteten Anteil von 0.15, weil der flache Prior wie ein zusätzlicher Erfolg und Misserfolg wirkt |
+| `median` | 0.1539 | Posterior-Median | liegt unter dem Mittel, die Posterior ist leicht rechtsschief |
+| `unten`, `oben` | 0.0973 bis 0.2249 | 95-Prozent-Glaubwürdigkeitsintervall | Mit 95 Prozent Wahrscheinlichkeit liegt die Rate in diesem Bereich, gegeben Daten und Prior. |
+| P(Rate > 0.10) | 0.9679 | Wahrscheinlichkeit, dass die neue Seite über der alten Rate liegt | direkt die Frage des Auftraggebers; kein p-Wert |
+| Wald-Intervall | 0.0861 bis 0.2139 | frequentistisch, Normalnäherung | symmetrisch um 0.15 und bei kleinen Anteilen zu schmal auf der unteren Seite |
+| exaktes Intervall | 0.0914 bis 0.2267 | frequentistisch, Clopper-Pearson | numerisch nah am Glaubwürdigkeitsintervall, aber anders zu lesen |
+
+#### Interpretation und Ergebnissatz
+
+Das Glaubwürdigkeitsintervall und das exakte Konfidenzintervall liegen fast
+gleich. Der Unterschied liegt nicht in den Zahlen, sondern darin, was man sagen
+darf: Nur beim bayesschen Intervall ist „mit 95 Prozent Wahrscheinlichkeit
+liegt die Rate zwischen 9.7 und 22.5 Prozent" korrekt.
+
+> Mit flachem Prior ergibt sich für die Anmelderate ein Posterior-Mittel von
+> 0.156 (95-Prozent-Glaubwürdigkeitsintervall 0.097 bis 0.225). Die
+> Wahrscheinlichkeit, dass die Rate über 10 Prozent liegt, beträgt 0.97.
+
+### Beispiel 2: Wie stark der Prior wirkt
+
+#### Frage und Datenlage
+
+Aus früheren Kampagnen ist bekannt, dass Anmelderaten meist um 10 Prozent
+liegen. Das lässt sich als Prior Beta(20, 180) ausdrücken: Mittel 0.10, so viel
+Gewicht wie 200 frühere Besuche. Wie verändert dieser Prior das Ergebnis, einmal
+bei wenigen Daten (4 von 20) und einmal bei vielen (180 von 1200)?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-bayes-r
+vergleich <- rbind(
+  flach_wenig = beta_bericht(1 + 4, 1 + 20 - 4),
+  info_wenig  = beta_bericht(20 + 4, 180 + 20 - 4),
+  flach_viel  = beta_bericht(1 + 180, 1 + 1200 - 180),
+  info_viel   = beta_bericht(20 + 180, 180 + 1200 - 180)
+)
+vergleich
+```
+
+##### Python
+
+```{python}
+#| label: b2-bayes-py
+vergleich = pd.DataFrame({
+    "flach_wenig": beta_bericht(1 + 4, 1 + 20 - 4),
+    "info_wenig": beta_bericht(20 + 4, 180 + 20 - 4),
+    "flach_viel": beta_bericht(1 + 180, 1 + 1200 - 180),
+    "info_viel": beta_bericht(20 + 180, 180 + 1200 - 180),
+}).T
+print(vergleich)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Fall | beobachtet | Posterior-Mittel | 95-Prozent-Intervall | Wie es zu lesen ist |
+|---|---|---|---|---|
+| flach, 4 von 20 | 0.20 | 0.2273 | 0.0822 bis 0.4191 | sehr breit: zwanzig Besuche sagen wenig |
+| informativ, 4 von 20 | 0.20 | 0.1091 | 0.0715 bis 0.1534 | Der Prior mit dem Gewicht von 200 Besuchen überstimmt die 20 neuen. |
+| flach, 180 von 1200 | 0.15 | 0.1506 | 0.1309 bis 0.1713 | fast genau der beobachtete Anteil |
+| informativ, 180 von 1200 | 0.15 | 0.1429 | 0.1250 bis 0.1617 | Der Prior zieht nur noch leicht Richtung 0.10. |
+
+#### Interpretation und Ergebnissatz
+
+Bei wenigen Daten entscheidet der Prior. Das ist gewollt, wenn das Vorwissen
+gut ist, und gefährlich, wenn die neue Seite tatsächlich anders funktioniert.
+Bei vielen Daten liefern beide Priors nahezu dasselbe. Deshalb gehört eine
+Sensitivitätsprüfung mit mindestens zwei Priors in jede Auswertung mit wenigen
+Daten.
+
+> Bei 4 Anmeldungen in 20 Besuchen hängt das Ergebnis stark am Prior
+> (Posterior-Mittel 0.227 mit flachem, 0.109 mit informativem Prior); eine
+> belastbare Aussage über die Rate ist mit diesen Daten nicht möglich.
+
+### Beispiel 3: Ist Variante B besser als A
+
+#### Frage und Datenlage
+
+In einem Test sahen 120 Besuche die Variante A (18 Anmeldungen) und 125 die
+Variante B (30 Anmeldungen). Wie wahrscheinlich ist B besser als A?
+
+Die Wahrscheinlichkeit $P(p_B > p_A)$ lässt sich exakt als Integral rechnen:
+Für jeden möglichen Wert von $p_A$ wird die Wahrscheinlichkeit gewichtet, dass
+$p_B$ darüber liegt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-bayes-r
+aA <- 1 + 18; bA <- 1 + 120 - 18
+aB <- 1 + 30; bB <- 1 + 125 - 30
+
+rbind(A = beta_bericht(aA, bA), B = beta_bericht(aB, bB))
+
+b_besser <- integrate(function(x) dbeta(x, aA, bA) *
+                        pbeta(x, aB, bB, lower.tail = FALSE), 0, 1)$value
+round(c(p_b_besser = b_besser,
+        differenz_mittel = aB / (aB + bB) - aA / (aA + bA)), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b3-bayes-py
+aA, bA = 1 + 18, 1 + 120 - 18
+aB, bB = 1 + 30, 1 + 125 - 30
+
+print(pd.DataFrame({"A": beta_bericht(aA, bA), "B": beta_bericht(aB, bB)}).T)
+
+b_besser, _ = integrate.quad(lambda x: stats.beta.pdf(x, aA, bA) * stats.beta.sf(x, aB, bB), 0, 1)
+print("P(B besser):", round(b_besser, 4),
+      " Differenz der Mittel:", round(aB / (aB + bB) - aA / (aA + bA), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Posterior A | Mittel 0.1557, 0.0973 bis 0.2249 | wie in Beispiel 1 | |
+| Posterior B | Mittel 0.2441, 0.1737 bis 0.3221 | 30 von 125 mit flachem Prior | Die Intervalle überlappen, das allein entscheidet nichts. |
+| P(B besser) | 0.961 | Wahrscheinlichkeit, dass B die höhere Rate hat | beantwortet die Frage direkt |
+| Differenz der Mittel | 0.0884 | erwarteter Vorsprung von B | rund neun Prozentpunkte; das ist die Grösse, an der die Entscheidung hängt |
+
+#### Interpretation und Ergebnissatz
+
+Überlappende Intervalle heissen nicht, dass kein Unterschied besteht: Die
+Wahrscheinlichkeit für B liegt trotzdem bei 96 Prozent. Ob sich der Wechsel
+lohnt, entscheidet aber die Grösse des Vorsprungs zusammen mit den Kosten, nicht
+die Wahrscheinlichkeit allein.
+
+> Mit flachen Priors beträgt die Wahrscheinlichkeit, dass Variante B eine
+> höhere Anmelderate hat als A, 0.96; der erwartete Vorsprung liegt bei 8.8
+> Prozentpunkten (Posterior-Mittel 0.244 gegen 0.156).
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein 95-Prozent-Glaubwürdigkeitsintervall reicht von 0.10 bis 0.22. Welche
+Aussage ist korrekt?
+
+- [x] Gegeben Daten und Prior liegt der Anteil mit 95 Prozent Wahrscheinlichkeit
+      in diesem Bereich ~ Richtig. Genau diese Lesart ist beim bayesschen
+      Intervall erlaubt, beim Konfidenzintervall nicht.
+- [ ] Bei 100 Wiederholungen der Studie enthielten 95 Intervalle den wahren
+      Anteil ~ Das ist die Lesart des Konfidenzintervalls.
+- [ ] 95 Prozent der Daten liegen in diesem Bereich ~ Das Intervall beschreibt
+      den Parameter, nicht die Streuung der einzelnen Werte.
+:::
+
+::: {.quiz}
+Mit 12 Beobachtungen und einem stark informativen Prior liegt das
+Posterior-Mittel fast genau beim Prior-Mittel. Was folgt daraus?
+
+- [x] Die Daten reichen nicht, um den Prior zu überstimmen; das Ergebnis muss
+      mit einem zweiten Prior geprüft werden ~ Richtig. Die Aussage stammt dann
+      vor allem aus dem Vorwissen, nicht aus der Messung.
+- [ ] Die Daten bestätigen das Vorwissen ~ Das lässt sich so nicht sagen; auch
+      abweichende Daten würden bei diesem Prior kaum etwas ändern.
+- [ ] Der Prior war falsch gewählt ~ Nicht zwingend; er ist nur so stark, dass
+      zwölf Beobachtungen wenig bewegen.
+:::
+
+::: {.quiz}
+Ein A/B-Test ergibt P(B besser als A) = 0.99. Reicht das für die Entscheidung
+zugunsten von B?
+
+- [x] Nicht allein, es fehlt die Grösse des Vorsprungs ~ Richtig. Eine
+      Differenz von 0.1 Prozentpunkten kann bei vielen Daten mit 99 Prozent
+      Wahrscheinlichkeit positiv sein und trotzdem die Umstellung nicht wert.
+- [ ] Ja, 99 Prozent ist sicher genug ~ Sicher ist nur die Richtung, nicht dass
+      sich der Unterschied lohnt.
+- [ ] Nein, dafür braucht es einen p-Wert ~ Ein p-Wert beantwortet eine andere
+      Frage und ergänzt die Grösse des Effekts ebenso wenig.
+:::
+
+## Verlinkte Ressourcen
+
+- [Statistical Rethinking (Richard McElreath), Vorlesungen](https://github.com/rmcelreath/stat_rethinking_2024)
+- [Bayes Rules! An Introduction to Applied Bayesian Modeling](https://www.bayesrulesbook.com/)
+- [brms: Bayesian Regression Models using Stan](https://paulbuerkner.com/brms/)
+- [PyMC: Einführung](https://www.pymc.io/projects/docs/en/stable/learn.html)
