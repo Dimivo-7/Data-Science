@@ -1,0 +1,444 @@
+---
+title: "APIs und Web-Scraping"
+description: "Daten aus Schnittstellen und Webseiten holen: JSON seitenweise abrufen, HTML auslesen, Fehler abfangen und fair bleiben."
+categories: ["Data Wrangling", "Datenqualität", "R", "Python"]
+quelle: ["PYFR"]
+seitentyp: werkzeug
+stand: entwurf
+order: 60
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(jsonlite)
+library(rvest)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import json
+import pandas as pd
+from bs4 import BeautifulSoup
+```
+
+## Kernideen
+
+- Eine **API** liefert strukturierte Daten, meist JSON; sie ist immer der erste Weg, bevor man eine Webseite ausliest
+- Antworten kommen oft **seitenweise**; abgerufen wird, bis kein Verweis auf eine nächste Seite mehr kommt
+- **HTML** wird mit einem Parser gelesen und über CSS-Selektoren angesprochen, nicht mit regulären Ausdrücken
+- Was aus einer Webseite kommt, ist **Text**; Zahlen, Einheiten und Tausendertrennzeichen werden danach bereinigt
+- Fehler wie `429` (zu viele Anfragen) und `5xx` werden mit **Wartezeit und Wiederholung** behandelt
+- Nutzungsbedingungen, `robots.txt` und eine vernünftige Abfragefrequenz gehören zur Arbeit dazu
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Datenimport und Formate](datenimport-formate.qmd) für JSON und
+das Flachmachen verschachtelter Antworten, [Textdaten und reguläre Ausdrücke](textdaten-regex.qmd)
+für das Bereinigen danach. Diese Seite ruft **keine** echte Adresse ab: Der
+Build der Website soll nicht davon abhängen, ob ein fremder Server gerade
+antwortet. Die Antworten stehen deshalb als Text im Code, die Verarbeitung ist
+dieselbe wie bei einem echten Abruf.
+:::
+
+### API oder Scraping
+
+| | API | Web-Scraping |
+|---|---|---|
+| Liefert | strukturierte Daten, meist JSON | HTML für Menschen gemacht |
+| Stabilität | versioniert, dokumentiert | bricht bei jeder Umgestaltung der Seite |
+| Regeln | Nutzungsbedingungen, oft Schlüssel und Kontingent | `robots.txt`, Nutzungsbedingungen, Urheberrecht |
+| Wann | immer, wenn es eine gibt | nur wenn es keine API und keinen Datendownload gibt |
+
+### Ein Abruf in beiden Sprachen
+
+So sieht ein echter Abruf aus. Diese Listings laufen im Build nicht:
+
+```r
+library(httr2)
+antwort <- request("https://api.beispiel.ch/v1/messungen") |>
+  req_url_query(ort = "Bern", seite = 1) |>
+  req_headers(Authorization = paste("Bearer", Sys.getenv("API_SCHLUESSEL"))) |>
+  req_retry(max_tries = 3) |>
+  req_perform()
+daten <- resp_body_json(antwort)
+```
+
+```python
+import os
+import requests
+
+antwort = requests.get(
+    "https://api.beispiel.ch/v1/messungen",
+    params={"ort": "Bern", "seite": 1},
+    headers={"Authorization": f"Bearer {os.environ['API_SCHLUESSEL']}"},
+    timeout=10,
+)
+antwort.raise_for_status()
+daten = antwort.json()
+```
+
+Der Schlüssel steht nie im Code, sondern in einer Umgebungsvariablen. Eine
+Datei `.env` mit dem Schlüssel gehört in `.gitignore`, siehe
+[Git](../werkzeuge/git.qmd).
+
+### Statuscodes
+
+| Code | Bedeutung | Vorgehen |
+|---|---|---|
+| `200` | alles in Ordnung | Antwort verarbeiten |
+| `400`, `404` | Anfrage falsch, Ressource fehlt | Anfrage prüfen; Wiederholen hilft nicht |
+| `401`, `403` | nicht angemeldet, keine Berechtigung | Schlüssel prüfen |
+| `429` | zu viele Anfragen | warten, dann wiederholen; Header `Retry-After` beachten |
+| `500`, `502`, `503` | Fehler auf dem Server | mit wachsender Wartezeit wiederholen |
+
+### Fair abfragen
+
+- In `robots.txt` der Seite nachsehen, welche Bereiche für automatische Abrufe
+  gesperrt sind.
+- Zwischen Abrufen warten, eine Sekunde ist ein vernünftiger Anfang.
+- Einen erkennbaren `User-Agent` mit Kontaktadresse setzen.
+- Abgerufenes lokal speichern, statt dieselbe Seite wiederholt abzufragen.
+- Personenbezogene Daten nur mit Rechtsgrundlage erheben.
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Seitenweise abrufen
+
+#### Frage und Datenlage
+
+Eine Schnittstelle liefert Messungen in Seiten zu höchstens zwei Einträgen.
+Jede Antwort enthält die Daten und im Feld `weiter` den Schlüssel für die
+nächste Seite, auf der letzten Seite `null`. Alle Messungen sollen in eine
+Tabelle.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-api-r
+# Die drei Antworten des Servers, hier als Text statt als echter Abruf
+seiten <- list(
+  start = '{"daten":[{"id":1,"ort":"Bern","wert":12.5},{"id":2,"ort":"Chur","wert":9.1}],"weiter":"s2"}',
+  s2    = '{"daten":[{"id":3,"ort":"Sion","wert":14.0},{"id":4,"ort":"Bern","wert":11.8}],"weiter":"s3"}',
+  s3    = '{"daten":[{"id":5,"ort":"Chur","wert":10.2}],"weiter":null}'
+)
+hole <- function(cursor) seiten[[if (is.null(cursor)) "start" else cursor]]
+
+teile <- list(); cursor <- NULL; abrufe <- 0
+repeat {
+  antwort <- fromJSON(hole(cursor))
+  abrufe <- abrufe + 1
+  teile[[abrufe]] <- antwort$daten
+  cursor <- antwort$weiter
+  if (is.null(cursor)) break
+}
+tabelle <- do.call(rbind, teile)
+tabelle
+c(abrufe = abrufe, zeilen = nrow(tabelle))
+round(tapply(tabelle$wert, tabelle$ort, mean), 2)
+```
+
+##### Python
+
+```{python}
+#| label: b1-api-py
+seiten = {
+    None: '{"daten":[{"id":1,"ort":"Bern","wert":12.5},{"id":2,"ort":"Chur","wert":9.1}],"weiter":"s2"}',
+    "s2": '{"daten":[{"id":3,"ort":"Sion","wert":14.0},{"id":4,"ort":"Bern","wert":11.8}],"weiter":"s3"}',
+    "s3": '{"daten":[{"id":5,"ort":"Chur","wert":10.2}],"weiter":null}',
+}
+
+
+def hole(cursor):
+    return seiten[cursor]
+
+
+zeilen, cursor, abrufe = [], None, 0
+while True:
+    antwort = json.loads(hole(cursor))
+    abrufe += 1
+    zeilen.extend(antwort["daten"])
+    cursor = antwort["weiter"]
+    if cursor is None:
+        break
+
+tabelle = pd.DataFrame(zeilen)
+print(tabelle)
+print("abrufe:", abrufe, " zeilen:", len(tabelle))
+print(tabelle.groupby("ort")["wert"].mean().round(2).to_dict())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Abrufe | 3 | so viele Seiten, bis `weiter` leer war |
+| Zeilen | 5 | alle Messungen aus allen Seiten |
+| Mittel Bern | 12.15 | aus zwei Seiten zusammengesetzt; wer nur die erste Seite liest, bekommt 12.5 |
+| Mittel Chur | 9.65 | ebenso |
+
+#### Interpretation
+
+Der häufigste Fehler bei Schnittstellen ist nicht ein falscher Abruf, sondern
+ein unvollständiger: Nur die erste Seite wird gelesen, und die Auswertung
+rechnet still mit einem Bruchteil der Daten. Die Zahl der Zeilen gehört deshalb
+gegen die Gesamtzahl geprüft, die viele Schnittstellen in der Antwort mitliefern.
+
+### Beispiel 2: Eine HTML-Tabelle auslesen
+
+#### Frage und Datenlage
+
+Eine Webseite zeigt eine Preisliste als HTML-Tabelle und darunter eine Liste
+mit Hinweisen. Gesucht sind die Preise als Zahlen, der Lagerwert und der
+Hinweis, der als neu markiert ist.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-api-r
+html_text <- '<html><body><h1>Preisliste</h1>
+<table id="preise"><tr><th>Artikel</th><th>Preis</th><th>Lager</th></tr>
+<tr><td>Schraube M6</td><td>CHF 0.35</td><td>1\'200</td></tr>
+<tr><td>Mutter M6</td><td>CHF 0.20</td><td>950</td></tr>
+<tr><td>Winkel 40 mm</td><td>CHF 2.80</td><td>k.A.</td></tr></table>
+<ul class="hinweise"><li class="neu">Winkel neu im Sortiment</li><li>Preise ohne MWST</li></ul>
+</body></html>'
+
+seite <- read_html(html_text)
+preise <- html_table(html_element(seite, "#preise"), convert = FALSE)
+names(preise) <- c("artikel", "preis", "lager")
+
+preise$preis_chf <- as.numeric(gsub("[^0-9.]", "", preise$preis))
+preise$lager_n   <- suppressWarnings(as.numeric(gsub("[^0-9]", "", preise$lager)))
+preise
+round(sum(preise$preis_chf * preise$lager_n, na.rm = TRUE), 2)
+
+html_text(html_elements(seite, "ul.hinweise li.neu"))
+```
+
+##### Python
+
+```{python}
+#| label: b2-api-py
+html_text = """<html><body><h1>Preisliste</h1>
+<table id="preise"><tr><th>Artikel</th><th>Preis</th><th>Lager</th></tr>
+<tr><td>Schraube M6</td><td>CHF 0.35</td><td>1'200</td></tr>
+<tr><td>Mutter M6</td><td>CHF 0.20</td><td>950</td></tr>
+<tr><td>Winkel 40 mm</td><td>CHF 2.80</td><td>k.A.</td></tr></table>
+<ul class="hinweise"><li class="neu">Winkel neu im Sortiment</li><li>Preise ohne MWST</li></ul>
+</body></html>"""
+
+suppe = BeautifulSoup(html_text, "html.parser")
+reihen = [[zelle.get_text(strip=True) for zelle in tr.find_all("td")]
+          for tr in suppe.select("#preise tr")[1:]]
+preise = pd.DataFrame(reihen, columns=["artikel", "preis", "lager"])
+
+preise["preis_chf"] = pd.to_numeric(preise["preis"].str.replace(r"[^0-9.]", "", regex=True))
+preise["lager_n"] = pd.to_numeric(preise["lager"].str.replace(r"[^0-9]", "", regex=True),
+                                  errors="coerce")
+print(preise)
+print("Lagerwert:", round((preise["preis_chf"] * preise["lager_n"]).sum(), 2))
+
+print([li.get_text() for li in suppe.select("ul.hinweise li.neu")])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `preis_chf` | 0.35, 0.20, 2.80 | Einheit `CHF` und Leerzeichen entfernt, danach Zahl |
+| `lager_n` | 1200, 950, fehlend | das Hochkomma als Tausendertrennzeichen entfernt; `k.A.` wird zu einem fehlenden Wert |
+| Lagerwert | 610 | Summe über die zwei Artikel mit Bestand; der Winkel fällt mangels Lagerzahl heraus |
+| Hinweis | `Winkel neu im Sortiment` | über den Selektor `ul.hinweise li.neu` gefunden |
+
+#### Interpretation
+
+Der CSS-Selektor beschreibt die Stelle im Dokument so, wie ein Stylesheet sie
+beschreibt: `#preise` ist das Element mit dieser ID, `li.neu` ein Listenpunkt
+mit der Klasse `neu`. Die Selektoren findet man, indem man in den
+Entwicklerwerkzeugen des Browsers auf das Element klickt. Ohne Bereinigung wäre
+die Lagerspalte Text, und `1'200` ergäbe keine Zahl. Dass der Lagerwert ohne
+den Winkel berechnet ist, gehört ausdrücklich dazugesagt.
+
+### Beispiel 3: Wiederholen mit wachsender Wartezeit
+
+#### Frage und Datenlage
+
+Drei Abrufe gegen einen überlasteten Server. Er antwortet der Reihe nach mit den
+Codes 200, 429, 429, 200, 500, 503, 200. Jeder Auftrag wird höchstens dreimal
+versucht, die Wartezeit verdoppelt sich ab einer Sekunde. Gezeigt wird das
+Protokoll; gewartet wird hier nicht wirklich.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-api-r
+codes <- c(200, 429, 429, 200, 500, 503, 200)
+
+mit_wiederholung <- function(codes, auftraege = 3, max_versuche = 3, basis = 1) {
+  i <- 0; protokoll <- NULL
+  for (auftrag in seq_len(auftraege)) {
+    for (versuch in seq_len(max_versuche)) {
+      i <- i + 1
+      code <- codes[i]
+      warten <- if (code == 200) 0 else basis * 2^(versuch - 1)
+      protokoll <- rbind(protokoll, data.frame(auftrag, versuch, status = code, warten_s = warten))
+      if (code == 200) break
+    }
+  }
+  protokoll
+}
+mit_wiederholung(codes)
+```
+
+##### Python
+
+```{python}
+#| label: b3-api-py
+codes = [200, 429, 429, 200, 500, 503, 200]
+
+
+def mit_wiederholung(codes, auftraege=3, max_versuche=3, basis=1.0):
+    i, protokoll = 0, []
+    for auftrag in range(1, auftraege + 1):
+        for versuch in range(1, max_versuche + 1):
+            code = codes[i]
+            i += 1
+            warten = 0.0 if code == 200 else basis * 2 ** (versuch - 1)
+            protokoll.append((auftrag, versuch, code, warten))
+            if code == 200:
+                break
+    return pd.DataFrame(protokoll, columns=["auftrag", "versuch", "status", "warten_s"])
+
+
+print(mit_wiederholung(codes))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Auftrag | Verlauf | Wartezeit gesamt | Wie es zu lesen ist |
+|---|---|---|---|
+| 1 | 200 im ersten Versuch | 0 s | |
+| 2 | 429, 429, dann 200 | 3 s | zweimal zu viele Anfragen, erst 1, dann 2 Sekunden gewartet |
+| 3 | 500, 503, dann 200 | 3 s | Serverfehler, gleiche Behandlung |
+
+#### Interpretation
+
+Die wachsende Wartezeit entlastet den Server genau dann, wenn er überlastet
+ist. Sofortige Wiederholungen würden die Überlastung verstärken. Nach dem
+letzten Versuch wird nicht still weitergemacht, sondern der Auftrag als
+fehlgeschlagen protokolliert; sonst fehlt am Ende ein Teil der Daten, ohne dass
+es jemand merkt. In der Praxis übernehmen `httr2::req_retry()` und der
+`Retry`-Mechanismus von `requests` diese Logik.
+
+::::
+
+## Typische Aufgaben
+
+**JSON-Antwort flach machen**
+
+```r
+jsonlite::fromJSON(text, flatten = TRUE)
+```
+
+```python
+pd.json_normalize(json.loads(text), sep="_")
+```
+
+**Alle Links einer Seite**
+
+```r
+html_attr(html_elements(read_html(url), "a"), "href")
+```
+
+```python
+[a.get("href") for a in BeautifulSoup(html, "html.parser").find_all("a")]
+```
+
+**Einfache Tabelle einer Webseite direkt als Data Frame**
+
+```r
+html_table(read_html(url))[[1]]
+```
+
+```python
+pd.read_html(url)[0]   # braucht lxml oder html5lib
+```
+
+**Zwischen Abrufen warten**
+
+```r
+Sys.sleep(1)
+```
+
+```python
+time.sleep(1)
+```
+
+## Verständnisfragen
+
+::: {.quiz}
+Eine Auswertung über eine Schnittstelle liefert 100 Zeilen, laut Dokumentation
+gibt es aber rund 2400 Einträge. Was ist die wahrscheinlichste Ursache?
+
+- [x] Nur die erste Seite wurde abgerufen ~ Richtig. Viele Schnittstellen liefern
+      standardmässig 100 Einträge je Seite. Abgerufen wird, bis kein Verweis
+      auf eine weitere Seite kommt.
+- [ ] Die Schnittstelle ist fehlerhaft ~ Möglich, aber seltener als eine
+      fehlende Schleife über die Seiten.
+- [ ] JSON kann nur 100 Zeilen fassen ~ JSON hat keine solche Grenze.
+:::
+
+::: {.quiz}
+Ein Abruf antwortet mit `429`. Was ist richtig?
+
+- [x] Warten und später erneut versuchen, idealerweise nach der Angabe im Header
+      `Retry-After` ~ Richtig. Der Server sagt, dass zu viele Anfragen in kurzer
+      Zeit kamen.
+- [ ] Sofort wiederholen ~ Das verschärft genau das Problem, das der Code meldet.
+- [ ] Den Schlüssel erneuern ~ Ein ungültiger Schlüssel ergäbe `401` oder `403`.
+:::
+
+::: {.quiz}
+Warum sollte HTML nicht mit regulären Ausdrücken ausgelesen werden?
+
+- [x] HTML ist verschachtelt und in der Schreibweise frei, ein Parser versteht
+      die Struktur, ein Muster nur Zeichenfolgen ~ Richtig. Zusätzliche
+      Attribute, Zeilenumbrüche oder verschachtelte Tags brechen ein Muster,
+      einen Parser nicht.
+- [ ] Reguläre Ausdrücke sind zu langsam ~ Die Geschwindigkeit ist nicht das
+      Problem.
+- [ ] R und Python können HTML nicht als Text lesen ~ Sie können; das Problem ist
+      die Struktur, nicht das Lesen.
+:::
+
+## Verlinkte Ressourcen
+
+- [httr2: Einführung](https://httr2.r-lib.org/articles/httr2.html)
+- [rvest: Web scraping 101](https://rvest.tidyverse.org/articles/rvest.html)
+- [Requests: Quickstart](https://requests.readthedocs.io/en/latest/user/quickstart/)
+- [Beautiful Soup: Dokumentation](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+- [MDN: CSS-Selektoren](https://developer.mozilla.org/de/docs/Web/CSS/CSS_selectors)
+- [MDN: HTTP-Statuscodes](https://developer.mozilla.org/de/docs/Web/HTTP/Status)

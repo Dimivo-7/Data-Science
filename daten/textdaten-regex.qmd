@@ -1,0 +1,413 @@
+---
+title: "Textdaten und reguläre Ausdrücke"
+description: "Text zerlegen, bereinigen und vereinheitlichen mit regulären Ausdrücken, und die Fallen bei Punkt, Gier und Umlauten."
+categories: ["Data Wrangling", "Datenqualität", "R", "Python"]
+quelle: ["PYFR"]
+seitentyp: werkzeug
+stand: entwurf
+order: 45
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+# Alle Muster laufen mit perl = TRUE. Dann gelten in R dieselben Regeln fuer
+# Klassen, Lookaheads und nicht gierige Quantoren wie in Python.
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import re
+import pandas as pd
+```
+
+## Kernideen
+
+- Ein regulärer Ausdruck beschreibt ein **Muster**, nicht einen festen Text
+- Erst **bereinigen** (Leerzeichen, Gross- und Kleinschreibung), dann **zerlegen**, dann **prüfen**, wie viel erkannt wurde
+- Der Punkt steht für **jedes** Zeichen; ein echter Punkt wird maskiert: `\.`
+- Quantoren sind **gierig**: `.*` nimmt so viel wie möglich, `.*?` so wenig wie möglich
+- `[A-Za-z]` kennt keine Umlaute; für Buchstaben aller Sprachen gibt es eigene Klassen
+- Nach jeder Regel zählen, wie viele Zeilen **nicht** gepasst haben; die sind das Problem
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Data Wrangling](data-wrangling.qmd) für die Arbeit mit Spalten
+und [Datenqualität](datenqualitaet.qmd), wo uneinheitliche Schreibweisen zum
+ersten Mal auftauchen. Für Datumsangaben in Text gibt es eigene Funktionen,
+siehe [Datum und Zeit](datum-zeit.qmd).
+:::
+
+### Die Bausteine
+
+| Baustein | Bedeutung | Beispiel | passt auf |
+|---|---|---|---|
+| `.` | ein beliebiges Zeichen | `a.c` | `abc`, `a-c` |
+| `\d`, `\s`, `\w` | Ziffer, Leerraum, Wortzeichen | `\d{4}` | `8001` |
+| `\D`, `\S`, `\W` | jeweils das Gegenteil | `\D` | alles ausser Ziffern |
+| `[abc]`, `[^abc]` | eines dieser Zeichen, keines davon | `[aeiou]` | Vokal |
+| `*`, `+`, `?` | beliebig oft, mindestens einmal, höchstens einmal | `\d+` | `7`, `101` |
+| `{n}`, `{n,m}` | genau n, zwischen n und m Mal | `\d{2,3}` | `12`, `123` |
+| `^`, `$` | Anfang, Ende | `^\d+$` | nur Ziffern |
+| `( )` | Gruppe, wird einzeln herausgezogen | `(\d{4}) (.+)` | PLZ und Ort |
+| `.*?`, `+?` | nicht gierig | `<b>.*?</b>` | ein einzelnes Tag |
+| `(?=...)` | Lookahead: folgt darauf, ohne es mitzunehmen | `41(?=\d{9}$)` | `41` vor neun Ziffern |
+
+### R und Python
+
+| Aufgabe | R (Basis, `perl = TRUE`) | Python |
+|---|---|---|
+| passt das Muster? | `grepl(muster, x, perl = TRUE)` | `re.search(muster, x)`, `s.str.contains()` |
+| ersetzen | `gsub(muster, ersatz, x, perl = TRUE)` | `re.sub()`, `s.str.replace(regex=True)` |
+| Gruppen herausziehen | `regmatches(x, regexec(muster, x, perl = TRUE))` | `s.str.extract()` |
+| alle Treffer | `regmatches(x, gregexpr(muster, x, perl = TRUE))` | `re.findall()` |
+| Buchstaben aller Sprachen | `\\p{L}` | `[^\W\d_]` im Modul `re` |
+
+In R steht jeder Backslash doppelt, weil die Zeichenkette ihn selbst schon als
+Maskierung liest: `"\\d"` im Code ist `\d` im Muster. In Python verhindert ein
+vorangestelltes `r` dasselbe Problem: `r"\d"`.
+
+::: {.note-box}
+Das Paket `stringr` bietet in R dieselben Funktionen mit einheitlicheren Namen
+(`str_detect`, `str_extract`, `str_replace_all`). Die Muster sind dieselben.
+:::
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Adressen zerlegen
+
+#### Frage und Datenlage
+
+Fünf Adressen stehen als Text in einer Spalte. Gebraucht werden Strasse,
+Hausnummer, Postleitzahl und Ort in eigenen Spalten. Eine Adresse ist ein
+Postfach, eine liegt in Deutschland und hat eine fünfstellige Postleitzahl.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-regex-r
+adressen <- c("Bahnhofstrasse 12, 8001 Zürich", "Rue du Lac 5a, 1700 Fribourg",
+              "Postfach, 3000 Bern", "Hauptgasse 7 , 4500 Solothurn",
+              "Seestrasse 101, 88400 Konstanz")
+muster <- "^(.+?)\\s+(\\d+[a-z]?)\\s*,\\s*(\\d{4})\\s+(.+)$"
+
+treffer <- regmatches(adressen, regexec(muster, adressen, perl = TRUE))
+teile <- t(sapply(treffer, function(m) if (length(m)) m[2:5] else rep(NA, 4)))
+colnames(teile) <- c("strasse", "nr", "plz", "ort")
+teile
+
+c(erkannt = sum(!is.na(teile[, "plz"])), von = length(adressen))
+```
+
+##### Python
+
+```{python}
+#| label: b1-regex-py
+adressen = pd.Series(["Bahnhofstrasse 12, 8001 Zürich", "Rue du Lac 5a, 1700 Fribourg",
+                      "Postfach, 3000 Bern", "Hauptgasse 7 , 4500 Solothurn",
+                      "Seestrasse 101, 88400 Konstanz"])
+muster = r"^(?P<strasse>.+?)\s+(?P<nr>\d+[a-z]?)\s*,\s*(?P<plz>\d{4})\s+(?P<ort>.+)$"
+
+teile = adressen.str.extract(muster)
+print(teile)
+print("erkannt:", int(teile["plz"].notna().sum()), "von", len(adressen))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Adresse | Ergebnis | Warum |
+|---|---|---|
+| Bahnhofstrasse 12, 8001 Zürich | alle vier Teile | Standardfall |
+| Rue du Lac 5a, 1700 Fribourg | Strasse mit Leerzeichen, Nummer `5a` | `.+?` erlaubt Leerzeichen im Strassennamen, `[a-z]?` den Buchstaben |
+| Postfach, 3000 Bern | nichts erkannt | keine Hausnummer; richtig, dass das Muster nicht passt |
+| Hauptgasse 7 , 4500 Solothurn | erkannt trotz Leerzeichen vor dem Komma | `\s*` vor und nach dem Komma |
+| Seestrasse 101, 88400 Konstanz | nichts erkannt | `\d{4}` verlangt vier Ziffern, die deutsche PLZ hat fünf |
+
+#### Interpretation
+
+Drei von fünf Adressen passen. Die zwei anderen sind kein Fehler des Musters,
+sondern Fälle, die gesondert behandelt werden müssen. Genau deshalb gehört nach
+jedem Zerlegen die Zählung der nicht erkannten Zeilen dazu: Ein Muster, das
+alles „erkennt", hat meistens etwas falsch erkannt.
+
+### Beispiel 2: Telefonnummern vereinheitlichen
+
+#### Frage und Datenlage
+
+Sechs Telefonnummern in verschiedenen Schreibweisen sollen in die einheitliche
+Form `+41` plus neun Ziffern gebracht werden.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-regex-r
+tel <- c("+41 79 123 45 67", "079/123 45 67", "0041791234567",
+         "079 123 4567", "79 123 45 67", "044-555-12-12")
+
+normiere <- function(x) {
+  z <- gsub("\\D", "", x, perl = TRUE)          # nur Ziffern behalten
+  z <- sub("^0041", "", z, perl = TRUE)          # internationale Vorwahl
+  z <- sub("^41(?=\\d{9}$)", "", z, perl = TRUE) # +41 ohne Nullen
+  z <- sub("^0", "", z, perl = TRUE)             # fuehrende Null
+  ifelse(grepl("^\\d{9}$", z, perl = TRUE), paste0("+41", z), NA)
+}
+normiere(tel)
+```
+
+##### Python
+
+```{python}
+#| label: b2-regex-py
+tel = ["+41 79 123 45 67", "079/123 45 67", "0041791234567",
+       "079 123 4567", "79 123 45 67", "044-555-12-12"]
+
+
+def normiere(x):
+    z = re.sub(r"\D", "", x)            # nur Ziffern behalten
+    z = re.sub(r"^0041", "", z)         # internationale Vorwahl
+    z = re.sub(r"^41(?=\d{9}$)", "", z) # +41 ohne Nullen
+    z = re.sub(r"^0", "", z)            # fuehrende Null
+    return "+41" + z if re.fullmatch(r"\d{9}", z) else None
+
+
+print([normiere(x) for x in tel])
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Eingabe | Ergebnis | Schritt, der entscheidet |
+|---|---|---|
+| `+41 79 123 45 67` | `+41791234567` | `\D` entfernt Plus und Leerzeichen, danach `41` vor neun Ziffern |
+| `079/123 45 67` | `+41791234567` | führende Null |
+| `0041791234567` | `+41791234567` | `0041` |
+| `079 123 4567` | `+41791234567` | andere Gruppierung, gleiche Ziffern |
+| `79 123 45 67` | `+41791234567` | schon ohne Null, neun Ziffern |
+| `044-555-12-12` | `+41445551212` | Festnetz, gleiche Regeln |
+
+#### Interpretation
+
+Die Reihenfolge der Schritte trägt die Logik: erst alles ausser Ziffern
+entfernen, dann Vorwahlen, zuletzt prüfen, ob genau neun Ziffern übrig sind.
+Eine Nummer, die das nicht erfüllt, wird `NA` statt einer halb richtigen Form.
+Der Lookahead in Schritt drei verhindert, dass eine Nummer, die zufällig mit 41
+beginnt, beschnitten wird.
+
+### Beispiel 3: Punkt und Gier
+
+#### Frage und Datenlage
+
+Zwei Fehler, die Muster still falsch machen: ein unmaskierter Punkt und ein
+gieriger Quantor.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-regex-r
+werte <- c("3.5", "3x5", "305")
+rbind(punkt_roh = grepl("3.5", werte, perl = TRUE),
+      punkt_maskiert = grepl("3\\.5", werte, perl = TRUE))
+
+s <- "<b>Preis</b> und <b>Menge</b>"
+regmatches(s, gregexpr("<b>.*</b>", s, perl = TRUE))[[1]]
+regmatches(s, gregexpr("<b>.*?</b>", s, perl = TRUE))[[1]]
+```
+
+##### Python
+
+```{python}
+#| label: b3-regex-py
+werte = ["3.5", "3x5", "305"]
+print("punkt_roh:     ", [bool(re.search(r"3.5", w)) for w in werte])
+print("punkt_maskiert:", [bool(re.search(r"3\.5", w)) for w in werte])
+
+s = "<b>Preis</b> und <b>Menge</b>"
+print(re.findall(r"<b>.*</b>", s))
+print(re.findall(r"<b>.*?</b>", s))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Muster | Ergebnis | Wie es zu lesen ist |
+|---|---|---|
+| `3.5` | passt auf alle drei | der Punkt steht für jedes Zeichen, auch `x` und `0` |
+| `3\.5` | passt nur auf `3.5` | maskiert ist der Punkt ein Punkt |
+| `<b>.*</b>` | ein einziger Treffer über den ganzen Text | `.*` läuft bis zum **letzten** `</b>` |
+| `<b>.*?</b>` | zwei Treffer | `.*?` hört beim **ersten** `</b>` auf |
+
+#### Interpretation
+
+Beide Fehler erzeugen keine Fehlermeldung, sondern zu viele Treffer. Das
+fällt nur auf, wenn man die Treffer ansieht. Für HTML ist ein regulärer
+Ausdruck ohnehin das falsche Werkzeug; dafür gibt es Parser, siehe
+[APIs und Web-Scraping](apis-web-scraping.qmd).
+
+### Beispiel 4: Wörter zählen mit Umlauten
+
+#### Frage und Datenlage
+
+Aus Freitextrückmeldungen sollen die häufigsten Wörter gezählt werden. Der Text
+enthält Umlaute.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-regex-r
+text <- tolower("Qualität gut, Lieferung spät. Qualität top! Preis ok, Lieferung pünktlich, Qualität gut.")
+
+nur_ascii <- regmatches(text, gregexpr("[A-Za-z]+", text, perl = TRUE))[[1]]
+alle_buchstaben <- regmatches(text, gregexpr("\\p{L}+", text, perl = TRUE))[[1]]
+
+c(woerter_ascii = length(nur_ascii), woerter_voll = length(alle_buchstaben))
+table(nur_ascii)[c("qualit", "t", "sp")]
+table(alle_buchstaben)[c("qualität", "spät", "pünktlich")]
+```
+
+##### Python
+
+```{python}
+#| label: b4-regex-py
+text = "Qualität gut, Lieferung spät. Qualität top! Preis ok, Lieferung pünktlich, Qualität gut.".lower()
+
+nur_ascii = re.findall(r"[A-Za-z]+", text)
+alle_buchstaben = re.findall(r"[^\W\d_]+", text)
+
+print("woerter_ascii:", len(nur_ascii), " woerter_voll:", len(alle_buchstaben))
+z_ascii = pd.Series(nur_ascii).value_counts()
+z_voll = pd.Series(alle_buchstaben).value_counts()
+print({w: int(z_ascii[w]) for w in ["qualit", "t", "sp"]})
+print({w: int(z_voll[w]) for w in ["qualität", "spät", "pünktlich"]})
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert | Wie er zu lesen ist |
+|---|---|---|
+| Wörter mit `[A-Za-z]+` | 17 | zu viele: jedes Umlautwort zerfällt in Stücke |
+| Wörter mit allen Buchstaben | 12 | richtig |
+| `qualit` | 3 | „Qualität" ohne Endung |
+| `t` | 4 | Reststücke aus „Qualität" und „spät" |
+| `qualität` | 3 | mit der vollständigen Klasse korrekt gezählt |
+
+#### Interpretation
+
+`[A-Za-z]` ist in Anleitungen verbreitet und für deutschen Text falsch. Das
+Ergebnis sieht plausibel aus, bis man die Liste der Wörter liest. In R hilft
+`\p{L}` mit `perl = TRUE`, in Python `[^\W\d_]`, weil `\w` dort Unicode-Buchstaben
+bereits einschliesst, aber auch Ziffern und den Unterstrich.
+
+::::
+
+## Typische Aufgaben
+
+**Mehrfache Leerzeichen und Ränder bereinigen**
+
+```r
+trimws(gsub("\\s+", " ", x, perl = TRUE))
+```
+
+```python
+s.str.replace(r"\s+", " ", regex=True).str.strip()
+```
+
+**Schreibweisen einer Kategorie vereinheitlichen**
+
+```r
+ifelse(grepl("^z(ue|ü)rich$", tolower(trimws(x)), perl = TRUE), "Zürich", x)
+```
+
+```python
+s.where(~s.str.strip().str.lower().str.fullmatch(r"z(ue|ü)rich"), "Zürich")
+```
+
+**Zahl aus Text herausziehen, etwa „CHF 1'250.50"**
+
+```r
+as.numeric(gsub("[^0-9.]", "", x, perl = TRUE))
+```
+
+```python
+pd.to_numeric(s.str.replace(r"[^0-9.]", "", regex=True))
+```
+
+**Prüfen, wie viele Zeilen ein Format nicht erfüllen**
+
+```r
+sum(!grepl("^\\d{4}$", plz, perl = TRUE))
+```
+
+```python
+(~s.str.fullmatch(r"\d{4}")).sum()
+```
+
+## Verständnisfragen
+
+::: {.quiz}
+Das Muster `\d+.\d+` soll Dezimalzahlen wie `12.5` finden. Was passt ausserdem?
+
+- [x] Auch `12-5` und `12 5` ~ Richtig. Der Punkt steht für jedes Zeichen.
+      Gemeint war `\d+\.\d+`.
+- [ ] Nichts, das Muster ist korrekt ~ Es ist syntaktisch korrekt, aber zu
+      grosszügig.
+- [ ] Nur Zahlen mit genau einer Nachkommastelle ~ `\d+` erlaubt beliebig viele
+      Ziffern.
+:::
+
+::: {.quiz}
+In R liefert `grepl("\d{4}", x)` einen Fehler. Warum?
+
+- [x] Der Backslash muss in einer R-Zeichenkette doppelt stehen: `"\\d{4}"` ~
+      Richtig. R liest `"\d"` als unbekannte Maskierung, bevor das Muster
+      überhaupt ausgewertet wird.
+- [ ] `\d` gibt es in R nicht ~ Es gibt die Klasse, sie muss nur richtig
+      geschrieben werden.
+- [ ] `grepl` braucht `fixed = TRUE` ~ Damit würde das Muster als wörtlicher
+      Text gesucht, nicht als Ausdruck.
+:::
+
+::: {.quiz}
+Ein Muster zerlegt 10 000 Adressen, und alle 10 000 werden „erkannt". Was ist
+der erste Verdacht?
+
+- [x] Das Muster ist zu grosszügig und erkennt auch Fälle falsch, die es nicht
+      erkennen sollte ~ Richtig. Echte Adresslisten enthalten fast immer
+      Postfächer, Tippfehler oder ausländische Formate. Eine Stichprobe der
+      Treffer ansehen.
+- [ ] Die Daten sind sauber ~ Möglich, aber bei 10 000 Adressen selten.
+- [ ] Nichts, ein vollständiger Treffer ist das Ziel ~ Das Ziel ist ein
+      richtiger Treffer, kein vollständiger.
+:::
+
+## Verlinkte Ressourcen
+
+- [regex101](https://regex101.com/): Muster ausprobieren, jede Stelle wird erklärt
+- [R for Data Science, Kapitel Regular Expressions](https://r4ds.hadley.nz/regexps.html)
+- [Python-Dokumentation: re](https://docs.python.org/3/library/re.html)
+- [pandas: Working with text data](https://pandas.pydata.org/docs/user_guide/text.html)

@@ -1,0 +1,400 @@
+---
+title: "Grosse Datenmengen"
+description: "Wenn CSV und Arbeitsspeicher an Grenzen kommen: Parquet, nur benötigte Spalten lesen und verzögerte Auswertung mit Arrow und Polars."
+categories: ["Data Wrangling", "Tooling", "R", "Python"]
+quelle: ["PYFR"]
+seitentyp: werkzeug
+stand: entwurf
+order: 70
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(arrow)
+library(dplyr)
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# 200 000 Messungen an fuenf Standorten, in beiden Sprachen identisch
+n <- 200000
+u <- lehmer(77, 2 * n)
+standorte <- c("Bern", "Chur", "Sion", "Basel", "Genf")
+messungen <- data.frame(
+  messung  = seq_len(n),
+  standort = standorte[floor(u[1:n] * 5) + 1],
+  wert     = round(20 + 5 * qnorm(u[(n + 1):(2 * n)]), 2),
+  status   = ifelse((u[1:n] * 5) %% 1 < 0.02, "Fehler", "ok")
+)
+ordner <- tempfile("gross")
+dir.create(ordner)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import os
+import tempfile
+import numpy as np
+import pandas as pd
+import polars as pl
+from scipy import stats
+
+
+def lehmer(saat, anzahl):
+    """Derselbe Generator wie im R-Teil."""
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+n = 200_000
+u = lehmer(77, 2 * n)
+standorte = np.array(["Bern", "Chur", "Sion", "Basel", "Genf"])
+messungen = pd.DataFrame({
+    "messung": np.arange(1, n + 1),
+    "standort": standorte[(u[:n] * 5).astype(int)],
+    "wert": np.round(20 + 5 * stats.norm.ppf(u[n:]), 2),
+    "status": np.where((u[:n] * 5) % 1 < 0.02, "Fehler", "ok"),
+})
+ordner = tempfile.mkdtemp()
+```
+
+## Kernideen
+
+- **Gross** heisst hier: Die Datei ist zu langsam zu lesen oder passt kaum in den Arbeitsspeicher, nicht „Big Data" im Rechenzentrum
+- **Parquet** speichert spaltenweise, komprimiert und mit Datentypen; CSV speichert Text
+- Wer nur drei von fünfzig Spalten braucht, **liest nur diese drei**
+- **Verzögerte Auswertung**: Filter und Gruppierung werden zuerst beschrieben und dann in einem Durchgang ausgeführt, möglichst nah an der Datei
+- Die Reihenfolge der Mittel: weniger lesen, besseres Format, verzögert auswerten, und erst dann ein grösserer Rechner
+- DuckDB, Arrow und Polars lesen dieselben Parquet-Dateien; die Wahl ist keine Einbahnstrasse
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Datenimport und Formate](datenimport-formate.qmd) für CSV und
+die Formatübersicht, [Data Wrangling](data-wrangling.qmd) für Filtern und
+Gruppieren. Mit SQL auf denselben Dateien arbeitet
+[DuckDB](../datenbanken/duckdb.qmd).
+:::
+
+### Wo die Zeit verloren geht
+
+| Engpass | Ursache | Abhilfe |
+|---|---|---|
+| Lesen dauert lange | CSV ist Text; jede Zahl wird beim Lesen geparst | Parquet, einmal umwandeln |
+| Arbeitsspeicher voll | alle Spalten und Zeilen werden geladen | nur benötigte Spalten, Filter vor dem Laden |
+| Gruppieren ist langsam | pandas arbeitet auf einem Kern, mit Zwischenkopien | Polars oder Arrow, mehrere Kerne, verzögert |
+| Datei zu gross für einen Rechner | echte Big-Data-Grösse | Spark, Datenbank, Cloud-Dienste |
+
+### CSV und Parquet
+
+| | CSV | Parquet |
+|---|---|---|
+| Aufbau | Zeilen als Text | Spalten, binär, komprimiert |
+| Datentypen | müssen beim Lesen erraten werden | gespeichert |
+| Nur einige Spalten lesen | nicht möglich, die Datei wird ganz durchlaufen | direkt |
+| Lesbar mit | jedem Editor | Arrow, pandas, Polars, DuckDB, Spark |
+| Gut für | Austausch mit Menschen und alter Software | alles Weitere |
+
+### Die Werkzeuge
+
+| Werkzeug | R | Python | Stärke |
+|---|---|---|---|
+| Arrow | `arrow` | `pyarrow` | gemeinsames Speicherformat, Parquet lesen und schreiben, dplyr-Syntax auf Dateien |
+| Polars | `polars` (jünger) | `polars` | sehr schnelle Data Frames, verzögerte Auswertung mit `scan_*` |
+| DuckDB | `duckdb` | `duckdb` | SQL direkt auf Dateien |
+| data.table | `data.table` | | schnelles R ohne neues Format |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: CSV oder Parquet
+
+#### Frage und Datenlage
+
+200 000 Messungen mit vier Spalten werden einmal als CSV und einmal als
+Parquet geschrieben. Wie gross sind die Dateien, und kommen die Datentypen
+beim Zurücklesen richtig an?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-gross-r
+pfad_csv <- file.path(ordner, "messungen.csv")
+pfad_parquet <- file.path(ordner, "messungen.parquet")
+
+write.csv(messungen, pfad_csv, row.names = FALSE, quote = FALSE)
+write_parquet(messungen, pfad_parquet)
+
+groesse <- c(csv = file.size(pfad_csv), parquet = file.size(pfad_parquet)) / 1e6
+round(groesse, 2)
+round(groesse["csv"] / groesse["parquet"], 1)
+
+sapply(read_parquet(pfad_parquet), class)
+```
+
+##### Python
+
+```{python}
+#| label: b1-gross-py
+pfad_csv = os.path.join(ordner, "messungen.csv")
+pfad_parquet = os.path.join(ordner, "messungen.parquet")
+
+messungen.to_csv(pfad_csv, index=False)
+messungen.to_parquet(pfad_parquet, index=False)
+
+csv_mb = os.path.getsize(pfad_csv) / 1e6
+parquet_mb = os.path.getsize(pfad_parquet) / 1e6
+print("CSV MB:", round(csv_mb, 2), " Parquet MB:", round(parquet_mb, 2),
+      " Verhaeltnis:", round(csv_mb / parquet_mb, 1))
+
+print(pd.read_parquet(pfad_parquet).dtypes)
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wie sie zu lesen ist |
+|---|---|
+| Dateigrössen | Parquet ist deutlich kleiner als CSV; das genaue Verhältnis hängt von Bibliothek, Version und Kompression ab und steht in der Ausgabe |
+| Verhältnis | wie viele Parquet-Dateien in eine CSV-Datei passen |
+| Datentypen | `integer`, `character`, `numeric` in R, `int64`, `object`, `float64` in pandas: wie geschrieben, ohne Raten |
+
+#### Interpretation
+
+Die beiden Sprachen zeigen verschiedene Dateigrössen. Das ist erwartet: Sie
+schreiben CSV mit unterschiedlicher Formatierung, und die Parquet-Schreiber
+wählen je nach Version andere Voreinstellungen. Gleich ist die Grössenordnung
+des Gewinns. Wichtiger als die Grösse sind die Typen: Eine Parquet-Datei weiss,
+dass `wert` eine Zahl ist. Eine CSV-Datei weiss es nicht, und genau dort
+entstehen die Probleme aus [Datenimport und Formate](datenimport-formate.qmd).
+
+### Beispiel 2: Nur die benötigten Spalten
+
+#### Frage und Datenlage
+
+Für eine Auswertung werden nur `standort` und `wert` gebraucht. Parquet kann die
+anderen Spalten beim Lesen überspringen.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-gross-r
+teil <- read_parquet(pfad_parquet, col_select = c("standort", "wert"))
+dim(teil)
+table(teil$standort)
+```
+
+##### Python
+
+```{python}
+#| label: b2-gross-py
+teil = pd.read_parquet(pfad_parquet, columns=["standort", "wert"])
+print(teil.shape)
+print(teil["standort"].value_counts().sort_index().to_dict())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Dimension | 200000 Zeilen, 2 Spalten | nur zwei der vier Spalten wurden gelesen |
+| Basel | 39764 | Messungen je Standort |
+| Bern | 39925 | |
+| Chur | 40059 | |
+| Genf | 40019 | |
+| Sion | 40233 | |
+
+#### Interpretation
+
+Bei vier Spalten ist der Gewinn klein. Bei einer Tabelle mit fünfzig Spalten,
+von denen drei gebraucht werden, liest Parquet einen Bruchteil der Daten. Mit
+CSV ist das nicht möglich: `usecols` in pandas oder `col_select` in readr
+sparen Speicher, aber die Datei wird trotzdem vollständig durchlaufen.
+
+### Beispiel 3: Verzögert auswerten
+
+#### Frage und Datenlage
+
+Gesucht sind je Standort die Zahl der gültigen Messungen und ihr Mittelwert.
+Statt die ganze Datei zu laden, wird die Auswertung beschrieben und erst am
+Ende ausgeführt: in R mit Arrow und dplyr, in Python mit Polars.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-gross-r
+abfrage <- open_dataset(pfad_parquet) |>
+  filter(status == "ok") |>
+  group_by(standort) |>
+  summarise(n = n(), mittel = mean(wert)) |>
+  arrange(standort)
+
+abfrage            # noch nichts gerechnet, nur beschrieben
+
+ergebnis <- collect(abfrage)
+ergebnis$mittel <- round(ergebnis$mittel, 3)
+as.data.frame(ergebnis)
+sum(messungen$status == "Fehler")
+```
+
+##### Python
+
+```{python}
+#| label: b3-gross-py
+abfrage = (
+    pl.scan_parquet(pfad_parquet)
+    .filter(pl.col("status") == "ok")
+    .group_by("standort")
+    .agg(pl.len().alias("n"), pl.col("wert").mean().alias("mittel"))
+    .sort("standort")
+)
+
+print(abfrage.explain())   # der Plan, noch nichts gerechnet
+
+ergebnis = abfrage.collect().with_columns(pl.col("mittel").round(3))
+print(ergebnis)
+print("Fehler:", int((messungen["status"] == "Fehler").sum()))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Standort | gültige Messungen | Mittelwert | Wie es zu lesen ist |
+|---|---|---|---|
+| Basel | 38951 | 19.993 | |
+| Bern | 39139 | 19.981 | |
+| Chur | 39239 | 20.02 | |
+| Genf | 39217 | 20.007 | |
+| Sion | 39396 | 20.023 | |
+| Fehlerzeilen | 4058 | | vor der Gruppierung herausgefiltert |
+
+Die erste Ausgabe ist kein Ergebnis, sondern der **Plan**: Arrow zeigt die
+beschriebene Abfrage, Polars den Ausführungsplan mit dem Filter direkt beim
+Lesen der Datei.
+
+#### Interpretation
+
+Der Vorteil liegt im Plan. Weil die ganze Abfrage bekannt ist, bevor gerechnet
+wird, kann das Werkzeug den Filter an die Datei weiterreichen und nur die
+Spalten lesen, die in Filter, Gruppierung und Mittelwert vorkommen. Beide
+Sprachen liefern dieselben Zahlen, weil ihre Dateien aus denselben Daten
+entstanden sind, auch wenn die Dateien selbst nicht Byte für Byte gleich sind.
+Die Werkzeuge sind austauschbar, das Format verbindet sie.
+
+::::
+
+## Typische Aufgaben
+
+**Eine grosse CSV einmal in Parquet umwandeln, ohne sie ganz zu laden**
+
+```r
+open_dataset("gross.csv", format = "csv") |> write_dataset("parquet_ordner")
+```
+
+```python
+pl.scan_csv("gross.csv").sink_parquet("gross.parquet")
+```
+
+**Viele Dateien als eine Tabelle abfragen**
+
+```r
+open_dataset("parquet_ordner/") |> filter(jahr == 2025) |> collect()
+```
+
+```python
+pl.scan_parquet("parquet_ordner/*.parquet").filter(pl.col("jahr") == 2025).collect()
+```
+
+**Nach einer Spalte partitioniert schreiben**
+
+```r
+write_dataset(messungen, "nach_standort", partitioning = "standort")
+```
+
+```python
+messungen.to_parquet("nach_standort", partition_cols=["standort"])
+```
+
+**CSV in Stücken verarbeiten, wenn kein anderes Format möglich ist**
+
+```python
+summe = 0
+for stueck in pd.read_csv("gross.csv", chunksize=100_000):
+    summe += stueck["wert"].sum()
+```
+
+## Verständnisfragen
+
+::: {.quiz}
+Eine CSV-Datei mit 60 Spalten und 50 Millionen Zeilen soll nach zwei Spalten
+ausgewertet werden. Was bringt am meisten?
+
+- [x] Einmal in Parquet umwandeln und danach nur die zwei Spalten lesen ~
+      Richtig. Parquet speichert spaltenweise; die übrigen 58 Spalten werden
+      gar nicht angefasst.
+- [ ] Mehr Arbeitsspeicher ~ Hilft beim Laden, aber die Datei wird weiterhin
+      vollständig geparst.
+- [ ] Die CSV-Datei komprimieren ~ Spart Platz auf der Festplatte, macht das
+      Lesen aber eher langsamer.
+:::
+
+::: {.quiz}
+Was passiert beim Aufruf von `pl.scan_parquet(...).filter(...)` ohne
+`.collect()`?
+
+- [x] Es wird nur die Abfrage beschrieben, noch nichts gelesen oder gerechnet ~
+      Richtig. Erst `.collect()` führt den Plan aus.
+- [ ] Die Datei wird gelesen und gefiltert im Speicher gehalten ~ Das wäre
+      `pl.read_parquet(...)` mit anschliessendem Filter.
+- [ ] Es entsteht ein Fehler ~ Die Beschreibung ist gültig, sie wird nur nicht
+      ausgeführt.
+:::
+
+::: {.quiz}
+Warum zeigen R und Python in Beispiel 1 verschiedene Dateigrössen?
+
+- [x] Sie schreiben mit verschiedenen Voreinstellungen, etwa Formatierung der
+      Zahlen und Kompression ~ Richtig. Der Inhalt ist derselbe, die
+      Darstellung auf der Festplatte nicht.
+- [ ] Die Daten sind verschieden ~ Beide rechnen mit demselben Lehmer-Strom,
+      Beispiel 2 und 3 zeigen identische Zahlen.
+- [ ] Parquet ist nicht standardisiert ~ Das Format ist standardisiert, lässt
+      aber Wahlmöglichkeiten bei Kompression und Kodierung.
+:::
+
+## Verlinkte Ressourcen
+
+- [Apache Arrow für R](https://arrow.apache.org/docs/r/)
+- [Polars: User Guide](https://docs.pola.rs/)
+- [R for Data Science, Kapitel Arrow](https://r4ds.hadley.nz/arrow.html)
+- [Apache Parquet: Überblick](https://parquet.apache.org/docs/overview/)
