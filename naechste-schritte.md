@@ -116,7 +116,7 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
 | `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `programmierung/` (9 Seiten + Fragen) | **fertig** (12.09.2026), Zahlen maschinell und von Hand geprüft |
-| `daten/` (5 Seiten + Fragen) | **umgebaut** (12.09.2026), Ausgaben gegen den Text geprüft, noch `stand: entwurf` |
+| `daten/` (5 Seiten + Fragen) | **fertig** (12.09.2026), Ausgaben gegen den Text geprüft |
 | `datenbanken/` (8 Seiten + Fragen) | **umgebaut** (12.09.2026): vier Seiten mit echten Beispielen gegen SQLite, vier ohne Server nur strukturell angeglichen; Fragenseite seit 14.09., noch `entwurf` |
 | `werkzeuge/` (6 Seiten + Fragen) | **umgebaut** (12.09.2026): Git und Shell mit echten Beispielen, Docker nur angeglichen; seit 14.09. zusätzlich R-Umgebungen, Python-Umgebungen, Quarto und eine Fragenseite, alle noch `entwurf` |
 | `ki/` (9 Seiten) | **angeglichen** (12.09.2026), keine ausführbaren Beispiele möglich |
