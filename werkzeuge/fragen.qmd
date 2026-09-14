@@ -1,0 +1,139 @@
+---
+title: "Fragen zu den Werkzeugen"
+description: "Übergreifende Fragen zu Shell, Git, Containern und den Umgebungen für R und Python."
+categories: ["Tooling", "Reproduzierbarkeit", "Linux"]
+seitentyp: konzept
+stand: entwurf
+order: 90
+---
+
+Diese Fragen prüfen die Verbindungen zwischen den Werkzeugen. Die Fragen zu
+einem einzelnen Werkzeug stehen auf dessen Seite; hier geht es um das, was
+erst im Zusammenspiel auffällt.
+
+### Reproduzierbarkeit in Stufen
+
+::: {.quiz}
+Eine Auswertung soll in zwei Jahren noch dieselben Zahlen liefern. Was hält
+welche der drei Massnahmen fest: Git, eine Paketumgebung (`renv` oder `venv`)
+und ein Container?
+
+- [x] Git den Code, die Paketumgebung die Paketversionen, der Container
+      zusätzlich Sprachversion und Systembibliotheken ~ Richtig. Jede Stufe
+      setzt voraus, was die darunterliegende nicht festhält. Git allein weiss
+      nicht, mit welcher pandas-Version der Code lief; die Paketumgebung weiss
+      nicht, welches Betriebssystem darunter lag.
+- [ ] Alle drei tun dasselbe, einer genügt ~ Sie ergänzen sich. Ein Container
+      ohne Git lässt offen, welcher Stand des Codes darin steckt.
+- [ ] Git hält auch die installierten Pakete fest, wenn sie im Projektordner
+      liegen ~ Die Pakete selbst gehören gerade nicht ins Repository, sondern
+      nur die Datei, die sie beschreibt: `renv.lock` oder `requirements.txt`.
+:::
+
+::: {.quiz}
+Was von einem Python-Projekt gehört ins Git-Repository?
+
+- [x] `requirements.txt` oder `environment.yml`, aber nicht der Ordner `.venv`
+      ~ Richtig. Die Beschreibung der Umgebung ist klein, lesbar und auf jedem
+      Rechner wiederherstellbar. Der Ordner `.venv` ist gross, enthält
+      plattformabhängige Dateien und wird aus der Beschreibung neu erzeugt.
+- [ ] Beides, damit andere nichts installieren müssen ~ Eine unter Windows
+      angelegte Umgebung läuft unter Linux nicht; der Ordner hilft niemandem.
+- [ ] Keines von beiden, Umgebungen sind Privatsache ~ Ohne Beschreibung der
+      Umgebung kann niemand die Auswertung nachvollziehen, auch man selbst
+      nicht auf dem nächsten Rechner.
+:::
+
+### Pfade und Arbeitsverzeichnisse
+
+::: {.quiz}
+Ein R-Skript liest `read.csv("C:/Users/anna/projekt/daten/messung.csv")`. Es
+soll in einem Container laufen, in den der Projektordner unter `/projekt`
+eingehängt ist. Was ist die dauerhafte Lösung?
+
+- [x] Relative Pfade vom Projektordner aus, etwa `daten/messung.csv` oder
+      `here("daten", "messung.csv")` ~ Richtig. Relative Pfade gelten auf dem
+      eigenen Rechner, im Container und bei jeder anderen Person, solange das
+      Arbeitsverzeichnis der Projektordner ist.
+- [ ] Im Container einen Ordner `C:/Users/anna` anlegen ~ Das verschiebt das
+      Problem nur und bricht beim nächsten Rechner wieder.
+- [ ] `setwd()` an den Anfang stellen ~ `setwd()` mit festem Pfad ist genau
+      die Ursache, nicht die Lösung.
+:::
+
+::: {.quiz}
+Ein Jupyter-Notebook läuft bei dir, bei einer Kollegin bricht es ab. Welche
+Reihenfolge der Prüfung ist sinnvoll?
+
+- [x] Zuerst bei dir *Restart Kernel and Run All*, dann Kernel und
+      Paketversionen vergleichen, dann Pfade zu Daten ~ Richtig. Läuft es
+      schon bei dir nach dem Neustart nicht, liegt der Fehler im Notebook
+      selbst, und die übrigen Prüfungen erübrigen sich. Erst danach lohnt der
+      Vergleich der Umgebungen.
+- [ ] Zuerst Python neu installieren ~ Das ändert viel und findet selten die
+      Ursache. Die meisten Abbrüche liegen an Ausführungsreihenfolge, Kernel
+      oder Pfad.
+- [ ] Das Notebook als Skript exportieren, dann läuft es überall ~ Ein Skript
+      erbt dieselben Pfade und Abhängigkeiten.
+:::
+
+### Zugangsdaten
+
+::: {.quiz}
+Eine Datei `.env` mit einem Datenbankpasswort liegt im Projektordner. Sie steht
+in `.gitignore`. Das Dockerfile enthält `COPY . .`. Wo landet das Passwort
+trotzdem?
+
+- [x] Im Container-Image, weil `COPY . .` den ganzen Ordner kopiert und
+      `.gitignore` dafür nicht gilt ~ Richtig. Docker liest `.gitignore` nicht,
+      sondern `.dockerignore`. Die Datei muss dort ebenfalls stehen, sonst ist
+      das Passwort in jedem weitergegebenen Image enthalten.
+- [ ] Nirgends, `.gitignore` schützt die Datei überall ~ `.gitignore` gilt nur
+      für Git.
+- [ ] Nur im laufenden Container, nicht im Image ~ Was mit `COPY` kopiert
+      wird, ist Teil einer Schicht des Images und damit in jeder Kopie davon.
+:::
+
+::: {.quiz}
+Auf einem gemeinsam genutzten Linux-Server liegt dieselbe `.env`. Was gehört
+dort zusätzlich dazu?
+
+- [x] `chmod 600 .env`, damit nur der Besitzer lesen und schreiben kann ~
+      Richtig. Die Standardrechte erlauben anderen Benutzern oft das Lesen.
+      `.gitignore` und `.dockerignore` regeln die Weitergabe, die Rechte den
+      Zugriff auf dem Rechner selbst.
+- [ ] `chmod 777 .env`, damit das Skript sie sicher lesen kann ~ Das erlaubt
+      allen Benutzern Lesen und Schreiben, also das Gegenteil.
+- [ ] Nichts, auf einem Server ist die Datei sicher ~ Gemeinsam genutzt heisst,
+      dass andere Konten auf denselben Dateien arbeiten.
+:::
+
+### Windows und Linux
+
+::: {.quiz}
+Ein unter Windows geschriebenes Shell-Skript bricht im Linux-Container mit
+`/bin/bash^M: bad interpreter` ab. Woran liegt es?
+
+- [x] An den Windows-Zeilenenden, jede Zeile endet mit einem zusätzlichen
+      Wagenrücklauf ~ Richtig. `^M` ist dieses Zeichen. Abhilfe: die Datei mit
+      LF-Zeilenenden speichern, etwa über die Einstellung im Editor, oder in
+      Git mit einer `.gitattributes`-Zeile `*.sh text eol=lf` festlegen.
+- [ ] Bash ist im Container nicht installiert ~ Dann lautete die Meldung
+      anders, und `^M` stünde nicht im Pfad.
+- [ ] Das Skript braucht `chmod +x` ~ Fehlende Ausführungsrechte melden
+      `Permission denied`.
+:::
+
+::: {.quiz}
+`cut -d, -f3 daten.csv | sort | uniq -c` und `df["standort"].value_counts()`
+in pandas zählen dieselbe Spalte und liefern verschiedene Zahlen. Was ist die
+wahrscheinlichste Ursache?
+
+- [x] Die Shell zählt die Kopfzeile mit und trennt auch an Kommas innerhalb
+      von Anführungszeichen ~ Richtig. `cut` kennt kein CSV, nur ein
+      Trennzeichen. Ein Wert wie `"Bern, Nord"` verschiebt alle folgenden
+      Spalten. pandas liest das Format korrekt.
+- [ ] `uniq -c` zählt falsch ~ Nach `sort` zählt `uniq -c` korrekt. Ohne
+      `sort` zählte es nur benachbarte gleiche Zeilen.
+- [ ] pandas lässt Duplikate weg ~ `value_counts` zählt jedes Vorkommen.
+:::

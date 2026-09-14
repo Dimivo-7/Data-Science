@@ -1,0 +1,117 @@
+---
+title: "Fragen zu Datenbanken"
+description: "Übergreifende Fragen zur Wahl des Systems und zu Eigenheiten, die zwischen den Systemen verschieden sind."
+categories: ["Datenbanken", "SQL"]
+seitentyp: konzept
+stand: entwurf
+order: 90
+---
+
+Diese Fragen vergleichen die Systeme untereinander und mit R und Python. Die
+Grundfragen zu SQL, Joins und `NULL` stehen in den
+[Fragen zum Bereich Daten](../daten/fragen.qmd), die Fragen zu einem einzelnen
+System auf dessen Seite.
+
+### Das passende System
+
+::: {.quiz}
+Drei Aufgaben: (a) eine 5 GB grosse Parquet-Sammlung allein am eigenen Rechner
+auswerten, (b) eine Webanwendung, in die viele Nutzer gleichzeitig schreiben,
+(c) ein Prototyp, dessen Daten als eine Datei weitergegeben werden. Welche
+Zuordnung passt?
+
+- [x] (a) DuckDB, (b) PostgreSQL, (c) SQLite ~ Richtig. DuckDB liest Parquet
+      direkt und rechnet spaltenweise; PostgreSQL ist für viele gleichzeitige
+      Schreibzugriffe gebaut; SQLite ist eine einzelne Datei ohne Server.
+- [ ] (a) PostgreSQL, (b) SQLite, (c) DuckDB ~ SQLite erlaubt nur einen
+      Schreibzugriff zur selben Zeit und ist für (b) die schlechteste Wahl.
+- [ ] Überall PostgreSQL, es kann alles ~ Kann es, aber für (a) und (c) ist
+      der Server reiner Aufwand.
+:::
+
+::: {.quiz}
+Bestellungen mit einer Liste von Positionen sollen ausgewertet werden:
+Umsatz je Artikel. Die Daten liegen einmal in MongoDB, einmal relational in
+zwei Tabellen. Was ist in beiden Fällen der entscheidende Schritt?
+
+- [x] Je Position eine Zeile erzeugen: in MongoDB mit `$unwind`, relational
+      über den Join der Positionstabelle ~ Richtig. Summiert wird immer über
+      flache Zeilen. Die Dokumentdatenbank speichert verschachtelt, die
+      Auswertung braucht die Struktur trotzdem flach.
+- [ ] In MongoDB ist kein Zwischenschritt nötig, weil die Positionen schon im
+      Dokument stehen ~ Eine Summe über das Dokument ergäbe den Umsatz je
+      Bestellung, nicht je Artikel.
+- [ ] Relational ist es unmöglich ohne Unterabfrage ~ Ein Join mit `GROUP BY`
+      genügt.
+:::
+
+### Dieselbe Abfrage, verschiedene Ergebnisse
+
+::: {.quiz}
+`WHERE ort = 'bern'` findet Zeilen mit `Bern` in MySQL, aber nicht in
+PostgreSQL. Warum?
+
+- [x] Die übliche Sortierung in MySQL unterscheidet nicht nach Gross- und
+      Kleinschreibung, PostgreSQL vergleicht exakt ~ Richtig. In MySQL legt die
+      Kollation fest, wie verglichen wird. In PostgreSQL braucht es für
+      denselben Effekt `lower(ort) = 'bern'` oder `ILIKE`.
+- [ ] PostgreSQL hat einen Fehler bei Umlauten ~ Es geht nicht um Umlaute,
+      und beide Systeme verhalten sich dokumentiert.
+- [ ] MySQL ergänzt fehlende Grossbuchstaben automatisch ~ Es wird nichts
+      ergänzt; nur der Vergleich ist unscharf.
+:::
+
+::: {.quiz}
+In eine Spalte, die als ganze Zahl angelegt ist, soll der Text `k.A.`
+geschrieben werden. Wie reagieren SQLite ohne `STRICT` und PostgreSQL?
+
+- [x] SQLite speichert den Text still, PostgreSQL lehnt die Zeile mit einem
+      Fehler ab ~ Richtig. In SQLite ist der Spaltentyp eine Empfehlung; eine
+      Summe über die Spalte rechnet danach stillschweigend weiter. PostgreSQL
+      prüft den Typ und lässt den Import scheitern, was den Fehler früh zeigt.
+- [ ] Beide lehnen ab ~ SQLite lehnt erst mit `STRICT`-Tabelle ab.
+- [ ] Beide speichern `NULL` ~ Keines der beiden setzt still `NULL`.
+:::
+
+::: {.quiz}
+Eine Tabelle hat Fremdschlüssel in der Definition. In welchen Fällen lassen
+sich trotzdem Bestellungen für nicht existierende Kunden einfügen?
+
+- [x] In SQLite ohne `PRAGMA foreign_keys = ON` und in MySQL mit der
+      Speicher-Engine MyISAM ~ Richtig. SQLite prüft Fremdschlüssel nur, wenn
+      sie je Verbindung eingeschaltet sind. MyISAM kennt keine Fremdschlüssel
+      und ignoriert die Angabe. PostgreSQL und InnoDB prüfen immer.
+- [ ] Nur in MongoDB ~ MongoDB kennt keine Fremdschlüssel, aber auch
+      relationale Systeme prüfen nicht in jedem Fall.
+- [ ] In keinem System, sobald `REFERENCES` in der Definition steht ~ Die
+      Angabe allein prüft nichts, wenn das System sie übergeht.
+:::
+
+### Datenbank und Data Frame
+
+::: {.quiz}
+`SELECT COUNT(*), COUNT(rabatt) FROM artikel` liefert 6 und 3. Welche Befehle
+in pandas liefern dieselben zwei Zahlen?
+
+- [x] `len(df)` und `df["rabatt"].count()` ~ Richtig. `COUNT(*)` zählt Zeilen,
+      `COUNT(spalte)` vorhandene Werte. In pandas zählt `count()` ebenfalls
+      nur Werte, die nicht fehlen. `size` zählte dagegen alle Zeilen.
+- [ ] `len(df)` und `len(df["rabatt"])` ~ Die zweite Zahl wäre 6: `len` zählt
+      auch die Zeilen mit fehlendem Wert.
+- [ ] `df.count()` für beide ~ `df.count()` liefert je Spalte die vorhandenen
+      Werte, also keine Zeilenzahl.
+:::
+
+::: {.quiz}
+Eine Datumsspalte kommt aus SQLite als Text zurück, etwa `03.02.2026`. Die
+Sortierung nach Datum stimmt nicht. Was ist los?
+
+- [x] SQLite hat keinen Datumstyp, und Text in der Form Tag.Monat.Jahr sortiert
+      zeichenweise falsch ~ Richtig. Nur das ISO-Format `2026-02-03` sortiert
+      als Text richtig. Nach dem Laden gehört die Spalte mit `as.Date()` oder
+      `pd.to_datetime()` in einen echten Datumstyp umgewandelt.
+- [ ] Die Zeitzone verschiebt die Werte ~ Ein reines Datum ohne Uhrzeit hat
+      keine Zeitzone.
+- [ ] Die Verbindung wurde nicht geschlossen ~ Das beeinflusst die Sortierung
+      nicht.
+:::
