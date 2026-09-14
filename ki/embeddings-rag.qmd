@@ -1,0 +1,275 @@
+---
+title: "Embeddings und RAG"
+description: "Texte als Vektoren, Ähnlichkeit messen, passende Ausschnitte suchen und einem Sprachmodell als Material mitgeben."
+categories: ["Sprachmodelle", "Distanzmasse", "Prompting", "R", "Python"]
+seitentyp: konzept
+stand: entwurf
+order: 88
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+texte <- c("Lieferung kam zu spät", "Paket verspätet zugestellt",
+           "Qualität der Ware sehr gut", "Produkt hochwertig verarbeitet",
+           "Rechnung doppelt verschickt", "Preis zu hoch")
+
+# Vier erfundene Dimensionen: Lieferung, Qualitaet, Rechnung und Preis, Stimmung.
+# Echte Embeddings haben Hunderte Dimensionen ohne benannte Bedeutung.
+E <- matrix(c(0.9, 0.0, 0.1, -0.4,
+              0.8, 0.1, 0.0, -0.3,
+              0.0, 0.9, 0.0,  0.5,
+              0.1, 0.8, 0.1,  0.4,
+              0.1, 0.0, 0.9, -0.3,
+              0.0, 0.1, 0.8, -0.2), ncol = 4, byrow = TRUE)
+frage <- c(0.85, 0.05, 0.05, -0.35)   # "Wann kommt meine Bestellung?"
+
+kosinus <- function(a, b) sum(a * b) / (sqrt(sum(a^2)) * sqrt(sum(b^2)))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+
+texte = ["Lieferung kam zu spät", "Paket verspätet zugestellt",
+         "Qualität der Ware sehr gut", "Produkt hochwertig verarbeitet",
+         "Rechnung doppelt verschickt", "Preis zu hoch"]
+
+E = np.array([[0.9, 0.0, 0.1, -0.4], [0.8, 0.1, 0.0, -0.3], [0.0, 0.9, 0.0, 0.5],
+              [0.1, 0.8, 0.1, 0.4], [0.1, 0.0, 0.9, -0.3], [0.0, 0.1, 0.8, -0.2]])
+frage = np.array([0.85, 0.05, 0.05, -0.35])
+
+
+def kosinus(a, b):
+    return a @ b / (np.linalg.norm(a) * np.linalg.norm(b))
+```
+
+## Kernideen
+
+- Ein **Embedding** übersetzt einen Text in einen Vektor; ähnliche Bedeutung ergibt ähnliche Richtung
+- Ähnlichkeit wird meist als **Kosinus** gemessen: 1 gleiche Richtung, 0 unabhängig, negativ gegensätzlich
+- Damit lässt sich nach **Bedeutung** suchen statt nach gleichen Wörtern: „Paket verspätet" findet „Lieferung kam zu spät"
+- **RAG** (abrufgestützte Generierung): passende Ausschnitte suchen und dem Sprachmodell als Material mitgeben
+- Die Qualität hängt am **Abruf**: Was nicht gefunden wird, kann das Modell nicht verwenden
+- Die Suche ist rechenbar und prüfbar; die formulierte Antwort bleibt ein Modellergebnis
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Distanzmasse](../statistik/multivariat/distanzmasse.qmd) für
+Kosinus und euklidische Distanz, [Vom Prompt zum Kontext](context-engineering.qmd)
+für den Platz von RAG unter den Stufen der Kontextarbeit. Die Vektoren auf
+dieser Seite sind **von Hand gesetzt** und vierdimensional, damit die Rechnung
+im Build läuft und nachvollziehbar bleibt. Echte Embeddings erzeugt ein Modell,
+das hier nicht verfügbar ist.
+:::
+
+### Vom Text zum Vektor
+
+Ein Embedding-Modell liest einen Text und gibt eine feste Anzahl Zahlen aus,
+typischerweise einige Hundert bis wenige Tausend. Die einzelnen Zahlen haben
+keine benannte Bedeutung. Wichtig ist nur die Lage der Vektoren zueinander:
+Texte, die in ähnlichen Zusammenhängen vorkommen, landen nahe beieinander.
+
+| Werkzeug | Wo es läuft | Hinweis |
+|---|---|---|
+| sentence-transformers | lokal in Python | kostenlos, Daten verlassen den Rechner nicht |
+| Embedding-APIs von Cloud-Anbietern | beim Anbieter | Kosten je Token, Datenschutz prüfen |
+| `text2vec`, `ellmer` in R | lokal oder über APIs | |
+
+### Kosinus-Ähnlichkeit
+
+$$\cos(a, b) = \frac{a \cdot b}{\lVert a \rVert \, \lVert b \rVert}$$
+
+Der Kosinus misst den Winkel, nicht die Länge. Das passt zu Embeddings, weil ein
+längerer Text nicht bedeutungsvoller ist. Viele Modelle liefern bereits
+normierte Vektoren; dann ist der Kosinus einfach das Skalarprodukt.
+
+### Der Ablauf von RAG
+
+```{mermaid}
+%%| label: fig-rag-ablauf
+%%| fig-cap: "Abrufgestützte Generierung: vorab Dokumente zerlegen und einbetten, zur Frage die ähnlichsten Stücke holen."
+%%| echo: false
+flowchart LR
+    D["Dokumente"] --> Z["in Stücke zerlegen"] --> V["Stücke einbetten"] --> I[("Vektorindex")]
+    F["Frage"] --> FE["Frage einbetten"] --> S["ähnlichste Stücke suchen"]
+    I --> S --> P["Prompt mit Material"] --> M["Sprachmodell"] --> A["Antwort mit Belegen"]
+```
+
+| Schritt | Entscheidung | Typischer Fehler |
+|---|---|---|
+| Zerlegen | Stückgrösse, Überlappung | zu grosse Stücke verwässern die Ähnlichkeit, zu kleine verlieren den Zusammenhang |
+| Einbetten | Modell | für Frage und Dokumente verschiedene Modelle verwendet |
+| Suchen | Anzahl Stücke, Mindestähnlichkeit | immer die besten drei nehmen, auch wenn keines passt |
+| Prompt | Anweisung, nur aus dem Material zu antworten | ohne diese Anweisung ergänzt das Modell aus eigenem Wissen |
+| Prüfen | Stichproben, Quellenangaben | Antwort nicht gegen die gefundenen Stücke gehalten |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Die passendsten Texte zu einer Frage
+
+#### Frage und Datenlage
+
+Sechs Kundenrückmeldungen und die Frage „Wann kommt meine Bestellung?" liegen
+als vierdimensionale Vektoren vor. Welche Rückmeldungen passen am besten?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-emb-r
+aehnlichkeit <- apply(E, 1, function(zeile) kosinus(frage, zeile))
+ergebnis <- data.frame(text = texte, aehnlichkeit = round(aehnlichkeit, 4))
+ergebnis[order(-ergebnis$aehnlichkeit), ]
+```
+
+##### Python
+
+```{python}
+#| label: b1-emb-py
+aehnlichkeit = np.array([kosinus(frage, zeile) for zeile in E])
+ergebnis = pd.DataFrame({"text": texte, "aehnlichkeit": aehnlichkeit.round(4)})
+print(ergebnis.sort_values("aehnlichkeit", ascending=False).to_string(index=False))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Text | Ähnlichkeit | Wie es zu lesen ist |
+|---|---|---|
+| Lieferung kam zu spät | 0.9971 | fast gleiche Richtung wie die Frage |
+| Paket verspätet zugestellt | 0.9961 | kein gemeinsames Wort mit der Frage, trotzdem gefunden |
+| Rechnung doppelt verschickt | 0.2672 | teilt nur die negative Stimmung |
+| Preis zu hoch | 0.1502 | |
+| Produkt hochwertig verarbeitet | -0.0120 | praktisch unabhängig |
+| Qualität der Ware sehr gut | -0.1370 | anderes Thema, gegensätzliche Stimmung |
+
+#### Interpretation
+
+Die beiden Lieferungstexte liegen weit vorn, alle anderen deutlich dahinter.
+Diese Lücke ist die eigentliche Information: Ein RAG-System sollte nur die
+beiden ersten Stücke mitgeben, nicht stur die besten drei. Eine
+Mindestähnlichkeit, hier etwa 0.5, verhindert, dass ein unpassendes Stück als
+Material im Prompt landet.
+
+### Beispiel 2: Bedeutung statt gleicher Wörter
+
+#### Frage und Datenlage
+
+Wie ähnlich sind sich zwei Texte zum selben Thema ohne gemeinsames Wort, und wie
+ähnlich zwei Texte zu verschiedenen Themen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-emb-r
+round(c(lieferung_paar = kosinus(E[1, ], E[2, ]),
+        lieferung_qualitaet = kosinus(E[1, ], E[3, ])), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b2-emb-py
+print("lieferung_paar:", round(kosinus(E[0], E[1]), 4),
+      " lieferung_qualitaet:", round(kosinus(E[0], E[2]), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Paar | Kosinus | Wie es zu lesen ist |
+|---|---|---|
+| „Lieferung kam zu spät" und „Paket verspätet zugestellt" | 0.9864 | kein gemeinsames Wort, gleiche Bedeutung |
+| „Lieferung kam zu spät" und „Qualität der Ware sehr gut" | -0.1962 | beide über eine Bestellung, aber verschiedenes Anliegen |
+
+#### Interpretation
+
+Eine Stichwortsuche nach „Lieferung" hätte „Paket verspätet zugestellt" nicht
+gefunden. Das ist der Vorteil von Embeddings. Der Nachteil ist das Spiegelbild:
+Eine exakte Artikelnummer oder ein seltener Fachbegriff wird von einer reinen
+Bedeutungssuche manchmal schlechter gefunden als von einer Stichwortsuche. In
+der Praxis kombiniert man deshalb oft beide.
+
+::::
+
+## Ein RAG-Prompt
+
+Die gefundenen Stücke werden mit einer klaren Anweisung übergeben. So sieht der
+Aufruf aus, siehe [Sprachmodelle per API](sprachmodelle-api.qmd); er läuft im
+Build nicht:
+
+```python
+gefunden = ["Lieferung kam zu spät", "Paket verspätet zugestellt"]
+material = "\n".join(f"[{i + 1}] {t}" for i, t in enumerate(gefunden))
+
+antwort = client.messages.create(
+    model="claude-opus-5",
+    max_tokens=16000,
+    system="Beantworte Fragen ausschliesslich auf Basis des Materials. "
+           "Nenne zu jeder Aussage die Nummer der Quelle. "
+           "Steht die Antwort nicht im Material, sage das.",
+    messages=[{"role": "user",
+               "content": f"Material:\n{material}\n\nFrage: Welche Probleme melden Kunden zur Lieferung?"}],
+)
+```
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein RAG-System gibt immer die fünf ähnlichsten Stücke mit. Bei einer Frage, zu
+der kein Dokument passt, erfindet das Modell trotzdem eine Antwort mit
+Quellenangabe. Was hilft am meisten?
+
+- [x] Eine Mindestähnlichkeit für den Abruf und die Anweisung, fehlende Antworten
+      als fehlend zu benennen ~ Richtig. Ohne Schwelle landen unpassende Stücke
+      als scheinbares Material im Prompt, und das Modell baut darauf auf.
+- [ ] Mehr Stücke mitgeben ~ Das verstärkt das Problem, weil noch mehr
+      Unpassendes im Kontext steht.
+- [ ] Ein grösseres Sprachmodell ~ Es bekommt dasselbe unpassende Material.
+:::
+
+::: {.quiz}
+Warum wird für Embeddings meist der Kosinus statt der euklidischen Distanz
+verwendet?
+
+- [x] Er misst die Richtung, nicht die Länge der Vektoren ~ Richtig. Die Länge
+      hängt an Eigenschaften wie der Textlänge, die für die Bedeutung
+      unerheblich sind. Bei normierten Vektoren führen beide Masse zur selben
+      Reihenfolge.
+- [ ] Er ist schneller zu rechnen ~ Der Unterschied ist vernachlässigbar.
+- [ ] Die euklidische Distanz funktioniert nur in zwei Dimensionen ~ Sie
+      funktioniert in beliebig vielen.
+:::
+
+::: {.quiz}
+Dokumente wurden mit Modell A eingebettet, Fragen mit Modell B. Was ist die
+Folge?
+
+- [x] Die Ähnlichkeiten sind bedeutungslos, weil die Vektorräume nicht
+      zusammenpassen ~ Richtig. Jedes Modell legt seine Dimensionen anders an;
+      Dokumente und Fragen müssen mit demselben Modell eingebettet werden.
+- [ ] Die Suche wird etwas ungenauer ~ Sie wird nicht ungenauer, sondern
+      beliebig.
+- [ ] Nichts, solange beide Modelle gleich viele Dimensionen haben ~ Gleiche
+      Länge heisst nicht gleiche Bedeutung der Dimensionen.
+:::
+
+## Verlinkte Ressourcen
+
+- [sentence-transformers: Dokumentation](https://sbert.net/)
+- [ellmer: Sprachmodelle aus R](https://ellmer.tidyverse.org/)

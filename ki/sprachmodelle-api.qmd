@@ -1,0 +1,324 @@
+---
+title: "Sprachmodelle per API"
+description: "Ein Sprachmodell aus R und Python aufrufen: Anfrage, Systemvorgabe, strukturierte Ausgabe, Kosten und Fehlerbehandlung."
+categories: ["Sprachmodelle", "Prompting", "Reproduzierbarkeit"]
+seitentyp: werkzeug
+stand: entwurf
+order: 85
+---
+
+## Kernideen
+
+- Die API ist dasselbe Modell wie im Chat, aber **aus dem Code** aufrufbar: für viele Texte, wiederholbar und in eine Auswertung eingebunden
+- Jede Anfrage ist **zustandslos**; ein Gespräch entsteht nur, wenn der Verlauf mitgeschickt wird
+- Für Weiterverarbeitung **strukturierte Ausgabe** verlangen, nicht Freitext parsen
+- Kosten entstehen **je Token**, getrennt nach Eingabe und Ausgabe; vor grossen Läufen an einer Stichprobe messen
+- Der **Schlüssel** gehört in eine Umgebungsvariable, nie in den Code oder ins Repository
+- Antworten sind nicht reproduzierbar wie eine Rechnung: Ergebnis **und** Anfrage speichern, Stichproben prüfen
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Bausteine eines Prompts](prompt-bausteine.qmd) für den Inhalt
+einer Anfrage, [Modelle und ihre Grenzen](modelle-und-grenzen.qmd) für das, was
+dabei schiefgehen kann, und [APIs und Web-Scraping](../daten/apis-web-scraping.qmd)
+für Schnittstellen allgemein. Diese Seite rechnet nichts: Im Build gibt es
+keinen Modellzugang, alle Codeblöcke sind Listings. Als Beispiel dient die
+Claude-API von Anthropic; andere Anbieter funktionieren nach demselben Muster
+mit anderen Namen.
+:::
+
+### Wann die API statt des Chats
+
+| Aufgabe | Chat | API |
+|---|---|---|
+| Einzelne Frage, Entwurf, Erklärung | ja | umständlich |
+| 2000 Freitextantworten kategorisieren | nicht praktikabel | ja |
+| Dieselbe Auswertung jeden Monat | Kopieren und Einfügen, fehleranfällig | ja, im Skript |
+| Ergebnis soll direkt in einen Data Frame | Abtippen | ja, mit strukturierter Ausgabe |
+
+### Einrichten
+
+```bash
+pip install anthropic            # Python
+```
+
+```r
+install.packages("httr2")        # R, Anfragen an die REST-Schnittstelle
+```
+
+Der Schlüssel wird einmal als Umgebungsvariable gesetzt, etwa in
+`~/.Renviron` für R oder in einer Datei `.env`, die in `.gitignore` steht:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### Die einfachste Anfrage
+
+::: {.panel-tabset}
+
+## Python
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()          # liest ANTHROPIC_API_KEY
+
+antwort = client.messages.create(
+    model="claude-opus-5",
+    max_tokens=16000,
+    system="Du bist Statistikerin und antwortest knapp auf Deutsch.",
+    messages=[{"role": "user",
+               "content": "Was sagt ein p-Wert von 0.03 aus, und was nicht?"}],
+)
+
+for block in antwort.content:
+    if block.type == "text":
+        print(block.text)
+
+print(antwort.usage.input_tokens, antwort.usage.output_tokens)
+```
+
+## R
+
+```r
+library(httr2)
+
+antwort <- request("https://api.anthropic.com/v1/messages") |>
+  req_headers(
+    "x-api-key" = Sys.getenv("ANTHROPIC_API_KEY"),
+    "anthropic-version" = "2023-06-01"
+  ) |>
+  req_body_json(list(
+    model = "claude-opus-5",
+    max_tokens = 16000,
+    system = "Du bist Statistikerin und antwortest knapp auf Deutsch.",
+    messages = list(list(role = "user",
+                         content = "Was sagt ein p-Wert von 0.03 aus, und was nicht?"))
+  )) |>
+  req_retry(max_tries = 3) |>
+  req_perform() |>
+  resp_body_json()
+
+texte <- Filter(function(b) b$type == "text", antwort$content)
+cat(vapply(texte, function(b) b$text, ""), sep = "\n")
+
+c(eingabe = antwort$usage$input_tokens, ausgabe = antwort$usage$output_tokens)
+```
+
+:::
+
+| Teil | Bedeutung |
+|---|---|
+| `model` | welches Modell antwortet; die Bezeichnung steht in der Dokumentation des Anbieters |
+| `max_tokens` | Obergrenze der Antwortlänge; zu knapp gesetzt, bricht die Antwort mitten im Satz ab |
+| `system` | Dauervorgabe für Rolle, Ton und Format, siehe [Vom Prompt zum Kontext](context-engineering.qmd) |
+| `messages` | der Verlauf; für ein Gespräch werden frühere Fragen und Antworten mitgeschickt |
+| `content` | die Antwort als Liste von Blöcken; Text steht in Blöcken vom Typ `text` |
+| `usage` | verbrauchte Token, die Grundlage der Kosten |
+| `stop_reason` | warum die Antwort endet: `end_turn` regulär, `max_tokens` abgeschnitten |
+
+### Strukturierte Ausgabe
+
+Wer Antworten weiterverarbeitet, lässt sie in einem festen Schema liefern. In
+Python beschreibt eine Pydantic-Klasse das Schema, und das SDK prüft die
+Antwort dagegen:
+
+```python
+from typing import Literal
+from pydantic import BaseModel
+
+
+class Einordnung(BaseModel):
+    kategorie: Literal["Lieferung", "Qualität", "Preis", "Sonstiges"]
+    stimmung: Literal["positiv", "neutral", "negativ"]
+    begruendung: str
+
+
+antwort = client.messages.parse(
+    model="claude-opus-5",
+    max_tokens=16000,
+    messages=[{"role": "user",
+               "content": "Ordne ein: 'Ware kam drei Tage zu spät, sonst gut.'"}],
+    output_format=Einordnung,
+)
+print(antwort.parsed_output)
+```
+
+In R wird das Schema als JSON mitgeschickt und die Antwort mit `jsonlite`
+gelesen:
+
+```r
+schema <- list(
+  type = "object",
+  properties = list(
+    kategorie = list(type = "string", enum = list("Lieferung", "Qualität", "Preis", "Sonstiges")),
+    stimmung  = list(type = "string", enum = list("positiv", "neutral", "negativ")),
+    begruendung = list(type = "string")
+  ),
+  required = list("kategorie", "stimmung", "begruendung"),
+  additionalProperties = FALSE
+)
+
+antwort <- request("https://api.anthropic.com/v1/messages") |>
+  req_headers("x-api-key" = Sys.getenv("ANTHROPIC_API_KEY"),
+              "anthropic-version" = "2023-06-01") |>
+  req_body_json(list(
+    model = "claude-opus-5", max_tokens = 16000,
+    output_config = list(format = list(type = "json_schema", schema = schema)),
+    messages = list(list(role = "user",
+                         content = "Ordne ein: 'Ware kam drei Tage zu spät, sonst gut.'"))
+  )) |>
+  req_perform() |>
+  resp_body_json()
+
+jsonlite::fromJSON(antwort$content[[1]]$text)
+```
+
+### Viele Texte nacheinander
+
+```python
+import pandas as pd
+
+rueckmeldungen = pd.read_csv("rueckmeldungen.csv")
+ergebnisse = []
+for text in rueckmeldungen["text"]:
+    antwort = client.messages.parse(
+        model="claude-opus-5", max_tokens=16000,
+        messages=[{"role": "user", "content": f"Ordne ein: {text!r}"}],
+        output_format=Einordnung,
+    )
+    ergebnisse.append(antwort.parsed_output.model_dump())
+
+eingeordnet = pd.concat([rueckmeldungen, pd.DataFrame(ergebnisse)], axis=1)
+eingeordnet.to_csv("rueckmeldungen_eingeordnet.csv", index=False)
+```
+
+Für grosse Mengen, bei denen die Antwort nicht sofort gebraucht wird, bieten
+Anbieter eine Stapelverarbeitung zu reduzierten Preisen an.
+
+### Kosten abschätzen
+
+Abgerechnet wird je Million Token, Ausgabe teurer als Eingabe. Ein Token
+entspricht grob drei bis vier Zeichen deutschen Texts. Die Rechnung vor einem
+grossen Lauf:
+
+| Grösse | Vorgehen |
+|---|---|
+| Token je Anfrage | an zehn echten Anfragen `usage` ablesen, Mittel bilden |
+| Anzahl Anfragen | Zeilen im Datensatz |
+| Preis | aktuelle Preisliste des Anbieters |
+| Kosten | Anfragen × (Eingabetoken × Eingabepreis + Ausgabetoken × Ausgabepreis) / 1 000 000 |
+
+Eine lange, gleichbleibende Systemvorgabe lässt sich zwischenspeichern
+(Prompt Caching); wiederholte Anfragen mit demselben Anfang werden dann für
+diesen Teil deutlich günstiger.
+
+### Fehler und Wiederholungen
+
+| Fehler | Bedeutung | Vorgehen |
+|---|---|---|
+| `401` | Schlüssel fehlt oder ist ungültig | Umgebungsvariable prüfen |
+| `400` | Anfrage ungültig, etwa ein nicht unterstützter Parameter | Meldung lesen; Wiederholen hilft nicht |
+| `429` | Kontingent pro Minute erschöpft | warten, dann wiederholen |
+| `500`, `529` | Fehler oder Überlastung beim Anbieter | mit wachsender Wartezeit wiederholen |
+| `stop_reason: max_tokens` | Antwort abgeschnitten | `max_tokens` erhöhen |
+
+Das Python-SDK wiederholt `429` und Serverfehler automatisch, standardmässig
+zweimal. In R übernimmt `req_retry()` diese Aufgabe.
+
+### Reproduzierbarkeit
+
+Eine Modellantwort ist kein Rechenergebnis. Dieselbe Anfrage kann morgen anders
+beantwortet werden, und bei neueren Modellen lässt sich die Zufälligkeit nicht
+mehr über einen Parameter wie `temperature` abschalten; die Tiefe der Antwort
+wird stattdessen über `effort` gesteuert. Für eine nachvollziehbare Auswertung
+heisst das:
+
+- Modellbezeichnung, Systemvorgabe und Anfrage mit dem Ergebnis speichern
+- Ergebnisse als Datei ablegen und darauf weiterrechnen, nicht bei jedem Rendern neu abfragen
+- Eine Stichprobe der Einordnungen von Hand prüfen und die Übereinstimmung berichten
+- Zahlen, die das Modell nennt, im Code nachrechnen, siehe [Prompts für die Datenarbeit](prompts-datenarbeit.qmd)
+
+## Typische Aufgaben
+
+**Schlüssel prüfen, ohne ihn anzuzeigen**
+
+```r
+nzchar(Sys.getenv("ANTHROPIC_API_KEY"))
+```
+
+```python
+import os
+bool(os.environ.get("ANTHROPIC_API_KEY"))
+```
+
+**Token vor dem Abschicken zählen**
+
+```python
+client.messages.count_tokens(model="claude-opus-5", messages=[...]).input_tokens
+```
+
+**Abgeschnittene Antworten finden**
+
+```python
+if antwort.stop_reason == "max_tokens":
+    print("Antwort unvollständig")
+```
+
+**Ergebnisse zwischenspeichern, damit ein Neustart nicht alles neu abfragt**
+
+```python
+import json, pathlib
+ziel = pathlib.Path("cache") / f"{zeilen_id}.json"
+if not ziel.exists():
+    ziel.write_text(json.dumps(ergebnis, ensure_ascii=False), encoding="utf-8")
+```
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein Skript fragt für jede von 3000 Zeilen das Modell und schreibt die Antwort in
+eine neue Spalte. Nach 1800 Zeilen bricht es mit `429` ab. Was hätte den Verlust
+verhindert?
+
+- [x] Ergebnisse laufend je Zeile speichern und Wiederholungen mit Wartezeit
+      einbauen ~ Richtig. Dann setzt ein Neustart bei Zeile 1801 fort, und
+      kurzfristige Kontingentgrenzen werden abgewartet.
+- [ ] Ein grösseres Modell wählen ~ Das Kontingent hängt nicht an der Grösse,
+      und teurer wird es auch.
+- [ ] `max_tokens` erhöhen ~ Das betrifft die Länge einer Antwort, nicht die
+      Anzahl Anfragen pro Minute.
+:::
+
+::: {.quiz}
+Warum sollte die Einordnung von Freitexten als strukturierte Ausgabe statt als
+Freitext angefordert werden?
+
+- [x] Das Ergebnis passt garantiert in das vorgegebene Schema und lässt sich
+      ohne Parsing weiterverarbeiten ~ Richtig. Kategorien ausserhalb der
+      erlaubten Liste oder zusätzliche Erklärsätze kommen nicht vor.
+- [ ] Strukturierte Ausgabe ist inhaltlich genauer ~ Die Form ist verlässlich,
+      der Inhalt bleibt zu prüfen.
+- [ ] Freitext kostet mehr Token ~ Das kann sein, ist aber nicht der Grund.
+:::
+
+::: {.quiz}
+Eine Auswertung ruft beim Rendern eines Quarto-Berichts jedes Mal das Modell auf.
+Was ist das Problem?
+
+- [x] Jeder Render kann andere Ergebnisse liefern und kostet erneut ~ Richtig.
+      Abfragen einmal ausführen, Ergebnisse speichern, der Bericht liest die
+      Datei.
+- [ ] Quarto kann keine Netzwerkaufrufe ~ Es kann, genau das ist das Risiko.
+- [ ] Es gibt keines, solange der Schlüssel gesetzt ist ~ Der Schlüssel löst
+      weder die Kosten noch die fehlende Wiederholbarkeit.
+:::
+
+## Verlinkte Ressourcen
+
+- [Claude API: Dokumentation](https://platform.claude.com/docs/)
+- [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python)
+- [httr2: Einführung](https://httr2.r-lib.org/articles/httr2.html)
+- [ellmer: Sprachmodelle aus R](https://ellmer.tidyverse.org/)
