@@ -1,0 +1,207 @@
+---
+title: "R-Umgebungen"
+description: "RStudio, Positron und Posit Cloud: Oberfläche, Projekte und die Einstellungen, die man ändern sollte."
+categories: ["R", "Tooling", "Reproduzierbarkeit"]
+quelle: ["ESDS"]
+seitentyp: werkzeug
+stand: entwurf
+order: 40
+---
+
+## Kernideen
+
+- R ist die Sprache, RStudio und Positron sind Programme, in denen man sie schreibt
+- Ein Projekt legt das Arbeitsverzeichnis fest und macht Pfade übertragbar
+- Der Arbeitsbereich wird nicht gespeichert; was zählt, steht im Skript
+- Regelmässig mit einer frischen R-Sitzung neu starten, sonst hängt das Ergebnis an alten Objekten
+- Positron, wenn R und Python gleichermassen gebraucht werden; RStudio, wenn es nur R ist
+- Posit Cloud, wenn nichts installiert werden kann oder soll
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [R-Grundlagen](../programmierung/r-grundlagen.qmd) für die
+Sprache selbst und [Pakete und Umgebungen](../programmierung/pakete-umgebungen.qmd)
+für `renv`. Die Programme auf dieser Seite laufen im Build nicht; ausgeführt ist
+nur, was R über seine eigene Sitzung verrät.
+:::
+
+### Sprache und Programm auseinanderhalten
+
+R wird zweimal installiert, und die Verwechslung ist die häufigste Ursache für
+Anfangsprobleme. Zuerst kommt **R** selbst von
+[CRAN](https://cran.r-project.org): der Interpreter, der rechnet. Danach eine
+**Entwicklungsumgebung** wie RStudio oder Positron, die R nur aufruft. Ohne R
+startet RStudio zwar, meldet aber, dass es keine R-Installation findet.
+
+Daraus folgt auch: Eine neue RStudio-Version bringt keine neue R-Version mit.
+Welche R-Version tatsächlich läuft, sagt R selbst:
+
+```{r}
+#| label: sitzung-r
+cat(R.version.string, "\n")
+cat("Paketbibliotheken:", length(.libPaths()), "\n")
+cat("Arbeitsverzeichnis gesetzt:", nzchar(getwd()), "\n")
+```
+
+Diese Angaben stammen vom Rechner, der diese Website baut, nicht von einer
+RStudio-Installation.
+
+### Drei Programme im Vergleich
+
+| | RStudio | Positron | Posit Cloud |
+|---|---|---|---|
+| Was | klassische IDE für R | IDE auf Basis von VS Code | RStudio im Browser |
+| Sprachen | R, Python nur nebenbei | R und Python gleichwertig | R, auch Python und Quarto |
+| Installation | lokal | lokal | keine |
+| Stärke | ausgereift, sehr viele Anleitungen | VS-Code-Erweiterungen, ein Werkzeug für beide Sprachen | läuft überall, gut zum Teilen und Unterrichten |
+| Grenze | für Python umständlich | jünger, manche RStudio-Funktionen fehlen | Rechenzeit und Speicher im Gratisangebot knapp |
+
+Alle drei stammen von Posit, der Firma, die früher selbst RStudio hiess.
+
+### Die vier Bereiche in RStudio
+
+RStudio teilt das Fenster in vier Bereiche. Die Anordnung lässt sich ändern,
+die Aufgaben bleiben:
+
+| Bereich | Inhalt | Wozu |
+|---|---|---|
+| Quelltext (oben links) | Skripte, Quarto-Dokumente | Hier wird geschrieben, was bleiben soll |
+| Konsole (unten links) | laufende R-Sitzung | Ausprobieren; nichts davon wird gespeichert |
+| Umgebung (oben rechts) | Objekte der Sitzung, Verlauf | Nachsehen, was gerade existiert |
+| Dateien und Ausgabe (unten rechts) | Dateien, Grafiken, Pakete, Hilfe | Grafiken ansehen, Hilfe lesen |
+
+Positron hat dieselben Bereiche, angeordnet wie in VS Code: Editor in der
+Mitte, Konsole darunter, Variablen und Grafiken in einer Seitenleiste.
+
+### Projekte statt `setwd()`
+
+Ein Skript, das mit `setwd("C:/Users/...")` beginnt, läuft nur auf genau einem
+Rechner. Ein **Projekt** löst das: RStudio legt eine Datei `name.Rproj` in den
+Ordner und setzt beim Öffnen das Arbeitsverzeichnis auf diesen Ordner. Pfade
+werden dann relativ geschrieben, `daten/messungen.csv` statt eines vollständigen
+Pfads, und das Projekt läuft nach dem Kopieren auf jedem Rechner.
+
+Positron kennt keine `.Rproj`-Datei. Dort ist der geöffnete Ordner das
+Projekt, mit derselben Wirkung.
+
+::: {.note-box}
+Für Pfade innerhalb eines Projekts hilft das Paket `here`: `here("daten",
+"messungen.csv")` findet die Datei vom Projektordner aus, auch wenn ein
+Quarto-Dokument in einem Unterordner liegt und dort ein anderes
+Arbeitsverzeichnis gilt.
+:::
+
+### Die Einstellung, die man zuerst ändert
+
+RStudio fragt in der Grundeinstellung beim Beenden, ob der Arbeitsbereich in
+`.RData` gespeichert werden soll, und lädt ihn beim nächsten Start still wieder.
+Das klingt bequem und ist die Quelle schwer auffindbarer Fehler: Ein Skript
+scheint zu laufen, weil ein Objekt noch aus einer früheren Sitzung
+herumliegt, das das Skript selbst nie erzeugt.
+
+Unter *Tools > Global Options > General*:
+
+- *Restore .RData into workspace at startup*: ausschalten
+- *Save workspace to .RData on exit*: auf *Never*
+
+Danach gilt: Was nicht im Skript steht, existiert nach dem Neustart nicht mehr.
+Genau das ist gewollt.
+
+### Regelmässig neu starten
+
+*Session > Restart R* (Strg+Shift+F10) beendet die Sitzung und beginnt leer.
+Läuft ein Skript danach von oben bis unten durch, ist es reproduzierbar. Läuft
+es nur in der alten Sitzung, fehlt irgendwo eine Zeile. Der Test kostet
+Sekunden und findet diese Fehler, bevor jemand anders sie findet.
+
+### Tastenkürzel, die sich lohnen
+
+| Kürzel (Windows, Linux) | Wirkung |
+|---|---|
+| Strg+Enter | aktuelle Zeile oder Auswahl ausführen |
+| Strg+Shift+Enter | ganzes Skript ausführen |
+| Alt+- | Zuweisungspfeil `<-` |
+| Strg+Shift+M | Pipe-Operator einfügen |
+| Strg+Shift+C | Zeilen aus- und einkommentieren |
+| Strg+Shift+F10 | R neu starten |
+| F1 auf einem Funktionsnamen | Hilfe öffnen |
+
+Auf dem Mac steht Cmd statt Strg. Welche Pipe Strg+Shift+M einfügt, legt
+*Global Options > Code > Use native pipe operator* fest.
+
+::: {.quiz}
+Ein Skript läuft in RStudio fehlerfrei. Nach *Restart R* bricht es mit
+„Objekt nicht gefunden" ab. Was ist passiert?
+
+- [x] Das Objekt stammte aus einer früheren Sitzung, das Skript erzeugt es
+      nicht selbst ~ Richtig. Die alte Sitzung hat den Fehler verdeckt. Der
+      Neustart zeigt, dass im Skript eine Zeile fehlt.
+- [ ] Der Neustart hat Pakete deinstalliert ~ Pakete bleiben installiert. Sie
+      müssen nur mit `library()` neu geladen werden, und das steht im Skript.
+- [ ] RStudio hat das Skript beim Neustart verändert ~ Der Neustart betrifft nur
+      die R-Sitzung, nicht die Dateien.
+:::
+
+::: {.quiz}
+Warum läuft ein Skript mit relativen Pfaden in einem RStudio-Projekt auf einem
+anderen Rechner, eines mit `setwd("C:/Users/...")` nicht?
+
+- [x] Das Projekt setzt das Arbeitsverzeichnis auf seinen eigenen Ordner, wo
+      immer dieser liegt ~ Richtig. Relative Pfade gehen von dort aus und
+      bleiben beim Kopieren gültig.
+- [ ] Relative Pfade funktionieren nur unter Windows ~ Sie funktionieren auf
+      jedem System; gerade absolute Pfade sind systemabhängig.
+- [ ] `setwd()` ist in neuen R-Versionen entfernt ~ Die Funktion gibt es
+      weiterhin. Das Problem ist der fest eingetragene Pfad.
+:::
+
+## Typische Aufgaben
+
+**Neues Projekt anlegen**
+
+In RStudio *File > New Project > New Directory*, in Positron einen leeren Ordner
+öffnen. Aus der Konsole geht es auch:
+
+```r
+usethis::create_project("~/projekte/auswertung")
+```
+
+**Projekt mit festen Paketversionen**
+
+```r
+renv::init()       # projekteigene Bibliothek anlegen
+renv::snapshot()   # Versionen in renv.lock festhalten
+renv::restore()    # auf einem anderen Rechner wiederherstellen
+```
+
+Mehr dazu unter [Pakete und Umgebungen](../programmierung/pakete-umgebungen.qmd).
+
+**Prüfen, welche R-Version und welche Pakete laufen**
+
+```r
+sessionInfo()
+```
+
+**Ein Paket aktualisieren, das gerade geladen ist**
+
+Zuerst R neu starten, dann `install.packages("paketname")`. Unter Windows
+schlägt die Installation sonst oft fehl, weil die geladene DLL gesperrt ist.
+
+**Python in RStudio verwenden**
+
+```r
+install.packages("reticulate")
+reticulate::use_virtualenv("~/projekte/auswertung/.venv")
+```
+
+Wer regelmässig beide Sprachen braucht, ist mit Positron besser bedient.
+
+## Verlinkte Ressourcen
+
+- [RStudio User Guide](https://docs.posit.co/ide/user/): offizielle Dokumentation der Oberfläche
+- [Positron](https://positron.posit.co): Dokumentation und Download
+- [Posit Cloud Guide](https://docs.posit.co/cloud/): Arbeiten im Browser
+- [R for Data Science, Kapitel Workflow: Projekte](https://r4ds.hadley.nz/workflow-scripts.html): Skripte und Projekte, sehr gut erklärt
+- [RStudio IDE Cheatsheet](https://rstudio.github.io/cheatsheets/html/rstudio-ide.html): alle Bereiche und Kürzel auf zwei Seiten
+- [What They Forgot to Teach You About R](https://rstats.wtf): Projekte, Pfade und Arbeitsbereich, genau die Themen dieser Seite
