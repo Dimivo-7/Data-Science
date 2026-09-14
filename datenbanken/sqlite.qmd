@@ -145,7 +145,7 @@ frage("SELECT SUM(wert) AS summe, COUNT(*) AS n, AVG(wert) AS mittel FROM messun
 
 ```{python}
 #| label: b1-sl-py
-_ = verbindung.executescript("""
+_x = verbindung.executescript("""
   CREATE TABLE messung (id INTEGER PRIMARY KEY, wert INTEGER);
   INSERT INTO messung VALUES (1, 42), (2, 'k.A.'), (3, 3.7);""")
 verbindung.commit()
@@ -232,7 +232,7 @@ frage("SELECT COUNT(*) AS zeilen FROM streng")
 #| label: b2-sl-py
 print(frage("SELECT sqlite_version() AS version").to_string(index=False))
 
-_ = verbindung.executescript("""CREATE TABLE streng (
+_x = verbindung.executescript("""CREATE TABLE streng (
     id   INTEGER PRIMARY KEY,
     wert REAL NOT NULL CHECK (wert >= 0)) STRICT;""")
 verbindung.commit()
@@ -242,7 +242,7 @@ for sql, was in [("INSERT INTO streng VALUES (1, 12.5)", "12.5"),
                  ("INSERT INTO streng VALUES (3, 'k.A.')", "'k.A.'"),
                  ("INSERT INTO streng VALUES (4, NULL)", "NULL")]:
     try:
-        _ = verbindung.execute(sql)
+        _x = verbindung.execute(sql)
         verbindung.commit()
         print(was, "angenommen")
     except sqlite3.Error as fehler:
@@ -309,7 +309,7 @@ ordner = pathlib.Path(tempfile.mkdtemp())
 pfad = ordner / "laden.sqlite"
 
 datei = sqlite3.connect(pfad)
-_ = datei.executescript("""CREATE TABLE artikel (id INTEGER PRIMARY KEY, name TEXT);
+_x = datei.executescript("""CREATE TABLE artikel (id INTEGER PRIMARY KEY, name TEXT);
                        INSERT INTO artikel VALUES (1,'Ventil'), (2,'Zylinder');""")
 datei.commit()
 datei.close()
@@ -383,9 +383,9 @@ frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE wert > 90")
 
 ```{python}
 #| label: b4-sl-py
-_ = verbindung.execute("CREATE TABLE messwert (id INTEGER PRIMARY KEY, "
+_x = verbindung.execute("CREATE TABLE messwert (id INTEGER PRIMARY KEY, "
                    "geraet_id INTEGER, wert REAL)")
-_ = verbindung.executemany("INSERT INTO messwert VALUES (?,?,?)",
+_x = verbindung.executemany("INSERT INTO messwert VALUES (?,?,?)",
                        [(i, i % 500, (i * 37 % 1000) / 10) for i in range(1, 50001)])
 verbindung.commit()
 print(frage("SELECT COUNT(*) AS zeilen FROM messwert").iloc[0, 0])
@@ -393,7 +393,7 @@ print(frage("SELECT COUNT(*) AS zeilen FROM messwert").iloc[0, 0])
 print(frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42"
             )["detail"].tolist())
 
-_ = verbindung.execute("CREATE INDEX idx_geraet ON messwert(geraet_id)")
+_x = verbindung.execute("CREATE INDEX idx_geraet ON messwert(geraet_id)")
 verbindung.commit()
 print(frage("EXPLAIN QUERY PLAN SELECT * FROM messwert WHERE geraet_id = 42"
             )["detail"].tolist())

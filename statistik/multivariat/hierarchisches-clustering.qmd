@@ -488,11 +488,18 @@ round(data.frame(schritt = 1:8, mit_struktur = hoehen_mit,
 ##### Python
 
 ```{python}
-#| label: b3-hc-py
+#| label: fig-b3-hc-py
+#| fig-cap: "Beispiel 3: dasselbe Dendrogramm in Python."
+#| fig-height: 3.2
 ohne_struktur = normalwerte(13013, 400).reshape(200, 2)
 
 verbund_b = linkage(StandardScaler().fit_transform(ohne_struktur),
                     method="ward")
+
+fig, achse = plt.subplots(figsize=(7, 3.2))
+_x = dendrogram(verbund_b, no_labels=True, ax=achse, color_threshold=0)
+_x = achse.set_title("ohne Struktur")
+plt.show()
 
 hoehen_ohne = verbund_b[-8:, 2][::-1]
 hoehen_mit = verbund[-8:, 2][::-1]
@@ -592,7 +599,9 @@ round(c(single = cor(b_dist, cophenetic(baum_single)),
 ##### Python
 
 ```{python}
-#| label: b4-hc-py
+#| label: fig-b4-hc-py
+#| fig-cap: "Beispiel 4: dieselben zwei Aufteilungen in Python. Links Single, rechts Ward."
+#| fig-height: 3.6
 wolke_a = np.column_stack([normalwerte(5001, 80, -2, 0.4),
                            normalwerte(5002, 80, 0, 0.4)])
 wolke_b = np.column_stack([normalwerte(5003, 80, 2, 0.4),
@@ -604,9 +613,22 @@ b_dist = pdist(brueckendaten)
 
 v_single = linkage(b_dist, method="single")
 v_ward = linkage(brueckendaten, method="ward")
+g_single = fcluster(v_single, 2, "maxclust")
+g_ward = fcluster(v_ward, 2, "maxclust")
 
-print("Single:", np.bincount(fcluster(v_single, 2, "maxclust"))[1:].tolist())
-print("Ward:  ", np.bincount(fcluster(v_ward, 2, "maxclust"))[1:].tolist())
+farben = np.array(["#2166ac", "#b2182b"])
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.6))
+for achse, gruppen, titel in [(achsen[0], g_single, "Single, k = 2"),
+                              (achsen[1], g_ward, "Ward, k = 2")]:
+    _x = achse.scatter(brueckendaten[:, 0], brueckendaten[:, 1], s=8, c=farben[gruppen - 1])
+    _x = achse.set_title(titel)
+    _x = achse.set_xlabel("x")
+_x = achsen[0].set_ylabel("y")
+plt.tight_layout()
+plt.show()
+
+print("Single:", np.bincount(g_single)[1:].tolist())
+print("Ward:  ", np.bincount(g_ward)[1:].tolist())
 print("kophenetisch single:", round(float(cophenet(v_single, b_dist)[0]), 3))
 print("kophenetisch ward:  ", round(float(cophenet(v_ward, b_dist)[0]), 3))
 ```

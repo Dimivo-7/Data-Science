@@ -42,7 +42,7 @@ import sqlite3
 import pandas as pd
 
 verbindung = sqlite3.connect(":memory:")
-_ = verbindung.executescript("""
+_x = verbindung.executescript("""
 CREATE TABLE artikel (artikel_id INTEGER PRIMARY KEY, bezeichnung TEXT NOT NULL,
                       kategorie TEXT NOT NULL);
 CREATE TABLE bestellung (bestell_id INTEGER PRIMARY KEY,
@@ -268,7 +268,7 @@ print("zusammengebaut:", len(frage(gebaut)), "Zeilen")
 print("mit Parameter:", len(frage("SELECT * FROM artikel WHERE kategorie = ?",
                                   params=(boese,))), "Zeilen")
 
-_ = verbindung.execute("INSERT INTO artikel VALUES (6, ?, 'Mechanik')", ("Winkel 90'",))
+_x = verbindung.execute("INSERT INTO artikel VALUES (6, ?, 'Mechanik')", ("Winkel 90'",))
 verbindung.commit()
 try:
     frage("SELECT * FROM artikel WHERE bezeichnung = 'Winkel 90''")
@@ -407,7 +407,7 @@ neu = pd.DataFrame({"artikel_id": [1, 2], "aktiv": [True, False],
                     "notiz": ["a", None]})
 print(neu.dtypes.astype(str).to_dict())
 
-_ = neu.to_sql("zusatz_py", verbindung, index=False, if_exists="replace")
+_x = neu.to_sql("zusatz_py", verbindung, index=False, if_exists="replace")
 zurueck = frage("SELECT * FROM zusatz_py")
 print(zurueck.to_string(index=False))
 print(zurueck.dtypes.astype(str).to_dict())
@@ -481,13 +481,13 @@ c(vorher = vorher,
 
 ```{python}
 #| label: b5-dz-py
-_ = verbindung.execute("PRAGMA foreign_keys = ON")
+_x = verbindung.execute("PRAGMA foreign_keys = ON")
 vorher = frage("SELECT COUNT(*) AS n FROM bestellung").iloc[0, 0]
 
 try:
     with verbindung:                      # commit am Ende, rollback bei Fehler
-        _ = verbindung.execute("INSERT INTO bestellung VALUES (20,1,'2026-04-01',5,100.0)")
-        _ = verbindung.execute("INSERT INTO bestellung VALUES (21,999,'2026-04-02',5,100.0)")
+        _x = verbindung.execute("INSERT INTO bestellung VALUES (20,1,'2026-04-01',5,100.0)")
+        _x = verbindung.execute("INSERT INTO bestellung VALUES (21,999,'2026-04-02',5,100.0)")
 except sqlite3.IntegrityError as fehler:
     print("abgebrochen:", fehler)
 
@@ -495,7 +495,7 @@ nachher = frage("SELECT COUNT(*) AS n FROM bestellung").iloc[0, 0]
 print(vorher, nachher)
 
 with verbindung:
-    _ = verbindung.execute("INSERT INTO bestellung VALUES (22,1,'2026-04-03',5,100.0)")
+    _x = verbindung.execute("INSERT INTO bestellung VALUES (22,1,'2026-04-03',5,100.0)")
 print(frage("SELECT COUNT(*) AS n FROM bestellung").iloc[0, 0])
 ```
 

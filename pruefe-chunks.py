@@ -80,6 +80,11 @@ def pruefe(pfad):
 
     for sprache, code in chunks:
         if sprache == "python":
+            # Haelt _ ein Grafikobjekt, verschluckt reticulate jede weitere
+            # Python-Ausgabe der Seite. Siehe build-fehler.md, 14.09.2026.
+            if re.search(r"^\s*_\s*=", code, re.M):
+                fehler.append("Zuweisung an _ in einem Python-Chunk: an _x binden, "
+                              "sonst gehen die folgenden Ausgaben verloren")
             for kuerzel, noetig in PYTHON_KUERZEL.items():
                 muster = r"(?<![\w.])" + re.escape(kuerzel)
                 if re.search(muster, code) and noetig not in quelle:

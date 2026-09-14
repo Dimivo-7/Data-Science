@@ -578,3 +578,26 @@ in deren Ausgabe noch ein solches Objekt steht.
 Quelldateien (06:46 gegen 08:24 am 12.09.). Fuer die Frage, was tatsaechlich
 veroeffentlicht ist, zaehlt deshalb die Seite auf GitHub Pages, nicht der
 lokale `_freeze`.
+
+### 2026-09-14 -- `_ = ...` mit einem Grafikobjekt verschluckt jede weitere Python-Ausgabe
+
+**Symptom:** Auf 18 Seiten fehlten Python-Textausgaben, ohne Fehlermeldung und
+bei gruenem Build. Betroffen waren alle Zellen nach der ersten Zeile wie
+`_ = achse.plot(...)`. Aufgefallen ist es erst durch einen externen Pruefbericht.
+
+**Ursache, im Build mit einer Testseite nachgewiesen:** Solange die Variable `_`
+ein matplotlib-Objekt enthaelt, geht in der knitr-Engine ueber reticulate jede
+Python-Textausgabe verloren, auch in allen folgenden Zellen. `plt.show()` oder
+`plt.close()` aendern daran nichts. Nach `del _` ist die Ausgabe sofort wieder
+da. `_ = 42` oder ein anderer Variablenname sind unproblematisch.
+
+Die Regel "Rueckgabewerte an `_` binden" vom 11.09. hat den Fehler also selbst
+verursacht: Sie beseitigte gedruckte Objekte und nahm dafuer den Text weg. Weil
+nur die Visualisierungsseiten sie damals nutzten, blieb es unbemerkt; mit der
+Uebertragung auf die Statistikseiten am 14.09. wurde es sichtbar.
+
+**Regel:** Rueckgabewerte von Grafikaufrufen an `_x` binden, nie an `_`.
+`pruefe-chunks.py` meldet `_` als Zuweisungsziel in Python-Chunks.
+
+**Erkennungszeichen:** Eine Python-Zelle mit `print()` hat im Freeze keinen
+`cell-output-stdout`-Block, waehrend die R-Zelle daneben Ausgabe zeigt.

@@ -662,7 +662,9 @@ round(km_ringe$betweenss / km_ringe$totss, 3)
 ##### Python
 
 ```{python}
-#| label: b5-km-py
+#| label: fig-b5-km-py
+#| fig-cap: "Beispiel 5: dieselben zwei Ansichten in Python."
+#| fig-height: 3.4
 winkel = gleichwerte(777, 400, 0, 2 * np.pi)
 radius = np.concatenate([np.ones(200), np.full(200, 3.0)]) + \
     normalwerte(888, 400, 0, 0.15)
@@ -671,6 +673,19 @@ ring_wahr = np.repeat(["innen", "aussen"], 200)
 
 ring_skaliert = StandardScaler().fit_transform(ringe)
 km_ringe = KMeans(n_clusters=2, n_init=25, random_state=7).fit(ring_skaliert)
+
+farben = np.array(["#2166ac", "#b2182b"])
+fig, achsen = plt.subplots(1, 2, figsize=(7, 3.4))
+_x = achsen[0].scatter(ringe["x"], ringe["y"], s=8,
+                       c=np.where(ring_wahr == "innen", farben[0], farben[1]))
+_x = achsen[0].set_title("wahre Struktur")
+_x = achsen[1].scatter(ringe["x"], ringe["y"], s=8, c=farben[km_ringe.labels_])
+_x = achsen[1].set_title("k-Means mit k = 2")
+for achse in achsen:
+    _x = achse.set_xlabel("x")
+_x = achsen[0].set_ylabel("y")
+plt.tight_layout()
+plt.show()
 
 print(pd.crosstab(km_ringe.labels_, ring_wahr))
 ring_gesamt = ((ring_skaliert - ring_skaliert.mean(axis=0)) ** 2).sum()
