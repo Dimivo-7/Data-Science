@@ -158,6 +158,35 @@ beim Nachprüfen einen Cache-Parameter an die Adresse hängen.
 **Offen:** die inhaltliche zweite Durchsicht (Text gegen heutigen
 Kenntnisstand) für `statistik/`.
 
+### Erledigt am 14.09.2026, zweiter Teil: neue Themen
+
+| Bereich | Neue Seiten | Rechnet | Stand |
+|---|---|---|---|
+| `statistik/regression/` | Gemischte Modelle (lme4, MixedLM) | ja | fertig, R = Python auf vier Stellen |
+| `statistik/inferenz/` | Bayessche Inferenz, Versuchsplanung und A/B-Tests, Kausale Inferenz | ja | fertig, R = Python |
+| `daten/` | Textdaten und reguläre Ausdrücke, APIs und Web-Scraping, Grosse Datenmengen | ja, ohne Netzwerk | entwurf, R-Ausgabe nach dem Build prüfen |
+| `ki/` | Sprachmodelle per API (Listings), Embeddings und RAG (Spielzeugvektoren) | teilweise | entwurf |
+| `wissenschaftliches-arbeiten/` (neuer Bereich) | Ergebnisse berichten, Literatur verwalten und zitieren (echte `.bib`), Berichtsvorlage (Inline-R) | ja | entwurf |
+| `index.qmd` | vier neue Lernpfade, zwei ergänzt | | |
+
+Neu im Build: `lme4`, `rvest`, `arrow` (R) sowie `beautifulsoup4`, `pyarrow`,
+`polars` (Python).
+
+Vorgehen, das sich bewährt hat: Python-Werte in einem venv im Scratchpad
+vorrechnen, die Python-Chunks der fertigen Seite dort **ausführen** und jede
+Dezimalzahl im Text gegen die Ausgabe halten, bevor gepusht wird. So kamen die
+R-Ausgaben nach dem Build durchgehend ohne Korrektur durch.
+
+Stolpersteine dieses Teils:
+
+- Eine Pipe `|` in Inline-Code innerhalb einer Tabelle bricht die Tabelle; als
+  `\|` maskieren (etwa `(1 \| gruppe)`).
+- `pruefe-zahlen.py` hält auch Zahlen in Linkadressen (arXiv-Nummern) und
+  ausgedachte Zahlen in Quizfragen für Textzahlen. Solche Zahlen in Worte
+  fassen oder die Ausgabe sie drucken lassen.
+- Dateigrössen (CSV gegen Parquet) hängen an Bibliothek und Version; nicht in
+  den Text schreiben, sondern auf die Ausgabe verweisen.
+
 ### Erledigt am 12.09.2026
 
 - **pandas ist in `publish.yml` auf 2.3.3 festgeschrieben.** Grund und
