@@ -4,9 +4,10 @@ Diese Datei hält fest, wo die Arbeit steht und wie es weitergeht. Sie liegt im
 Repo, damit der Stand auf jedem Rechner verfügbar ist und nicht in einem
 lokalen Gedächtnis hängt.
 
-Stand: 11. September 2026. **Alle Bereiche sind inhaltlich vollständig und auf
+Stand: 14. September 2026. **Alle Bereiche sind inhaltlich vollständig und auf
 die Beispiel-Reiter umgestellt.** Die beiden Lücken aus dem Modulplan-Abgleich
-(Prüfverteilungen, lineare Algebra für die PCA) sind geschlossen.
+(Prüfverteilungen, lineare Algebra für die PCA) sind geschlossen. Was am
+14.09. dazukam, steht unter „Erledigt am 14.09.2026".
 
 ---
 
@@ -116,12 +117,42 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 | `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `programmierung/` (9 Seiten + Fragen) | **fertig** (12.09.2026), Zahlen maschinell und von Hand geprüft |
 | `daten/` (5 Seiten + Fragen) | **umgebaut** (12.09.2026), Ausgaben gegen den Text geprüft, noch `stand: entwurf` |
-| `datenbanken/` (8 Seiten) | **umgebaut** (12.09.2026): vier Seiten mit echten Beispielen gegen SQLite, vier ohne Server nur strukturell angeglichen |
-| `werkzeuge/` (3 Seiten) | **umgebaut** (12.09.2026): Git und Shell mit echten Beispielen, Docker nur angeglichen |
+| `datenbanken/` (8 Seiten + Fragen) | **umgebaut** (12.09.2026): vier Seiten mit echten Beispielen gegen SQLite, vier ohne Server nur strukturell angeglichen; Fragenseite seit 14.09., noch `entwurf` |
+| `werkzeuge/` (6 Seiten + Fragen) | **umgebaut** (12.09.2026): Git und Shell mit echten Beispielen, Docker nur angeglichen; seit 14.09. zusätzlich R-Umgebungen, Python-Umgebungen, Quarto und eine Fragenseite, alle noch `entwurf` |
 | `ki/` (9 Seiten) | **angeglichen** (12.09.2026), keine ausführbaren Beispiele möglich |
 
 **Damit ist jeder Bereich einmal durch.** Was bleibt, ist das Nachziehen von
 `stand: entwurf` auf `fertig`, sobald die Ausgaben je Bereich geprüft sind.
+
+### Erledigt am 14.09.2026
+
+- **Favicon** (`favicon.svg`, Balken mit Trendlinie in den Farben der Seite).
+- **Linkliste ausgebaut:** Recherche, Wissensmanagement, KI-Werkzeuge,
+  Statistiksoftware, Umgebungen, Bibliotheken, 18 Datenquellen und 35
+  Lernangebote. Jeder Link trägt eine Sprachmarke `[DE]{.sprache .de}` oder
+  `[EN]{.sprache .en}`, gestaltet in `styles.scss`. Alle Adressen einzeln
+  abgerufen; 403 und 429 stammen von Bot-Sperren.
+- **Neue Werkzeugseiten:** `r-umgebungen.qmd`, `python-umgebungen.qmd`,
+  `quarto.qmd`, dazu `werkzeuge/fragen.qmd` und `datenbanken/fragen.qmd`.
+- **Build-Abbruch** durch eine Seite nur mit Python-Chunks (Quarto nahm
+  Jupyter). `pruefe-chunks.py` meldet solche Seiten jetzt; Eintrag in
+  `build-fehler.md`.
+- **Glossar-Markierungen in der Navigation** entfernt das neue
+  `glossar-navigation.py` als `post-render`. Getestet an drei
+  heruntergeladenen Seiten: Seitenleiste ohne Markierung, sichtbarer Text
+  unverändert, Fliesstext unberührt.
+- **Mermaid-Nummerierung** war kein offener Punkt mehr: Die veröffentlichte
+  Seite zeigt Abbildung 1 bis 4.
+- **Zweite Durchsicht Statistik und Visualisierung, maschineller Teil:**
+  Auf sieben Statistikseiten standen 157 gedruckte Grafikobjekte, jetzt mit
+  `_ = ` gebunden, auch in Schleifen. Neun ungenutzte Seeds entfernt (keine
+  Zahl hängt daran). Die Visualisierung war sauber. `pruefe-zahlen.py` meldet
+  gedruckte Objekte künftig nach jedem Build.
+
+**Offen danach:** die Ausgaben der neuen und geänderten Seiten nach dem Build
+prüfen und die fünf neuen Seiten von `entwurf` auf `fertig` setzen. Die
+inhaltliche zweite Durchsicht (Text gegen heutigen Kenntnisstand) steht für
+`statistik/` weiterhin aus.
 
 ### Erledigt am 12.09.2026
 
@@ -218,15 +249,12 @@ dem Arbeitsweg im jeweiligen Werkzeug.
 
 Sinnvolle nächste Schritte:
 
-1. **Die Fragenseiten wachsen lassen.** `werkzeuge/` und `datenbanken/` haben
-   keine eigene `fragen.qmd`; ihre übergreifenden Fragen liegen in
-   `daten/fragen.qmd` beziehungsweise `programmierung/fragen.qmd`. Entweder so
-   lassen und dort weiter ergänzen, oder zwei eigene Fragenseiten anlegen.
-2. **Zweite Durchsicht der älteren Bereiche.** `statistik/` und
-   `visualisierung/` sind seit dem 11.09. unverändert; sie wurden nach
-   derselben Schablone gebaut, aber vor einigen Erkenntnissen, die später
-   dazukamen (Lehmer statt Seed, versionsabhängige Ausgaben, Rückgabewerte an
-   `_`). Ein Durchgang mit heutigem Blick würde vermutlich noch etwas finden.
+1. ~~Die Fragenseiten wachsen lassen.~~ Erledigt am 14.09.:
+   `werkzeuge/fragen.qmd` und `datenbanken/fragen.qmd` sind angelegt.
+2. **Zweite Durchsicht der älteren Bereiche.** Der maschinelle Teil ist am
+   14.09. erledigt (Seeds, gedruckte Grafikobjekte). Offen bleibt der
+   inhaltliche Durchgang durch `statistik/` mit heutigem Blick, etwa auf
+   versionsabhängige Aussagen im Text.
 Neu im Ablauf ist ein drittes Prüfskript: `pruefe-links.py` prüft alle
 Querverweise zwischen Seiten, ihre Anker und die eingebundenen Bilder. Quarto
 meldet einen toten internen Link nicht, der Build bleibt grün. Über die 122
@@ -339,13 +367,11 @@ weggerechnet:
 | `clusGap` gegen selbstgebaute Gap-Statistik | `clusGap` zieht seine Referenzdaten zufällig; für reproduzierbare Zahlen selbst implementieren. |
 | Median ohne Erreichen von 0.5 | R gibt `NA`, Python `inf`. |
 
-## Zwei offene Kleinigkeiten
+## Zwei ehemals offene Kleinigkeiten
 
-- **Glossar in der Navigation.** Die `<span class="glossary-term">` stehen
-  weiterhin im HTML von Seitenleiste, Brotkrumenpfad und Reiterbeschriftungen;
-  `styles.scss` macht sie unsichtbar und klickdurchlässig. Der Filter in
-  `glossary.lua` greift dort nicht, weil Quarto diese Elemente einbaut, bevor
-  die Filter laufen. Sichtbar ist nichts mehr; wer sauberes HTML will, muss der
-  Sache noch nachgehen.
-- **Mermaid-Diagramme bekommen keine Abbildungsnummer**, obwohl `fig-cap`
-  gesetzt ist. Kosmetisch.
+- **Glossar in der Navigation.** Erledigt am 14.09.: `glossar-navigation.py`
+  läuft als `post-render` und packt die Markierungen in Seitenleiste,
+  Brotkrumenpfad, Kopf, Inhaltsverzeichnis und Reitern aus. Die CSS-Regeln in
+  `styles.scss` bleiben als zweite Absicherung stehen.
+- **Mermaid-Diagramme** werden nummeriert; auf der veröffentlichten Seite
+  `verfahren-waehlen` stehen Abbildung 1 bis 4. Der Eintrag war veraltet.

@@ -553,3 +553,28 @@ dasteht. `pruefe-chunks.py` meldet Seiten, auf die das nicht zutrifft.
 
 **Nebenwirkung:** Quarto haelt beim ersten Fehler an, alle spaeteren Seiten
 dieses Laufs (hier ab Nummer 38 von 126) wurden nicht gebaut.
+
+### 2026-09-14 -- Gedruckte Grafikobjekte auf sieben Statistikseiten
+
+**Symptom:** Auf den veroeffentlichten Seiten Haeufigkeiten, Lage- und
+Streuungsmasse, ANOVA, den drei t-Tests und QQ-Plots standen zusammen 157
+Ausgaben wie `<matplotlib.lines.Line2D object at 0x...>` und
+`Text(0.5, 1.0, 'normal')` zwischen Code und Grafik. Der Visualisierungsbereich
+war am 11.09. bereinigt worden, der Statistikbereich nicht.
+
+**Zwei Befunde, die das Aufspueren erschwerten:**
+
+- Es drucken auch Aufrufe **innerhalb von Schleifen**, einmal je Durchlauf.
+  Nur die oberste Ebene zu binden reicht nicht.
+- Ob ein Aufruf druckt, laesst sich am Quelltext **nicht zuverlaessig
+  vorhersagen**. Eine statische Pruefung meldete auch Seiten mit denselben
+  Aufrufen, deren Ausgabe sauber war. Sie wurde wieder entfernt.
+
+**Regel:** Grafikaufrufe, deren Rueckgabewert nicht gebraucht wird, an `_`
+binden, auch in Schleifen. Nach dem Build meldet `pruefe-zahlen.py` jede Seite,
+in deren Ausgabe noch ein solches Objekt steht.
+
+**Nebenbefund:** Der lokale `_freeze` dieser Seiten war aelter als ihre
+Quelldateien (06:46 gegen 08:24 am 12.09.). Fuer die Frage, was tatsaechlich
+veroeffentlicht ist, zaehlt deshalb die Seite auf GitHub Pages, nicht der
+lokale `_freeze`.

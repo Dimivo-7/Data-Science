@@ -99,6 +99,8 @@ def pruefe(pfad):
 
 
 def main():
+    # Die Windows-Konsole kodiert sonst cp1252 und bricht an Zeichen wie σ ab
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     wurzel = sys.argv[1] if len(sys.argv) > 1 else "."
     treffer = 0
 

@@ -30,6 +30,7 @@ BEKANNTE_THEORIEWERTE = {
 
 ZAHL = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 TEXTZAHL = re.compile(r"(?<![\w.])(\d+\.\d{2,})(?![\w])")
+OBJEKT = re.compile(r"<matplotlib\.[^>]*>|^Text\(|<Axes[:\s][^>]*>|<Figure size", re.M)
 
 
 def nur_fliesstext(inhalt):
@@ -82,11 +83,28 @@ def passt(zahl_text, werte):
     return False
 
 
+def gedruckte_objekte(freeze_datei):
+    """Objekte, die ein Grafikaufruf versehentlich in die Ausgabe gedruckt hat.
+
+    Etwa "<matplotlib.lines.Line2D object at 0x...>" oder "Text(0.5, 1.0, ...)".
+    Statisch am Quelltext laesst sich das nicht zuverlaessig vorhersagen, ob
+    ein Aufruf druckt, haengt davon ab, wie knitr den Chunk aufteilt. Deshalb
+    wird die tatsaechliche Ausgabe durchsucht.
+    """
+    with io.open(freeze_datei, encoding="utf-8") as f:
+        markdown = json.load(f)["result"].get("markdown", "")
+    return len(OBJEKT.findall(markdown))
+
+
 def pruefe(qmd):
     rel = qmd.replace("\\", "/")[:-4]
     freeze = f"_freeze/{rel}/execute-results/html.json"
     if not os.path.exists(freeze):
         return None, []
+    objekte = gedruckte_objekte(freeze)
+    if objekte:
+        print(f"{qmd}: {objekte} gedruckte Grafikobjekte in der Ausgabe, "
+              f"Aufrufe mit '_ = ' binden")
     werte = ausgabe_zahlen(freeze)
     text = nur_fliesstext(io.open(qmd, encoding="utf-8").read())
     offen = []
