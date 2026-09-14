@@ -1,0 +1,256 @@
+---
+title: "Quarto"
+description: "Dokumente, Berichte und Websites aus Text und Code: Aufbau, Chunk-Optionen, Formate und Veröffentlichen."
+categories: ["Tooling", "Reproduzierbarkeit", "Kommunikation"]
+quelle: []
+seitentyp: werkzeug
+stand: entwurf
+order: 60
+---
+
+## Kernideen
+
+- Eine Quelldatei, viele Ausgabeformate: HTML, PDF, Word, Folien, Websites
+- Text, Code und Ergebnis stehen in derselben Datei, die Zahlen entstehen beim Rendern
+- Oben der YAML-Kopf, darunter Markdown, dazwischen Code-Chunks
+- Chunk-Optionen stehen als `#|`-Zeilen im Chunk und steuern, was sichtbar wird
+- Querverweise brauchen ein Label mit festem Präfix: `fig-`, `tbl-`, `sec-`
+- `freeze` spart Rechenzeit, merkt aber nicht, wenn sich nur die Daten ändern
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** Warum Text und Rechnung in dieselbe Datei gehören, steht unter
+[Reproduzierbarkeit](../programmierung/reproduzierbarkeit.qmd). Diese Seite
+beschreibt das Werkzeug selbst. Sie ist mit Quarto gebaut, und die Chunks
+unten laufen beim Rendern tatsächlich.
+:::
+
+### Was Quarto ist
+
+Quarto ist ein Kommandozeilenprogramm von Posit und der Nachfolger von
+R Markdown. Es liest eine `.qmd`-Datei, lässt den Code von einer
+**Engine** ausführen und übergibt das Ergebnis an Pandoc, das daraus das
+Zielformat erzeugt. Zwei Engines sind üblich:
+
+| Engine | Wann | Eigenheit |
+|---|---|---|
+| knitr | sobald ein R-Chunk im Dokument steht | Python läuft über reticulate in derselben Sitzung mit; Inline-Code mit `r` |
+| jupyter | reines Python-Dokument oder `.ipynb` | Inline-Code in der Form `{python}` |
+
+RStudio, Positron und VS Code rufen Quarto nur auf. Installiert wird es
+einmal von [quarto.org](https://quarto.org), in RStudio ist es bereits dabei.
+
+### Aufbau eines Dokuments
+
+````{verbatim}
+---
+title: "Messreihe März"
+author: "Name"
+format: html
+---
+
+## Ergebnis
+
+```{r}
+#| label: fig-verlauf
+#| fig-cap: "Verlauf der Messwerte"
+#| echo: false
+plot(c(12.1, 14.3, 11.8, 15.0, 13.6), type = "b")
+```
+
+Der Verlauf in @fig-verlauf zeigt keinen Trend.
+````
+
+Der Kopf zwischen den drei Strichen legt Titel und Format fest. Darunter steht
+gewöhnliches Markdown. Code-Chunks beginnen mit der Sprache in geschweiften
+Klammern; die Zeilen mit `#|` am Anfang sind Optionen für diesen Chunk.
+
+### Chunk-Optionen
+
+Mit `echo: fenced` zeigt Quarto einen Chunk samt seinen Optionen. So sieht der
+folgende Chunk im Quelltext aus, und darunter steht, was er beim Rendern
+ausgibt:
+
+```{r}
+#| label: optionen-zeigen
+#| echo: fenced
+werte <- c(12.1, 14.3, 11.8, 15.0, 13.6)
+round(mean(werte), 2)
+```
+
+Die Optionen, die man ständig braucht:
+
+| Option | Wirkung |
+|---|---|
+| `label` | Name des Chunks; mit `fig-` oder `tbl-` davor auch Ziel für Querverweise |
+| `echo: false` | Code ausblenden, Ergebnis zeigen |
+| `eval: false` | Code zeigen, nicht ausführen |
+| `include: false` | ausführen, aber weder Code noch Ergebnis zeigen, etwa für das Laden von Paketen |
+| `output: false` | ausführen, Code zeigen, Ergebnis ausblenden |
+| `warning: false`, `message: false` | Warnungen und Paketmeldungen unterdrücken |
+| `fig-cap`, `fig-width`, `fig-height` | Bildunterschrift und Grösse einer Grafik |
+
+Was für alle Chunks gelten soll, gehört einmal in den Kopf unter `execute:`
+statt in jeden Chunk.
+
+### Formate
+
+| Format | Kopfzeile | Voraussetzung |
+|---|---|---|
+| Webseite | `format: html` | nichts |
+| PDF über Typst | `format: typst` | nichts, Typst ist in Quarto enthalten |
+| PDF über LaTeX | `format: pdf` | eine LaTeX-Installation, am einfachsten `quarto install tinytex` |
+| Word | `format: docx` | nichts; Vorlage über `reference-doc` |
+| Folien | `format: revealjs` | nichts, Ergebnis ist eine HTML-Datei |
+| Dashboard | `format: dashboard` | nichts |
+
+Mehrere Formate gleichzeitig sind möglich; `quarto render bericht.qmd` erzeugt
+dann alle.
+
+### Querverweise, Hinweise, Reiter
+
+Querverweise funktionieren nur mit dem richtigen Präfix im Label. Ein Chunk mit
+`label: verlauf` und ein Verweis `@verlauf` ergeben im Text ein Fragezeichen;
+richtig ist `label: fig-verlauf` und `@fig-verlauf`, was als „Abbildung 1"
+erscheint. Dasselbe gilt für Tabellen mit `tbl-` und Abschnitte mit `sec-`.
+
+Zwei Bausteine ohne Code:
+
+````{verbatim}
+::: {.callout-warning}
+Die Werte vor März sind unvollständig.
+:::
+
+::: {.panel-tabset}
+## R
+Code für R
+## Python
+Code für Python
+:::
+````
+
+Der erste setzt einen hervorgehobenen Hinweiskasten, der zweite macht aus den
+Überschriften darin anklickbare Reiter. Diese Sammlung verwendet Reiter für
+jedes Beispiel in R und Python.
+
+### Projekte, Websites und `freeze`
+
+Eine Datei `_quarto.yml` im Ordner macht aus mehreren Dokumenten ein
+**Projekt**. Dort stehen gemeinsame Einstellungen, bei einer Website auch
+Navigation und Seitenleiste. `quarto render` rendert dann alles, `quarto
+preview` startet einen lokalen Server und rendert bei jedem Speichern neu.
+
+In Projekten mit viel Rechenzeit hilft `freeze: auto` unter `execute:`. Quarto
+speichert die Ergebnisse jedes Dokuments im Ordner `_freeze` und rechnet es nur
+neu, wenn sich die Quelldatei geändert hat.
+
+::: {.note-box}
+Genau darin liegt die Falle: Ändert sich nur die eingelesene Datendatei, bleibt
+das Dokument unverändert, und Quarto zeigt die alten Ergebnisse. Nach neuen
+Daten den passenden Ordner unter `_freeze` löschen; beim nächsten Rendern wird
+das Dokument dann neu gerechnet.
+:::
+
+::: {.quiz}
+Ein Bericht verweist mit `@verlauf` auf eine Grafik, deren Chunk
+`#| label: verlauf` trägt. Im gerenderten Dokument steht statt „Abbildung 1"
+nur `?@verlauf`. Was fehlt?
+
+- [x] Das Präfix `fig-` im Label und im Verweis ~ Richtig. Quarto erkennt am
+      Präfix, dass es sich um eine Abbildung handelt, und nummeriert nur dann.
+      `label: fig-verlauf` und `@fig-verlauf` lösen das. Eine Bildunterschrift
+      mit `fig-cap` gehört dazu.
+- [ ] Der Chunk muss `echo: true` haben ~ Ob der Code sichtbar ist, spielt für
+      den Verweis keine Rolle.
+- [ ] Querverweise funktionieren nur im PDF ~ Sie funktionieren in allen
+      Formaten.
+:::
+
+::: {.quiz}
+Ein Website-Projekt nutzt `freeze: auto`. Die CSV-Datei mit den Daten wurde
+ersetzt, das Dokument nicht angefasst. Was zeigt die Website nach dem nächsten
+Rendern?
+
+- [x] Die Ergebnisse mit den alten Daten ~ Richtig. `freeze: auto` rechnet nur
+      neu, wenn sich die `.qmd`-Datei ändert. Eine Änderung an eingelesenen
+      Dateien bemerkt es nicht. Den Ordner des Dokuments unter `_freeze`
+      löschen, dann wird neu gerechnet.
+- [ ] Die neuen Ergebnisse, weil Quarto die Datei beim Rendern liest ~ Mit
+      Freeze wird der Code gar nicht ausgeführt, also auch nichts gelesen.
+- [ ] Eine Fehlermeldung ~ Es gibt keinen Fehler, das ist gerade das Tückische.
+:::
+
+::: {.quiz}
+Ein Chunk lädt nur Pakete und setzt Einstellungen. Weder Code noch Ausgabe
+sollen im Dokument erscheinen, ausgeführt werden muss er trotzdem. Welche
+Option passt?
+
+- [x] `include: false` ~ Richtig. Der Chunk läuft, und nichts davon erscheint.
+- [ ] `eval: false` ~ Dann läuft der Chunk nicht, und die Pakete fehlen weiter
+      unten.
+- [ ] `echo: false` ~ Das blendet nur den Code aus. Meldungen und Ausgaben
+      erschienen weiterhin.
+:::
+
+## Typische Aufgaben
+
+**Ein Dokument rendern und laufend ansehen**
+
+```bash
+quarto render bericht.qmd            # einmal rendern
+quarto preview bericht.qmd           # lokaler Server, rendert bei jedem Speichern
+quarto render bericht.qmd --to docx  # nur ein bestimmtes Format
+```
+
+**PDF ohne LaTeX**
+
+```yaml
+format:
+  typst:
+    papersize: a4
+```
+
+**Einstellungen für alle Chunks festlegen**
+
+```yaml
+execute:
+  echo: false
+  warning: false
+  message: false
+```
+
+**Neues Website-Projekt anlegen**
+
+```bash
+quarto create project website notizen
+```
+
+**Website auf GitHub Pages veröffentlichen**
+
+```bash
+quarto publish gh-pages
+```
+
+Der Befehl rendert und schreibt das Ergebnis in den Zweig `gh-pages`, aus dem
+GitHub Pages die Website ausliefert. Automatisch bei jedem Push geht es mit einer
+GitHub Action; diese Sammlung wird so gebaut.
+
+**Freeze für ein einzelnes Dokument aufheben**
+
+```bash
+rm -r _freeze/pfad/zum/dokument
+quarto render pfad/zum/dokument.qmd
+```
+
+## Verlinkte Ressourcen
+
+- [Quarto: Get Started](https://quarto.org/docs/get-started/): Installation und erste Schritte mit RStudio, VS Code oder Jupyter
+- [Quarto Guide](https://quarto.org/docs/guide/): die vollständige Dokumentation
+- [Chunk-Optionen für knitr](https://quarto.org/docs/reference/cells/cells-knitr.html): alle Optionen nachschlagen
+- [R for Data Science, Kapitel Quarto](https://r4ds.hadley.nz/quarto.html): Einführung mit Übungen
+- [Quarto Cheatsheet](https://rstudio.github.io/cheatsheets/html/quarto.html): das Wichtigste auf zwei Seiten
+- [Veröffentlichen auf GitHub Pages](https://quarto.org/docs/publishing/github-pages.html): mit und ohne GitHub Action
+- [Typst mit Quarto](https://quarto.org/docs/output-formats/typst.html): PDF ohne LaTeX
+- [Quarto Gallery](https://quarto.org/docs/gallery/): Beispiele für Berichte, Folien, Bücher und Websites
+- [Awesome Quarto](https://github.com/mcanouil/awesome-quarto): gesammelte Vorlagen, Erweiterungen und Tutorials
