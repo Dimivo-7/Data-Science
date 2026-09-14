@@ -31,6 +31,7 @@ BEKANNTE_THEORIEWERTE = {
 ZAHL = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 TEXTZAHL = re.compile(r"(?<![\w.])(\d+\.\d{2,})(?![\w])")
 OBJEKT = re.compile(r"<matplotlib\.[^>]*>|^Text\(|<Axes[:\s][^>]*>|<Figure size", re.M)
+SEITEN_MIT_OBJEKTEN = []
 
 
 def nur_fliesstext(inhalt):
@@ -105,6 +106,7 @@ def pruefe(qmd):
     if objekte:
         print(f"{qmd}: {objekte} gedruckte Grafikobjekte in der Ausgabe, "
               f"Aufrufe mit '_ = ' binden")
+        SEITEN_MIT_OBJEKTEN.append(qmd)
     werte = ausgabe_zahlen(freeze)
     text = nur_fliesstext(io.open(qmd, encoding="utf-8").read())
     offen = []
@@ -142,8 +144,9 @@ def main():
         for qmd in ohne_freeze:
             print("  ", qmd)
     print(f"\n{len(sauber)} Seiten ohne Befund, {len(mit_offenen)} mit offenen Zahlen, "
-          f"{len(ohne_freeze)} ohne Freeze.")
-    return 1 if mit_offenen else 0
+          f"{len(ohne_freeze)} ohne Freeze, {len(SEITEN_MIT_OBJEKTEN)} mit gedruckten "
+          f"Grafikobjekten.")
+    return 1 if (mit_offenen or SEITEN_MIT_OBJEKTEN) else 0
 
 
 if __name__ == "__main__":
