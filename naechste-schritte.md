@@ -164,9 +164,9 @@ Kenntnisstand) für `statistik/`.
 |---|---|---|---|
 | `statistik/regression/` | Gemischte Modelle (lme4, MixedLM) | ja | fertig, R = Python auf vier Stellen |
 | `statistik/inferenz/` | Bayessche Inferenz, Versuchsplanung und A/B-Tests, Kausale Inferenz | ja | fertig, R = Python |
-| `daten/` | Textdaten und reguläre Ausdrücke, APIs und Web-Scraping, Grosse Datenmengen | ja, ohne Netzwerk | entwurf, R-Ausgabe nach dem Build prüfen |
-| `ki/` | Sprachmodelle per API (Listings), Embeddings und RAG (Spielzeugvektoren) | teilweise | entwurf |
-| `wissenschaftliches-arbeiten/` (neuer Bereich) | Ergebnisse berichten, Literatur verwalten und zitieren (echte `.bib`), Berichtsvorlage (Inline-R) | ja | entwurf |
+| `daten/` | Textdaten und reguläre Ausdrücke, APIs und Web-Scraping, Grosse Datenmengen | ja, ohne Netzwerk | fertig, R = Python |
+| `ki/` | Sprachmodelle per API (Listings), Embeddings und RAG (Spielzeugvektoren) | teilweise | fertig |
+| `wissenschaftliches-arbeiten/` (neuer Bereich) | Ergebnisse berichten, Literatur verwalten und zitieren (echte `.bib`), Berichtsvorlage (Inline-R) | ja | fertig, Zitate und Inline-Zahlen live geprüft |
 | `index.qmd` | vier neue Lernpfade, zwei ergänzt | | |
 
 Neu im Build: `lme4`, `rvest`, `arrow` (R) sowie `beautifulsoup4`, `pyarrow`,
