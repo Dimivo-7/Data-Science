@@ -1,0 +1,468 @@
+---
+title: "Kausale Inferenz"
+description: "Ursache statt Zusammenhang aus Beobachtungsdaten: Confounder, Adjustierung, Schichtung und Difference-in-Differences."
+categories: ["Versuchsplanung", "Regression", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 100
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# 400 Beschaeftigte. Erfahrung beeinflusst sowohl, ob jemand eine
+# Weiterbildung besucht, als auch das Gehalt. Der wahre Effekt der
+# Weiterbildung ist 3.
+n <- 400
+u <- lehmer(911, n * 3)
+erfahrung <- round(2 + 18 * u[1:n], 1)
+p_kurs    <- 1 / (1 + exp(-(-3 + 0.25 * erfahrung)))
+kurs      <- as.integer(u[(n + 1):(2 * n)] < p_kurs)
+gehalt    <- round(60 + 2.0 * erfahrung + 3.0 * kurs + 6 * qnorm(u[(2 * n + 1):(3 * n)]), 1)
+firma <- data.frame(erfahrung, kurs, gehalt)
+
+# Zwei Regionen, vor und nach einer Massnahme, die nur Region B erhielt.
+# Wahrer Effekt der Massnahme: 4.
+r <- lehmer(5150, 200)
+did <- expand.grid(i = 1:50, nachher = 0:1, region = c("A", "B"))[, c("region", "nachher")]
+did$massnahme <- as.integer(did$region == "B")
+basis <- 100 + 8 * did$massnahme + 5 * did$nachher + 4 * did$massnahme * did$nachher
+did$umsatz <- round(basis + 6 * qnorm(r), 1)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import statsmodels.formula.api as smf
+from scipy import stats
+
+
+def lehmer(saat, anzahl):
+    """Derselbe Generator wie im R-Teil."""
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+n = 400
+u = lehmer(911, n * 3)
+erfahrung = np.round(2 + 18 * u[:n], 1)
+p_kurs = 1 / (1 + np.exp(-(-3 + 0.25 * erfahrung)))
+kurs = (u[n:2 * n] < p_kurs).astype(int)
+gehalt = np.round(60 + 2.0 * erfahrung + 3.0 * kurs + 6 * stats.norm.ppf(u[2 * n:]), 1)
+firma = pd.DataFrame({"erfahrung": erfahrung, "kurs": kurs, "gehalt": gehalt})
+
+r = lehmer(5150, 200)
+region = np.repeat(["A", "B"], 100)
+nachher = np.tile(np.repeat([0, 1], 50), 2)
+massnahme = (region == "B").astype(int)
+basis = 100 + 8 * massnahme + 5 * nachher + 4 * massnahme * nachher
+did = pd.DataFrame({"region": region, "nachher": nachher, "massnahme": massnahme,
+                    "umsatz": np.round(basis + 6 * stats.norm.ppf(r), 1)})
+```
+
+Die Daten sind so erzeugt, dass der wahre Effekt bekannt ist: 3 für die
+Weiterbildung, 4 für die Massnahme. Nur so lässt sich zeigen, welches Verfahren
+ihn trifft. R und Python sehen dieselben Werte aus dem Lehmer-Generator.
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie gross ist der Effekt einer Behandlung, wenn niemand die Zuteilung zufällig bestimmt hat? |
+| Grundproblem | Wer behandelt wird, unterscheidet sich oft auch sonst von den anderen |
+| Werkzeuge | Adjustierung in der Regression, Schichtung, Matching, Difference-in-Differences, Instrumentvariablen |
+| Was die Verfahren liefern | eine Effektschätzung, die **unter benannten Annahmen** kausal gelesen werden darf |
+| R | `lm()` mit Kontrollvariablen, `lm(y ~ gruppe * zeit)` für Difference-in-Differences; Matching mit `MatchIt` |
+| Python | `smf.ols()` ebenso; Matching und mehr mit `DoWhy` |
+| Verwandte Seiten | [Versuchsplanung und A/B-Tests](versuchsplanung-ab-tests.qmd), [multiple lineare Regression](../regression/multiple-lineare-regression.qmd), [Korrelation](../grundlagen/korrelation.qmd) |
+
+## Wann diese Methode, wann nicht
+
+Wann immer ein Experiment nicht möglich, zu teuer oder unethisch ist, bleiben
+Beobachtungsdaten: Wer eine Weiterbildung besucht hat, wer in einer Region mit
+neuer Massnahme lebt, wer ein Medikament nimmt. Die Frage ist dieselbe wie im
+Experiment, aber die Antwort braucht zusätzliche Annahmen, und die müssen
+ausgesprochen werden.
+
+| Situation | Stattdessen |
+|---|---|
+| Zuteilung lässt sich zufällig steuern | [A/B-Test oder Experiment](versuchsplanung-ab-tests.qmd), das ist immer vorzuziehen |
+| Nur ein Zusammenhang ist gefragt, keine Ursache | [Korrelation](../grundlagen/korrelation.qmd) oder [Regression](../regression/multiple-lineare-regression.qmd) ohne kausale Lesart |
+| Vorhersage steht im Vordergrund | Vorhersagemodelle; ob ein Prädiktor kausal wirkt, ist dafür unwichtig |
+
+## Grundidee und Modell
+
+Ein **Confounder** beeinflusst sowohl die Behandlung als auch das Ergebnis:
+
+```{mermaid}
+%%| label: fig-confounder
+%%| fig-cap: "Erfahrung als Confounder: Sie wirkt auf die Weiterbildung und auf das Gehalt."
+%%| echo: false
+flowchart LR
+    E["Erfahrung"] --> K["Weiterbildung"]
+    E --> G["Gehalt"]
+    K -- "gesuchter Effekt" --> G
+```
+
+Wer nur Gehälter mit und ohne Weiterbildung vergleicht, misst beide Wege von
+Erfahrung zu Gehalt mit. Die Verfahren unterscheiden sich darin, wie sie den
+Umweg über den Confounder schliessen:
+
+| Verfahren | Wie es den Confounder behandelt | Zentrale Annahme |
+|---|---|---|
+| Adjustierung | Confounder als Kontrollvariable in der Regression | alle Confounder gemessen, Form des Zusammenhangs richtig |
+| Schichtung und Matching | nur Personen mit ähnlichem Confounder vergleichen | alle Confounder gemessen, Schichten fein genug |
+| Difference-in-Differences | zeitlich konstante Unterschiede zwischen Gruppen fallen durch Differenzbildung weg | ohne Massnahme wären beide Gruppen parallel verlaufen |
+| Instrumentvariable | eine Grösse nutzen, die nur über die Behandlung wirkt | das Instrument hat keinen anderen Weg zum Ergebnis |
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Keine ungemessenen Confounder | alles, was Behandlung und Ergebnis zugleich beeinflusst, ist in den Daten | nicht mit Daten prüfbar; Fachwissen, Diagramm wie oben | verzerrte Schätzung in unbekannter Richtung | Sensitivitätsanalyse, andere Verfahren |
+| Überlappung | für jeden Confounderwert gibt es Behandelte und Unbehandelte | Verteilung des Confounders je Gruppe vergleichen | Schätzung beruht auf Extrapolation | auf den Bereich mit Überlappung beschränken |
+| Keine Kontrolle von Mediatoren | nichts adjustieren, was selbst eine Folge der Behandlung ist | Diagramm | Effekt wird kleingerechnet | nur Grössen vor der Behandlung aufnehmen |
+| Parallele Trends (für DiD) | ohne Massnahme gleiche Entwicklung | Verlauf über mehrere Perioden vor der Massnahme | DiD-Schätzung verzerrt | mehr Vorperioden, anderes Vergleichsgebiet |
+
+## Output lesen
+
+Die Verfahren auf dieser Seite verwenden die gewöhnliche Regression. Neu ist
+nicht der Output, sondern welche Zeile kausal gelesen wird:
+
+| Modell | Zeile mit dem Effekt | Was sie bedeutet |
+|---|---|---|
+| `gehalt ~ kurs + erfahrung` | `kurs` | Gehaltsunterschied mit Weiterbildung bei gleicher Erfahrung |
+| `umsatz ~ massnahme * nachher` | `massnahme:nachher` | zusätzliche Veränderung in der Region mit Massnahme, über die allgemeine Veränderung hinaus |
+
+Alle anderen Koeffizienten sind Hilfsgrössen. Der Koeffizient von `erfahrung`
+etwa ist **nicht** der kausale Effekt der Erfahrung, weil für ihn andere
+Confounder gelten würden.
+
+## Interpretationsfallen
+
+- **Korrelation ist nicht Kausalität, auch mit vielen Kontrollvariablen nicht.**
+  Adjustierung hilft nur gegen gemessene Confounder.
+- **Mehr Kontrollvariablen sind nicht automatisch besser.** Ein Mediator oder
+  eine gemeinsame Folge von Behandlung und Ergebnis erzeugen Verzerrung, statt
+  sie zu beseitigen.
+- **Grobe Schichten lassen Verzerrung übrig.** Innerhalb einer Schicht von 14
+  bis 20 Jahren Erfahrung unterscheiden sich die Gruppen immer noch. Beispiel 2
+  misst den Rest.
+- **Die Tabelle-2-Falle:** In einem Modell ist nur der Koeffizient der
+  Behandlung kausal gemeint; die übrigen im selben Atemzug kausal zu
+  interpretieren ist ein verbreiteter Fehler.
+- **Vorher-nachher allein ist kein Effekt.** Alles, was sich in derselben Zeit
+  sonst verändert hat, steckt mit darin. Beispiel 3 zeigt es.
+
+## Ergebnis berichten
+
+> Unter der Annahme, dass [Confounder] die relevanten gemeinsamen Ursachen
+> erfassen, ist [Behandlung] mit [Wert] [Einheit] höherem [Ergebnis] verbunden
+> (95-Prozent-Konfidenzintervall [unten] bis [oben], [Verfahren]). Ungemessene
+> Confounder wie [Beispiele] können nicht ausgeschlossen werden.
+
+Immer genannt werden: das Verfahren, die Identifikationsannahme im Klartext,
+die adjustierten Grössen und die bekannten Grenzen.
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt der hier beschriebenen |
+|---|---|
+| [Versuchsplanung und A/B-Tests](versuchsplanung-ab-tests.qmd) | Zuteilung lässt sich randomisieren |
+| [Multiple lineare Regression](../regression/multiple-lineare-regression.qmd) | Zusammenhänge beschreiben oder vorhersagen, ohne kausalen Anspruch |
+| [Gemischte Modelle](../regression/gemischte-modelle.qmd) | Paneldaten mit wiederholten Messungen; lassen sich mit DiD kombinieren |
+
+## Beispiele
+
+Jedes Beispiel steht in einem eigenen Reiter.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Naiver Vergleich und Adjustierung
+
+#### Frage und Datenlage
+
+Verdienen Beschäftigte mit Weiterbildung mehr? 400 Personen, erfasst sind
+Erfahrung in Jahren, Weiterbildung ja oder nein und Gehalt in Tausend Franken.
+Erfahrene haben häufiger eine Weiterbildung besucht.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-kausal-vor-r
+round(c(anteil_kurs = mean(firma$kurs)), 4)
+round(tapply(firma$erfahrung, firma$kurs, mean), 2)
+```
+
+##### Python
+
+```{python}
+#| label: b1-kausal-vor-py
+print("Anteil Kurs:", round(firma["kurs"].mean(), 4))
+print(firma.groupby("kurs")["erfahrung"].mean().round(2))
+```
+
+:::
+
+Mit Weiterbildung liegt die Erfahrung im Mittel bei 13.84 Jahren, ohne bei 8.78.
+Die beiden Gruppen unterscheiden sich also schon vor jeder Wirkung des Kurses.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-kausal-r
+naiv <- diff(tapply(firma$gehalt, firma$kurs, mean))
+adjustiert <- lm(gehalt ~ kurs + erfahrung, data = firma)
+
+round(c(naiv = unname(naiv), adjustiert = unname(coef(adjustiert)["kurs"]),
+        se = summary(adjustiert)$coefficients["kurs", "Std. Error"]), 3)
+round(confint(adjustiert)["kurs", ], 3)
+```
+
+##### Python
+
+```{python}
+#| label: b1-kausal-py
+mittel = firma.groupby("kurs")["gehalt"].mean()
+adjustiert = smf.ols("gehalt ~ kurs + erfahrung", firma).fit()
+
+print("naiv:", round(mittel[1] - mittel[0], 3),
+      " adjustiert:", round(adjustiert.params["kurs"], 3),
+      " se:", round(adjustiert.bse["kurs"], 3))
+print("Intervall:", np.round(adjustiert.conf_int().loc["kurs"].values, 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| naiver Unterschied | 14.856 | Gehalt mit minus ohne Weiterbildung | fast fünfmal der wahre Effekt von 3; enthält den Umweg über die Erfahrung |
+| adjustierter Effekt | 4.549 | Unterschied bei gleicher Erfahrung | viel näher am wahren Wert |
+| Standardfehler | 0.703 | Unsicherheit der adjustierten Schätzung | |
+| Intervall | 3.166 bis 5.932 | 95-Prozent-Konfidenzintervall | Es verfehlt den wahren Wert 3 knapp. Bei 95-Prozent-Intervallen passiert das in jedem zwanzigsten Datensatz, hier ist es einer davon. |
+
+#### Interpretation und Ergebnissatz
+
+Die Adjustierung beseitigt den grössten Teil der Verzerrung. Dass sie hier
+funktioniert, liegt an zwei Eigenschaften der erzeugten Daten, die in echten
+Daten niemand garantiert: Erfahrung ist der einzige Confounder, und sie wirkt
+linear auf das Gehalt.
+
+> Bei gleicher Erfahrung verdienen Beschäftigte mit Weiterbildung im Mittel 4.5
+> Tausend Franken mehr (95-Prozent-Konfidenzintervall 3.2 bis 5.9, lineare
+> Regression mit Erfahrung als Kontrollvariable), unter der Annahme, dass
+> Erfahrung die relevante gemeinsame Ursache ist.
+
+### Beispiel 2: Schichtung mit groben Klassen
+
+#### Frage und Datenlage
+
+Statt die Erfahrung als Zahl ins Modell zu nehmen, werden die Personen in vier
+Erfahrungsklassen eingeteilt: 2 bis 6, 6 bis 10, 10 bis 14 und 14 bis 20 Jahre.
+Innerhalb jeder Klasse wird der Gehaltsunterschied berechnet, danach nach der
+Klassengrösse gemittelt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-kausal-r
+firma$schicht <- cut(firma$erfahrung, breaks = c(0, 6, 10, 14, 20))
+je_schicht <- sapply(split(firma, firma$schicht), function(s) {
+  c(ohne = mean(s$gehalt[s$kurs == 0]), mit = mean(s$gehalt[s$kurs == 1]),
+    n_ohne = sum(s$kurs == 0), n_mit = sum(s$kurs == 1))
+})
+je_schicht <- rbind(je_schicht, diff = je_schicht["mit", ] - je_schicht["ohne", ])
+round(je_schicht, 2)
+
+gewicht <- je_schicht["n_ohne", ] + je_schicht["n_mit", ]
+round(weighted.mean(je_schicht["diff", ], gewicht), 3)
+```
+
+##### Python
+
+```{python}
+#| label: b2-kausal-py
+firma["schicht"] = pd.cut(firma["erfahrung"], [0, 6, 10, 14, 20])
+tabelle = firma.groupby(["schicht", "kurs"], observed=True)["gehalt"].agg(["mean", "size"]).unstack()
+tabelle["diff"] = tabelle[("mean", 1)] - tabelle[("mean", 0)]
+tabelle["n"] = tabelle[("size", 0)] + tabelle[("size", 1)]
+print(tabelle.round(2))
+
+print("gewichtet:", round(np.average(tabelle["diff"], weights=tabelle["n"]), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Schicht | ohne Kurs | mit Kurs | Differenz | Wie es zu lesen ist |
+|---|---|---|---|---|
+| 2 bis 6 Jahre | 66 Personen | 11 Personen | 4.19 | wenige Behandelte, unsichere Differenz |
+| 6 bis 10 Jahre | 68 | 28 | 7.32 | |
+| 10 bis 14 Jahre | 49 | 45 | 3.49 | |
+| 14 bis 20 Jahre | 30 | 103 | 6.22 | umgekehrtes Verhältnis: hier sind die Unbehandelten die Minderheit |
+| gewichtet | | | 5.452 | weiter vom wahren Wert 3 entfernt als die Adjustierung |
+
+#### Interpretation und Ergebnissatz
+
+Innerhalb der Schicht von 14 bis 20 Jahren sind die Weitergebildeten immer noch
+erfahrener als die anderen, weil Erfahrene in jeder Schicht häufiger einen Kurs
+besuchen. Dieser Rest an Confounding bleibt in der Differenz stecken. Feinere
+Schichten oder Matching auf die genaue Erfahrung verringern ihn, kosten aber
+Beobachtungen je Vergleich.
+
+> Die Schichtung nach vier Erfahrungsklassen ergibt einen Effekt von 5.45
+> Tausend Franken; die groben Klassen lassen einen Teil der Verzerrung durch
+> Erfahrung bestehen.
+
+### Beispiel 3: Difference-in-Differences
+
+#### Frage und Datenlage
+
+Region B führte eine Verkaufsmassnahme ein, Region A nicht. Gemessen wurde der
+Umsatz je Filialwoche vor und nach der Einführung, je 50 Werte. Region B lag
+schon vorher höher, und in beiden Regionen stieg der Umsatz in der zweiten
+Periode saisonal. Welcher Anteil des Anstiegs in B geht auf die Massnahme
+zurück?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-kausal-r
+m <- tapply(did$umsatz, list(did$region, did$nachher), mean)
+round(m, 3)
+round(c(nachher_b_minus_a = m["B", "1"] - m["A", "1"],
+        b_nachher_minus_vorher = m["B", "1"] - m["B", "0"],
+        did_von_hand = (m["B", "1"] - m["B", "0"]) - (m["A", "1"] - m["A", "0"])), 3)
+
+modell <- lm(umsatz ~ massnahme * nachher, data = did)
+round(summary(modell)$coefficients, 4)
+round(confint(modell)["massnahme:nachher", ], 3)
+```
+
+##### Python
+
+```{python}
+#| label: b3-kausal-py
+m = did.groupby(["region", "nachher"])["umsatz"].mean().unstack()
+print(m.round(3))
+print("nachher B minus A:", round(m.loc["B", 1] - m.loc["A", 1], 3),
+      " B nachher minus vorher:", round(m.loc["B", 1] - m.loc["B", 0], 3),
+      " DiD von Hand:", round((m.loc["B", 1] - m.loc["B", 0]) - (m.loc["A", 1] - m.loc["A", 0]), 3))
+
+modell = smf.ols("umsatz ~ massnahme * nachher", did).fit()
+print(pd.DataFrame({"schaetzung": modell.params, "se": modell.bse,
+                    "p": modell.pvalues}).round(4))
+print("Intervall:", np.round(modell.conf_int().loc["massnahme:nachher"].values, 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Mittel A vorher, nachher | 99.268, 106.352 | Region ohne Massnahme | Anstieg um 7.084, das ist die allgemeine Entwicklung |
+| Mittel B vorher, nachher | 106.674, 116.796 | Region mit Massnahme | Anstieg um 10.122 |
+| `massnahme` | 7.406 | Niveauunterschied vor der Massnahme | B lag schon vorher höher; das ist kein Effekt |
+| `nachher` | 7.084 | allgemeiner Anstieg | gilt für beide Regionen |
+| `massnahme:nachher` | 3.038 | Difference-in-Differences | zusätzlicher Anstieg in B, die Schätzung des Effekts |
+| Standardfehler, p | 1.7355, 0.0816 | Unsicherheit | bei je 50 Werten nicht signifikant |
+| Intervall | -0.385 bis 6.461 | 95-Prozent-Konfidenzintervall | enthält den wahren Wert 4 und auch die Null |
+
+#### Interpretation und Ergebnissatz
+
+Die beiden naiven Vergleiche liegen weit daneben: Nachher B gegen A ergibt 10.444,
+weil der alte Niveauunterschied mitgezählt wird; vorher gegen nachher in B ergibt
+10.122, weil der saisonale Anstieg mitgezählt wird. Die doppelte Differenz
+entfernt beides und landet bei 3.038. Mit 50 Werten je Zelle ist die Schätzung
+aber unsicher. Die Annahme paralleler Trends lässt sich mit nur einer
+Vorperiode nicht prüfen.
+
+> Unter der Annahme paralleler Trends erhöhte die Massnahme den Umsatz um 3.0
+> Einheiten (95-Prozent-Konfidenzintervall -0.4 bis 6.5, p = 0.08,
+> Difference-in-Differences mit je 50 Filialwochen). Der Effekt ist mit diesen
+> Daten nicht von null zu unterscheiden.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Eine Studie findet, dass Personen mit Fitnessabo seltener krank sind, und
+adjustiert für Alter und Geschlecht. Welcher Einwand wiegt am schwersten?
+
+- [x] Gesundheitsbewusstsein beeinflusst Abo und Krankheit und ist nicht
+      gemessen ~ Richtig. Das ist ein ungemessener Confounder. Gegen ihn hilft
+      keine Adjustierung der vorhandenen Variablen.
+- [ ] Die Stichprobe ist zu klein ~ Mehr Daten verkleinern die Unsicherheit,
+      nicht die Verzerrung durch einen fehlenden Confounder.
+- [ ] Alter hätte nicht adjustiert werden dürfen ~ Alter wirkt auf Abo und
+      Krankheit und liegt zeitlich davor; es zu adjustieren ist richtig.
+:::
+
+::: {.quiz}
+Ein Modell schätzt den Effekt einer Schulung auf den Umsatz. Soll die Zahl der
+Kundenkontakte **nach** der Schulung als Kontrollvariable aufgenommen werden?
+
+- [x] Nein, sie ist vermutlich ein Mediator, über den die Schulung wirkt ~
+      Richtig. Wer den Mediator konstant hält, rechnet den Teil des Effekts
+      heraus, der über mehr Kundenkontakte läuft.
+- [ ] Ja, jede Variable mit Einfluss auf den Umsatz gehört ins Modell ~ Das gilt
+      für Confounder, nicht für Folgen der Behandlung.
+- [ ] Ja, sonst ist das Modell nicht signifikant ~ Signifikanz ist kein
+      Kriterium für die Auswahl der Kontrollvariablen.
+:::
+
+::: {.quiz}
+Was ist die zentrale Annahme hinter Difference-in-Differences?
+
+- [x] Ohne die Massnahme hätten sich beide Gruppen parallel entwickelt ~
+      Richtig. Unterschiede im Niveau sind erlaubt, Unterschiede in der
+      Entwicklung nicht.
+- [ ] Beide Gruppen lagen vorher auf demselben Niveau ~ Gerade das muss nicht
+      sein; der Niveauunterschied fällt durch die Differenzbildung weg.
+- [ ] Die Massnahme wurde zufällig zugeteilt ~ Dann wäre ein einfacher Vergleich
+      möglich; DiD ist gerade für den Fall ohne Randomisierung da.
+:::
+
+## Verlinkte Ressourcen
+
+- [Causal Inference: The Mixtape (Scott Cunningham)](https://mixtape.scunning.com/)
+- [The Effect (Nick Huntington-Klein)](https://theeffectbook.net/)
+- [Introduction to Causal Inference (Brady Neal), Kurs](https://www.bradyneal.com/causal-inference-course)
