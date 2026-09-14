@@ -1,0 +1,409 @@
+---
+title: "Äquivalenztests"
+description: "Gleichwertigkeit statt Unterschied nachweisen: TOST, Äquivalenzgrenzen und warum ein nicht signifikanter Test nichts beweist."
+categories: ["Hypothesentests", "Effektstärke", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 85
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# Zwei einseitige Welch-Tests gegen die Grenzen -g und +g, dazu das
+# 90-Prozent-Intervall. Dieselbe Rechnung wie im Python-Teil.
+tost <- function(a, b, grenze) {
+  d <- mean(a) - mean(b)
+  v1 <- var(a) / length(a); v2 <- var(b) / length(b)
+  se <- sqrt(v1 + v2)
+  df <- (v1 + v2)^2 / (v1^2 / (length(a) - 1) + v2^2 / (length(b) - 1))
+  p_unten <- pt((d + grenze) / se, df, lower.tail = FALSE)
+  p_oben  <- pt((d - grenze) / se, df)
+  ki90 <- d + c(-1, 1) * qt(0.95, df) * se
+  c(differenz = d, se = se, df = df,
+    t_unten = (d + grenze) / se, p_unten = p_unten,
+    t_oben = (d - grenze) / se, p_oben = p_oben,
+    p_tost = max(p_unten, p_oben),
+    ki90_unten = ki90[1], ki90_oben = ki90[2],
+    p_welch = t.test(a, b)$p.value)
+}
+
+alt <- c(500.2, 499.6, 500.9, 499.8, 500.4, 499.1, 500.7, 500.0, 499.5, 500.3,
+         500.8, 499.9, 500.1, 499.4, 500.6, 500.2, 499.7, 500.5, 499.8, 500.3)
+neu <- c(500.0, 499.8, 500.6, 499.5, 500.2, 499.3, 500.9, 499.9, 499.7, 500.1,
+         500.4, 499.6, 500.3, 499.2, 500.5, 500.0, 499.9, 500.7, 499.6, 500.1)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+
+def lehmer(saat, anzahl):
+    """Derselbe Generator wie im R-Teil."""
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def tost(a, b, grenze):
+    d = a.mean() - b.mean()
+    v1, v2 = a.var(ddof=1) / len(a), b.var(ddof=1) / len(b)
+    se = np.sqrt(v1 + v2)
+    df = (v1 + v2) ** 2 / (v1 ** 2 / (len(a) - 1) + v2 ** 2 / (len(b) - 1))
+    p_unten = stats.t.sf((d + grenze) / se, df)
+    p_oben = stats.t.cdf((d - grenze) / se, df)
+    ki90 = d + np.array([-1, 1]) * stats.t.ppf(0.95, df) * se
+    return pd.Series({
+        "differenz": d, "se": se, "df": df,
+        "t_unten": (d + grenze) / se, "p_unten": p_unten,
+        "t_oben": (d - grenze) / se, "p_oben": p_oben,
+        "p_tost": max(p_unten, p_oben),
+        "ki90_unten": ki90[0], "ki90_oben": ki90[1],
+        "p_welch": stats.ttest_ind(a, b, equal_var=False).pvalue,
+    })
+
+
+alt = np.array([500.2, 499.6, 500.9, 499.8, 500.4, 499.1, 500.7, 500.0, 499.5, 500.3,
+                500.8, 499.9, 500.1, 499.4, 500.6, 500.2, 499.7, 500.5, 499.8, 500.3])
+neu = np.array([500.0, 499.8, 500.6, 499.5, 500.2, 499.3, 500.9, 499.9, 499.7, 500.1,
+                500.4, 499.6, 500.3, 499.2, 500.5, 500.0, 499.9, 500.7, 499.6, 500.1])
+```
+
+Alle Beispiele vergleichen zwei Abfüllanlagen mit einer Toleranz von ±0.5 ml.
+Die Daten sind fest eingetragen oder stammen aus dem Lehmer-Generator; R und
+Python sehen dieselben Werte.
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Sind zwei Gruppen im Mittel so ähnlich, dass der Unterschied praktisch keine Rolle spielt? |
+| Zielvariable | metrisch |
+| Voraussetzung vor der Datenerhebung | eine begründete Äquivalenzgrenze ±g in der Einheit der Messung |
+| Was die Methode liefert | zwei einseitige Tests, den grösseren der beiden p-Werte, das 90-Prozent-Intervall der Differenz |
+| R-Funktion | zwei einseitige `t.test()`-Aufrufe oder `TOSTER::t_TOST()` |
+| Python-Funktion | `statsmodels.stats.weightstats.ttost_ind()` oder `pingouin.tost()` |
+| Verwandte Methoden | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd), [Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd), [Effektstärken](../inferenz/effektstaerken.qmd) |
+
+## Wann diese Methode, wann nicht
+
+Ein gewöhnlicher Test fragt, ob es einen Unterschied gibt. Findet er keinen,
+bleibt offen, ob es keinen gibt oder ob die Daten nicht reichen, ihn zu sehen.
+Wer zeigen will, dass eine neue Anlage, ein günstigeres Verfahren oder ein
+Generikum **gleichwertig** ist, braucht deshalb einen Test, der die Beweislast
+umdreht: Die Nullhypothese lautet „der Unterschied ist mindestens so gross wie
+die Toleranz", und nur deren Ablehnung belegt Gleichwertigkeit.
+
+| Situation | Stattdessen |
+|---|---|
+| Nachweis eines Unterschieds ist das Ziel | [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) |
+| Nur „nicht schlechter als" ist gefragt | Nicht-Unterlegenheitstest, also nur einer der beiden einseitigen Tests |
+| Keine begründbare Toleranz vorhanden | kein Äquivalenztest; Intervall der Differenz berichten |
+| Dieselben Objekte zweimal gemessen | TOST auf die Differenzen, analog zum [gepaarten t-Test](t-test-gepaart.qmd) |
+
+## Grundidee und Modell
+
+Der **TOST** (two one-sided tests) prüft zwei Nullhypothesen, eine je Grenze:
+
+$$H_{01}: \mu_1 - \mu_2 \le -g \qquad H_{02}: \mu_1 - \mu_2 \ge +g$$
+
+Werden **beide** abgelehnt, liegt die Differenz innerhalb von ±g, und
+Gleichwertigkeit gilt als nachgewiesen. Der p-Wert des TOST ist der grössere
+der beiden einseitigen p-Werte.
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $g$ | Äquivalenzgrenze, vorab festgelegt, fachlich begründet |
+| $t_{\text{unten}} = (\bar x_1 - \bar x_2 + g)/SE$ | Test gegen die untere Grenze |
+| $t_{\text{oben}} = (\bar x_1 - \bar x_2 - g)/SE$ | Test gegen die obere Grenze |
+| 90-Prozent-Intervall | liegt es ganz innerhalb von ±g, sind beide Tests bei 5 Prozent signifikant |
+
+Die Verbindung zum Intervall ist die anschaulichste Lesart: Gleichwertig heisst,
+das 90-Prozent-Intervall der Differenz passt vollständig zwischen die Grenzen.
+Es sind 90 und nicht 95 Prozent, weil jeder der beiden einseitigen Tests für
+sich auf dem Niveau 5 Prozent läuft.
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Grenze vorab festgelegt | g entsteht aus Fachwissen, nicht aus den Daten | Studienplan | Ergebnis beliebig, jeder Datensatz „gleichwertig" machbar | Grenze dokumentieren, bevor gemessen wird |
+| Wie beim t-Test | Unabhängigkeit, metrische Zielgrösse, annähernd normalverteilte Mittelwerte | wie beim [t-Test](t-test-zwei-stichproben.qmd) | wie dort | Welch-Variante, bei Schiefe rangbasierte Äquivalenzverfahren |
+| Genügend Daten | Äquivalenz braucht meist mehr Daten als ein Unterschied | vorab Power für TOST rechnen | kein Nachweis möglich, auch wenn die Gruppen gleich sind | Stichprobe planen, Beispiel 2 |
+
+## Output lesen
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `differenz` | beobachtete Mittelwertdifferenz | liegt sie selbst ausserhalb ±g, ist Äquivalenz ausgeschlossen |
+| `t_unten`, `p_unten` | Test gegen die untere Grenze | muss signifikant sein |
+| `t_oben`, `p_oben` | Test gegen die obere Grenze | muss ebenfalls signifikant sein |
+| `p_tost` | grösserer der beiden p-Werte | unter 0.05 heisst: äquivalent |
+| `ki90_unten`, `ki90_oben` | 90-Prozent-Intervall der Differenz | ganz innerhalb ±g heisst: äquivalent |
+| `p_welch` | gewöhnlicher Test auf Unterschied | gehört zur Einordnung dazu, beantwortet aber eine andere Frage |
+
+## Interpretationsfallen
+
+- **„Nicht signifikant" ist kein Nachweis von Gleichheit.** Beispiel 2 zeigt
+  einen nicht signifikanten Unterschied, der zugleich mit einer Abweichung von
+  fast einem Milliliter vereinbar ist.
+- **Signifikant verschieden und äquivalent schliessen sich nicht aus.** Bei
+  grossen Stichproben kann ein kleiner, belangloser Unterschied beides sein,
+  siehe Beispiel 3.
+- **Die Grenze nach den Daten zu wählen** macht den Test wertlos. Wer g so legt,
+  dass das Intervall gerade hineinpasst, hat nichts geprüft.
+- **Das 95-Prozent-Intervall** ist für den Vergleich mit den Grenzen zu streng;
+  zum TOST gehört das 90-Prozent-Intervall.
+- **Äquivalenz gilt nur für die gewählte Grenze.** Mit einer halb so grossen
+  Toleranz kann dasselbe Ergebnis nicht mehr äquivalent sein.
+
+## Ergebnis berichten
+
+> Die mittlere [Zielgrösse] von [Gruppe 1] und [Gruppe 2] ist innerhalb der
+> vorab festgelegten Äquivalenzgrenze von ±[g] [Einheit] gleichwertig:
+> Differenz [Wert], 90-Prozent-Konfidenzintervall [unten] bis [oben],
+> TOST p = [p] (Welch-Freiheitsgrade).
+
+Immer genannt werden: die Grenze samt Begründung, dass sie vorab festgelegt
+wurde, die Differenz mit dem 90-Prozent-Intervall und der TOST-p-Wert.
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt eines Äquivalenztests |
+|---|---|
+| [t-Test für zwei Stichproben](t-test-zwei-stichproben.qmd) | ein Unterschied soll nachgewiesen werden |
+| Nicht-Unterlegenheitstest | nur eine Richtung zählt, etwa „nicht schlechter als die bisherige Anlage" |
+| [Bayessche Inferenz](../inferenz/bayessche-inferenz.qmd) | Wahrscheinlichkeit gefragt, dass die Differenz innerhalb der Toleranz liegt |
+| [Power und Stichprobenumfang](../inferenz/power-stichprobenumfang.qmd) | vor der Erhebung klären, wie viele Messungen der Nachweis braucht |
+
+## Beispiele
+
+Jedes Beispiel steht in einem eigenen Reiter.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Die neue Anlage ist gleichwertig
+
+#### Frage und Datenlage
+
+Eine neue Abfüllanlage soll die alte ersetzen. Als gleichwertig gilt sie, wenn
+die mittlere Füllmenge um weniger als 0.5 ml abweicht; diese Grenze stammt aus
+der Produktspezifikation und stand vor der Messung fest. Von jeder Anlage
+liegen 20 Flaschen vor.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-aeq-r
+round(tost(alt, neu, grenze = 0.5), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b1-aeq-py
+print(tost(alt, neu, grenze=0.5).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `differenz` | 0.075 | alt minus neu, in Millilitern | weit innerhalb der Toleranz |
+| `se` | 0.1508 | Standardfehler der Differenz | |
+| `t_unten`, `p_unten` | 3.8125, 0.0002 | Test gegen −0.5 ml | abgelehnt: die Differenz liegt über der unteren Grenze |
+| `t_oben`, `p_oben` | -2.818, 0.0038 | Test gegen +0.5 ml | abgelehnt: die Differenz liegt unter der oberen Grenze |
+| `p_tost` | 0.0038 | grösserer der beiden p-Werte | unter 0.05, Gleichwertigkeit nachgewiesen |
+| 90-Prozent-Intervall | -0.1793 bis 0.3293 | plausible Differenzen | liegt ganz zwischen −0.5 und +0.5 |
+| `p_welch` | 0.6219 | gewöhnlicher t-Test | allein wäre er kein Beleg; erst der TOST macht die Aussage möglich |
+
+#### Interpretation und Ergebnissatz
+
+Beide einseitigen Tests sind signifikant, und das Intervall passt zwischen die
+Grenzen. Das ist dieselbe Aussage auf zwei Wegen.
+
+> Die mittlere Füllmenge der neuen Anlage ist innerhalb der vorab festgelegten
+> Toleranz von ±0.5 ml gleichwertig zur alten: Differenz 0.075 ml,
+> 90-Prozent-Konfidenzintervall -0.18 bis 0.33 ml, TOST p = 0.004.
+
+### Beispiel 2: Nicht signifikant, aber auch nicht gleichwertig
+
+#### Frage und Datenlage
+
+Dieselbe Frage mit nur sechs Flaschen je Anlage, die Werte der neuen Anlage
+etwas stärker streuend. Der gewöhnliche t-Test findet keinen Unterschied.
+Reicht das?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-aeq-r
+klein_alt <- alt[1:6]
+klein_neu <- neu[1:6] + c(0.6, -0.3, 0.9, 0.1, 0.5, -0.2)
+round(tost(klein_alt, klein_neu, grenze = 0.5), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b2-aeq-py
+klein_alt = alt[:6]
+klein_neu = neu[:6] + np.array([0.6, -0.3, 0.9, 0.1, 0.5, -0.2])
+print(tost(klein_alt, klein_neu, grenze=0.5).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| `p_welch` | 0.7219 | kein Unterschied nachweisbar |
+| `p_unten` | 0.2406 | die untere Grenze lässt sich nicht ausschliessen |
+| `p_oben` | 0.088 | die obere auch nicht |
+| `p_tost` | 0.2406 | über 0.05: Gleichwertigkeit **nicht** nachgewiesen |
+| 90-Prozent-Intervall | -0.9989 bis 0.6656 | reicht über beide Grenzen hinaus |
+
+#### Interpretation und Ergebnissatz
+
+Das ist die häufigste Fehlschlussquelle in der Praxis. Der t-Test sagt „kein
+Unterschied gefunden", und genau so wird es oft berichtet. Das Intervall zeigt
+aber, dass die neue Anlage mit diesen Daten auch um einen ganzen Milliliter
+anders füllen könnte. Sechs Flaschen reichen für keine der beiden Aussagen.
+
+> Mit sechs Flaschen je Anlage liess sich weder ein Unterschied noch
+> Gleichwertigkeit nachweisen (Welch p = 0.72; TOST p = 0.24; 90-Prozent-
+> Konfidenzintervall der Differenz -1.00 bis 0.67 ml bei einer Toleranz von
+> ±0.5 ml).
+
+### Beispiel 3: Signifikant verschieden und trotzdem gleichwertig
+
+#### Frage und Datenlage
+
+Im Dauerbetrieb wurden je 400 Flaschen gemessen. Die neue Anlage füllt im
+Mittel minimal mehr ab. Die Daten stammen aus dem Lehmer-Generator.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-aeq-r
+gross_alt <- round(500.00 + 0.8 * qnorm(lehmer(4242, 400)), 2)
+gross_neu <- round(500.18 + 0.8 * qnorm(lehmer(4343, 400)), 2)
+round(c(mittel_alt = mean(gross_alt), mittel_neu = mean(gross_neu)), 3)
+signif(tost(gross_alt, gross_neu, grenze = 0.5), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b3-aeq-py
+gross_alt = np.round(500.00 + 0.8 * stats.norm.ppf(lehmer(4242, 400)), 2)
+gross_neu = np.round(500.18 + 0.8 * stats.norm.ppf(lehmer(4343, 400)), 2)
+print("mittel_alt:", round(gross_alt.mean(), 3), " mittel_neu:", round(gross_neu.mean(), 3))
+print(tost(gross_alt, gross_neu, grenze=0.5).apply(lambda w: float(f"{w:.4g}")))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Wie er zu lesen ist |
+|---|---|---|
+| Mittelwerte | 499.994 und 500.145 | die neue Anlage füllt 0.15 ml mehr |
+| `p_welch` | 0.009224 | der Unterschied ist signifikant |
+| `p_tost` | 1.008e-09 | Gleichwertigkeit ebenfalls klar nachgewiesen |
+| 90-Prozent-Intervall | -0.2453 bis -0.05551 | liegt ganz innerhalb ±0.5, schliesst aber die Null aus |
+
+#### Interpretation und Ergebnissatz
+
+Beide Tests sind signifikant, und das ist kein Widerspruch. Der Unterschied ist
+echt, aber kleiner als die Toleranz. Genau diese Unterscheidung zwischen
+statistischer Signifikanz und praktischer Bedeutung macht der Äquivalenztest
+ausdrücklich.
+
+> Die neue Anlage füllt im Mittel 0.15 ml mehr ab (Welch p = 0.009). Die
+> Differenz liegt mit einem 90-Prozent-Konfidenzintervall von -0.25 bis
+> -0.06 ml vollständig innerhalb der Toleranz von ±0.5 ml; die Anlagen sind
+> gleichwertig (TOST p = 1.0e-9).
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein t-Test ergibt einen p-Wert weit über dem Signifikanzniveau. Darf daraus
+geschlossen werden, dass beide Verfahren gleichwertig sind?
+
+- [x] Nein, dafür braucht es eine vorab festgelegte Toleranz und einen
+      Äquivalenztest ~ Richtig. Ein nicht signifikanter Test kann auch an zu
+      wenigen Daten liegen. Beispiel 2 zeigt ein solches Ergebnis mit einem
+      Intervall, das weit über die Toleranz reicht.
+- [ ] Ja, ein grosser p-Wert zeigt Gleichheit ~ Der p-Wert misst Evidenz gegen
+      die Nullhypothese, nicht für sie.
+- [ ] Ja, sofern die Stichprobe über 30 liegt ~ Auch mit mehr Daten beantwortet
+      der t-Test eine andere Frage.
+:::
+
+::: {.quiz}
+Warum wird beim TOST das 90- und nicht das 95-Prozent-Intervall mit den Grenzen
+verglichen?
+
+- [x] Jeder der beiden einseitigen Tests läuft auf dem Niveau 5 Prozent, und
+      das entspricht einem zweiseitigen 90-Prozent-Intervall ~ Richtig. Das
+      Gesamtniveau bleibt dabei bei 5 Prozent, weil beide Tests zugleich
+      signifikant sein müssen.
+- [ ] Weil Äquivalenztests weniger streng sein dürfen ~ Das Niveau ist dasselbe,
+      nur die Konstruktion unterscheidet sich.
+- [ ] Das ist eine Konvention ohne Grund ~ Der Grund folgt direkt aus den zwei
+      einseitigen Tests.
+:::
+
+::: {.quiz}
+Nach der Auswertung wird die Toleranz von 0.5 auf 1.0 ml erhöht, damit das
+Ergebnis äquivalent wird. Was ist das Problem?
+
+- [x] Die Grenze stammt dann aus den Daten, der Test prüft nichts mehr ~
+      Richtig. Mit einer genügend grossen Toleranz ist jeder Datensatz
+      „gleichwertig". Die Grenze gehört vor die Erhebung.
+- [ ] Keines, solange 1.0 ml fachlich vertretbar ist ~ Vertretbar muss sie vor
+      der Auswertung gewesen sein; danach ist die Wahl vom Ergebnis beeinflusst.
+- [ ] Der Test wird ungenauer ~ Die Rechnung ist genau, nur die Aussage wird
+      beliebig.
+:::
+
+## Verlinkte Ressourcen
+
+- [TOSTER: Two One-Sided Tests in R (CRAN)](https://cran.r-project.org/package=TOSTER)
+- [statsmodels: ttost_ind](https://www.statsmodels.org/stable/generated/statsmodels.stats.weightstats.ttost_ind.html)
