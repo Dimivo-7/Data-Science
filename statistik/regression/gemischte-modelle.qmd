@@ -1,0 +1,492 @@
+---
+title: "Gemischte Modelle"
+description: "Regression mit Gruppenstruktur: zufällige Achsenabschnitte und Steigungen, ICC und warum OLS dort zu sicher ist."
+categories: ["Regression", "Modelldiagnostik", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 60
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(lme4)
+
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# 12 Klassen mit je 15 Personen. Ein langer Strom, der der Reihe nach
+# aufgeteilt wird: Klasseneffekt, Klassensteigung, Klassengroesse, dann je
+# Person Lernstunden und Rauschen.
+K <- 12; N <- 15
+z <- qnorm(lehmer(4711, K * 3 + K * N * 2))
+kl_int <- z[1:K]; kl_slope <- z[(K + 1):(2 * K)]; kl_gr <- z[(2 * K + 1):(3 * K)]
+rest <- z[(3 * K + 1):length(z)]
+
+klasse  <- rep(1:K, each = N)
+stunden <- round(5 + 2 * rest[1:(K * N)], 1)
+rausch  <- rest[(K * N + 1):(2 * K * N)]
+groesse <- round(22 + 4 * kl_gr)
+
+schule <- data.frame(
+  klasse  = factor(klasse),
+  stunden = stunden,
+  groesse = groesse[klasse],
+  punkte  = round(50 + 6 * kl_int[klasse] +
+                  (2.0 + 0.8 * kl_slope[klasse]) * stunden + 8 * rausch, 1)
+)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import warnings
+import numpy as np
+import pandas as pd
+import statsmodels.formula.api as smf
+from scipy import stats
+
+warnings.filterwarnings("ignore")
+
+
+def lehmer(saat, anzahl):
+    """Derselbe Generator wie im R-Teil, damit beide Sprachen dieselben Daten sehen."""
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+K, N = 12, 15
+z = stats.norm.ppf(lehmer(4711, K * 3 + K * N * 2))
+kl_int, kl_slope, kl_gr = z[:K], z[K:2 * K], z[2 * K:3 * K]
+rest = z[3 * K:]
+
+klasse = np.repeat(np.arange(1, K + 1), N)
+stunden = np.round(5 + 2 * rest[:K * N], 1)
+rausch = rest[K * N:]
+groesse = np.round(22 + 4 * kl_gr).astype(int)
+
+schule = pd.DataFrame({
+    "klasse": klasse,
+    "stunden": stunden,
+    "groesse": groesse[klasse - 1],
+    "punkte": np.round(50 + 6 * kl_int[klasse - 1]
+                       + (2.0 + 0.8 * kl_slope[klasse - 1]) * stunden + 8 * rausch, 1),
+})
+```
+
+Alle Beispiele rechnen mit denselben 180 Personen aus 12 Schulklassen. Die
+Daten entstehen in beiden Sprachen aus demselben Lehmer-Generator, R und Python
+sehen also exakt dieselben Werte.
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie hängt eine Zielgrösse von Prädiktoren ab, wenn die Beobachtungen in Gruppen gebündelt sind? |
+| Zielvariable | metrisch (für binäre Zielgrössen gibt es die verallgemeinerte Form) |
+| Datenstruktur | Personen in Klassen, Messungen in Personen, Filialen in Regionen |
+| Was die Methode liefert | feste Effekte mit Standardfehlern, Varianz der Gruppen und des Rests, ICC |
+| R-Funktion | `lme4::lmer(y ~ x + (1 \| gruppe))` |
+| Python-Funktion | `smf.mixedlm("y ~ x", data, groups=data["gruppe"]).fit()` |
+| Verwandte Methoden | [multiple lineare Regression](multiple-lineare-regression.qmd), [gepaarter t-Test](../tests/t-test-gepaart.qmd), [Varianzanalyse](../tests/anova.qmd) |
+
+## Wann diese Methode, wann nicht
+
+Gemischte Modelle sind zuständig, sobald Beobachtungen nicht unabhängig sind,
+weil sie aus derselben Gruppe stammen: Schülerinnen derselben Klasse, wiederholte
+Messungen an derselben Person, Verkäufe derselben Filiale. Innerhalb einer
+Gruppe ähneln sich die Werte, und eine gewöhnliche Regression tut so, als wäre
+jede Zeile neue, unabhängige Information.
+
+| Situation | Stattdessen |
+|---|---|
+| Keine Gruppenstruktur, alle Beobachtungen unabhängig | [multiple lineare Regression](multiple-lineare-regression.qmd) |
+| Nur zwei Messungen je Person, keine Prädiktoren | [gepaarter t-Test](../tests/t-test-gepaart.qmd) |
+| Sehr wenige Gruppen (unter etwa fünf) | Gruppe als fester Faktor in der Regression |
+| Binäre Zielgrösse mit Gruppen | verallgemeinertes gemischtes Modell, `glmer(..., family = binomial)` |
+| Messungen in gleichmässigem zeitlichem Abstand, Vorhersage steht im Zentrum | [Zeitreihenmodelle](../zeitreihen/index.qmd) |
+
+## Grundidee und Modell
+
+Jede Klasse bekommt ihren eigenen Achsenabschnitt, aber diese Achsenabschnitte
+werden nicht einzeln geschätzt, sondern als Streuung um einen gemeinsamen
+Mittelwert modelliert:
+
+$$y_{ij} = \beta_0 + u_{j} + \beta_1 x_{ij} + \varepsilon_{ij}, \qquad u_j \sim N(0, \sigma_u^2), \quad \varepsilon_{ij} \sim N(0, \sigma^2)$$
+
+| Bestandteil | Bedeutung |
+|---|---|
+| $\beta_0, \beta_1$ | **feste Effekte**: gelten für alle, werden wie in der Regression gelesen |
+| $u_j$ | **zufälliger Effekt** der Klasse $j$: wie weit ihr Niveau vom Durchschnitt abweicht |
+| $\sigma_u^2$ | Varianz zwischen den Klassen |
+| $\sigma^2$ | Varianz innerhalb der Klassen, der Rest |
+| $\text{ICC} = \sigma_u^2 / (\sigma_u^2 + \sigma^2)$ | Anteil der Gesamtstreuung, der auf die Klassen entfällt |
+
+Kann auch die Steigung je Klasse verschieden sein, kommt ein zweiter zufälliger
+Effekt dazu, der **zufällige Steigung** heisst: `(stunden | klasse)`.
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Gruppenstruktur richtig abgebildet | Jede Ebene, auf der sich Werte ähneln, ist im Modell | Erhebungsdesign | Standardfehler zu klein | fehlende Ebene ergänzen |
+| Genügend Gruppen | Die Varianz zwischen Gruppen braucht Gruppen, um geschätzt zu werden | Anzahl Gruppen | Varianz auf null geschätzt, Warnung `singular fit` | ab etwa zehn Gruppen verlässlich, sonst fester Faktor |
+| Linearität, konstante Restvarianz | wie in der Regression | Residuen gegen angepasste Werte | verzerrte Effekte, falsche Unsicherheit | [Regressionsdiagnostik](regressionsdiagnostik.qmd) |
+| Annähernd normalverteilte zufällige Effekte und Residuen | | QQ-Plot der Residuen und der geschätzten $u_j$ | bei grossen Stichproben meist harmlos | robuste Standardfehler oder Bootstrap |
+
+## Output lesen
+
+R, `summary(lmer(...))`:
+
+| Abschnitt | Was er sagt |
+|---|---|
+| `REML criterion at convergence` | Anpassungsmass, nur zum Vergleich von Modellen mit denselben festen Effekten |
+| `Random effects`, `Variance` und `Std.Dev.` | $\sigma_u^2$ je zufälligem Effekt und $\sigma^2$ als `Residual` |
+| `Number of obs`, `groups` | Anzahl Zeilen und Anzahl Gruppen; entscheidend ist oft die zweite Zahl |
+| `Fixed effects`, `Estimate`, `Std. Error`, `t value` | wie in der Regression; **lme4 gibt bewusst keine p-Werte aus** |
+
+Python, `MixedLM.fit().summary()`:
+
+| Zeile | Was sie sagt | Unterschied zu R |
+|---|---|---|
+| `Scale` | $\sigma^2$, die Restvarianz | in R die Zeile `Residual` |
+| `Group Var` | $\sigma_u^2$ | in R `(Intercept)` unter `Random effects` |
+| `Coef.`, `Std.Err.`, `z`, `P>\|z\|` | feste Effekte mit Wald-Test | R zeigt nur `t value`, ohne p-Wert |
+| `Converged` | ob die Schätzung konvergiert ist | in R eine Warnung, falls nicht |
+
+Warum lme4 keinen p-Wert zeigt: Die Freiheitsgrade eines festen Effekts sind in
+gemischten Modellen nicht eindeutig definiert. Python rechnet mit der
+Normalverteilung, das ist bei vielen Gruppen eine gute Näherung und bei wenigen
+zu optimistisch.
+
+## Interpretationsfallen
+
+- **OLS auf gruppierten Daten ist zu sicher.** Die Schätzung selbst ist oft
+  ähnlich, der Standardfehler aber zu klein, besonders für Merkmale der Gruppe.
+  Beispiel 2 zeigt den Faktor.
+- **Die Stichprobengrösse für Gruppenmerkmale ist die Zahl der Gruppen**, nicht
+  die Zahl der Zeilen. 180 Personen in 12 Klassen sind für die Klassengrösse 12
+  Beobachtungen.
+- **Ein nicht signifikanter Test auf eine Varianzkomponente beweist nicht, dass
+  sie null ist.** Der Test liegt am Rand des Parameterraums und ist konservativ.
+- **REML und ML nicht mischen.** Modelle mit verschiedenen festen Effekten werden
+  mit ML verglichen; R erledigt das in `anova()` automatisch, Python nicht.
+- **`singular fit` ist keine Formalie.** Es heisst, dass eine Varianz auf null
+  oder eine Korrelation auf plus oder minus eins geschätzt wurde. Das Modell ist
+  dann zu komplex für die Daten.
+
+## Ergebnis berichten
+
+> [Zielgrösse] wurde mit einem linearen gemischten Modell mit zufälligem
+> Achsenabschnitt für [Gruppe] ausgewertet ([Anzahl] Beobachtungen in [Anzahl]
+> Gruppen, REML). Je [Einheit Prädiktor] steigt [Zielgrösse] um [Schätzwert]
+> (SE = [SE], 95-Prozent-Konfidenzintervall [unten] bis [oben]). Die Gruppen
+> unterscheiden sich mit einer Standardabweichung von [σu], ICC = [ICC].
+
+Immer genannt werden: Struktur der zufälligen Effekte, Zahl der Gruppen,
+Schätzverfahren, feste Effekte mit Intervall und die Varianzkomponenten.
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt eines gemischten Modells |
+|---|---|
+| [Multiple lineare Regression](multiple-lineare-regression.qmd) | Beobachtungen sind unabhängig |
+| Regression mit Gruppe als festem Faktor | wenige Gruppen, und nur genau diese Gruppen interessieren |
+| [Gepaarter t-Test](../tests/t-test-gepaart.qmd) | genau zwei Messungen je Person, keine weiteren Prädiktoren |
+| [Varianzanalyse](../tests/anova.qmd) mit Messwiederholung | klassisches Design, balanciert, keine fehlenden Werte |
+| Cluster-robuste Standardfehler | nur die Standardfehler sollen korrigiert werden, die Gruppenvarianz interessiert nicht |
+
+## Beispiele
+
+Jedes Beispiel steht in einem eigenen Reiter.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Wie viel machen die Klassen aus
+
+#### Frage und Datenlage
+
+Hängt die Punktzahl in einem Test von den Lernstunden ab, und welcher Anteil der
+Unterschiede geht auf die Klasse zurück? 180 Personen aus 12 Klassen, je 15.
+
+#### Voraussetzungen prüfen
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-b1-gm-r
+#| fig-cap: "Beispiel 1: Punktzahl je Klasse."
+#| fig-height: 3.4
+c(zeilen = nrow(schule), klassen = nlevels(schule$klasse))
+round(c(mittel = mean(schule$punkte), sd = sd(schule$punkte)), 2)
+
+boxplot(punkte ~ klasse, data = schule, xlab = "Klasse", ylab = "Punkte")
+```
+
+##### Python
+
+```{python}
+#| label: fig-b1-gm-py
+#| fig-cap: "Beispiel 1: dieselbe Übersicht in Python."
+#| fig-height: 3.4
+import matplotlib.pyplot as plt
+
+print("Zeilen:", len(schule), "Klassen:", schule["klasse"].nunique())
+print("Mittel:", round(schule["punkte"].mean(), 2), "SD:", round(schule["punkte"].std(), 2))
+
+fig, achse = plt.subplots(figsize=(7, 3.4))
+_ = achse.boxplot([schule.loc[schule["klasse"] == k, "punkte"] for k in range(1, 13)])
+_ = achse.set_xlabel("Klasse")
+_ = achse.set_ylabel("Punkte")
+plt.show()
+```
+
+:::
+
+Die Klassen liegen sichtbar auf verschiedenem Niveau. Das ist genau die
+Struktur, die ein gewöhnliches Regressionsmodell übersieht.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-gm-rechnung-r
+m0 <- lmer(punkte ~ stunden + (1 | klasse), data = schule)
+summary(m0)
+
+vk <- as.data.frame(VarCorr(m0))
+round(c(sd_klasse = vk$sdcor[1], sd_rest = vk$sdcor[2],
+        icc = vk$vcov[1] / sum(vk$vcov)), 3)
+round(confint(m0, parm = "beta_", method = "Wald"), 3)
+```
+
+##### Python
+
+```{python}
+#| label: b1-gm-rechnung-py
+m0 = smf.mixedlm("punkte ~ stunden", schule, groups=schule["klasse"]).fit(reml=True)
+print(m0.summary())
+
+var_klasse = float(m0.cov_re.iloc[0, 0])
+var_rest = m0.scale
+print("sd_klasse:", round(var_klasse ** 0.5, 3), "sd_rest:", round(var_rest ** 0.5, 3),
+      "icc:", round(var_klasse / (var_klasse + var_rest), 3))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| Achsenabschnitt | 50.114 | erwartete Punktzahl bei null Lernstunden in einer durchschnittlichen Klasse | extrapoliert, niemand lernt null Stunden; nur als Rechengrösse |
+| `stunden` | 2.224 | je zusätzlicher Stunde rund 2.2 Punkte mehr | fester Effekt, gilt über alle Klassen |
+| Standardfehler `stunden` | 0.303 | Unsicherheit der Steigung | Das Wald-Intervall reicht von 1.631 bis 2.818. |
+| Varianz Klasse | 34.849 | Streuung der Klassenniveaus, als Standardabweichung 5.903 Punkte | Eine Klasse eine Standardabweichung über dem Schnitt liegt knapp 6 Punkte höher. |
+| Restvarianz | 70.227 | Streuung innerhalb der Klassen, als Standardabweichung 8.380 | in Python die Zeile `Scale` |
+| ICC | 0.332 | ein Drittel der Streuung liegt zwischen den Klassen | weit entfernt von null; die Gruppenstruktur zu ignorieren wäre ein Fehler |
+
+#### Interpretation und Ergebnissatz
+
+Die Lernstunden wirken klar, und zugleich unterscheiden sich die Klassen
+erheblich. Ein Drittel der Unterschiede zwischen Personen erklärt sich schon
+dadurch, in welche Klasse sie gehen.
+
+> Die Punktzahl wurde mit einem linearen gemischten Modell mit zufälligem
+> Achsenabschnitt je Klasse ausgewertet (180 Personen in 12 Klassen, REML). Je
+> Lernstunde steigt die Punktzahl um 2.224 Punkte (SE = 0.303,
+> 95-Prozent-Konfidenzintervall 1.631 bis 2.818). Die Klassen unterscheiden sich
+> mit einer Standardabweichung von 5.903 Punkten, ICC = 0.332.
+
+### Beispiel 2: OLS ist zu sicher
+
+#### Frage und Datenlage
+
+Hat die Klassengrösse einen Einfluss auf die Punktzahl? Die Klassengrösse ist
+ein Merkmal der **Klasse**, nicht der Person: Alle 15 Personen einer Klasse
+haben denselben Wert. Die Daten wurden ohne jeden Effekt der Klassengrösse
+erzeugt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-gm-rechnung-r
+ols <- lm(punkte ~ stunden + groesse, data = schule)
+gem <- lmer(punkte ~ stunden + groesse + (1 | klasse), data = schule)
+
+k_ols <- summary(ols)$coefficients["groesse", ]
+k_gem <- summary(gem)$coefficients["groesse", ]
+round(rbind(
+  ols      = c(schaetzung = k_ols[[1]], se = k_ols[[2]], p = k_ols[[4]]),
+  gemischt = c(schaetzung = k_gem[[1]], se = k_gem[[2]],
+               p = 2 * pnorm(-abs(k_gem[[3]])))
+), 4)
+```
+
+##### Python
+
+```{python}
+#| label: b2-gm-rechnung-py
+ols = smf.ols("punkte ~ stunden + groesse", schule).fit()
+gem = smf.mixedlm("punkte ~ stunden + groesse", schule,
+                  groups=schule["klasse"]).fit(reml=True)
+
+print(pd.DataFrame({
+    "schaetzung": [ols.params["groesse"], gem.params["groesse"]],
+    "se": [ols.bse["groesse"], gem.bse["groesse"]],
+    "p": [ols.pvalues["groesse"], gem.pvalues["groesse"]],
+}, index=["ols", "gemischt"]).round(4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Modell | Schätzung | Standardfehler | p | Wie es zu lesen ist |
+|---|---|---|---|---|
+| OLS | 0.348 | 0.409 | 0.3956 | behandelt 180 Zeilen als unabhängig |
+| gemischt | 0.361 | 1.016 | 0.7224 | berücksichtigt, dass es nur 12 verschiedene Klassengrössen gibt |
+
+Die Schätzung ist fast gleich, der Standardfehler aber im gemischten Modell
+zweieinhalbmal so gross. Hier sind beide Ergebnisse nicht signifikant, und das
+ist richtig, weil die Daten ohne Effekt erzeugt wurden. Der zu kleine
+Standardfehler von OLS bleibt aber ein Fehler: Über viele solche Datensätze
+meldet OLS für ein Klassenmerkmal deutlich öfter einen Scheineffekt, als das
+Signifikanzniveau zulässt.
+
+#### Interpretation und Ergebnissatz
+
+Der Unterschied betrifft vor allem Merkmale der Gruppe. Für die Lernstunden,
+die innerhalb jeder Klasse variieren, liegen die Standardfehler von OLS und
+gemischtem Modell näher beieinander.
+
+> Ein Effekt der Klassengrösse liess sich nicht nachweisen (Schätzung 0.361
+> Punkte je Person, SE = 1.016, p = 0.72, lineares gemischtes Modell mit
+> zufälligem Achsenabschnitt je Klasse, 12 Klassen).
+
+### Beispiel 3: Braucht es eine zufällige Steigung
+
+#### Frage und Datenlage
+
+Wirkt eine Lernstunde in allen Klassen gleich, oder unterscheidet sich die
+Steigung zwischen den Klassen? Verglichen werden zwei Modelle mit einem
+Likelihood-Quotienten-Test, beide mit ML geschätzt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-gm-rechnung-r
+m_int   <- lmer(punkte ~ stunden + (1 | klasse), data = schule, REML = FALSE)
+m_slope <- lmer(punkte ~ stunden + (stunden | klasse), data = schule, REML = FALSE)
+anova(m_int, m_slope)
+```
+
+##### Python
+
+```{python}
+#| label: b3-gm-rechnung-py
+m_int = smf.mixedlm("punkte ~ stunden", schule, groups=schule["klasse"]).fit(reml=False)
+m_slope = smf.mixedlm("punkte ~ stunden", schule, groups=schule["klasse"],
+                      re_formula="~stunden").fit(reml=False)
+
+lr = 2 * (m_slope.llf - m_int.llf)
+print("Chisq:", round(lr, 3), " Df: 2  p:", round(stats.chi2.sf(lr, 2), 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `Chisq` | 0.618 | doppelte Differenz der Log-Likelihoods | wie viel besser das komplexere Modell die Daten beschreibt |
+| `Df` | 2 | zwei zusätzliche Parameter | die Varianz der Steigung und ihre Korrelation mit dem Achsenabschnitt |
+| `Pr(>Chisq)` | 0.7342 | p-Wert des Vergleichs | kein Hinweis, dass die Steigung zwischen den Klassen variiert |
+| `AIC` (nur R) | | Informationskriterium | kleiner ist besser; der Vergleich steht in der Tabelle |
+
+#### Interpretation und Ergebnissatz
+
+Die Daten wurden **mit** einer leicht unterschiedlichen Steigung je Klasse
+erzeugt. Der Test findet sie trotzdem nicht: Zwölf Klassen reichen nicht, um
+eine Streuung von 0.8 Punkten je Stunde von null zu unterscheiden. Das ist
+Interpretationsfalle drei in der Praxis. Das einfachere Modell ist hier die
+vertretbare Wahl, ein Beweis für gleiche Steigungen ist das nicht.
+
+> Ein Modell mit zufälliger Steigung für die Lernstunden verbesserte die
+> Anpassung nicht (χ²(2) = 0.62, p = 0.73); berichtet wird das Modell mit
+> zufälligem Achsenabschnitt.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein Datensatz enthält 2000 Messungen von 20 Filialen. Ein Merkmal der Filiale
+(Verkaufsfläche) soll den Umsatz erklären. Wie viele unabhängige Beobachtungen
+stehen für diesen Effekt ungefähr zur Verfügung?
+
+- [x] Eher 20 als 2000 ~ Richtig. Die Fläche variiert nur zwischen den
+      Filialen. Innerhalb einer Filiale liefert jede weitere Messung keine neue
+      Information über die Fläche.
+- [ ] 2000, jede Messung zählt ~ Das ist genau die Annahme, mit der OLS den
+      Standardfehler zu klein schätzt.
+- [ ] 100, der Durchschnitt je Filiale ~ Die Zahl der Messungen je Filiale ist
+      für diesen Effekt nicht die Stichprobengrösse.
+:::
+
+::: {.quiz}
+lme4 meldet `boundary (singular) fit`. Was ist die sinnvollste Reaktion?
+
+- [x] Die Struktur der zufälligen Effekte vereinfachen, etwa die zufällige
+      Steigung weglassen ~ Richtig. Eine Varianz wurde auf null oder eine
+      Korrelation auf ±1 geschätzt, das Modell ist für die Daten zu komplex.
+- [ ] Die Warnung unterdrücken, die festen Effekte sind trotzdem gültig ~ Sie
+      können gültig sein, aber das Modell beschreibt eine Struktur, die die
+      Daten nicht tragen.
+- [ ] Auf OLS wechseln ~ Das ignoriert die Gruppenstruktur ganz und macht die
+      Standardfehler zu klein.
+:::
+
+::: {.quiz}
+Der ICC eines Modells beträgt zwei Prozent. Was bedeutet das?
+
+- [x] Nur zwei Prozent der Streuung liegen zwischen den Gruppen ~ Richtig. Die
+      Gruppen unterscheiden sich kaum. Bei grossen Gruppen kann selbst das die
+      Standardfehler von Gruppenmerkmalen spürbar vergrössern, der Design-Effekt
+      hängt auch an der Gruppengrösse.
+- [ ] Das Modell erklärt zwei Prozent der Varianz ~ Der ICC ist kein
+      Bestimmtheitsmass, sondern die Aufteilung der Restvarianz.
+- [ ] Der Effekt der Gruppe ist signifikant ~ Der ICC ist kein p-Wert und
+      sagt nichts über Signifikanz.
+:::
+
+## Verlinkte Ressourcen
+
+- [lme4: Fitting Linear Mixed-Effects Models (Bates et al.)](https://cran.r-project.org/package=lme4/vignettes/lmer.pdf)
+- [statsmodels: Linear Mixed Effects Models](https://www.statsmodels.org/stable/mixed_linear.html)
+- [GLMM FAQ (Ben Bolker)](https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html)
