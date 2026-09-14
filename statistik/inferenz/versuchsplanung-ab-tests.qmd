@@ -1,0 +1,412 @@
+---
+title: "Versuchsplanung und A/B-Tests"
+description: "Randomisierung, Stichprobenumfang vorab, das Problem mit dem Zwischendurch-Schauen und die Auswertung eines A/B-Tests."
+categories: ["Versuchsplanung", "A/B-Testing", "Power", "Hypothesentests", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 90
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+lehmer <- function(saat, anzahl) {
+  s <- saat
+  raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+# Stichprobenumfang je Gruppe fuer zwei Anteile, dieselbe Formel wie
+# power.prop.test und wie im Python-Teil
+n_je_gruppe <- function(p1, p2, alpha = 0.05, power = 0.8) {
+  za <- qnorm(1 - alpha / 2); zb <- qnorm(power)
+  pq <- (p1 + p2) / 2
+  (za * sqrt(2 * pq * (1 - pq)) + zb * sqrt(p1 * (1 - p1) + p2 * (1 - p2)))^2 /
+    (p1 - p2)^2
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+
+def lehmer(saat, anzahl):
+    """Derselbe Generator wie im R-Teil."""
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+
+def n_je_gruppe(p1, p2, alpha=0.05, power=0.8):
+    za, zb = stats.norm.ppf(1 - alpha / 2), stats.norm.ppf(power)
+    pq = (p1 + p2) / 2
+    return ((za * np.sqrt(2 * pq * (1 - pq)) + zb * np.sqrt(p1 * (1 - p1) + p2 * (1 - p2))) ** 2
+            / (p1 - p2) ** 2)
+```
+
+Die Beispiele rechnen mit festen Zahlen oder mit dem Lehmer-Generator. R und
+Python geben dieselben Werte aus.
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie wird ein Experiment so angelegt, dass es die Frage beantworten kann, und wie wird es danach ausgewertet? |
+| Kern | Randomisierung, vorab festgelegter Stichprobenumfang, eine vorab festgelegte Auswertung |
+| Was die Planung liefert | Umfang je Gruppe, Laufzeit, Entscheidungsregel |
+| Auswertung eines A/B-Tests | Differenz zweier Anteile mit Konfidenzintervall und Test |
+| R-Funktion | `power.prop.test()`, `prop.test(correct = FALSE)` |
+| Python-Funktion | `statsmodels.stats.proportion.proportions_ztest()`, `confint_proportions_2indep()` |
+| Verwandte Seiten | [Power und Stichprobenumfang](power-stichprobenumfang.qmd), [multiples Testen](multiples-testen.qmd), [Bayessche Inferenz](bayessche-inferenz.qmd) |
+
+## Wann diese Methode, wann nicht
+
+Ein Experiment ist der einzige Weg, der ohne weitere Annahmen eine Ursache
+belegt: Weil der Zufall entscheidet, wer Variante A und wer Variante B sieht,
+unterscheiden sich die Gruppen im Mittel in nichts ausser der Variante. Jeder
+Unterschied im Ergebnis geht dann auf die Variante zurück.
+
+| Situation | Stattdessen |
+|---|---|
+| Zuteilung nicht steuerbar, nur Beobachtungsdaten | [Kausale Inferenz](kausale-inferenz.qmd) mit ihren zusätzlichen Annahmen |
+| Dieselbe Person sieht beide Varianten | Messwiederholung, [gepaarter t-Test](../tests/t-test-gepaart.qmd) oder [gemischtes Modell](../regression/gemischte-modelle.qmd) |
+| Viele Varianten gleichzeitig | Varianzanalyse oder mehrere Vergleiche mit [Korrektur](multiples-testen.qmd) |
+| Laufende Überwachung mit Abbruch gewünscht | sequenzielles Testverfahren mit angepassten Grenzen |
+
+## Grundidee und Modell
+
+Drei Entscheidungen fallen **vor** dem ersten Datenpunkt:
+
+| Entscheidung | Was sie festlegt | Warum vorher |
+|---|---|---|
+| Zielgrösse | eine primäre Kennzahl, etwa die Anmelderate | Wer nachher unter zehn Kennzahlen die signifikante wählt, testet zehnmal |
+| Kleinster relevanter Effekt | ab welchem Unterschied sich eine Umstellung lohnt | bestimmt den Umfang; nachträglich gewählt ist er beliebig |
+| Stichprobenumfang und Laufzeit | wann ausgewertet wird | Wer auswertet, sobald es signifikant aussieht, erhöht die Fehlerrate (Beispiel 2) |
+
+Der Umfang je Gruppe für zwei Anteile $p_1$ und $p_2$ bei Niveau $\alpha$ und
+Power $1-\beta$, mit $\bar p = (p_1+p_2)/2$:
+
+$$n = \frac{\left(z_{1-\alpha/2}\sqrt{2\bar p(1-\bar p)} + z_{1-\beta}\sqrt{p_1(1-p_1)+p_2(1-p_2)}\right)^2}{(p_1-p_2)^2}$$
+
+Der Nenner ist das Quadrat des Effekts. Halb so grosse Effekte brauchen deshalb
+rund viermal so viele Beobachtungen.
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Was sie bedeutet | Prüfung | Folge bei Verletzung | Vorgehen |
+|---|---|---|---|---|
+| Echte Randomisierung | Zufall, nicht Uhrzeit, Browser oder Wochentag, entscheidet über die Gruppe | Anteile je Gruppe gegen die geplante Aufteilung prüfen | systematische Unterschiede zwischen den Gruppen | Zuteilung reparieren, Test neu starten |
+| Unabhängige Einheiten | eine Person zählt einmal, nicht jeder Seitenaufruf | Einheit der Randomisierung gleich Einheit der Auswertung | zu kleine Standardfehler | auf Personenebene auswerten |
+| Keine Beeinflussung zwischen Gruppen | A-Nutzer sehen B nicht | Design | Effekt verwässert | Randomisierung auf höherer Ebene, etwa Region |
+| Vorab festgelegte Laufzeit | kein Abbruch nach Sichtung | Plan dokumentieren | Fehlerrate steigt | sequenzielles Verfahren, falls Abbruch nötig |
+
+Ein oft übersehener Check ist der **Sample Ratio Mismatch**: Sollten 50 Prozent
+in jede Gruppe, kommen aber 52 zu 48 bei grossem n, ist die Zuteilung defekt,
+und das Ergebnis ist nicht verwertbar, egal wie gut es aussieht.
+
+## Output lesen
+
+R, `prop.test(c(xB, xA), c(nB, nA), correct = FALSE)`:
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `X-squared` | Teststatistik, das Quadrat von z | ohne `correct = FALSE` mit Stetigkeitskorrektur und etwas grösserem p |
+| `p-value` | wie überraschend die Differenz wäre, wenn beide Varianten gleich wirken | wie bei jedem Test keine Aussage über die Grösse |
+| `95 percent confidence interval` | Intervall der Differenz der Anteile | gegen den kleinsten relevanten Effekt halten, nicht nur gegen null |
+| `prop 1`, `prop 2` | beobachtete Anteile | Reihenfolge wie in den Argumenten |
+
+Python, `proportions_ztest()` und `confint_proportions_2indep()`:
+
+| Rückgabe | Entspricht in R |
+|---|---|
+| `stat` | Wurzel aus `X-squared`, mit Vorzeichen |
+| `pvalue` | `p-value` |
+| Intervall mit `method="wald"` | `95 percent confidence interval` ohne Korrektur |
+
+## Interpretationsfallen
+
+- **Zwischendurch schauen und bei Signifikanz aufhören** macht aus 5 Prozent
+  falschen Alarmen ein Vielfaches. Beispiel 2 misst es.
+- **Signifikant heisst nicht relevant.** Bei 100 000 Besuchen je Gruppe ist
+  eine Differenz von 0.3 Prozentpunkten signifikant und oft wertlos.
+- **Nicht signifikant bei zu kleinem Test heisst nichts.** Ohne Planung des
+  Umfangs ist ein Nullbefund nicht interpretierbar.
+- **Neuheitseffekte:** Eine neue Variante wirkt oft in den ersten Tagen stärker.
+  Laufzeiten unter einer vollen Woche mischen ausserdem Wochentage ungleich.
+- **Viele Kennzahlen, eine gewinnt:** Wer nachher die beste unter vielen wählt,
+  braucht eine [Korrektur für multiples Testen](multiples-testen.qmd).
+
+## Ergebnis berichten
+
+> In einem randomisierten Test mit [nA] Besuchen in Variante A und [nB] in
+> Variante B lag die [Zielgrösse] bei [Anteil A] gegen [Anteil B]. Die Differenz
+> beträgt [Wert] Prozentpunkte (95-Prozent-Konfidenzintervall [unten] bis
+> [oben], z = [z], p = [p]). Der vorab festgelegte kleinste relevante Effekt von
+> [Wert] Prozentpunkten [liegt im Intervall / liegt oberhalb des Intervalls].
+
+Immer genannt werden: Einheit der Randomisierung, geplanter und erreichter
+Umfang, Laufzeit, primäre Zielgrösse, Differenz mit Intervall und der Bezug zum
+kleinsten relevanten Effekt.
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt eines klassischen A/B-Tests |
+|---|---|
+| [Bayessche Inferenz](bayessche-inferenz.qmd) | Wahrscheinlichkeit für „B ist besser" gefragt, Vorwissen vorhanden |
+| [Chi-Quadrat-Test](../tests/chi-quadrat-tests.qmd) | mehr als zwei Varianten oder mehr als zwei Ausgänge |
+| [t-Test für zwei Stichproben](../tests/t-test-zwei-stichproben.qmd) | metrische Zielgrösse wie Umsatz je Besuch |
+| [Kausale Inferenz](kausale-inferenz.qmd) | kein Experiment möglich |
+
+## Beispiele
+
+Jedes Beispiel steht in einem eigenen Reiter.
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Wie viele Besuche braucht der Test
+
+#### Frage und Datenlage
+
+Die aktuelle Anmelderate liegt bei 10 Prozent. Ein Test soll bei Niveau 0.05
+mit 80 Prozent Power einen Anstieg erkennen. Wie viele Besuche braucht es je
+Gruppe, wenn der kleinste relevante Anstieg 2, 1 oder 0.5 Prozentpunkte beträgt?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-ab-r
+ziel <- c(0.12, 0.11, 0.105)
+data.frame(p2 = ziel,
+           n_exakt = round(sapply(ziel, function(p) n_je_gruppe(0.10, p)), 1),
+           n_je_gruppe = ceiling(sapply(ziel, function(p) n_je_gruppe(0.10, p))))
+
+# dieselbe Zahl mit der eingebauten Funktion
+round(power.prop.test(p1 = 0.10, p2 = 0.12, power = 0.8)$n, 1)
+```
+
+##### Python
+
+```{python}
+#| label: b1-ab-py
+ziel = [0.12, 0.11, 0.105]
+print(pd.DataFrame({
+    "p2": ziel,
+    "n_exakt": [round(float(n_je_gruppe(0.10, p)), 1) for p in ziel],
+    "n_je_gruppe": [int(np.ceil(n_je_gruppe(0.10, p))) for p in ziel],
+}))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ziel | Umfang je Gruppe | Wie er zu lesen ist |
+|---|---|---|
+| 10 auf 12 Prozent | 3841 | gut 7700 Besuche insgesamt |
+| 10 auf 11 Prozent | 14751 | halber Effekt, fast vierfacher Umfang |
+| 10 auf 10.5 Prozent | 57763 | nochmals halbiert, wieder rund viermal so viel |
+
+`power.prop.test()` liefert für den ersten Fall ebenfalls 3840.8, also
+aufgerundet 3841. Die Funktion rechnet mit derselben Formel.
+
+#### Interpretation und Ergebnissatz
+
+Der Umfang hängt quadratisch am kleinsten relevanten Effekt. Daraus folgt die
+eigentliche Planungsfrage: Bei 2000 Besuchen am Tag dauert der erste Test vier
+Tage, der letzte acht Wochen. Ob sich ein halber Prozentpunkt acht Wochen
+Testzeit lohnt, ist eine fachliche Entscheidung, keine statistische.
+
+> Um einen Anstieg der Anmelderate von 10 auf 12 Prozent mit 80 Prozent Power
+> bei zweiseitigem Niveau 0.05 zu erkennen, braucht der Test 3841 Besuche je
+> Variante.
+
+### Beispiel 2: Zwischendurch schauen
+
+#### Frage und Datenlage
+
+Ein Team schaut während des Tests regelmässig auf den p-Wert und beendet den
+Test, sobald er unter 0.05 fällt. Wie oft meldet es dann einen Effekt, obwohl es
+**keinen** gibt?
+
+Simuliert werden 1000 Tests, in denen beide Varianten gleich wirken. Jeder Test
+läuft über 20 gleich grosse Blöcke; nach jedem Block entsteht eine neue
+Teststatistik. Die Zufallszahlen kommen aus dem Lehmer-Generator, R und Python
+sehen dieselben 20 000 Werte.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-ab-r
+E <- 1000; L <- 20
+zuwachs <- matrix(qnorm(lehmer(2026, E * L)), nrow = E, byrow = TRUE)
+
+# Teststatistik nach k Bloecken: Summe der Zuwaechse geteilt durch Wurzel k
+z_nach_block <- t(apply(zuwachs, 1, cumsum)) / matrix(sqrt(1:L), E, L, byrow = TRUE)
+alarm <- abs(z_nach_block) > qnorm(0.975)
+
+c(nur_am_ende   = mean(alarm[, L]),
+  fuenf_blicke  = mean(apply(alarm[, c(4, 8, 12, 16, 20)], 1, any)),
+  zwanzig_blicke = mean(apply(alarm, 1, any)))
+```
+
+##### Python
+
+```{python}
+#| label: b2-ab-py
+E, L = 1000, 20
+zuwachs = stats.norm.ppf(lehmer(2026, E * L)).reshape(E, L)
+
+z_nach_block = np.cumsum(zuwachs, axis=1) / np.sqrt(np.arange(1, L + 1))
+alarm = np.abs(z_nach_block) > stats.norm.ppf(0.975)
+
+print("nur am Ende:   ", alarm[:, -1].mean())
+print("fuenf Blicke:  ", alarm[:, [3, 7, 11, 15, 19]].any(axis=1).mean())
+print("zwanzig Blicke:", alarm.any(axis=1).mean())
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Vorgehen | Anteil falscher Alarme | Wie er zu lesen ist |
+|---|---|---|
+| nur am geplanten Ende auswerten | 0.049 | entspricht dem Niveau von 5 Prozent |
+| fünfmal schauen, bei Signifikanz aufhören | 0.143 | knapp dreimal so viele falsche Alarme |
+| nach jedem der 20 Blöcke schauen | 0.25 | jeder vierte Test meldet einen Effekt, den es nicht gibt |
+
+#### Interpretation und Ergebnissatz
+
+Jeder Blick ist ein weiterer Test. Weil die Teststatistik unter der
+Nullhypothese hin und her schwankt, überschreitet sie die Grenze irgendwann mit
+hoher Wahrscheinlichkeit, auch wenn sie am Ende wieder darunter läge. Wer
+zwischendurch abbrechen können muss, braucht ein sequenzielles Verfahren mit
+strengeren Grenzen je Blick.
+
+> Wird ein Test ohne Effekt nach jedem von 20 Blöcken ausgewertet und bei
+> Signifikanz beendet, meldet er in 25 Prozent der Fälle einen Effekt, statt in
+> den vorgesehenen 5 Prozent.
+
+### Beispiel 3: Den A/B-Test auswerten
+
+#### Frage und Datenlage
+
+Geplant waren 4000 Besuche je Variante für einen kleinsten relevanten Anstieg
+von einem Prozentpunkt. Variante A erzielte 480 Anmeldungen, Variante B 552.
+Ist B besser, und ist der Unterschied relevant?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-ab-r
+prop.test(c(552, 480), c(4000, 4000), correct = FALSE)
+```
+
+##### Python
+
+```{python}
+#| label: b3-ab-py
+from statsmodels.stats.proportion import proportions_ztest, confint_proportions_2indep
+
+z_wert, p_wert = proportions_ztest([552, 480], [4000, 4000])
+unten, oben = confint_proportions_2indep(552, 4000, 480, 4000, method="wald")
+print("Anteile:", 480 / 4000, 552 / 4000, " Differenz:", round(552 / 4000 - 480 / 4000, 4))
+print("z:", round(z_wert, 4), " X-squared:", round(z_wert ** 2, 4), " p:", round(p_wert, 4))
+print("Intervall:", round(unten, 4), "bis", round(oben, 4))
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Ausgabe | Wert hier | Bedeutung | Wie er zu lesen ist |
+|---|---|---|---|
+| `prop 1`, `prop 2` | 0.138 und 0.12 | Anmelderaten B und A | B liegt 1.8 Prozentpunkte vorn |
+| `X-squared` | 5.7672 | Teststatistik | das Quadrat von z = 2.4015 |
+| `p-value` | 0.0163 | unter 0.05 | spricht gegen gleiche Raten |
+| `95 percent confidence interval` | 0.0033 bis 0.0327 | plausible Differenzen | enthält die Null nicht, reicht aber von 0.3 bis 3.3 Prozentpunkten |
+
+#### Interpretation und Ergebnissatz
+
+Statistisch ist B besser. Relevant im Sinn der Planung ist der Unterschied nur
+wahrscheinlich: Das Intervall liegt überwiegend über dem kleinsten relevanten
+Effekt von einem Prozentpunkt, schliesst aber Werte darunter nicht aus. Wer
+eine sichere Aussage zur Relevanz braucht, muss das vor dem Test als
+Entscheidungsregel festlegen, etwa „Umstellung, wenn die untere Grenze über
+einem Prozentpunkt liegt".
+
+> Variante B erzielte eine Anmelderate von 13.8 Prozent gegenüber 12.0 Prozent
+> bei A (je 4000 Besuche). Die Differenz beträgt 1.8 Prozentpunkte
+> (95-Prozent-Konfidenzintervall 0.3 bis 3.3, z = 2.40, p = 0.016).
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein Test soll einen halb so grossen Effekt erkennen wie ursprünglich geplant.
+Wie verändert sich der nötige Umfang ungefähr?
+
+- [x] Er vervierfacht sich ~ Richtig. Der Effekt steht quadriert im Nenner der
+      Formel. Beispiel 1 zeigt den Faktor zweimal.
+- [ ] Er verdoppelt sich ~ Das wäre ein linearer Zusammenhang; der Umfang wächst
+      aber mit dem Quadrat.
+- [ ] Er bleibt gleich, nur die Power sinkt ~ Bei gleichem Umfang sinkt die
+      Power tatsächlich, aber für dieselbe Power braucht es mehr Daten.
+:::
+
+::: {.quiz}
+Ein A/B-Test läuft seit drei Tagen, der p-Wert liegt heute bei 0.03. Geplant
+waren zwei Wochen. Was ist richtig?
+
+- [x] Weiterlaufen lassen bis zum geplanten Ende und dann auswerten ~ Richtig.
+      Ein Abbruch bei Signifikanz erhöht die Rate falscher Alarme, wie
+      Beispiel 2 zeigt.
+- [ ] Jetzt beenden, das Ergebnis ist signifikant ~ Genau das ist das
+      Zwischendurch-Schauen mit überhöhter Fehlerrate.
+- [ ] Beenden und das Niveau nachträglich auf 0.01 senken ~ Nachträgliche
+      Anpassungen machen die Fehlerrate nicht kontrollierbar.
+:::
+
+::: {.quiz}
+Statt 50 zu 50 kamen bei 100 000 Besuchen 51 800 in Variante A. Was bedeutet
+das?
+
+- [x] Die Zuteilung ist wahrscheinlich defekt, das Ergebnis nicht verwertbar ~
+      Richtig. Das ist ein Sample Ratio Mismatch. Bei diesem Umfang ist eine
+      solche Abweichung durch Zufall praktisch ausgeschlossen, also
+      unterscheiden sich die Gruppen systematisch.
+- [ ] Nichts, kleine Ungleichheiten sind normal ~ Bei 100 000 Besuchen
+      schwankt der Anteil nur um wenige Zehntelprozent.
+- [ ] Die Auswertung muss gewichtet werden ~ Gewichten korrigiert nicht,
+      warum bestimmte Besuche in einer Gruppe fehlen.
+:::
+
+## Verlinkte Ressourcen
+
+- [Trustworthy Online Controlled Experiments (Kohavi, Tang, Xu)](https://experimentguide.com/)
+- [Evan Miller: How Not To Run an A/B Test](https://www.evanmiller.org/how-not-to-run-an-ab-test.html)
+- [statsmodels: Proportion](https://www.statsmodels.org/stable/stats.html#proportion)
