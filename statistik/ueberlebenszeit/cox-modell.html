@@ -1256,6 +1256,12 @@ window.Quarto = {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../../visualisierung/karten-animation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Karten und Animation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../../visualisierung/dashboards-interaktivitaet.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Dashboards und Interaktivität</span></a>
   </div>
@@ -1349,7 +1355,10 @@ window.Quarto = {
   <li><a href="#output-lesen" id="toc-output-lesen" class="nav-link" data-scroll-target="#output-lesen">Output lesen</a></li>
   <li><a href="#interpretationsfallen" id="toc-interpretationsfallen" class="nav-link" data-scroll-target="#interpretationsfallen">Interpretationsfallen</a></li>
   <li><a href="#ergebnis-berichten" id="toc-ergebnis-berichten" class="nav-link" data-scroll-target="#ergebnis-berichten">Ergebnis berichten</a></li>
-  <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a></li>
+  <li><a href="#abgrenzung-zu-verwandten-methoden" id="toc-abgrenzung-zu-verwandten-methoden" class="nav-link" data-scroll-target="#abgrenzung-zu-verwandten-methoden">Abgrenzung zu verwandten Methoden</a>
+  <ul class="collapse">
+  <li><a href="#parametrische-modelle-exponential-weibull-aft" id="toc-parametrische-modelle-exponential-weibull-aft" class="nav-link" data-scroll-target="#parametrische-modelle-exponential-weibull-aft">Parametrische Modelle: Exponential, Weibull, AFT</a></li>
+  </ul></li>
   <li><a href="#beispiele" id="toc-beispiele" class="nav-link" data-scroll-target="#beispiele">Beispiele</a></li>
   <li><a href="#verständnisfragen" id="toc-verständnisfragen" class="nav-link" data-scroll-target="#verständnisfragen">Verständnisfragen</a></li>
   <li><a href="#verlinkte-ressourcen" id="toc-verlinkte-ressourcen" class="nav-link" data-scroll-target="#verlinkte-ressourcen">Verlinkte Ressourcen</a></li>
@@ -1739,19 +1748,85 @@ window.Quarto = {
 <td>nur ob, nicht wann; keine Zensierung</td>
 </tr>
 <tr class="even">
-<td>Parametrische Modelle, etwa Weibull</td>
-<td>Verteilungsform begründet, Vorhersage über den Beobachtungszeitraum hinaus</td>
+<td>Weibull-Modell</td>
+<td>monotoner Hazard begründet, Extrapolation nötig</td>
 </tr>
 <tr class="odd">
+<td>AFT-Modell (log-logistisch u. a.)</td>
+<td>Zeitverhältnisse statt Hazard Ratios gewünscht, nicht-monotoner Hazard</td>
+</tr>
+<tr class="even">
 <td>Modelle mit zeitabhängigen Effekten</td>
 <td>Proportionalität verletzt und der Effekt selbst interessiert</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Frailty-Modelle</td>
 <td>geschachtelte oder wiederholte Ereignisse je Person</td>
 </tr>
 </tbody>
 </table>
+<section id="parametrische-modelle-exponential-weibull-aft" class="level3">
+<h3 class="anchored" data-anchor-id="parametrische-modelle-exponential-weibull-aft">Parametrische Modelle: Exponential, Weibull, AFT</h3>
+<p>Das Cox-Modell lässt das Grundrisiko unspezifiziert (semiparametrisch). Parametrische Modelle gehen weiter und legen dessen Form fest.</p>
+<p><strong>Exponentialmodell:</strong> konstanter Hazard <span class="math inline">\(h(t) = \lambda\)</span>. Der einfachste Fall: Das Risiko ändert sich über die Zeit nicht. Passt zu Prozessen ohne Alterung (<span class="glossary-term" tabindex="0" data-def="Eigenschaft der Exponentialverteilung, bei der die verbleibende Wartezeit nicht davon abhängt, wie lange bereits gewartet wurde. Für Verschleissprozesse ist das meist die falsche Annahme." data-topic="Statistik">Gedächtnislosigkeit</span>). In der Praxis selten realistisch.</p>
+<p><strong>Weibull-Modell:</strong> <span class="math inline">\(h(t) = \lambda \, p \, (\lambda t)^{p-1}\)</span>. Der Formparameter <span class="math inline">\(p\)</span> bestimmt, ob der Hazard steigt (<span class="math inline">\(p &gt; 1\)</span>, Alterung), fällt (<span class="math inline">\(p &lt; 1\)</span>, Frühausfälle) oder konstant bleibt (<span class="math inline">\(p = 1\)</span>, Exponentialfall). Das am häufigsten verwendete parametrische Modell.</p>
+<p><strong>Accelerated Failure Time (AFT):</strong> Modelliert die logarithmierte Überlebenszeit direkt: <span class="math inline">\(\log(T) = \beta_0 + \beta_1 x_1 + \dots + \sigma\varepsilon\)</span>. Die Koeffizienten haben eine direkte Deutung als Zeitverhältnisse: <span class="math inline">\(e^{\beta_1} = 1.3\)</span> heisst, die erwartete Überlebenszeit ist 30 Prozent länger je Einheit von <span class="math inline">\(x_1\)</span>. Das ist oft anschaulicher als Hazard Ratios.</p>
+<p><strong>Wann parametrische Modelle statt Cox:</strong></p>
+<ul>
+<li>Wenn die Form des Hazards selbst interessiert (steigt oder fällt das Risiko über die Zeit?)</li>
+<li>Wenn Extrapolation über den beobachteten Zeitraum hinaus nötig ist (Cox kann nicht extrapolieren)</li>
+<li>Wenn die Annahme proportionaler Hazards verletzt ist, ein AFT-Modell aber passt</li>
+</ul>
+<p><strong>R:</strong> <code>survreg(Surv(zeit, ereignis) ~ x1, data = df, dist = "weibull")</code> aus dem Paket survival. <strong>Python:</strong> <code>WeibullAFTFitter</code> aus lifelines.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Modell</th>
+<th>Hazard-Form</th>
+<th>R</th>
+<th>Python</th>
+<th>Wann</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Cox</td>
+<td>unspezifiziert</td>
+<td><code>coxph()</code></td>
+<td><code>CoxPHFitter</code></td>
+<td>Default, wenn die Form nicht interessiert</td>
+</tr>
+<tr class="even">
+<td>Exponential</td>
+<td>konstant</td>
+<td><code>survreg(..., dist="exponential")</code></td>
+<td><code>ExponentialFitter</code></td>
+<td>gedächtnisloser Prozess</td>
+</tr>
+<tr class="odd">
+<td>Weibull</td>
+<td>monoton</td>
+<td><code>survreg(..., dist="weibull")</code></td>
+<td><code>WeibullAFTFitter</code></td>
+<td>Alterung oder Frühausfälle</td>
+</tr>
+<tr class="even">
+<td>Log-logistisch</td>
+<td>nicht-monoton</td>
+<td><code>survreg(..., dist="loglogistic")</code></td>
+<td><code>LogLogisticAFTFitter</code></td>
+<td>Hazard steigt zuerst, fällt dann</td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="beispiele" class="level2">
 <h2 class="anchored" data-anchor-id="beispiele">Beispiele</h2>
@@ -1808,7 +1883,7 @@ Score (logrank) test = 78.26  on 2 df,   p=&lt;2e-16</code></pre>
    number of observations = 400
 number of events observed = 247
    partial log-likelihood = -1339.9673
-         time fit was run = 2026-09-12 06:39:58 UTC
+         time fit was run = 2026-09-20 16:38:16 UTC
 
 ---
                 coef exp(coef)  se(coef)  coef lower 95%  coef upper 95% exp(coef) lower 95% exp(coef) upper 95%
@@ -2667,7 +2742,7 @@ distanz    0.0461     1.0472               1.0154               1.0801  0.0034</
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
 Das momentane Risiko ist etwa dreimal so hoch, bei konstant gehaltenen übrigen Prädiktoren
 </div>
 <div class="quiz__erklaerung">
@@ -2675,7 +2750,7 @@ Richtig. Das Intervall schliesst die eins nicht ein, der Effekt ist also von nul
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
 Die Laufzeit drittelt sich
 </div>
 <div class="quiz__erklaerung">
@@ -2683,7 +2758,7 @@ Das folgt nicht; der Zusammenhang zwischen Hazard Ratio und <span class="glossar
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
 Die Wahrscheinlichkeit für das Ereignis ist 3.06
 </div>
 <div class="quiz__erklaerung">
@@ -2698,7 +2773,7 @@ Wahrscheinlichkeiten sind höchstens eins; ein Hazard Ratio ist keine Wahrschein
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
 Weil es auf der Log-Skala gebildet und dann exponiert wird
 </div>
 <div class="quiz__erklaerung">
@@ -2706,7 +2781,7 @@ Richtig. Gerechnet wird <span class="math inline">\(e^{\beta \pm 1.96 \cdot SE}\
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
 Weil die Verteilung der Laufzeiten <span class="glossary-term" tabindex="0" data-def="Asymmetrie einer Verteilung. Liegt das arithmetische Mittel über dem Median, zieht ein langer rechter Rand den Schwerpunkt nach oben und die Verteilung heisst rechtsschief." data-topic="Statistik">schief</span> ist
 </div>
 <div class="quiz__erklaerung">
@@ -2714,7 +2789,7 @@ Die <span class="glossary-term" tabindex="0" data-def="Asymmetrie einer Verteilu
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
 Weil gerundet wurde
 </div>
 <div class="quiz__erklaerung">
@@ -2729,7 +2804,7 @@ Der Unterschied ist zu gross für einen Rundungseffekt.
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
 Der Prädiktor hat einen signifikanten Effekt
 </div>
 <div class="quiz__erklaerung">
@@ -2737,7 +2812,7 @@ Das ist eine andere Frage, die der Wald-Test beantwortet.
 </div>
 </div>
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
 Sein Effekt ändert sich über die Zeit, ein einzelnes Hazard Ratio genügt nicht
 </div>
 <div class="quiz__erklaerung">
@@ -2745,7 +2820,7 @@ Richtig. Der Test prüft die Annahme proportionaler Hazards. Bei Verletzung wird
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
 Das Modell ist insgesamt schlecht angepasst
 </div>
 <div class="quiz__erklaerung">
@@ -2760,7 +2835,7 @@ Die Anpassung kann gut sein; verletzt ist eine bestimmte Annahme über einen bes
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
 Die Proportionalität ist verletzt; die 0.99 beschreibt keinen der Zeiträume
 </div>
 <div class="quiz__erklaerung">
@@ -2768,7 +2843,7 @@ Richtig. Der Effekt kehrt sich über die Zeit um, und das Modell mittelt ihn zu 
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
 Die abschnittsweisen Modelle sind überangepasst
 </div>
 <div class="quiz__erklaerung">
@@ -2776,7 +2851,7 @@ Sie beruhen auf 249 beziehungsweise 111 Ereignissen; das ist reichlich.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
 Das Gesamtmodell ist präziser, weil es alle Daten nutzt
 </div>
 <div class="quiz__erklaerung">
@@ -2791,7 +2866,7 @@ Präzision nützt nichts, wenn die geschätzte Grösse die falsche ist.
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
 Acht Ereignisse je Koeffizient sind zu wenig
 </div>
 <div class="quiz__erklaerung">
@@ -2799,7 +2874,7 @@ Richtig. Die Genauigkeit hängt an der Ereigniszahl, nicht an der Fallzahl. Die 
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
 Kein Problem, 400 Beobachtungen sind ausreichend
 </div>
 <div class="quiz__erklaerung">
@@ -2807,7 +2882,7 @@ Die 368 Zensierten tragen zur Schätzung der Koeffizienten nur begrenzt bei.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
 Die Zensierungsrate ist zu hoch für ein Cox-Modell
 </div>
 <div class="quiz__erklaerung">
@@ -2822,7 +2897,7 @@ Hohe Zensierung ist normal; entscheidend ist die absolute Ereigniszahl.
 </div>
 <div class="quiz__optionen">
 <div class="quiz__option" data-richtig="1">
-<div class="quiz__antwort" role="button" data-nummer="1" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="1" role="button">
 Weil jede Schicht ein eigenes, frei geformtes Grundrisiko bekommt
 </div>
 <div class="quiz__erklaerung">
@@ -2830,7 +2905,7 @@ Richtig. Zwischen den Schichten wird kein festes Verhältnis unterstellt, also g
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="2" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="2" role="button">
 Weil die Variable aus dem Modell entfernt wurde
 </div>
 <div class="quiz__erklaerung">
@@ -2838,7 +2913,7 @@ Sie ist weiterhin enthalten und bestimmt, mit wem eine Person verglichen wird.
 </div>
 </div>
 <div class="quiz__option" data-richtig="0">
-<div class="quiz__antwort" role="button" data-nummer="3" tabindex="0">
+<div class="quiz__antwort" tabindex="0" data-nummer="3" role="button">
 Weil sie nicht <span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schranke für den Fehler erster Art, üblicherweise fünf Prozent. Sie begrenzt, wie oft ein Test eine zutreffende Nullhypothese verwirft." data-topic="Statistik">signifikant</span> war
 </div>
 <div class="quiz__erklaerung">
@@ -3300,7 +3375,7 @@ Mit <span class="glossary-term" tabindex="0" data-def="Vorab festgelegte Schrank
   if (!nav) { return; }
   var box = document.createElement("div");
   box.className = "last-update";
-  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">20. September 2026, 13:41</time>";
+  box.innerHTML = "<span class=\"last-update__dot\" aria-hidden=\"true\"></span><span class=\"last-update__label\">Letztes Update</span><time class=\"last-update__time\">20. September 2026, 18:43</time>";
   var tools = nav.querySelector(".quarto-navbar-tools");
   if (tools) { nav.insertBefore(box, tools); } else { nav.appendChild(box); }
 })();
