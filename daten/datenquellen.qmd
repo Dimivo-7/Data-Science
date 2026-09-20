@@ -1,0 +1,182 @@
+---
+title: "Datenquellen"
+description: "Öffentliche und eigene Daten finden, Qualität einschätzen, Lizenzen beachten."
+categories: ["Datenqualität", "Data Wrangling", "EDA"]
+quelle: ["DAVI"]
+seitentyp: konzept
+stand: entwurf
+order: 5
+---
+
+## Kernideen
+
+- Vor der Analyse steht die Frage, woher die Daten kommen und ob sie zur
+  Fragestellung passen
+- Öffentliche Daten sind frei verfügbar, aber nicht frei von Qualitätsproblemen
+- Unternehmensdaten sind selten so sauber, wie die Fachabteilung glaubt
+- Die Lizenz entscheidet, was mit den Daten geschehen darf, nicht der Zugang
+- Datenschutz und Anonymisierung setzen Grenzen, die sich nicht wegrechnen lassen
+- Eine Beschaffungscheckliste verhindert, dass man Wochen mit einem Datensatz
+  arbeitet, der die Frage nicht beantworten kann
+
+## Erklärung
+
+::: {.note-box}
+**Vorwissen:** [Datenqualität](datenqualitaet.qmd) erklärt, wie man fehlende
+Werte, Duplikate und Plausibilität prüft. Diese Seite behandelt den Schritt
+davor: wie man den Datensatz überhaupt findet und grob einschätzt, bevor man
+ihn herunterlädt.
+:::
+
+### Öffentliche Datenquellen
+
+Öffentliche Daten stammen von Behörden, internationalen Organisationen oder
+Forschungsprojekten. Sie sind kostenlos zugänglich, oft gut dokumentiert und
+eignen sich für Lern- und Demonstrationszwecke. Für eigene Analysen ist die
+Frage, ob sie zur Fragestellung passen, wichtiger als die Frage, ob sie frei
+sind.
+
+| Quelle | Schwerpunkt | Format | Bemerkung |
+|---|---|---|---|
+| [opendata.swiss](https://opendata.swiss/) | Schweizer Verwaltungsdaten | CSV, JSON, SPARQL | Bundes-, Kantons- und Gemeindedaten, föderales Verzeichnis |
+| [BFS / STAT-TAB](https://www.bfs.admin.ch/bfs/de/home/statistiken.html) | Schweizer Bundesstatistik | STAT-TAB (interaktiv), CSV, Excel | Bevölkerung, Wirtschaft, Gesundheit, Bildung |
+| [Eurostat](https://ec.europa.eu/eurostat) | EU-Statistik | CSV, TSV, JSON-stat | Harmonisierte Daten für Ländervergleiche |
+| [OECD Data Explorer](https://data-explorer.oecd.org/) | OECD-Länder | CSV, SDMX | Wirtschaft, Bildung, Umwelt, Gesundheit |
+| [World Bank Open Data](https://data.worldbank.org/) | Entwicklungsländer, global | CSV, Excel, API | Langzeitreihen, Länderindikatoren |
+| [Our World in Data](https://ourworldindata.org/) | Themenübergreifend, global | CSV, GitHub | Aufbereitete Zeitreihen mit Quellenangaben |
+| [Kaggle Datasets](https://www.kaggle.com/datasets) | Gemischt, oft für ML | CSV, diverse | Qualität schwankt stark, Metadaten prüfen |
+
+::: {.note-box}
+**opendata.swiss** ist ein Verzeichnis, kein Datenspeicher. Es verlinkt auf die
+Datenhalter (BFS, MeteoSchweiz, SBB und andere). Die Dateien liegen bei der
+jeweiligen Stelle, und Formate und Dokumentation sind entsprechend uneinheitlich.
+:::
+
+### Eigene Unternehmensdaten
+
+In der beruflichen Praxis stammen die Daten aus internen Systemen: ERP,
+CRM, Log-Dateien, Data Warehouse. Der Zugang ist geregelt, die
+Fragestellung meist konkreter als bei öffentlichen Daten, und die
+Qualitätsprobleme andere.
+
+| Typisches Problem | Warum es auftritt | Was zu tun ist |
+|---|---|---|
+| Fehlende Dokumentation | Spaltennamen wie `col_17` oder `flag_X` | Fachabteilung fragen, bevor man rät |
+| Datensilos | Informationen verteilt auf Systeme ohne gemeinsamen Schlüssel | Abklären, welche Systeme verknüpfbar sind |
+| Historische Brüche | Systemwechsel, geänderte Definitionen, fehlende Zeiträume | Zeitreihen auf Sprünge prüfen |
+| Zugriffsbeschränkungen | Datenschutz, Geschäftsgeheimnisse, Compliance | Frühzeitig klären, nicht erst nach der Analyse |
+| Aggregierte statt roher Daten | Fachabteilung liefert Zusammenfassungen | Rohdaten anfordern, wenn die Frage es erfordert |
+
+### Lizenzen und Nutzungsbedingungen
+
+Die Tatsache, dass ein Datensatz öffentlich zugänglich ist, sagt nichts darüber
+aus, was man damit tun darf. Die Lizenz steht in den Metadaten oder auf der
+Downloadseite.
+
+| Lizenz | Erlaubt | Verlangt |
+|---|---|---|
+| CC0 (Public Domain) | alles | nichts |
+| CC BY 4.0 | Nutzung, Veränderung, auch kommerziell | Quellenangabe |
+| CC BY-SA 4.0 | wie CC BY | Quellenangabe, Weitergabe unter gleicher Lizenz |
+| CC BY-NC 4.0 | Nutzung und Veränderung, nicht kommerziell | Quellenangabe |
+| Nutzungsbedingungen (custom) | je nach Anbieter | Bedingungen lesen |
+
+Für Arbeiten in einem Studienkontext ist CC BY in der Regel unproblematisch.
+Für kommerzielle Projekte oder Veröffentlichungen muss die Lizenz geprüft
+werden, bevor man Ergebnisse zeigt, die auf den Daten beruhen.
+
+### Datenschutz und Anonymisierung
+
+Personenbezogene Daten unterliegen dem Datenschutzgesetz (in der Schweiz das
+revDSG, in der EU die DSGVO). Drei Punkte, die vor dem Arbeitsbeginn
+geklärt sein müssen:
+
+1. **Personenbezug:** Enthalten die Daten Merkmale, die eine Person direkt
+   (Name, E-Mail) oder indirekt (PLZ + Geburtsdatum + Geschlecht) identifizieren?
+2. **Anonymisierung vs. Pseudonymisierung:** Anonymisiert heisst, dass ein
+   Rückschluss auf die Person mit vertretbarem Aufwand ausgeschlossen ist.
+   Pseudonymisiert (Schlüssel ersetzt den Namen) ist nicht anonym, wenn der
+   Schlüssel existiert.
+3. **Zweckbindung:** Daten, die für einen Zweck erhoben wurden, dürfen nicht
+   ohne Weiteres für einen anderen verwendet werden.
+
+Im Zweifel gilt: keine personenbezogenen Daten in einem öffentlichen Repository,
+keinen Datensatz mit echten Personen auf eine öffentliche Seite hochladen, und
+bei Unternehmensdaten die Compliance-Stelle einbeziehen.
+
+### Beschaffungscheckliste
+
+Bevor man Stunden in die Aufbereitung investiert, beantwortet man die folgenden
+Fragen. Ein "Nein" bei den ersten drei ist ein Abbruchgrund.
+
+| # | Frage | Prüfung |
+|---|---|---|
+| 1 | Deckt der Datensatz den **Zeitraum** ab, den die Fragestellung braucht? | Erste und letzte Beobachtung, Häufigkeit |
+| 2 | Enthält er die **Variablen**, die die Fragestellung braucht? | Spaltenliste gegen die geplante Analyse halten |
+| 3 | Hat er genug **Beobachtungen** für die geplante Methode? | Grobe Faustregel: mindestens 10 bis 20 Fälle je Prädiktor bei Regression |
+| 4 | Wie gross ist der **Anteil fehlender Werte** in den Schlüsselvariablen? | `is.na()` oder `isna()`, je Spalte und insgesamt |
+| 5 | Sind die Werte **plausibel**? | Extremwerte, Verteilungen, Einheiten prüfen |
+| 6 | Ist das **Format** maschinell lesbar? | CSV mit Kopfzeile und konsistentem Trenner, nicht PDF oder HTML-Tabelle |
+| 7 | Stimmt die **Kodierung** (UTF-8, Dezimaltrenner, Datumsformat)? | Erste Zeilen einlesen und prüfen, siehe [Datenimport](datenimport-formate.qmd) |
+| 8 | Ist die **Lizenz** mit dem Vorhaben vereinbar? | Metadaten oder Downloadseite |
+| 9 | Gibt es eine **Dokumentation** (Codebook, Metadaten)? | Ohne Dokumentation ist eine Spalte nur eine Zahl |
+| 10 | Ist die **Aktualität** ausreichend? | Letzte Aktualisierung, Erscheinungsrhythmus |
+
+Die Punkte 4 bis 7 überschneiden sich mit der [Datenqualität](datenqualitaet.qmd),
+dort stehen die Werkzeuge für die Prüfung in R und Python.
+
+::: {.quiz}
+Ein öffentlicher Datensatz mit Bevölkerungszahlen nach Gemeinde trägt die
+Lizenz CC BY-NC 4.0. Ein Beratungsunternehmen möchte ihn in einem
+Kundenbericht verwenden. Darf es das?
+
+- [ ] Ja, der Datensatz ist öffentlich zugänglich ~ Zugänglich und
+      lizenziert sind zwei verschiedene Dinge. NC verbietet die
+      kommerzielle Nutzung.
+- [x] Nein, NC schliesst die kommerzielle Nutzung aus ~ Richtig.
+      Das Unternehmen müsste den Datenhalter um eine Sondergenehmigung
+      bitten oder eine andere Quelle mit passender Lizenz finden.
+- [ ] Ja, solange die Quelle genannt wird ~ Die Quellenangabe erfüllt
+      die BY-Bedingung, nicht die NC-Bedingung.
+:::
+
+::: {.quiz}
+Ein Datensatz enthält PLZ, Geburtsjahr und Geschlecht, aber keinen Namen.
+Ist er anonym?
+
+- [ ] Ja, es stehen keine Namen darin ~ Anonymität bemisst sich nicht
+      am Fehlen eines einzelnen Merkmals, sondern an der Frage, ob eine
+      Person identifizierbar ist.
+- [x] Nicht unbedingt, die Kombination kann Personen identifizierbar
+      machen ~ Richtig. In kleinen Gemeinden reicht die Kombination
+      PLZ + Geburtsjahr + Geschlecht zur Identifikation. Das gilt als
+      pseudonym, nicht als anonym.
+- [ ] Ja, drei Merkmale reichen nie zur Identifikation ~ Studien zeigen,
+      dass in den USA drei Merkmale (ZIP, Geburtsdatum, Geschlecht) rund
+      87 Prozent der Bevölkerung eindeutig bestimmen.
+:::
+
+::: {.quiz}
+Die Beschaffungscheckliste empfiehlt, bei den ersten drei Fragen
+abzubrechen, wenn die Antwort "Nein" lautet. Warum gerade diese drei?
+
+- [x] Sie betreffen den Inhalt, nicht die Form; ein Formatproblem
+      lässt sich beheben, fehlende Variablen nicht ~ Richtig.
+      Zeitraum, Variablen und Fallzahl sind Eigenschaften des Datensatzes,
+      die sich nicht durch Aufbereitung ändern lassen.
+- [ ] Weil Formatprobleme seltener sind ~ Sie sind häufig, aber
+      lösbar. Der Unterschied liegt in der Lösbarkeit, nicht in der
+      Häufigkeit.
+- [ ] Weil die Lizenz erst am Ende relevant wird ~ Die Lizenz kann
+      ebenso ein Abbruchgrund sein, steht aber weiter hinten, weil sie
+      seltener das Problem ist.
+:::
+
+## Verlinkte Ressourcen
+
+- [opendata.swiss](https://opendata.swiss/)
+- [BFS STAT-TAB](https://www.bfs.admin.ch/bfs/de/home/dienstleistungen/forschung/stat-tab-online-datenrecherche.html)
+- [Eurostat](https://ec.europa.eu/eurostat/data/database)
+- [Our World in Data, GitHub-Daten](https://github.com/owid/owid-datasets)
+- [Datenqualität](datenqualitaet.qmd)
+- [Datenimport und Formate](datenimport-formate.qmd)

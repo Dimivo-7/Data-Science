@@ -1,0 +1,270 @@
+---
+title: "Generalisierung"
+description: "Trainings- und Testfehler, Bias-Varianz-Zerlegung, Überanpassung und Datenleck."
+categories: ["Regression", "Modellvalidierung", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: konzept
+stand: entwurf
+order: 35
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(ggplot2)
+
+lehmer <- function(saat, anzahl) {
+  s <- saat; raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1)
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import stats
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11})
+
+def lehmer(saat, anzahl):
+    s = float(saat)
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807.0 * s) % 2147483647.0
+        raus[k] = s / 2147483647.0
+    return raus
+
+def normalwerte(saat, anzahl, mittel=0, streuung=1):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+```
+
+## Kernideen
+
+- Ein Modell soll nicht die Trainingsdaten auswendig lernen, sondern auf
+  **neue Beobachtungen** gute Vorhersagen liefern. Diese Fähigkeit heisst
+  Generalisierung.
+- Der **Trainingsfehler** sinkt mit zunehmender Modellkomplexität immer weiter.
+  Der **Testfehler** sinkt zunächst, steigt dann aber wieder an (U-Kurve).
+- Die Bias-Varianz-Zerlegung erklärt diesen Verlauf: einfache Modelle haben
+  hohen Bias (Unteranpassung), komplexe Modelle hohe Varianz (Überanpassung).
+- Jede Vorhersage enthält einen **irreduziblen Fehler** Var(epsilon), der sich
+  durch kein Modell beseitigen lässt.
+- Ein **Datenleck** (data leakage) entsteht, wenn Testinformationen in den
+  Trainingsprozess einfliessen. Es täuscht eine Generalisierung vor, die in
+  der Praxis nicht existiert.
+- Die richtige Wahl der Modellkomplexität erfordert eine ehrliche Schätzung
+  des Testfehlers, zum Beispiel durch [Kreuzvalidierung](kreuzvalidierung.qmd).
+
+## Erklärung
+
+### Trainings- und Testfehler
+
+Ein Modell wird auf einem **Trainingsdatensatz** geschätzt und auf einem
+separaten **Testdatensatz** bewertet. Der Trainingsfehler (z.B. MSE auf den
+Trainingsdaten) misst, wie gut das Modell die bereits gesehenen Daten
+reproduziert. Der Testfehler misst, wie gut es neue Daten vorhersagt.
+
+Mit steigender Flexibilität (mehr Parameter, höherer Polynomgrad) passt sich
+das Modell immer enger an die Trainingsdaten an: der Trainingsfehler fällt
+monoton. Der Testfehler dagegen durchläuft ein Minimum und steigt danach
+wieder, weil das Modell anfängt, Rauschen statt Struktur zu lernen.
+
+### Bias-Varianz-Zerlegung
+
+Der erwartete Vorhersagefehler an einem neuen Punkt $x_0$ lässt sich zerlegen:
+
+$$
+E\bigl[(y_0 - \hat{f}(x_0))^2\bigr]
+= \mathrm{Var}\bigl(\hat{f}(x_0)\bigr)
++ \bigl[\mathrm{Bias}\bigl(\hat{f}(x_0)\bigr)\bigr]^2
++ \mathrm{Var}(\varepsilon)
+$$
+
+- **Bias** beschreibt den systematischen Fehler, den ein Modell macht, weil es
+  die wahre Funktion zu stark vereinfacht. Hoher Bias entsteht bei zu einfachen
+  Modellen (Unteranpassung).
+- **Varianz** beschreibt, wie stark sich die Schätzung $\hat{f}$ ändert, wenn
+  man andere Trainingsdaten verwendet. Hohe Varianz entsteht bei zu flexiblen
+  Modellen (Überanpassung).
+- **Irreduzibler Fehler** $\mathrm{Var}(\varepsilon)$ kommt aus dem Rauschen
+  der Zielvariable und ist durch kein Modell beeinflussbar.
+
+Das Ziel ist ein Modell, das Bias und Varianz gleichzeitig klein hält, also
+den Gesamtfehler minimiert.
+
+### Datenleck (Data Leakage)
+
+Ein Datenleck liegt vor, wenn Informationen, die zum Zeitpunkt der Vorhersage
+nicht verfügbar wären, in das Training einfliessen. Typische Ursachen:
+
+1. **Testdaten im Training**: Vorverarbeitung (Standardisierung, Imputation)
+   wird auf dem gesamten Datensatz durchgeführt, bevor die Aufteilung in
+   Training und Test stattfindet.
+2. **Zeitliche Lecks**: Bei Zeitreihen werden zukünftige Werte als Features
+   verwendet.
+3. **Zielvariable als Feature**: Eine Variable, die direkt aus der Zielvariable
+   abgeleitet ist, wird als Prädiktor benutzt.
+
+Ein Datenleck führt dazu, dass der geschätzte Testfehler viel zu optimistisch
+ausfällt. Das Modell versagt dann auf echten neuen Daten.
+
+::: {.note-box}
+Jede Vorverarbeitung, die Statistiken aus den Daten berechnet (Mittelwert,
+Standardabweichung, Quantile), muss **ausschliesslich auf den Trainingsdaten**
+geschätzt und dann auf die Testdaten angewendet werden.
+:::
+
+### Polynomgrad und Überanpassung: ein Beispiel
+
+Wir erzeugen 80 Punkte mit einer Sinusfunktion plus Rauschen und zeigen, wie
+Trainings- und Testfehler bei Polynomgraden 1 bis 10 verlaufen.
+
+:::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: fig-u-kurve-r
+#| fig-cap: "Trainings- und Testfehler nach Polynomgrad"
+
+# --- Daten erzeugen ---
+n <- 80
+u <- lehmer(5501, n)
+x <- sort(u * 6)
+y <- sin(x) + 0.3 * normalwerte(5503, n)
+
+daten <- data.frame(x = x, y = y)
+train <- daten[1:60, ]
+test  <- daten[61:80, ]
+
+# --- Polynome Grad 1 bis 10 anpassen ---
+grade <- 1:10
+mse_train <- numeric(length(grade))
+mse_test  <- numeric(length(grade))
+
+for (i in seq_along(grade)) {
+  g <- grade[i]
+  fit <- lm(y ~ poly(x, g, raw = TRUE), data = train)
+  mse_train[i] <- mean((train$y - predict(fit, train))^2)
+  mse_test[i]  <- mean((test$y  - predict(fit, test))^2)
+}
+
+ergebnis <- data.frame(
+  grad = rep(grade, 2),
+  mse  = c(mse_train, mse_test),
+  art  = rep(c("Training", "Test"), each = length(grade))
+)
+
+ggplot(ergebnis, aes(grad, mse, colour = art)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  scale_x_continuous(breaks = grade) +
+  labs(x = "Polynomgrad", y = "MSE", colour = NULL) +
+  theme_minimal(base_size = 12)
+```
+
+##### Python
+
+```{python}
+#| label: fig-u-kurve-python
+#| fig-cap: "Trainings- und Testfehler nach Polynomgrad"
+
+# --- Daten erzeugen ---
+n = 80
+u = lehmer(5501, n)
+x = np.sort(u * 6)
+y = np.sin(x) + 0.3 * normalwerte(5503, n)
+
+x_train, y_train = x[:60], y[:60]
+x_test, y_test = x[60:], y[60:]
+
+# --- Polynome Grad 1 bis 10 anpassen ---
+grade = list(range(1, 11))
+mse_train = []
+mse_test = []
+
+for g in grade:
+    koeff = np.polyfit(x_train, y_train, g)
+    pred_train = np.polyval(koeff, x_train)
+    pred_test = np.polyval(koeff, x_test)
+    mse_train.append(np.mean((y_train - pred_train) ** 2))
+    mse_test.append(np.mean((y_test - pred_test) ** 2))
+
+fig, ax = plt.subplots()
+_l1 = ax.plot(grade, mse_train, "o-", label="Training")
+_l2 = ax.plot(grade, mse_test, "s-", label="Test")
+ax.set_xlabel("Polynomgrad")
+ax.set_ylabel("MSE")
+ax.set_xticks(grade)
+_lg = ax.legend()
+plt.tight_layout()
+plt.show()
+```
+
+::::
+
+Der Trainingsfehler sinkt monoton, weil ein höherer Polynomgrad die
+Trainingspunkte immer genauer interpoliert. Der Testfehler erreicht ein
+Minimum bei mittlerem Grad und steigt danach an, weil das Modell anfängt,
+das Rauschen zu modellieren statt die zugrundeliegende Sinusfunktion.
+
+:::: {.quiz}
+Warum sinkt der Trainingsfehler bei steigendem Polynomgrad immer weiter?
+
+- [x] Weil ein flexibleres Modell die Trainingspunkte enger interpolieren
+      kann ~ Richtig. Mehr Parameter erlauben es dem Modell, jeden einzelnen
+      Trainingspunkt besser zu treffen, auch auf Kosten der Generalisierung.
+- [ ] Weil höhere Polynome mathematisch genauer sind ~ Nein. Ein hohes
+      Polynom ist nicht "genauer" als ein tiefes. Es ist lediglich flexibler.
+- [ ] Weil der Testfehler gleichzeitig sinkt ~ Falsch. Der Testfehler steigt
+      ab einem gewissen Punkt wieder an.
+::::
+
+:::: {.quiz}
+Ein Modell hat auf den Trainingsdaten einen MSE von 0.001, auf neuen Daten
+aber einen MSE von 2.5. Was ist die wahrscheinlichste Erklärung?
+
+- [ ] Die Trainingsdaten waren fehlerhaft ~ Möglich, aber der viel
+      grössere Testfehler deutet nicht auf fehlerhafte Trainingsdaten hin.
+- [x] Das Modell ist überangepasst ~ Richtig. Der grosse Unterschied zwischen
+      Trainings- und Testfehler ist das klassische Zeichen für Überanpassung.
+- [ ] Der irreduzible Fehler ist hoch ~ Der irreduzible Fehler wirkt auf
+      Training und Test gleichermassen. Er erklärt keinen grossen Unterschied.
+::::
+
+:::: {.quiz}
+Vor dem Aufteilen in Training und Test wird der gesamte Datensatz
+z-standardisiert. Ist das problematisch?
+
+- [x] Ja, es liegt ein Datenleck vor ~ Richtig. Die Standardisierung nutzt
+      Mittelwert und Standardabweichung des gesamten Datensatzes, also auch
+      der Testdaten. Die Statistiken müssen nur auf den Trainingsdaten
+      berechnet werden.
+- [ ] Nein, Standardisierung ist eine lineare Transformation ~ Die
+      Linearität der Transformation ändert nichts am Informationsfluss.
+      Testinformationen fliessen trotzdem ins Training.
+- [ ] Nur bei kleinen Datensätzen ~ Das Leck besteht unabhängig von der
+      Datensatzgrösse, auch wenn seine praktische Auswirkung bei grossen
+      Datensätzen kleiner sein kann.
+::::
+
+## Verlinkte Ressourcen
+
+- [Kreuzvalidierung](kreuzvalidierung.qmd): Testfehler schätzen ohne
+  separaten Testdatensatz.
+- [Modellauswahl](modellauswahl.qmd): AIC, BIC und schrittweise Verfahren
+  als Alternative zur direkten Fehlerberechnung.
+- [Regularisierung](regularisierung.qmd): Bias gezielt erhöhen, um die
+  Varianz zu senken (Ridge, Lasso).
+- [Regressionsdiagnostik](regressionsdiagnostik.qmd): Residuen und
+  Einflussanalyse als Werkzeuge zur Modellprüfung.

@@ -1,0 +1,829 @@
+---
+title: "Regularisierung"
+description: "Ridge, Lasso und Elastic Net: Strafterm, Standardisierung und Wahl von Lambda."
+categories: ["Regression", "Modellvalidierung", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 44
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(glmnet)
+
+# Lehmer-Generator: deterministisch, identisch in R und Python
+lehmer <- function(saat, anzahl) {
+  s <- saat; raus <- numeric(anzahl)
+  for (k in seq_len(anzahl)) {
+    s <- (16807 * s) %% 2147483647
+    raus[k] <- s / 2147483647
+  }
+  raus
+}
+normalwerte <- function(saat, anzahl, mittel = 0, streuung = 1)
+  mittel + streuung * qnorm(lehmer(saat, anzahl))
+normalmatrix <- function(saat, zeilen, spalten)
+  matrix(qnorm(lehmer(saat, zeilen * spalten)), nrow = zeilen, byrow = TRUE)
+
+# 150 Faelle, zwei echte Praediktoren, sechs Rauschgroessen
+n <- 150
+
+u <- normalmatrix(42, n, 8)
+x1 <- round(20 + 5 * u[, 1], 2)
+x2 <- round(50 + 10 * u[, 2], 2)
+rauschen <- round(6 * u[, 3], 2)
+
+daten <- data.frame(
+  y  = round(100 + 2.5 * x1 - 0.8 * x2 + rauschen, 2),
+  x1 = x1,
+  x2 = x2,
+  z1 = round(u[, 4], 3),
+  z2 = round(u[, 5], 3),
+  z3 = round(u[, 6], 3),
+  z4 = round(u[, 7], 3),
+  z5 = round(u[, 8], 3),
+  z6 = round(normalwerte(99, n), 3)
+)
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+from scipy import stats
+from sklearn.linear_model import (
+    Ridge, Lasso, ElasticNet,
+    RidgeCV, LassoCV, ElasticNetCV,
+    LogisticRegression,
+)
+from sklearn.preprocessing import StandardScaler
+
+plt.rcParams.update({"figure.figsize": (7, 4.2), "font.size": 11,
+                     "savefig.dpi": 288, "figure.dpi": 288})
+
+
+def lehmer(saat, anzahl):
+    s = saat
+    raus = np.empty(anzahl)
+    for k in range(anzahl):
+        s = (16807 * s) % 2147483647
+        raus[k] = s / 2147483647
+    return raus
+
+
+def normalwerte(saat, anzahl, mittel=0, streuung=1):
+    return mittel + streuung * stats.norm.ppf(lehmer(saat, anzahl))
+
+
+def normalmatrix(saat, zeilen, spalten):
+    return stats.norm.ppf(lehmer(saat, zeilen * spalten)).reshape(zeilen, spalten)
+
+
+n = 150
+
+u = normalmatrix(42, n, 8)
+x1 = np.round(20 + 5 * u[:, 0], 2)
+x2 = np.round(50 + 10 * u[:, 1], 2)
+rauschen = np.round(6 * u[:, 2], 2)
+
+daten = pd.DataFrame({
+    "y":  np.round(100 + 2.5 * x1 - 0.8 * x2 + rauschen, 2),
+    "x1": x1,
+    "x2": x2,
+    "z1": np.round(u[:, 3], 3),
+    "z2": np.round(u[:, 4], 3),
+    "z3": np.round(u[:, 5], 3),
+    "z4": np.round(u[:, 6], 3),
+    "z5": np.round(u[:, 7], 3),
+    "z6": np.round(normalwerte(99, n), 3),
+})
+```
+
+Alle Beispiele rechnen mit demselben Datensatz: 150 Fälle, zwei Prädiktoren
+`x1` und `x2`, die tatsächlich auf `y` wirken (wahre Koeffizienten 2.5 und
+-0.8), und sechs Rauschgrössen `z1` bis `z6`, die keinen Zusammenhang mit `y`
+haben. Die Wahrheit ist bekannt, also lässt sich prüfen, ob das Verfahren sie
+findet.
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Welche Prädiktoren gehören ins Modell, und wie stark sollen ihre Koeffizienten geschrumpft werden? |
+| Eingang | eine Matrix von Prädiktoren und eine Zielgrösse, typischerweise mit vielen Prädiktoren relativ zu n |
+| Was die Verfahren liefern | geschrumpfte (Ridge) oder auf null gesetzte (Lasso) Koeffizienten, gesteuert über einen Strafparameter Lambda |
+| R-Funktionen | `glmnet()`, `cv.glmnet()`, `coef()` |
+| Python-Funktionen | `Ridge`, `Lasso`, `ElasticNet`, `RidgeCV`, `LassoCV`, `ElasticNetCV` aus `sklearn.linear_model` |
+| Verwandte Methoden | [Modellauswahl](modellauswahl.qmd), [multiple lineare Regression](multiple-lineare-regression.qmd), [Regressionsdiagnostik](regressionsdiagnostik.qmd) |
+
+## Wann diese Methode, wann nicht
+
+| Situation | Regularisierung sinnvoll? |
+|---|---|
+| Viele Prädiktoren, wenig Fälle (p nahe n oder p > n) | ja, oft die einzige stabile Methode |
+| Viele korrelierte Prädiktoren | ja, besonders Ridge |
+| Ziel ist Variablenselektion | ja, Lasso oder Elastic Net |
+| Wenige Prädiktoren, fachlich begründet | nein, die gewöhnliche Regression reicht |
+| Exakte, unverzerrte Koeffizienten nötig | nein, Regularisierung erzeugt bewusst Verzerrung, um die Varianz zu senken |
+| Inferenz (p-Werte, Konfidenzintervalle) steht im Vordergrund | nein, glmnet liefert keine p-Werte, und das ist Absicht |
+
+## Grundidee und Modell
+
+Die gewöhnliche Regression minimiert die Summe der quadrierten Residuen (RSS).
+Regularisierung fügt einen **Strafterm** hinzu, der grosse Koeffizienten
+bestraft. Der Strafparameter $\lambda$ steuert die Stärke: Bei $\lambda = 0$
+entsteht die gewöhnliche Regression, bei $\lambda \to \infty$ werden alle
+Koeffizienten gegen null gedrückt.
+
+| Methode | Zielfunktion | Was sie tut |
+|---|---|---|
+| Ridge (L2) | $\text{RSS} + \lambda \sum \beta_j^2$ | schrumpft alle Koeffizienten gleichmässig Richtung null, setzt aber keinen exakt auf null |
+| Lasso (L1) | $\text{RSS} + \lambda \sum |\beta_j|$ | schrumpft Koeffizienten und setzt manche exakt auf null (Variablenselektion) |
+| Elastic Net | $\text{RSS} + \lambda\bigl(\alpha \sum |\beta_j| + \tfrac{1-\alpha}{2} \sum \beta_j^2\bigr)$ | Mischung aus beiden, gesteuert über $\alpha$ |
+
+### Warum Lasso Koeffizienten auf null setzt
+
+Die Geometrie erklärt den Unterschied. Die Nebenbedingung $\sum |\beta_j| \le t$
+(Lasso) bildet im Koeffizientenraum einen Diamanten mit Ecken auf den Achsen.
+Die Nebenbedingung $\sum \beta_j^2 \le t$ (Ridge) bildet eine Kugel. Die
+Konturlinien der RSS-Funktion sind Ellipsen. Beim Lasso trifft die Ellipse den
+Diamanten typischerweise an einer Ecke, wo mindestens eine Koordinate null ist.
+Beim Ridge trifft sie die Kugel irgendwo auf der glatten Oberfläche, wo im
+Allgemeinen keine Koordinate null ist.
+
+### Standardisierung ist Pflicht
+
+Bevor der Strafterm angewendet wird, müssen alle Prädiktoren auf dieselbe Skala
+gebracht werden. Ohne Standardisierung bestraft der Strafterm einen Koeffizienten
+stärker, bloss weil sein Prädiktor in grossen Einheiten gemessen wird. `glmnet`
+standardisiert intern (und gibt die Koeffizienten auf der Originalskala zurück).
+In scikit-learn muss man selbst mit `StandardScaler` arbeiten.
+
+### Lambda wählen: Kreuzvalidierung
+
+`cv.glmnet` (R) und `LassoCV` / `RidgeCV` (Python) suchen das beste $\lambda$
+per Kreuzvalidierung. Zwei Werte sind üblich:
+
+| Wert | Bedeutung | Wann verwenden |
+|---|---|---|
+| `lambda.min` | Lambda mit dem kleinsten mittleren CV-Fehler | Vorhersage steht im Vordergrund |
+| `lambda.1se` | grösstes Lambda, dessen CV-Fehler noch innerhalb eines Standardfehlers von `lambda.min` liegt | sparsameres Modell, oft robuster |
+
+### Koeffizientenpfade
+
+Trägt man die geschätzten Koeffizienten gegen $\log(\lambda)$ auf, sieht man,
+wie jeder Koeffizient mit wachsendem $\lambda$ schrumpft (und beim Lasso
+irgendwann null wird). Die Reihenfolge, in der Koeffizienten verschwinden,
+zeigt ihre relative Wichtigkeit.
+
+### Freiheitsgrade
+
+Beim Ridge entspricht die effektive Zahl der Freiheitsgrade der Spur von
+$X(X^\top X + \lambda I)^{-1}X^\top$ und sinkt stetig von p auf null. Beim
+Lasso ist die Zahl der von null verschiedenen Koeffizienten ein brauchbarer
+Schätzer der Freiheitsgrade.
+
+### Regularisierte logistische Regression
+
+Dieselbe Idee gilt für die logistische Regression: Die Log-Likelihood wird
+um denselben Strafterm ergänzt. In R: `glmnet(..., family = "binomial")`.
+In Python: `LogisticRegression(penalty="l1", solver="saga")` oder
+`penalty="l2"`.
+
+## Voraussetzungen und ihre Prüfung
+
+| Voraussetzung | Prüfung | Was passiert bei Verletzung |
+|---|---|---|
+| Standardisierte Prädiktoren | `glmnet` macht es intern; in sklearn `StandardScaler` | ohne Standardisierung werden Koeffizienten ungleichmässig bestraft |
+| Keine perfekte Multikollinearität | Korrelationsmatrix, VIF | Ridge kann damit umgehen; bei Lasso wird die Auswahl unter korrelierten Prädiktoren willkürlich |
+| Genügend Fälle pro Prädiktor | Verhältnis n/p prüfen | bei sehr kleinem n/p auch Regularisierung instabil |
+| Linearität (bei linearer Regression) | Residualplots nach Anpassung | wie bei der gewöhnlichen Regression |
+
+::: {.note-box}
+**Regularisierung lockert die Anforderung, dass n >> p sein muss.** Lasso und
+Ridge funktionieren auch bei p > n, wo die gewöhnliche Regression gar nicht
+berechenbar ist. Die Lösung ist dann nicht mehr eindeutig ohne den Strafterm.
+:::
+
+## Output lesen
+
+### `print(cv.glmnet)` in R
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `Lambda` | der Strafparameter | logarithmische Skala, deshalb sehen kleine Änderungen gross aus |
+| `Index` | laufende Nummer des Lambda-Werts | zählt vom grössten Lambda abwärts |
+| `Measure` | mittlerer CV-Fehler (MSE bei Regression, Deviance bei Klassifikation) | kleiner ist besser |
+| `SE` | Standardfehler des CV-Fehlers über die Folds | bestimmt die Breite des 1se-Bandes |
+| `Nonzero` | Anzahl der von null verschiedenen Koeffizienten | beim Lasso das Ergebnis der Variablenselektion |
+
+`lambda.min` ist das Lambda mit dem kleinsten Measure. `lambda.1se` ist das
+grösste Lambda, dessen Measure noch innerhalb von `lambda.min + SE` liegt.
+
+### `coef(cv_fit, s = "lambda.1se")` in R
+
+Gibt eine dünn besetzte Matrix zurück. Einträge mit `.` sind exakt null (beim
+Lasso). Der Achsenabschnitt steht in der ersten Zeile und wird nie bestraft.
+
+### Python: `LassoCV`, `RidgeCV`, `ElasticNetCV`
+
+| Attribut | Was es sagt |
+|---|---|
+| `.alpha_` | das gewählte Lambda (Achtung: heisst hier `alpha`, siehe Namenskollision unten) |
+| `.coef_` | die geschätzten Koeffizienten |
+| `.mse_path_` | CV-Fehler für jedes Lambda und jeden Fold |
+| `.alphas_` | alle geprüften Lambda-Werte |
+
+::: {.note-box}
+**Namenskollision zwischen R und Python.** Diese Falle erzeugt regelmässig
+Verwirrung und falsche Ergebnisse:
+
+| Konzept | glmnet (R) | scikit-learn (Python) |
+|---|---|---|
+| Stärke der Regularisierung | `lambda` | `alpha` |
+| Mischung L1/L2 (0 = Ridge, 1 = Lasso) | `alpha` | `l1_ratio` |
+
+Dazu kommt: Die Zielfunktionen sind unterschiedlich skaliert. glmnet
+minimiert $\frac{1}{2n}\text{RSS} + \lambda \cdot \text{Strafe}$, scikit-learn
+minimiert $\frac{1}{2n}\text{RSS} + \alpha \cdot \text{Strafe}$ (bei Lasso)
+bzw. $\text{RSS} + \alpha \cdot \text{Strafe}$ (bei Ridge). Die Lambda-Werte
+sind deshalb zwischen R und Python **nicht direkt vergleichbar**.
+:::
+
+## Interpretationsfallen
+
+- **Regularisierte Koeffizienten sind verzerrt.** Das ist beabsichtigt: Man
+  tauscht Verzerrung gegen geringere Varianz. Aber man darf sie nicht wie
+  OLS-Koeffizienten interpretieren ("ein Einheit mehr in x ergibt ...").
+- **Lasso wählt unter korrelierten Prädiktoren willkürlich.** Wenn zwei
+  Prädiktoren fast dasselbe messen, setzt Lasso einen auf null und behält den
+  anderen. Welchen, hängt an kleinen Datenänderungen. Ridge verteilt das Gewicht
+  gleichmässig.
+- **Das 1se-Modell ist nicht das beste nach CV.** Es ist das sparsamste, das
+  noch im Rahmen der Unsicherheit des besten liegt. Das ist eine konservative
+  Wahl, die Überanpassung vermeidet, aber echte Effekte übersehen kann.
+- **Ein Koeffizient von null im Lasso bedeutet nicht, dass der Prädiktor
+  unwichtig ist.** Er kann durch einen korrelierten Prädiktor vertreten werden.
+- **p-Werte fehlen mit Absicht.** Regularisierung ist ein Vorhersageverfahren.
+  Wer Inferenz braucht, nimmt die gewöhnliche Regression oder spezialisierte
+  Methoden (debiased Lasso, selective inference).
+
+## Ergebnis berichten
+
+> Angepasst wurde ein [Ridge/Lasso/Elastic-Net]-Modell auf [n] Beobachtungen
+> mit [p] Prädiktoren. Lambda wurde per [k]-facher Kreuzvalidierung gewählt
+> ([lambda.min/lambda.1se] = [Wert]). Das gewählte Modell enthält [Anzahl]
+> von null verschiedene Koeffizienten. Der mittlere CV-Fehler beträgt [Wert].
+
+Genannt werden: welches Verfahren, wie Lambda gewählt wurde, wie viele
+Koeffizienten übrig bleiben, und der Vorhersagefehler. Weil keine p-Werte
+vorliegen, werden Koeffizienten nicht als "signifikant" bezeichnet.
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt der Regularisierung |
+|---|---|
+| [Modellauswahl](modellauswahl.qmd) (AIC, BIC, Stepwise) | wenige, fachlich ausgewählte Kandidatenmodelle |
+| [Multiple lineare Regression](multiple-lineare-regression.qmd) | n >> p und Inferenz steht im Vordergrund |
+| [Regressionsdiagnostik](regressionsdiagnostik.qmd) | Prüfung, ob ein bestehendes Modell zulässig ist |
+| Principal Components Regression | Dimensionsreduktion statt Variablenselektion |
+| Bayesianische Regression | Strafterm als Prior interpretiert, volle Posteriorverteilung |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: Standardfall
+
+#### Frage und Datenlage
+
+Zwei echte Prädiktoren (`x1`, `x2`) und sechs Rauschgrössen (`z1` bis `z6`).
+Ridge und Lasso werden angepasst, die Koeffizientenpfade verglichen, und per
+Kreuzvalidierung das beste Lambda gewählt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-reg-pfade-r
+#| fig-cap: "Koeffizientenpfade: Ridge (links) und Lasso (rechts)"
+#| fig-width: 10
+#| fig-height: 4
+X <- as.matrix(daten[, c("x1", "x2", paste0("z", 1:6))])
+y <- daten$y
+
+ridge_fit <- glmnet(X, y, alpha = 0)
+lasso_fit <- glmnet(X, y, alpha = 1)
+
+par(mfrow = c(1, 2))
+plot(ridge_fit, xvar = "lambda", main = "Ridge (alpha = 0)")
+plot(lasso_fit, xvar = "lambda", main = "Lasso (alpha = 1)")
+```
+
+```{r}
+#| label: b1-reg-cv-r
+cv_ridge <- cv.glmnet(X, y, alpha = 0)
+cv_lasso <- cv.glmnet(X, y, alpha = 1)
+
+cat("Ridge lambda.min:", round(cv_ridge$lambda.min, 4), "\n")
+cat("Ridge lambda.1se:", round(cv_ridge$lambda.1se, 4), "\n")
+cat("Lasso lambda.min:", round(cv_lasso$lambda.min, 4), "\n")
+cat("Lasso lambda.1se:", round(cv_lasso$lambda.1se, 4), "\n")
+```
+
+```{r}
+#| label: b1-reg-koef-r
+cat("--- Lasso-Koeffizienten bei lambda.1se ---\n")
+print(coef(cv_lasso, s = "lambda.1se"))
+
+cat("\n--- Ridge-Koeffizienten bei lambda.1se ---\n")
+print(round(as.matrix(coef(cv_ridge, s = "lambda.1se")), 4))
+```
+
+##### Python
+
+```{python}
+#| label: b1-reg-pfade-py
+#| fig-cap: "Koeffizientenpfade: Ridge (links) und Lasso (rechts)"
+spalten = ["x1", "x2", "z1", "z2", "z3", "z4", "z5", "z6"]
+X = daten[spalten].values
+y_werte = daten["y"].values
+
+scaler = StandardScaler()
+X_std = scaler.fit_transform(X)
+
+# Koeffizientenpfade berechnen
+alphas_log = np.logspace(4, -2, 200)
+
+ridge_koef = np.array([Ridge(alpha=a).fit(X_std, y_werte).coef_
+                        for a in alphas_log])
+lasso_koef = np.array([Lasso(alpha=a, max_iter=10000).fit(X_std, y_werte).coef_
+                        for a in alphas_log])
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+for j, name in enumerate(spalten):
+    ax1.plot(np.log10(alphas_log), ridge_koef[:, j], label=name)
+    ax2.plot(np.log10(alphas_log), lasso_koef[:, j], label=name)
+ax1.set_xlabel("log10(alpha)")
+ax1.set_ylabel("Koeffizient (standardisiert)")
+ax1.set_title("Ridge")
+ax1.legend(fontsize=7)
+ax2.set_xlabel("log10(alpha)")
+ax2.set_ylabel("Koeffizient (standardisiert)")
+ax2.set_title("Lasso")
+ax2.legend(fontsize=7)
+plt.tight_layout()
+_x = plt.savefig("b1_pfade.png")
+plt.show()
+```
+
+```{python}
+#| label: b1-reg-cv-py
+cv_lasso = LassoCV(cv=10, max_iter=10000).fit(X_std, y_werte)
+cv_ridge = RidgeCV(alphas=np.logspace(-2, 4, 200), cv=10).fit(X_std, y_werte)
+
+print(f"Lasso alpha (= glmnet lambda): {cv_lasso.alpha_:.4f}")
+print(f"Ridge alpha (= glmnet lambda): {cv_ridge.alpha_:.4f}")
+print()
+
+print("--- Lasso-Koeffizienten (standardisierte Skala) ---")
+for name, koef in zip(spalten, cv_lasso.coef_):
+    marker = "." if abs(koef) < 1e-10 else ""
+    print(f"  {name:4s}  {koef:8.4f}  {marker}")
+
+print("\n--- Ridge-Koeffizienten (standardisierte Skala) ---")
+for name, koef in zip(spalten, cv_ridge.coef_):
+    print(f"  {name:4s}  {koef:8.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+In den Koeffizientenpfaden zeigt sich der zentrale Unterschied:
+
+| Beobachtung | Ridge | Lasso |
+|---|---|---|
+| Koeffizienten bei kleinem Lambda | nahe den OLS-Werten | nahe den OLS-Werten |
+| Koeffizienten bei grossem Lambda | alle gegen null, keiner exakt null | ein Koeffizient nach dem anderen wird exakt null |
+| `x1` und `x2` | bleiben die grössten | verschwinden als letzte |
+| `z1` bis `z6` | bleiben klein, aber nie null | werden nacheinander auf null gesetzt |
+
+Das Lasso-Modell bei `lambda.1se` enthält typischerweise nur `x1` und `x2`
+(oder sehr wenige weitere). Ridge behält alle acht Prädiktoren, schrumpft
+die unwichtigen aber stark.
+
+#### Interpretation und Ergebnissatz
+
+> Ein Lasso-Modell auf 150 Beobachtungen mit acht Prädiktoren wählt per
+> 10-facher Kreuzvalidierung bei `lambda.1se` die beiden echten Prädiktoren
+> `x1` und `x2` aus und setzt die sechs Rauschgrössen auf null. Ridge behält
+> alle acht, schrumpft die Rauschgrössen aber auf nahezu null.
+
+### Beispiel 2: Nullbefund
+
+#### Frage und Datenlage
+
+Was passiert, wenn Lambda sehr gross gewählt wird oder das Signal zu schwach
+ist? Das Lasso setzt dann **alle** Koeffizienten auf null. Was bedeutet das?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-reg-null-r
+X <- as.matrix(daten[, c("x1", "x2", paste0("z", 1:6))])
+y <- daten$y
+
+lasso_fit <- glmnet(X, y, alpha = 1)
+
+# Grosses Lambda: alle Koeffizienten null
+lambda_gross <- max(lasso_fit$lambda) * 2
+cat("Lambda =", round(lambda_gross, 2), "\n")
+cat("Koeffizienten:\n")
+print(coef(lasso_fit, s = lambda_gross))
+
+# Ab welchem Lambda verschwinden alle Koeffizienten?
+cat("\nlambda.max (erstes Lambda, bei dem mindestens ein Koeffizient != 0):\n")
+cat(round(max(lasso_fit$lambda), 4), "\n")
+
+# Nur-Rauschen-Daten
+y_rauschen <- round(normalwerte(77, n, mittel = 100, streuung = 16), 2)
+cv_rauschen <- cv.glmnet(X, y_rauschen, alpha = 1)
+cat("\n--- Nur Rauschen als Zielgroesse ---\n")
+cat("lambda.min:", round(cv_rauschen$lambda.min, 4), "\n")
+cat("lambda.1se:", round(cv_rauschen$lambda.1se, 4), "\n")
+cat("Koeffizienten bei lambda.1se:\n")
+print(coef(cv_rauschen, s = "lambda.1se"))
+```
+
+##### Python
+
+```{python}
+#| label: b2-reg-null-py
+spalten = ["x1", "x2", "z1", "z2", "z3", "z4", "z5", "z6"]
+X = daten[spalten].values
+y_werte = daten["y"].values
+scaler = StandardScaler()
+X_std = scaler.fit_transform(X)
+
+# Grosses Alpha: alle Koeffizienten null
+lasso_gross = Lasso(alpha=100.0, max_iter=10000).fit(X_std, y_werte)
+print("alpha = 100.0")
+print("Koeffizienten:")
+for name, koef in zip(spalten, lasso_gross.coef_):
+    print(f"  {name:4s}  {koef:8.4f}")
+print(f"  Alle null: {np.all(np.abs(lasso_gross.coef_) < 1e-10)}")
+
+# Nur-Rauschen-Daten
+y_rauschen = np.round(normalwerte(77, n, mittel=100, streuung=16), 2)
+cv_rauschen = LassoCV(cv=10, max_iter=10000).fit(X_std, y_rauschen)
+print(f"\n--- Nur Rauschen als Zielgroesse ---")
+print(f"Gewaehltes alpha: {cv_rauschen.alpha_:.4f}")
+print("Koeffizienten:")
+for name, koef in zip(spalten, cv_rauschen.coef_):
+    marker = "(null)" if abs(koef) < 1e-10 else ""
+    print(f"  {name:4s}  {koef:8.4f}  {marker}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Szenario | Ergebnis | Bedeutung |
+|---|---|---|
+| Lambda deutlich grösser als lambda.max | alle Koeffizienten exakt null | das Modell sagt für jeden Fall denselben Wert vorher (den Mittelwert von y) |
+| Nur-Rauschen-Daten, Lasso mit CV | die meisten oder alle Koeffizienten null | es gibt kein Signal zu finden, und das Lasso erkennt das |
+
+::: {.note-box}
+**Ein leeres Modell ist kein Fehler.** Wenn das Lasso alle Koeffizienten auf
+null setzt, bedeutet das: Die Daten enthalten kein Signal, das stark genug ist,
+um den Strafterm zu überwinden. Das ist eine ehrliche Antwort. Die Alternative
+(ein überangepasstes Modell mit zufälligen Koeffizienten) wäre schlechter.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Bei sehr grossem Lambda oder fehlendem Signal setzt das Lasso alle
+> Koeffizienten auf null. Das resultierende Modell sagt den Mittelwert von y
+> vorher. Das ist kein Versagen des Verfahrens, sondern ein korrekter Befund:
+> Es gibt nichts Verlässliches zu finden.
+
+### Beispiel 3: Korrelierte Prädiktoren
+
+#### Frage und Datenlage
+
+Drei Prädiktoren messen im Wesentlichen dasselbe (Korrelation > 0.9). Wie
+unterscheiden sich Ridge und Lasso in diesem Fall?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-reg-korr-daten-r
+M <- normalmatrix(31, n, 3)
+basis   <- M[, 1]
+korr_x1 <- round(10 + 3 * basis + 0.5 * M[, 2], 2)
+korr_x2 <- round(10 + 3 * basis + 0.5 * M[, 3], 2)
+korr_x3 <- round(10 + 3 * basis + 0.5 * normalwerte(55, n), 2)
+
+y_korr <- round(50 + 2 * basis + 4 * normalwerte(66, n), 2)
+
+korr_daten <- data.frame(
+  y  = y_korr,
+  k1 = korr_x1,
+  k2 = korr_x2,
+  k3 = korr_x3
+)
+
+cat("Korrelationen:\n")
+print(round(cor(korr_daten[, c("k1", "k2", "k3")]), 3))
+```
+
+```{r}
+#| label: b3-reg-korr-vergleich-r
+X_korr <- as.matrix(korr_daten[, c("k1", "k2", "k3")])
+
+cv_ridge_k <- cv.glmnet(X_korr, y_korr, alpha = 0)
+cv_lasso_k <- cv.glmnet(X_korr, y_korr, alpha = 1)
+cv_enet_k  <- cv.glmnet(X_korr, y_korr, alpha = 0.5)
+
+cat("--- Ridge bei lambda.1se ---\n")
+print(round(as.matrix(coef(cv_ridge_k, s = "lambda.1se")), 4))
+
+cat("\n--- Lasso bei lambda.1se ---\n")
+print(coef(cv_lasso_k, s = "lambda.1se"))
+
+cat("\n--- Elastic Net (alpha=0.5) bei lambda.1se ---\n")
+print(coef(cv_enet_k, s = "lambda.1se"))
+```
+
+##### Python
+
+```{python}
+#| label: b3-reg-korr-daten-py
+M = normalmatrix(31, n, 3)
+basis = M[:, 0]
+korr_x1 = np.round(10 + 3 * basis + 0.5 * M[:, 1], 2)
+korr_x2 = np.round(10 + 3 * basis + 0.5 * M[:, 2], 2)
+korr_x3 = np.round(10 + 3 * basis + 0.5 * normalwerte(55, n), 2)
+
+y_korr = np.round(50 + 2 * basis + 4 * normalwerte(66, n), 2)
+
+korr_daten_py = pd.DataFrame({
+    "y": y_korr, "k1": korr_x1, "k2": korr_x2, "k3": korr_x3
+})
+
+print("Korrelationen:")
+print(korr_daten_py[["k1", "k2", "k3"]].corr().round(3))
+```
+
+```{python}
+#| label: b3-reg-korr-vergleich-py
+X_korr = korr_daten_py[["k1", "k2", "k3"]].values
+scaler_k = StandardScaler()
+X_korr_std = scaler_k.fit_transform(X_korr)
+
+cv_ridge_k = RidgeCV(alphas=np.logspace(-2, 4, 200), cv=10).fit(X_korr_std, y_korr)
+cv_lasso_k = LassoCV(cv=10, max_iter=10000).fit(X_korr_std, y_korr)
+cv_enet_k = ElasticNetCV(l1_ratio=0.5, cv=10, max_iter=10000).fit(X_korr_std, y_korr)
+
+print("--- Ridge ---")
+for name, koef in zip(["k1", "k2", "k3"], cv_ridge_k.coef_):
+    print(f"  {name}  {koef:8.4f}")
+
+print("\n--- Lasso ---")
+for name, koef in zip(["k1", "k2", "k3"], cv_lasso_k.coef_):
+    marker = "(null)" if abs(koef) < 1e-10 else ""
+    print(f"  {name}  {koef:8.4f}  {marker}")
+
+print("\n--- Elastic Net (l1_ratio=0.5) ---")
+for name, koef in zip(["k1", "k2", "k3"], cv_enet_k.coef_):
+    marker = "(null)" if abs(koef) < 1e-10 else ""
+    print(f"  {name}  {koef:8.4f}  {marker}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Methode | k1 | k2 | k3 | Beobachtung |
+|---|---|---|---|---|
+| Ridge | alle drei erhalten ähnliche Koeffizienten | | | verteilt das Gewicht gleichmässig |
+| Lasso | einer erhält alles, die anderen null | | | wählt willkürlich einen der korrelierten Prädiktoren |
+| Elastic Net | Mittelweg: weniger extrem als Lasso | | | Kompromiss zwischen beiden |
+
+::: {.note-box}
+**Welchen der korrelierten Prädiktoren das Lasso behält, ist instabil.** Bei
+leicht veränderten Daten kann ein anderer übrig bleiben. Das ist kein Fehler,
+sondern eine Eigenschaft des Verfahrens. Wer wissen will, dass alle drei
+zusammenhängen, braucht Ridge oder Elastic Net.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Bei drei hoch korrelierten Prädiktoren (r > 0.9) verteilt Ridge das Gewicht
+> gleichmässig auf alle drei, während Lasso willkürlich einen auswählt und die
+> anderen auf null setzt. Elastic Net liegt dazwischen. Ridge ist deshalb
+> vorzuziehen, wenn alle korrelierten Prädiktoren inhaltlich relevant sind;
+> Lasso, wenn ein sparsames Modell gewünscht ist.
+
+### Beispiel 4: lambda.min vs. lambda.1se
+
+#### Frage und Datenlage
+
+Derselbe Datensatz wie in Beispiel 1. Wie unterscheiden sich die Modelle
+bei `lambda.min` (bester CV-Fehler) und `lambda.1se` (sparsamste Version
+innerhalb eines Standardfehlers)? Wann ist welches vorzuziehen?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b4-reg-lambda-r
+#| fig-cap: "CV-Fehler als Funktion von Lambda. Vertikale Linien: lambda.min (links) und lambda.1se (rechts)."
+X <- as.matrix(daten[, c("x1", "x2", paste0("z", 1:6))])
+y <- daten$y
+
+cv_lasso <- cv.glmnet(X, y, alpha = 1)
+plot(cv_lasso)
+
+cat("lambda.min:", round(cv_lasso$lambda.min, 4), "\n")
+cat("lambda.1se:", round(cv_lasso$lambda.1se, 4), "\n\n")
+
+cat("--- Koeffizienten bei lambda.min ---\n")
+koef_min <- coef(cv_lasso, s = "lambda.min")
+print(koef_min)
+
+cat("\n--- Koeffizienten bei lambda.1se ---\n")
+koef_1se <- coef(cv_lasso, s = "lambda.1se")
+print(koef_1se)
+
+cat("\nNonzero bei lambda.min:", sum(koef_min[-1] != 0), "\n")
+cat("Nonzero bei lambda.1se:", sum(koef_1se[-1] != 0), "\n")
+```
+
+```{r}
+#| label: b4-reg-cv-vergleich-r
+# CV-Fehler bei beiden Lambda-Werten
+idx_min <- which(cv_lasso$lambda == cv_lasso$lambda.min)
+idx_1se <- which(cv_lasso$lambda == cv_lasso$lambda.1se)
+
+cat("CV-MSE bei lambda.min:", round(cv_lasso$cvm[idx_min], 4),
+    "+/-", round(cv_lasso$cvsd[idx_min], 4), "\n")
+cat("CV-MSE bei lambda.1se:", round(cv_lasso$cvm[idx_1se], 4),
+    "+/-", round(cv_lasso$cvsd[idx_1se], 4), "\n")
+```
+
+##### Python
+
+```{python}
+#| label: b4-reg-lambda-py
+#| fig-cap: "CV-Fehler als Funktion von log10(alpha). Die vertikale Linie zeigt das gewaehlte alpha."
+spalten = ["x1", "x2", "z1", "z2", "z3", "z4", "z5", "z6"]
+X = daten[spalten].values
+y_werte = daten["y"].values
+scaler = StandardScaler()
+X_std = scaler.fit_transform(X)
+
+cv_lasso = LassoCV(cv=10, max_iter=10000).fit(X_std, y_werte)
+
+# CV-Fehlerkurve
+mse_mittel = cv_lasso.mse_path_.mean(axis=1)
+mse_se = cv_lasso.mse_path_.std(axis=1) / np.sqrt(cv_lasso.mse_path_.shape[1])
+
+fig, ax = plt.subplots(figsize=(7, 4.2))
+ax.semilogx(cv_lasso.alphas_, mse_mittel, color="steelblue")
+ax.fill_between(cv_lasso.alphas_, mse_mittel - mse_se, mse_mittel + mse_se,
+                alpha=0.2, color="steelblue")
+ax.axvline(cv_lasso.alpha_, color="red", linestyle="--",
+           label=f"alpha = {cv_lasso.alpha_:.4f}")
+ax.set_xlabel("alpha (= glmnet lambda)")
+ax.set_ylabel("Mittlerer CV-MSE")
+ax.set_title("Lasso: Kreuzvalidierungsfehler")
+ax.legend()
+plt.tight_layout()
+_x = plt.savefig("b4_cv.png")
+plt.show()
+
+print(f"Gewaehltes alpha: {cv_lasso.alpha_:.4f}")
+print("\nKoeffizienten (standardisierte Skala):")
+for name, koef in zip(spalten, cv_lasso.coef_):
+    marker = "(null)" if abs(koef) < 1e-10 else ""
+    print(f"  {name:4s}  {koef:8.4f}  {marker}")
+print(f"\nNonzero: {np.sum(np.abs(cv_lasso.coef_) > 1e-10)}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Modell | Lambda/Alpha | Nonzero | CV-MSE | Beobachtung |
+|---|---|---|---|---|
+| `lambda.min` | kleiner | mehr | minimal besser | nimmt evtl. Rauschgrössen mit, weil ihr zufälliger Beitrag den CV-Fehler gerade noch senkt |
+| `lambda.1se` | grösser | weniger | kaum schlechter | sparsameres Modell, verzichtet auf zweifelhafte Prädiktoren |
+
+Die Differenz im CV-Fehler zwischen den beiden liegt innerhalb eines
+Standardfehlers. Genau das ist die Definition von `lambda.1se`: das grösste
+Lambda, bei dem der Fehler noch im 1-SE-Band um das Minimum liegt.
+
+| Ziel | Wahl |
+|---|---|
+| Maximale Vorhersagegenauigkeit | `lambda.min` |
+| Interpretierbarkeit und Robustheit | `lambda.1se` |
+| Variablenselektion (welche Prädiktoren zählen?) | `lambda.1se` |
+| Sehr viele Prädiktoren, wenig Fälle | `lambda.1se` (Überanpassung vermeiden) |
+
+#### Interpretation und Ergebnissatz
+
+> Das Lasso-Modell bei `lambda.1se` enthält weniger Prädiktoren als bei
+> `lambda.min`, bei einem CV-Fehler, der innerhalb eines Standardfehlers des
+> Minimums liegt. Für die Variablenselektion und die Interpretierbarkeit ist
+> `lambda.1se` vorzuziehen; für reine Vorhersage `lambda.min`.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+Ein Lasso-Modell setzt drei von acht Koeffizienten auf null. Was bedeutet
+das für die Interpretation der fünf verbleibenden Prädiktoren?
+
+- [x] Sie wurden vom Lasso als die nützlichsten für die Vorhersage ausgewählt;
+      ob sie kausal wirken, sagt das Verfahren nicht ~ Richtig. Lasso wählt
+      nach Vorhersagekraft, nicht nach kausaler Relevanz. Ausserdem kann ein
+      auf null gesetzter Prädiktor durch einen korrelierten vertreten werden.
+- [ ] Sie sind statistisch signifikant ~ Regularisierung liefert keine p-Werte.
+      "Signifikant" ist hier der falsche Begriff.
+- [ ] Die drei anderen Prädiktoren haben keinen Zusammenhang mit y ~ Nicht
+      zwingend. Sie können durch korrelierte Prädiktoren vertreten werden, oder
+      ihr Effekt ist zu schwach, um den Strafterm zu überwinden.
+:::
+
+::: {.quiz}
+Zwei Prädiktoren korrelieren mit r = 0.95. Wie verhalten sich Ridge und Lasso?
+
+- [x] Ridge verteilt das Gewicht auf beide, Lasso wählt willkürlich einen aus ~
+      Richtig. Das ist ein zentraler Unterschied. Wenn beide inhaltlich relevant
+      sind, ist Ridge besser; wenn ein sparsames Modell gewünscht ist, Lasso
+      oder Elastic Net.
+- [ ] Beide schliessen einen der beiden aus ~ Das trifft nur auf Lasso zu.
+- [ ] Beide behalten beide Prädiktoren mit ähnlichen Koeffizienten ~ Das trifft
+      nur auf Ridge zu.
+:::
+
+::: {.quiz}
+In R heisst der Strafparameter `lambda`, in scikit-learn `alpha`. Was
+bedeutet das für die Praxis?
+
+- [x] Die Werte sind nicht direkt vergleichbar, weil auch die Zielfunktionen
+      unterschiedlich skaliert sind ~ Richtig. Wer dasselbe Modell in R und
+      Python anpassen will, kann nicht einfach denselben Zahlenwert einsetzen.
+      Die Ergebnisse bei optimalem Lambda/alpha sind aber vergleichbar.
+- [ ] Man muss nur den Namen ändern, die Werte sind identisch ~ Die Skalierung
+      der Zielfunktion unterscheidet sich, also sind auch die optimalen Werte
+      verschieden.
+- [ ] Python hat keine L2-Regularisierung ~ Doch: `Ridge` und
+      `LogisticRegression(penalty="l2")`.
+:::
+
+::: {.quiz}
+Der CV-Fehler bei `lambda.1se` ist 5 Prozent grösser als bei `lambda.min`,
+liegt aber innerhalb eines Standardfehlers. Was ist vorzuziehen?
+
+- [x] Meistens `lambda.1se`, weil das sparsamere Modell robuster ist ~
+      Richtig. Die 1-SE-Regel ist eine konservative Wahl, die Überanpassung
+      vermeidet. Der kleine Mehlerunterschied liegt im Bereich der zufälligen
+      Schwankung der Kreuzvalidierung.
+- [ ] Immer `lambda.min`, weil es den kleinsten Fehler hat ~ Der Unterschied
+      liegt innerhalb der Messungenauigkeit. Das sparsamere Modell hat andere
+      Vorteile.
+- [ ] Keines von beiden, man braucht einen Test ~ Lambda wird nicht per Test
+      gewählt, sondern per Kreuzvalidierung.
+:::
+
+## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 6](https://www.statlearning.com/)
+- [glmnet Vignette](https://glmnet.stanford.edu/articles/glmnet.html)
+- [scikit-learn: Linear Models](https://scikit-learn.org/stable/modules/linear_model.html)
+- [Modellauswahl](modellauswahl.qmd)
+- [Multiple lineare Regression](multiple-lineare-regression.qmd)
+- [Regressionsdiagnostik](regressionsdiagnostik.qmd)

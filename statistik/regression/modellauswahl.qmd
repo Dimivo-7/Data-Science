@@ -74,9 +74,9 @@ prüfen, welches Auswahlverfahren sie findet.
 | Fragestellung | Welche Prädiktoren gehören ins Modell? |
 | Eingang | mehrere angepasste Modelle auf denselben Daten |
 | Was die Verfahren liefern | F-Test für geschachtelte Modelle, AIC und BIC für beliebige, Kreuzvalidierungsfehler als direkte Schätzung der Vorhersagegüte |
-| R-Funktionen | `anova(m1, m2)`, `AIC()`, `BIC()`, `step()` |
-| Python-Funktionen | `sm.stats.anova_lm(m1, m2)`, `modell.aic`, `modell.bic` |
-| Verwandte Methoden | [multiple lineare Regression](multiple-lineare-regression.qmd), [Regressionsdiagnostik](regressionsdiagnostik.qmd), [Klassifikationsgüte](klassifikationsguete.qmd) |
+| R-Funktionen | `anova(m1, m2)`, `AIC()`, `BIC()`, `step()`, `leaps::regsubsets()` |
+| Python-Funktionen | `sm.stats.anova_lm(m1, m2)`, `modell.aic`, `modell.bic`, `itertools` + `statsmodels` |
+| Verwandte Methoden | [multiple lineare Regression](multiple-lineare-regression.qmd), [Regressionsdiagnostik](regressionsdiagnostik.qmd), [Klassifikationsgüte](klassifikationsguete.qmd), [Kreuzvalidierung](kreuzvalidierung.qmd), [Regularisierung](regularisierung.qmd), [Generalisierung](generalisierung.qmd) |
 
 ## Wann diese Methode, wann nicht
 
@@ -109,10 +109,40 @@ darin, wie teuer ein zusätzlicher Parameter ist.
 |---|---|---|---|
 | R² | erklärter Anteil | **null** | wählt immer das grösste Modell |
 | adjustiertes R² | R² mit Abzug je Parameter | klein | zu nachsichtig, siehe Beispiel 2 |
+| Mallows $C_p$ | $\text{RSS}_k / \hat\sigma^2 - n + 2k$ | 2 (skaliert mit $\hat\sigma^2$) | asymptotisch gleich wie AIC bei linearen Modellen |
 | F-Test | Vergleich zweier geschachtelter Modelle | über das Signifikanzniveau | nur für geschachtelte Modelle |
 | AIC | $-2\log L + 2k$ | 2 | zielt auf gute Vorhersage |
 | BIC | $-2\log L + \log(n)\,k$ | $\log(n)$, hier 5.01 | zielt auf das wahre Modell |
 | Kreuzvalidierung | gemessener Fehler auf ungesehenen Daten | keine Formel, direkte Messung | die ehrlichste Antwort, aber rechenaufwendig |
+
+### Best-Subset-Auswahl
+
+Statt schrittweise vorzugehen, prüft die Best-Subset-Auswahl **alle** $2^p$
+Teilmengen der Prädiktoren und wählt für jede Modellgrösse das beste Modell
+nach RSS. Die Gesamtauswahl erfolgt dann über AIC, BIC, $C_p$ oder
+Kreuzvalidierung.
+
+Der Vorteil: Sie übersieht keine gute Kombination. Der Preis: Bei $p = 20$
+sind es bereits über eine Million Modelle, bei $p = 30$ über eine Milliarde.
+Deshalb ist Best Subset nur bei wenigen Prädiktoren (grob $p \le 15$ bis
+$20$) praktikabel.
+
+In R leistet das `leaps::regsubsets()`, in Python die Kombination aus
+`itertools.combinations` mit `statsmodels` oder das Paket `mlxtend`
+(`ExhaustiveFeatureSelector`).
+
+### Mallows $C_p$
+
+$C_p$ misst, wie weit die Vorhersagen eines Modells mit $k$ Parametern im
+Mittel vom wahren Erwartungswert abweichen. Für das wahre Modell gilt
+$C_p \approx k$, für zu kleine Modelle ist $C_p$ deutlich grösser als $k$
+(wegen Bias), für zu grosse ist $C_p$ nahe an $k$, aber nicht kleiner.
+
+Die Beziehung zu AIC: Bei linearen Modellen mit normalverteilten Fehlern
+sind $C_p$ und AIC äquivalent (sie liefern dieselbe Rangfolge). $C_p$ hat
+den Vorteil, dass sein Wert eine direkte Interpretation hat (Abstand in
+Einheiten von $\hat\sigma^2$), den Nachteil, dass er $\hat\sigma^2$ aus dem
+vollen Modell braucht und nur für lineare Modelle definiert ist.
 
 Zwei Modelle heissen **geschachtelt**, wenn das kleinere aus dem grösseren
 entsteht, indem man Koeffizienten auf null setzt. Nur dann ist der F-Test
@@ -141,6 +171,8 @@ das grössere praktisch ausgeschlossen.
 | `BIC()` | dasselbe mit strengerem Abzug | wählt bei grossem n deutlich sparsamer |
 | `Adjusted R-squared` | R² mit Abzug | zu nachsichtig; steigt oft noch, wenn AIC schon fällt |
 | `step()` in R | schrittweise Auswahl | die Ausgabe sieht objektiv aus und ist es nicht, siehe Beispiel 3 |
+| `regsubsets()` in R | Best-Subset-Auswahl, ein bestes Modell je Grösse | bei mehr als ~15 Prädiktoren zu langsam |
+| $C_p$ (`summary(regsubsets)$cp`) | Vorhersageabweichung, kleiner ist besser | $C_p \approx k$ für das wahre Modell; braucht $\hat\sigma^2$ aus dem vollen Modell |
 | Kreuzvalidierungsfehler | geschätzter Fehler auf neuen Daten | hängt an der Aufteilung; bei kleinen Datensätzen schwankt er merklich |
 
 ## Interpretationsfallen
@@ -181,7 +213,9 @@ keine Formalie: Er ändert die Deutung aller p-Werte im gewählten Modell.
 | [Regressionsdiagnostik](regressionsdiagnostik.qmd) | die Frage lautet, ob ein Modell zulässig ist |
 | [Multiple lineare Regression](multiple-lineare-regression.qmd) | die Schätzung eines feststehenden Modells |
 | [Klassifikationsgüte](klassifikationsguete.qmd) | die Zielgrösse ist binär |
-| Regularisierung (Ridge, Lasso) | viele Prädiktoren im Verhältnis zu n; sie wählen und schätzen in einem Schritt |
+| [Regularisierung](regularisierung.qmd) (Ridge, Lasso) | viele Prädiktoren im Verhältnis zu n; sie wählen und schätzen in einem Schritt |
+| [Kreuzvalidierung](kreuzvalidierung.qmd) | die Vorhersagegüte soll direkt gemessen statt geschätzt werden |
+| [Generalisierung](generalisierung.qmd) | die Frage, warum ein Modell mit guter Anpassung schlecht vorhersagen kann |
 
 ## Beispiele
 
@@ -644,4 +678,8 @@ Kreuzvalidierungsfehler. Was liegt vor?
 
 - [An Introduction to Statistical Learning, Kapitel 6](https://www.statlearning.com/)
 - [R-Dokumentation zu `step`](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/step.html)
+- [R-Dokumentation zu `leaps::regsubsets`](https://cran.r-project.org/package=leaps)
+- [Generalisierung](generalisierung.qmd)
+- [Kreuzvalidierung](kreuzvalidierung.qmd)
+- [Regularisierung](regularisierung.qmd)
 - [Regressionsdiagnostik](regressionsdiagnostik.qmd)

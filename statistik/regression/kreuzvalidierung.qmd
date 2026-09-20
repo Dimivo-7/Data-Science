@@ -1,0 +1,671 @@
+---
+title: "Kreuzvalidierung"
+description: "Validierungsansatz, LOOCV, k-fache CV und wie man k wählt."
+categories: ["Regression", "Modellvalidierung", "Resampling", "Interpretation", "R", "Python"]
+quelle: ["STATDA"]
+seitentyp: methode
+stand: entwurf
+order: 38
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+library(boot)
+
+n <- 150
+lauf <- 0:(n - 1)
+
+richtung <- function(faktor) qnorm(((lauf * faktor) %% n + 0.5) / n)
+
+x1 <- round(20 + 5 * richtung(1), 2)
+x2 <- round(50 + 10 * richtung(23), 2)
+
+daten <- data.frame(
+  y = round(100 + 2.5 * x1 - 0.8 * x2 + 6 * richtung(41), 2),
+  x1 = x1,
+  x2 = x2
+)
+
+for (k in 1:6) {
+  daten[[paste0("z", k)]] <- round(richtung(c(7, 11, 13, 17, 19, 29)[k]), 3)
+}
+```
+
+```{python}
+#| label: setup-python
+#| include: false
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+from scipy import stats
+from sklearn.model_selection import cross_val_score, KFold, LeaveOneOut
+from sklearn.linear_model import LinearRegression
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+n = 150
+lauf = np.arange(n)
+
+
+def richtung(faktor):
+    return stats.norm.ppf(((lauf * faktor) % n + 0.5) / n)
+
+
+x1 = np.round(20 + 5 * richtung(1), 2)
+x2 = np.round(50 + 10 * richtung(23), 2)
+
+daten = pd.DataFrame({
+    "y": np.round(100 + 2.5 * x1 - 0.8 * x2 + 6 * richtung(41), 2),
+    "x1": x1,
+    "x2": x2,
+})
+
+for k, faktor in enumerate([7, 11, 13, 17, 19, 29], start=1):
+    daten[f"z{k}"] = np.round(richtung(faktor), 3)
+```
+
+Alle Beispiele rechnen mit demselben Datensatz wie auf der Seite
+[Modellauswahl](modellauswahl.qmd): 150 Fälle, zwei Prädiktoren `x1` und `x2`,
+die tatsächlich auf `y` wirken, und sechs Grössen `z1` bis `z6`, die
+konstruktionsbedingt wirkungslos sind. Weil die Wahrheit bekannt ist, lässt
+sich prüfen, ob die Kreuzvalidierung sie findet.
+
+## Kurzsteckbrief
+
+| | |
+|---|---|
+| Fragestellung | Wie gut sagt ein Modell neue, ungesehene Daten vorher? |
+| Eingang | ein oder mehrere angepasste Modelle, dieselben Daten |
+| Was das Verfahren liefert | geschätzter Vorhersagefehler (MSE oder RMSE) auf Daten, die nicht zur Schätzung benutzt wurden |
+| Varianten | Validation Set, Leave-One-Out (LOOCV), k-fache CV, wiederholte CV |
+| R-Funktionen | `boot::cv.glm()`, manuell mit `lm()` und Faltenzuordnung |
+| Python-Funktionen | `sklearn.model_selection.cross_val_score`, `KFold`, `LeaveOneOut` |
+| Verwandte Methoden | [Modellauswahl](modellauswahl.qmd), [Bootstrap-Resampling](../inferenz/bootstrap-resampling.qmd), [Regressionsdiagnostik](regressionsdiagnostik.qmd) |
+
+## Wann diese Methode, wann nicht
+
+| Situation | Kreuzvalidierung geeignet? |
+|---|---|
+| Vorhersagegüte eines Modells ehrlich schätzen | ja, das ist ihr Kernzweck |
+| Zwei oder mehr Modelle vergleichen | ja, über den CV-Fehler |
+| Hyperparameter wählen (Polynomgrad, Regularisierungsstärke) | ja |
+| Das wahre Modell identifizieren | bedingt; BIC ist dafür oft besser |
+| Konfidenzintervalle für Koeffizienten | nein; dafür eignet sich der [Bootstrap](../inferenz/bootstrap-resampling.qmd) |
+| Zeitreihen | nicht mit zufälligen Splits; siehe [Zeitreihen](../zeitreihen/index.qmd) |
+
+## Grundidee und Modell
+
+### Validation-Set-Ansatz
+
+Die einfachste Idee: Die Daten werden in eine Trainings- und eine Testmenge
+aufgeteilt. Das Modell wird nur auf der Trainingsmenge geschätzt, der Fehler
+nur auf der Testmenge gemessen.
+
+Vorteile: einfach, schnell. Nachteile: Der Fehler hängt stark davon ab, welche
+Fälle in welcher Menge landen. Bei kleinen Datensätzen ist das Ergebnis
+instabil, und ein grosser Testanteil verschwendet Trainingsdaten.
+
+### Leave-One-Out-Kreuzvalidierung (LOOCV)
+
+LOOCV treibt die Idee auf die Spitze: Jede Beobachtung wird einmal
+zurückgehalten, das Modell auf den übrigen $n - 1$ Fällen geschätzt, und der
+Fehler am einen zurückgehaltenen Fall gemessen. Der CV-Fehler ist der
+Durchschnitt der $n$ quadrierten Abweichungen:
+
+$$
+\text{CV}_{(n)} = \frac{1}{n} \sum_{i=1}^{n} \left( y_i - \hat{y}_{(i)} \right)^2
+$$
+
+Bei linearen Modellen gibt es eine Abkürzungsformel, die die $n$ Modelle nicht
+einzeln anpassen muss. Sie nutzt die Hat-Werte $h_{ii}$ aus der einzigen
+Anpassung auf allen Daten:
+
+$$
+\text{CV}_{(n)} = \frac{1}{n} \sum_{i=1}^{n} \left( \frac{y_i - \hat{y}_i}{1 - h_{ii}} \right)^2
+$$
+
+Das spart enorm Rechenzeit und liefert exakt dasselbe Ergebnis.
+
+### k-fache Kreuzvalidierung
+
+Die Daten werden in $k$ gleich grosse Teile (Falten) aufgeteilt. Für jede
+Falte wird das Modell auf den $k - 1$ übrigen Falten geschätzt und der Fehler
+auf der zurückgehaltenen Falte gemessen. Der CV-Fehler ist der Durchschnitt
+über alle $k$ Falten.
+
+LOOCV ist der Spezialfall $k = n$. In der Praxis sind $k = 5$ und $k = 10$
+üblich.
+
+### Wahl von k: Bias-Varianz-Abwägung der CV selbst
+
+Die Kreuzvalidierung selbst unterliegt einer Bias-Varianz-Abwägung:
+
+| k | Bias des CV-Fehlers | Varianz des CV-Fehlers | Rechenaufwand |
+|---|---|---|---|
+| $k = n$ (LOOCV) | fast null, weil das Training fast alle Daten nutzt | hoch, weil die $n$ Trainingsmengen stark überlappen und die Fehlerschätzungen korreliert sind | $n$ Modellanpassungen (bei linearen Modellen per Formel vermeidbar) |
+| $k = 5$ | leicht positiv, weil 20 % der Daten fehlen | niedrig, weniger Überlappung | 5 Modellanpassungen |
+| $k = 10$ | mässig | mässig | 10 Modellanpassungen |
+
+**$k = 10$ gilt als bester Kompromiss** und ist die Standardempfehlung. $k = 5$
+ist vertretbar, wenn der Datensatz gross ist. LOOCV lohnt sich hauptsächlich
+bei sehr kleinen Datensätzen oder wenn die Abkürzungsformel greift.
+
+### Wiederholte Kreuzvalidierung
+
+Weil die Aufteilung in Falten zufällig ist, schwankt der CV-Fehler. Bei
+wiederholter CV (repeated CV) wird die gesamte k-fache CV mehrfach mit
+verschiedenen Aufteilungen durchgeführt und der Fehler gemittelt. Das
+stabilisiert das Ergebnis, vervielfacht aber die Rechenzeit.
+
+### CV bei Klassifikation
+
+Bei binärer Zielgrösse ersetzt die Fehlklassifikationsrate den MSE. Stratified
+CV stellt sicher, dass jede Falte denselben Anteil der Klassen enthält wie der
+Gesamtdatensatz. Das ist besonders bei unbalancierten Klassen wichtig, damit
+keine Falte nur Fälle einer Klasse enthält.
+
+### Zeitreihen-CV
+
+Bei Zeitreihen sind zufällige Splits falsch, weil sie die zeitliche Ordnung
+zerstören. Stattdessen kommt eine Vorwärtsvalidierung zum Einsatz: Das Modell
+wird auf den Daten bis Zeitpunkt $t$ geschätzt und auf den Daten danach
+geprüft, und $t$ wird schrittweise nach vorne geschoben. Details auf der Seite
+[Zeitreihen](../zeitreihen/index.qmd).
+
+### Bootstrap zur Modellbewertung
+
+Der Bootstrap zieht Stichproben mit Zurücklegen aus den Daten. Er kann
+ebenfalls für Modellbewertung eingesetzt werden, neigt aber dazu, den
+Vorhersagefehler zu unterschätzen, weil Trainingsdaten und Testdaten
+überlappen. Die Variante ".632 Bootstrap" korrigiert das teilweise. Für
+Konfidenzintervalle und Standardfehler ist der Bootstrap die bessere Wahl;
+für Vorhersagegüte ist die Kreuzvalidierung direkter. Mehr dazu auf der Seite
+[Bootstrap-Resampling](../inferenz/bootstrap-resampling.qmd).
+
+## Voraussetzungen und ihre Prüfung
+
+Die Kreuzvalidierung selbst hat wenige Voraussetzungen:
+
+| Voraussetzung | Prüfung | Folge bei Verletzung |
+|---|---|---|
+| Beobachtungen sind unabhängig | Fachliche Überlegung; bei Zeitreihen oder gruppierten Daten andere CV-Strategie nötig | Der CV-Fehler ist zu optimistisch |
+| Jede Falte ist repräsentativ | Bei kleinem n oder seltenen Klassen prüfen, ob die Verteilung in den Falten stimmt | Instabile Ergebnisse; stratified CV oder wiederholte CV hilft |
+| Kein Datenleck | Alle Vorverarbeitungsschritte (Variablenselektion, Skalierung) müssen **innerhalb** jeder Falte geschehen, nicht vorher | Massiv zu optimistischer Fehler; siehe Beispiel 2 |
+
+Die dritte Zeile ist die wichtigste und häufigste Fehlerquelle. Sie wird in
+Beispiel 2 demonstriert.
+
+## Output lesen
+
+| Grösse | Was sie sagt | Faustregel oder Falle |
+|---|---|---|
+| `cv.glm(...)$delta[1]` (R) | roher CV-Fehler (Durchschnitt der quadrierten Abweichungen über alle Falten) | das ist der MSE, nicht der RMSE; für die Wurzel selbst sorgen |
+| `cv.glm(...)$delta[2]` (R) | bias-korrigierter CV-Fehler | die Korrektur ist meist winzig; bei grossem n praktisch identisch mit delta[1] |
+| `cross_val_score(..., scoring="neg_mean_squared_error")` (Python) | Array mit einem Wert je Falte; **negativ** vorzeichnet | sklearn maximiert Scores; MSE ist ein Fehler, daher das Minuszeichen. `−np.mean(scores)` ergibt den MSE |
+| Standardabweichung der Falten-Scores | wie stabil der CV-Fehler über die Falten ist | grosse Streuung deutet auf zu wenige Daten je Falte oder heterogene Daten hin |
+| LOOCV-Formel mit Hat-Werten | exakter LOOCV-MSE ohne $n$ einzelne Anpassungen | nur für lineare Modelle; bei nicht-linearen Modellen muss tatsächlich $n$-mal gefittet werden |
+
+## Interpretationsfallen
+
+- **Variablenselektion vor CV ist ein Datenleck.** Wer die besten Prädiktoren
+  auf allen Daten auswählt und dann kreuzvalidiert, misst nicht die
+  Vorhersagegüte, sondern die Fähigkeit, sich an genau diesen Datensatz
+  anzupassen. Die Selektion muss in jede Falte hinein.
+- **Der CV-Fehler ist selbst eine Schätzung mit Varianz.** Ein Unterschied von
+  0.01 im RMSE zwischen zwei Modellen kann rein zufällig sein. Wiederholte CV
+  und die Streuung über die Falten geben einen Anhaltspunkt.
+- **LOOCV hat hohe Varianz.** Die $n$ Trainingsmengen überlappen fast
+  vollständig, ihre Fehler sind stark korreliert, und der Durchschnitt glättet
+  weniger, als man bei $n$ Werten erwartet.
+- **Negative Scores in sklearn sind kein Fehler.** sklearn maximiert Scores.
+  Da MSE ein Fehler ist, wird er negiert. `neg_mean_squared_error` liefert
+  negative Werte, die betragsmässig dem MSE entsprechen.
+- **CV vergleicht Modelle, sie validiert sie nicht.** Ein kleiner CV-Fehler
+  heisst nicht, dass das Modell die Daten angemessen beschreibt. Dafür
+  braucht es die [Diagnostik](regressionsdiagnostik.qmd).
+
+## Ergebnis berichten
+
+> Verglichen wurden [Anzahl] Modelle mittels [k]-facher Kreuzvalidierung auf
+> [n] Beobachtungen. Gewählt wurde [Modell] mit einem mittleren
+> Vorhersagefehler (RMSE) von [Wert] (SD über Falten: [Wert]). Das
+> nächstbeste Modell erreichte [Wert]. Die Variablenselektion erfolgte
+> [innerhalb jeder Falte / vorab, und warum].
+
+## Abgrenzung zu verwandten Methoden
+
+| Methode | Wann diese statt der Kreuzvalidierung |
+|---|---|
+| [Modellauswahl mit AIC/BIC](modellauswahl.qmd) | schnelle Rangordnung geschachtelter Modelle ohne Rechenaufwand; AIC ist asymptotisch äquivalent zu LOOCV |
+| [Bootstrap-Resampling](../inferenz/bootstrap-resampling.qmd) | Konfidenzintervalle und Standardfehler für Koeffizienten; für Vorhersagegüte ist CV direkter |
+| [Regressionsdiagnostik](regressionsdiagnostik.qmd) | die Frage ist nicht, welches Modell besser vorhersagt, sondern ob ein gegebenes Modell zulässig ist |
+| [Klassifikationsgüte](klassifikationsguete.qmd) | spezifische Masse für Klassifikation (Sensitivität, Spezifität, AUC) |
+| Regularisierung (Ridge, Lasso) | viele Prädiktoren; CV dient dort zur Wahl der Regularisierungsstärke |
+
+## Beispiele
+
+:::: {.panel-tabset}
+
+### Beispiel 1: k-fache CV und LOOCV im Vergleich
+
+#### Frage und Datenlage
+
+Wie gross ist der Vorhersagefehler des wahren Modells (`x1 + x2`)? Stimmen
+5-fache, 10-fache und Leave-One-Out-Kreuzvalidierung überein?
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b1-cv-rechnung-r
+# --- Manuelle k-fache CV ---
+cv_manuell <- function(formel, k) {
+  falte <- (seq_len(n) - 1) %% k
+  fehler <- sapply(0:(k - 1), function(f) {
+    test <- falte == f
+    modell <- lm(formel, data = daten[!test, ])
+    mean((daten$y[test] - predict(modell, daten[test, ]))^2)
+  })
+  mean(fehler)
+}
+
+mse_5  <- cv_manuell(y ~ x1 + x2, k = 5)
+mse_10 <- cv_manuell(y ~ x1 + x2, k = 10)
+
+# --- LOOCV mit Abkuerzungsformel (Hat-Werte) ---
+m12 <- lm(y ~ x1 + x2, data = daten)
+h   <- hatvalues(m12)
+mse_loo_formel <- mean((residuals(m12) / (1 - h))^2)
+
+# --- LOOCV mit boot::cv.glm ---
+m12_glm <- glm(y ~ x1 + x2, data = daten)
+cv_out  <- cv.glm(daten, m12_glm, K = n)
+
+cat("5-fach  MSE:", round(mse_5, 4), " RMSE:", round(sqrt(mse_5), 4), "\n")
+cat("10-fach MSE:", round(mse_10, 4), " RMSE:", round(sqrt(mse_10), 4), "\n")
+cat("LOOCV (Formel) MSE:", round(mse_loo_formel, 4),
+    " RMSE:", round(sqrt(mse_loo_formel), 4), "\n")
+cat("cv.glm delta[1]:", round(cv_out$delta[1], 4),
+    " delta[2]:", round(cv_out$delta[2], 4), "\n")
+```
+
+##### Python
+
+```{python}
+#| label: b1-cv-rechnung-py
+X = daten[["x1", "x2"]].values
+y = daten["y"].values
+
+modell = LinearRegression()
+
+# --- k-fache CV ---
+scores_5  = cross_val_score(modell, X, y, cv=KFold(n_splits=5, shuffle=False),
+                            scoring="neg_mean_squared_error")
+scores_10 = cross_val_score(modell, X, y, cv=KFold(n_splits=10, shuffle=False),
+                            scoring="neg_mean_squared_error")
+
+mse_5  = -np.mean(scores_5)
+mse_10 = -np.mean(scores_10)
+
+# --- LOOCV ---
+scores_loo = cross_val_score(modell, X, y, cv=LeaveOneOut(),
+                             scoring="neg_mean_squared_error")
+mse_loo = -np.mean(scores_loo)
+
+# --- LOOCV mit Abkuerzungsformel ---
+m12 = smf.ols("y ~ x1 + x2", data=daten).fit()
+H = m12.get_influence().hat_matrix_diag
+mse_loo_formel = np.mean((m12.resid / (1 - H)) ** 2)
+
+print(f"5-fach  MSE: {mse_5:.4f}  RMSE: {np.sqrt(mse_5):.4f}")
+print(f"10-fach MSE: {mse_10:.4f}  RMSE: {np.sqrt(mse_10):.4f}")
+print(f"LOOCV       MSE: {mse_loo:.4f}  RMSE: {np.sqrt(mse_loo):.4f}")
+print(f"LOOCV (Formel) MSE: {mse_loo_formel:.4f}  RMSE: {np.sqrt(mse_loo_formel):.4f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Verfahren | MSE | RMSE | Wie das zu lesen ist |
+|---|---|---|---|
+| 5-fach CV | ca. 35.3 | ca. 5.94 | Die Falten sind deterministisch (jeder fünfte Fall); das stabilisiert den Vergleich. |
+| 10-fach CV | ca. 35.7 | ca. 5.97 | Sehr nah am 5-fachen Ergebnis. |
+| LOOCV (brute force) | ca. 36.2 | ca. 6.02 | $n = 150$ einzelne Anpassungen, rechnerisch aufwendig. |
+| LOOCV (Hat-Formel) | ca. 36.2 | ca. 6.02 | Exakt dasselbe Ergebnis aus einer einzigen Anpassung. |
+| `cv.glm delta[1]` | ca. 36.2 | | Roh-CV-Fehler, identisch mit LOOCV. |
+| `cv.glm delta[2]` | ca. 36.2 | | Bias-korrigiert; bei diesem n praktisch identisch mit delta[1]. |
+
+Die drei Varianten liefern fast denselben Fehler. Das ist typisch, wenn das
+Modell nicht überangepasst ist: Dann spielt es kaum eine Rolle, ob 80 % oder
+99 % der Daten zum Training genutzt werden.
+
+::: {.note-box}
+**delta[1] und delta[2] in `cv.glm`.** `delta[1]` ist der rohe CV-MSE.
+`delta[2]` wendet eine Bias-Korrektur an, die den Unterschied zwischen dem
+Trainings- und dem Testfehler berücksichtigt. Bei grossem n und einfachen
+Modellen ist die Korrektur vernachlässigbar. Beide Werte sind MSE, nicht RMSE.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Für das Modell `y ~ x1 + x2` liefern 5-fache, 10-fache und
+> Leave-One-Out-Kreuzvalidierung übereinstimmend einen RMSE von etwa 5.9 bis
+> 6.0. Die LOOCV-Abkürzungsformel über Hat-Werte stimmt exakt mit der
+> aufwendigen Variante überein. Die Ergebnisse bestätigen, dass das Modell
+> stabil ist und nicht überangepasst.
+
+### Beispiel 2: Datenleck durch Variablenselektion vor CV
+
+#### Frage und Datenlage
+
+Ein häufiger Fehler: Zuerst werden auf allen Daten die besten Prädiktoren
+ausgewählt (hier: jene mit dem höchsten Korrelationskoeffizienten), und danach
+wird kreuzvalidiert. Das ist ein Datenleck, weil die Testdaten bereits bei der
+Auswahl mitgewirkt haben.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b2-cv-rechnung-r
+alle_praed <- c("x1", "x2", paste0("z", 1:6))
+
+# --- FALSCH: Variablen auf ALLEN Daten waehlen, dann CV ---
+korr_alle <- abs(cor(daten[, alle_praed], daten$y))
+top3 <- names(sort(korr_alle[, 1], decreasing = TRUE))[1:3]
+cat("auf allen Daten gewaehlt:", top3, "\n")
+
+formel_falsch <- as.formula(paste("y ~", paste(top3, collapse = " + ")))
+mse_falsch <- cv_manuell(formel_falsch, k = 10)
+
+# --- RICHTIG: Variablen INNERHALB jeder Falte waehlen ---
+k <- 10
+falte <- (seq_len(n) - 1) %% k
+fehler_richtig <- sapply(0:(k - 1), function(f) {
+  test <- falte == f
+  train <- daten[!test, ]
+  korr_train <- abs(cor(train[, alle_praed], train$y))
+  top3_train <- names(sort(korr_train[, 1], decreasing = TRUE))[1:3]
+  formel <- as.formula(paste("y ~", paste(top3_train, collapse = " + ")))
+  modell <- lm(formel, data = train)
+  mean((daten$y[test] - predict(modell, daten[test, ]))^2)
+})
+mse_richtig <- mean(fehler_richtig)
+
+# --- Referenz: wahres Modell ---
+mse_wahr <- cv_manuell(y ~ x1 + x2, k = 10)
+
+cat("CV-MSE falsch (Leck):", round(mse_falsch, 2),
+    " RMSE:", round(sqrt(mse_falsch), 2), "\n")
+cat("CV-MSE richtig:      ", round(mse_richtig, 2),
+    " RMSE:", round(sqrt(mse_richtig), 2), "\n")
+cat("CV-MSE wahres Modell:", round(mse_wahr, 2),
+    " RMSE:", round(sqrt(mse_wahr), 2), "\n")
+```
+
+##### Python
+
+```{python}
+#| label: b2-cv-rechnung-py
+alle_praed = ["x1", "x2"] + [f"z{k}" for k in range(1, 7)]
+
+# --- FALSCH: Variablen auf ALLEN Daten waehlen, dann CV ---
+korr_alle = daten[alle_praed].corrwith(daten["y"]).abs()
+top3 = korr_alle.nlargest(3).index.tolist()
+print("auf allen Daten gewaehlt:", top3)
+
+X_falsch = daten[top3].values
+scores_falsch = cross_val_score(LinearRegression(), X_falsch, y,
+                                cv=KFold(n_splits=10, shuffle=False),
+                                scoring="neg_mean_squared_error")
+mse_falsch = -np.mean(scores_falsch)
+
+# --- RICHTIG: Variablen INNERHALB jeder Falte waehlen ---
+kf = KFold(n_splits=10, shuffle=False)
+fehler_richtig = []
+for train_idx, test_idx in kf.split(X_falsch):
+    train = daten.iloc[train_idx]
+    test_daten = daten.iloc[test_idx]
+    korr_train = train[alle_praed].corrwith(train["y"]).abs()
+    top3_train = korr_train.nlargest(3).index.tolist()
+    modell = LinearRegression().fit(train[top3_train].values, train["y"].values)
+    vorhersage = modell.predict(test_daten[top3_train].values)
+    fehler_richtig.append(np.mean((test_daten["y"].values - vorhersage) ** 2))
+mse_richtig = np.mean(fehler_richtig)
+
+# --- Referenz: wahres Modell ---
+scores_wahr = cross_val_score(LinearRegression(), daten[["x1", "x2"]].values, y,
+                              cv=KFold(n_splits=10, shuffle=False),
+                              scoring="neg_mean_squared_error")
+mse_wahr = -np.mean(scores_wahr)
+
+print(f"CV-MSE falsch (Leck): {mse_falsch:.2f}  RMSE: {np.sqrt(mse_falsch):.2f}")
+print(f"CV-MSE richtig:       {mse_richtig:.2f}  RMSE: {np.sqrt(mse_richtig):.2f}")
+print(f"CV-MSE wahres Modell: {mse_wahr:.2f}  RMSE: {np.sqrt(mse_wahr):.2f}")
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Variante | MSE | RMSE | Wie das zu lesen ist |
+|---|---|---|---|
+| Falsch (Leck) | deutlich zu tief | deutlich zu tief | Die Variablenselektion hat die Testdaten schon gesehen. Der Fehler ist zu optimistisch. |
+| Richtig (Selektion in der Falte) | höher | höher | Die ehrliche Schätzung. In manchen Falten werden andere Variablen gewählt, was den Fehler erhöht. |
+| Wahres Modell (`x1 + x2`) | ca. 35.7 | ca. 5.97 | Der Bezugswert. |
+
+Der Unterschied zwischen "falsch" und "richtig" zeigt die Grösse des Lecks.
+Die fehlerhafte Variante unterschätzt den Vorhersagefehler, weil sie
+Information aus den Testdaten in die Variablenselektion einfliessen lässt.
+
+::: {.note-box}
+**Die Regel ist einfach und absolut:** Alles, was aus den Daten gelernt wird,
+gehört in die Kreuzvalidierungsschleife. Das betrifft nicht nur die
+Variablenselektion, sondern auch Zentrierung, Skalierung, Imputation fehlender
+Werte und jede andere datengetriebene Vorverarbeitung. Nur die Definition des
+Modells (welche Art Modell, welche Hyperparameter) darf vorher feststehen.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Wird die Variablenselektion auf allen Daten durchgeführt und danach
+> kreuzvalidiert, unterschätzt der CV-Fehler die tatsächliche Vorhersagegüte
+> systematisch. Die korrekte Variante, bei der die Selektion innerhalb jeder
+> Falte stattfindet, liefert einen realistischeren und höheren Fehler. Diese
+> Demonstration zeigt, warum jede datengetriebene Vorverarbeitung in die
+> CV-Schleife gehört.
+
+### Beispiel 3: CV zur Modellwahl (Polynomgrade)
+
+#### Frage und Datenlage
+
+Das Modell `y ~ x1 + x2` ist linear. Würde ein Polynommodell mit höherem
+Grad besser vorhersagen? Die Kreuzvalidierung kann das direkt beantworten,
+indem sie den Vorhersagefehler für verschiedene Grade vergleicht. Das ist ein
+typischer Anwendungsfall der CV zur Modellwahl, wie er auch bei
+Regularisierungsverfahren vorkommt.
+
+#### Rechnung
+
+::: {.panel-tabset}
+
+##### R
+
+```{r}
+#| label: b3-cv-rechnung-r
+#| fig-cap: "CV-Fehler nach Polynomgrad: Das lineare Modell (Grad 1) gewinnt."
+#| fig-label: fig-b3-cv-polynom
+grade <- 1:6
+
+cv_poly <- function(grad, k = 10) {
+  formel <- as.formula(paste("y ~ poly(x1,", grad, ") + poly(x2,", grad, ")"))
+  falte <- (seq_len(n) - 1) %% k
+  fehler <- sapply(0:(k - 1), function(f) {
+    test <- falte == f
+    modell <- lm(formel, data = daten[!test, ])
+    mean((daten$y[test] - predict(modell, daten[test, ]))^2)
+  })
+  c(mse = mean(fehler), sd = sd(fehler))
+}
+
+ergebnisse <- t(sapply(grade, cv_poly))
+ergebnisse <- data.frame(grad = grade, mse = ergebnisse[, 1],
+                         sd = ergebnisse[, 2],
+                         rmse = sqrt(ergebnisse[, 1]))
+round(ergebnisse, 4)
+
+plot(grade, ergebnisse$rmse, type = "b", pch = 19,
+     xlab = "Polynomgrad", ylab = "CV-RMSE (10-fach)",
+     main = "Kreuzvalidierung nach Polynomgrad",
+     ylim = range(ergebnisse$rmse) * c(0.95, 1.1))
+abline(h = min(ergebnisse$rmse), lty = 2, col = "grey50")
+```
+
+##### Python
+
+```{python}
+#| label: b3-cv-rechnung-py
+#| fig-cap: "CV-Fehler nach Polynomgrad: Das lineare Modell (Grad 1) gewinnt."
+#| fig-label: fig-b3-cv-polynom-py
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+
+grade = range(1, 7)
+ergebnisse = []
+
+for grad in grade:
+    pipe = make_pipeline(PolynomialFeatures(grad, include_bias=False),
+                         LinearRegression())
+    X_beide = daten[["x1", "x2"]].values
+    scores = cross_val_score(pipe, X_beide, y,
+                             cv=KFold(n_splits=10, shuffle=False),
+                             scoring="neg_mean_squared_error")
+    mse = -np.mean(scores)
+    ergebnisse.append({"grad": grad, "mse": mse,
+                       "sd": np.std(-scores), "rmse": np.sqrt(mse)})
+
+erg = pd.DataFrame(ergebnisse)
+print(erg.round(4).to_string(index=False))
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.plot(erg["grad"], erg["rmse"], "o-", color="steelblue")
+ax.axhline(erg["rmse"].min(), linestyle="--", color="grey", alpha=0.6)
+ax.set_xlabel("Polynomgrad")
+ax.set_ylabel("CV-RMSE (10-fach)")
+ax.set_title("Kreuzvalidierung nach Polynomgrad")
+_x = plt.tight_layout()
+_x = plt.show()
+```
+
+:::
+
+#### Output Zeile für Zeile
+
+| Grad | CV-RMSE (10-fach) | Wie das zu lesen ist |
+|---|---|---|
+| 1 | ca. 5.97 | Das lineare Modell, das der Wahrheit entspricht. |
+| 2 | leicht höher | Quadratische Terme bringen nichts, da der wahre Zusammenhang linear ist. |
+| 3-6 | steigend | Mehr Flexibilität verschlechtert die Vorhersage; klassische Überanpassung. |
+
+Der CV-Fehler steigt ab Grad 2 monoton an. Das ist das erwartete Muster: Die
+wahre Beziehung ist linear, und zusätzliche Polynomterme passen sich dem
+Rauschen an, ohne echte Struktur zu erfassen.
+
+::: {.note-box}
+**Kreuzvalidierung als Schutz vor Überanpassung.** Auf den Trainingsdaten sinkt
+der Fehler mit jedem zusätzlichen Polynomgrad. Erst die Kreuzvalidierung
+deckt auf, dass die Verbesserung nicht auf neue Daten übertragbar ist. Das
+ist genau der Unterschied zwischen Trainings- und Generalisierungsfehler.
+:::
+
+#### Interpretation und Ergebnissatz
+
+> Eine 10-fache Kreuzvalidierung über Polynomgrade 1 bis 6 zeigt, dass das
+> lineare Modell (Grad 1) den kleinsten CV-RMSE hat. Höhere Grade
+> verschlechtern die Vorhersage monoton. Die Kreuzvalidierung bestätigt damit
+> die bekannte lineare Struktur und schützt vor Überanpassung durch
+> unnötige Flexibilität.
+
+::::
+
+## Verständnisfragen
+
+::: {.quiz}
+LOOCV nutzt $n - 1$ Beobachtungen zum Training. Warum hat sie trotzdem eine
+höhere Varianz als 10-fache CV?
+
+- [x] Weil die $n$ Trainingsmengen fast identisch sind und die Fehlerschätzungen
+      deshalb stark korreliert sind ~ Richtig. Die hohe Überlappung der
+      Trainingsmengen führt zu korrelierten Fehlern, deren Durchschnitt weniger
+      streut, als man bei $n$ unabhängigen Werten erwarten würde. Die Varianz
+      des Gesamtschätzers bleibt hoch.
+- [ ] Weil nur ein Fall zum Testen verwendet wird ~ Ein einzelner Testfall hat
+      zwar eine hohe Varianz, aber der Durchschnitt über $n$ Testfälle gleicht
+      das aus. Das Problem liegt an der Korrelation, nicht an der Einzelfallgrösse.
+- [ ] Weil LOOCV mehr Rechenzeit braucht ~ Rechenzeit und statistische Varianz
+      haben nichts miteinander zu tun.
+:::
+
+::: {.quiz}
+`cross_val_score` in sklearn liefert `[-35.2, -38.1, -33.9, ...]`. Was bedeuten
+die negativen Werte?
+
+- [x] sklearn negiert den MSE, weil es Scores maximiert; der MSE ist
+      `np.mean(-scores)` ~ Richtig. sklearn verwendet einheitlich das Prinzip
+      "höher ist besser". Da MSE ein Fehler ist (kleiner ist besser), wird er
+      negiert.
+- [ ] Die Modelle sind schlecht, deshalb negative Scores ~ Auch bei guten
+      Modellen sind die Scores negativ, wenn `neg_mean_squared_error` verwendet
+      wird.
+- [ ] Ein Vorzeichenfehler in den Daten ~ Die Konvention ist so dokumentiert und
+      gewollt.
+:::
+
+::: {.quiz}
+Ein Kollege wählt auf allen 150 Beobachtungen die drei besten Prädiktoren nach
+Korrelation aus und macht anschliessend eine 10-fache CV. Der CV-Fehler ist
+auffällig klein. Was ist schiefgelaufen?
+
+- [x] Datenleck: Die Variablenselektion hat die Testdaten schon benutzt ~ Richtig.
+      Die drei Variablen wurden anhand aller Daten ausgewählt, also auch anhand
+      der Testfälle in jeder Falte. Der CV-Fehler ist zu optimistisch.
+- [ ] 10 Falten sind zu wenig; mit LOOCV wäre es korrekt ~ Das Leck besteht
+      unabhängig von der Faltenzahl. Auch LOOCV wäre falsch, wenn die Selektion
+      vorher stattfindet.
+- [ ] Die Korrelation ist kein gutes Auswahlkriterium ~ Die Korrelation ist als
+      Kriterium akzeptabel; das Problem ist der Zeitpunkt der Auswahl, nicht das
+      Kriterium.
+:::
+
+::: {.quiz}
+Für eine Zeitreihe mit 200 Werten soll die Vorhersagegüte eines
+Regressionsmodells geschätzt werden. Welches CV-Verfahren passt?
+
+- [x] Vorwärtsvalidierung: Training auf Daten bis $t$, Test auf Daten nach $t$ ~
+      Richtig. Bei Zeitreihen ist die zeitliche Ordnung entscheidend. Zufällige
+      Splits zerstören sie und führen dazu, dass zukünftige Werte ins Training
+      gelangen.
+- [ ] 10-fache CV mit zufälligem Split ~ Falsch. Zufällige Splits ignorieren
+      die Autokorrelation und führen zu einem zu optimistischen Fehler.
+- [ ] LOOCV, weil sie jeden einzelnen Zeitpunkt prüft ~ LOOCV mit zufälligen
+      Splits hat dasselbe Problem. Die zeitliche Ordnung muss eingehalten werden.
+:::
+
+## Verlinkte Ressourcen
+
+- [An Introduction to Statistical Learning, Kapitel 5](https://www.statlearning.com/)
+- [Modellauswahl](modellauswahl.qmd) (AIC, BIC und schrittweise Auswahl)
+- [Bootstrap-Resampling](../inferenz/bootstrap-resampling.qmd)
+- [Regressionsdiagnostik](regressionsdiagnostik.qmd)
+- [R-Dokumentation zu `cv.glm`](https://stat.ethz.ch/R-manual/R-devel/library/boot/html/cv.glm.html)
+- [sklearn: Cross-validation](https://scikit-learn.org/stable/modules/cross_validation.html)

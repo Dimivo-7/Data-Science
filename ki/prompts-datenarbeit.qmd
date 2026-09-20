@@ -238,6 +238,65 @@ Material: [Text]
 Zusammenfassung: [Text]
 ```
 
+### KI-gestützte Aufbereitung prüfbar machen
+
+In vielen Projekten beschleunigt ein Sprachmodell die Datenaufbereitung
+erheblich: Spalten umbenennen, Werte zuordnen, Formate vereinheitlichen,
+fehlende Werte behandeln. Das Problem ist nicht der Code, den das Modell
+erzeugt, sondern dass die Prüfung oft vergessen wird, weil das Ergebnis
+plausibel aussieht.
+
+Der folgende Ablauf macht jede KI-gestützte Aufbereitung nachvollziehbar
+und prüfbar:
+
+**Schritt 1: Prompt formulieren und dokumentieren**
+
+```markdown
+Aufgabe: [was genau umgebaut werden soll]
+Eingabe: [Spalten, Formate, Beispielzeilen der Rohdaten]
+Gewünschte Ausgabe: [Spalten, Formate, Beispielzeilen der Zieldaten]
+Sprache: [R oder Python]
+Randbedingungen: [fehlende Werte beibehalten/entfernen, Kodierung, ...]
+
+Gib NUR den Code aus, keine Ergebniszahlen.
+```
+
+**Schritt 2: Erzeugten Code ausführen, nicht das Ergebnis übernehmen**
+
+Das Modell liefert Code. Diesen Code führt man selbst aus und prüft das
+Ergebnis. Wer stattdessen ein Ergebnis übernimmt, das das Modell direkt
+ausgibt, hat keine Möglichkeit, es zu reproduzieren.
+
+**Schritt 3: Kontrollen durchführen**
+
+Jede Transformation wird gegen die Rohdaten geprüft. Die Kontrollen
+hängen von der Operation ab, aber fünf sind fast immer sinnvoll:
+
+| Kontrolle | Was sie prüft | Befehl (Beispiel) |
+|---|---|---|
+| Zeilenzahl vorher/nachher | Sind Zeilen verschwunden oder hinzugekommen? | `nrow(roh)` vs. `nrow(bereinigt)` / `len(roh)` vs. `len(bereinigt)` |
+| Summen über Kennzahlen | Geht etwas bei der Umrechnung verloren? | `sum(roh$umsatz, na.rm = TRUE)` vs. `sum(bereinigt$umsatz, na.rm = TRUE)` |
+| Eindeutige Schlüssel | Sind nach einem Join Duplikate entstanden? | `n_distinct(bereinigt$id) == nrow(bereinigt)` / `bereinigt["id"].nunique() == len(bereinigt)` |
+| Stichprobe von Hand | Stimmen Einzelwerte in der Ausgabe mit der Eingabe überein? | 5 zufällige Zeilen nebeneinander legen |
+| Wertebereiche | Liegen alle Werte im erwarteten Bereich? | `summary(bereinigt$alter)` / `bereinigt["alter"].describe()` |
+
+**Schritt 4: Prompt und Kontrolle dokumentieren**
+
+| Schritt | Prompt (gekürzt) | Erzeugter Code | Kontrolle | Ergebnis |
+|---|---|---|---|---|
+| 1 | "Bereinige Schreibweisen in Spalte standort..." | `mutate(standort = case_when(...))` | `n_distinct(bereinigt$standort)` sank von 5 auf 3 | ok, 3 Standorte erwartet |
+| 2 | "Konvertiere datum von dd.mm.yyyy zu Date..." | `as.Date(datum, "%d.%m.%Y")` | 0 NA in datum (vorher 0) | ok |
+| 3 | "Berechne Alter aus Geburtsdatum..." | `interval(geb, today()) %/% years(1)` | `range(alter)`: 18 bis 74 | ok, plausibel |
+
+Diese Tabelle gehört in die Dokumentation des Projekts, nicht nur ins Chatfenster.
+
+::: {.note-box}
+**OpenRefine** ist eine Alternative, wenn die Transformation vor allem
+Bereinigungen betrifft (Schreibweisen, Zusammenführungen, Cluster ähnlicher
+Werte). Es protokolliert jeden Schritt automatisch und lässt sich auf neue
+Daten anwenden. Nachteil: Es kann weder rechnen noch modellieren.
+:::
+
 ## Typische Aufgaben
 
 Die Prompts oben decken den Ablauf eines Datenprojekts ab. Zwei Hinweise für
