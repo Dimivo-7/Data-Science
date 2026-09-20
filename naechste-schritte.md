@@ -108,11 +108,44 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 
 ## Als Nächstes
 
+### Erledigt am 20.09.2026
+
+**Phase 1: Lücken für PVA 2 am 26.09.2026**
+
+| Bereich | Neue/erweiterte Seiten | Rechnet | Stand |
+|---|---|---|---|
+| `statistik/regression/` | Generalisierung (Konzept): Bias-Varianz, U-Kurve, Datenleck, Polynombeispiel | ja | entwurf |
+| `statistik/regression/` | Kreuzvalidierung (Methode): LOOCV, k-fold, cv.glm, cross_val_score, Leakage-Fallstrick | ja | entwurf |
+| `statistik/regression/` | Regularisierung (Methode): Ridge, Lasso, Elastic Net, glmnet vs. sklearn Parameterverwechslung | ja | entwurf |
+| `statistik/regression/` | Modellauswahl erweitert: Best Subset (leaps::regsubsets), Mallows Cp, Verweise | nein | fertig |
+| `daten/` | Datenquellen (Konzept): oeffentliche Portale, Lizenzen, Datenschutz, Beschaffungscheckliste | nein | entwurf |
+| `ki/` | Prompts Datenarbeit erweitert: KI-gestuetzte Aufbereitung prüfbar machen, Kontrollablauf | nein | fertig |
+
+Zusätzlich: 10 Glossareinträge, je 8 Befehle in referenz/r.qmd und referenz/python.qmd, 3 Fragen in statistik/fragen.qmd, 2 Fragen in daten/fragen.qmd. Neue R-Pakete: glmnet, leaps, boot.
+
+Alle drei neuen Statistikseiten stehen auf `stand: entwurf`, weil die Zahlen im Fliesstext erst nach dem Build gegen die tatsaechliche Ausgabe geprueft werden koennen.
+
+**Phase 4: Private Lernpfade**
+
+| Seite | Inhalt |
+|---|---|
+| `personal/index.qmd` | Terminübersicht beider Kurse, offene Abgaben, Links auf Lernpfade und Moodle |
+| `personal/lernpfad-statda.qmd` | PVA 1 bis 5, je Ziel/Vorbereitung/Selbsttest/Nachbereitung, Kompaktpfad 90 Min. PVA 3 bis 5 als Annahme. |
+| `personal/lernpfad-davi.qmd` | PVA 1 bis 5, analog, mit allen Abgabefristen und Notengewichten. |
+
+Infrastruktur: `personal/_metadata.yml` (draft: true, search: false), `_quarto.yml` (draft-mode: unlinked), Checkboxen mit localStorage. Neutralitaetsregel in instruction.md angepasst. Kein Link von oeffentlichen Seiten auf personal/.
+
+**Noch offen nach dem Build:**
+- Zahlen der drei neuen Statistikseiten gegen die Freeze-Ausgabe pruefen (`zeige-ausgaben.py`)
+- `pruefe-zahlen.py` auf die drei neuen Seiten
+- Dann `stand: fertig` setzen
+- Verifikation Phase 4: sitemap.xml und search.json enthalten kein "personal", personal/*.html ist im Build vorhanden
+
 ### Stand
 
 | Bereich | Stand |
 |---|---|
-| `statistik/` (50 Seiten) | **fertig**, Zahlen maschinell geprüft |
+| `statistik/` (53 Seiten) | **fertig** (50) plus 3 neue auf `entwurf` |
 | `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
 | `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `programmierung/` (9 Seiten + Fragen) | **fertig** (12.09.2026), Zahlen maschinell und von Hand geprüft |
