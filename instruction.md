@@ -76,15 +76,23 @@ Ersatzformulierungen:
 | "Private Notizen zum MAS Data Science (FFHS)" | "Persönliche Notizen" |
 | "für die Prüfung wichtig" | "häufige Verwechslung", "typischer Fehler" |
 
-**Prüfung vor jedem Push** (aus dem Repo-Root, `docs/`, `_freeze/` und die
-alten `cas-*`-Ordner ausgenommen, solange sie noch existieren):
+**Einzige Ausnahme:** Der Ordner `personal/` enthält kursbezogene Lernpfade
+mit Terminen, PVA-Nummern und Moodle-Links. Er ist über `_metadata.yml` als
+Draft markiert (`draft: true`, `search: false`) und wird von Quarto gerendert,
+aber nicht in Navigation, Listings, Suche oder Sitemap aufgenommen
+(`draft-mode: unlinked` in `_quarto.yml`). Kein Link von einer öffentlichen
+Seite darf auf `personal/` zeigen.
+
+**Prüfung vor jedem Push** (aus dem Repo-Root, `docs/`, `_freeze/`, die
+alten `cas-*`-Ordner und `personal/` ausgenommen):
 
 ```bash
 grep -rniE "ffhs|\bmas\b|\bcas\b|\bects\b|semester|\bprüfung|\bpruefung|präsenz|praesenz|\bpva\b|moodle|dozent|lektion|lesson|fernfachhochschule" \
   --include="*.qmd" --include="*.yml" --include="*.md" --include="*.scss" --include="*.lua" --include="*.ejs" \
   --exclude-dir=docs --exclude-dir=_freeze --exclude-dir=cas-grundlagen --exclude-dir=cas-statda-davi \
   --exclude-dir=cas-ml --exclude-dir=cas-dea --exclude-dir=cas-ai-eng \
-  --exclude-dir=cas-adv-ml --exclude-dir=masterthesis --exclude=instruction.md --exclude=new_instruction.md .
+  --exclude-dir=cas-adv-ml --exclude-dir=masterthesis --exclude-dir=personal \
+  --exclude-dir=_kursmaterial --exclude=instruction.md --exclude=new_instruction.md .
 ```
 
 Erlaubte Treffer: die Zeile `quelle:` im Frontmatter. Sonst muss das Ergebnis
