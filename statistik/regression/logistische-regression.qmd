@@ -240,6 +240,83 @@ unzugänglich.
 | [Klassifikationsgüte](klassifikationsguete.qmd) | die Bewertung der Vorhersagen steht im Vordergrund |
 | [Cox-Modell](../ueberlebenszeit/cox-modell.qmd) | es interessiert, **wann** das Ereignis eintritt, und es gibt zensierte Fälle |
 | Poisson-Regression | die Zielgrösse ist eine Anzahl statt ja oder nein |
+| Devianzanalyse / Likelihood-Ratio-Test | zwei geschachtelte Modelle sollen formal verglichen werden |
+
+### Devianzanalyse und Likelihood-Ratio-Test
+
+Zwei geschachtelte Modelle lassen sich vergleichen, indem man ihre Devianzen
+gegenüberstellt. Die Devianz ist minus zweimal die Log-Likelihood; die Differenz
+zweier Devianzen folgt unter der Nullhypothese (das kleinere Modell reicht)
+näherungsweise einer Chi-Quadrat-Verteilung mit so vielen Freiheitsgraden, wie
+Parametern hinzugekommen sind.
+
+In R:
+
+```r
+m0 <- glm(y ~ 1, family = binomial, data = df)
+m1 <- glm(y ~ x1 + x2, family = binomial, data = df)
+anova(m0, m1, test = "Chisq")
+```
+
+In Python liefert statsmodels den Likelihood-Ratio-Test direkt: `modell.llr` ist
+die Teststatistik und `modell.llr_pvalue` der zugehörige p-Wert. Manuell
+berechnet: `D = -2 * (m0.llf - m1.llf)`, geprüft mit
+`scipy.stats.chi2.sf(D, df=anzahl_zusaetzliche_parameter)`.
+
+Der Likelihood-Ratio-Test ist das Gegenstück zum F-Test in der linearen
+Regression. Dort wird der Verlust an Residuenquadratsumme gegen die
+Residuenstreuung standardisiert; hier steht an seiner Stelle die
+Devianzdifferenz, und die Referenzverteilung ist Chi-Quadrat statt F. Beide
+testen dieselbe Frage: Verbessern die zusätzlichen Prädiktoren das Modell
+mehr, als durch Zufall zu erwarten wäre?
+
+### Overdispersion bei gruppierten Binomialdaten
+
+Binomialdaten haben eine feste Beziehung zwischen Erwartungswert und Varianz:
+Die Varianz ergibt sich aus $n \cdot p \cdot (1-p)$. Bei gruppierten oder
+aggregierten Daten (z.B. "45 von 100 Tieren in Betrieb A erkrankt") kann die
+beobachtete Streuung grösser sein, als das Binomialmodell erlaubt. Dieses
+Phänomen heisst Overdispersion.
+
+Ein einfacher Anhaltspunkt ist das Verhältnis von Residual Deviance zu den
+Freiheitsgraden. Liegt es deutlich über 1, deutet das auf Overdispersion hin.
+
+Die Lösung in R ist die Familie `quasibinomial`:
+
+```r
+modell_q <- glm(cbind(erfolge, misserfolge) ~ x,
+                family = quasibinomial, data = df)
+```
+
+Sie schätzt dieselben Koeffizienten wie `binomial`, korrigiert aber die
+Standardfehler und damit die p-Werte nach oben. In Python gibt es kein
+direktes Pendant; die Standardfehler lassen sich manuell mit dem geschätzten
+Dispersionsparameter skalieren.
+
+Overdispersion betrifft nur gruppierte Daten, bei denen pro Zeile mehrere
+Versuche zusammengefasst sind. Bei individuellen 0/1-Beobachtungen (eine Zeile
+je Fall) ist die Residualdevianz ohnehin schwer interpretierbar, und
+Overdispersion im engeren Sinn ist kein Thema.
+
+### Konfundierung
+
+Konfundierung zeigt sich, wenn ein Prädiktor univariat einen anderen Effekt hat
+als im multivariaten Modell. Das klassische Muster stammt aus dem
+Default-Datensatz (ISLR): Studentenstatus erscheint allein betrachtet positiv
+mit dem Kreditausfall assoziiert, weil Studierende im Durchschnitt höhere
+Kontostände haben. Kontrolliert man aber die Kontohöhe, kehrt sich der Effekt
+um: Bei gleichem Kontostand fallen Studierende seltener aus.
+
+Das ist Simpsons Paradoxon, angewandt auf die logistische Regression. Die
+Richtung eines Effekts kann sich umkehren, sobald eine dritte Variable ins
+Modell aufgenommen wird, die sowohl mit dem Prädiktor als auch mit der
+Zielgrösse zusammenhängt.
+
+Die praktische Konsequenz: Univariates Screening (jede Variable einzeln testen)
+kann in die Irre führen. Erst das multivariate Modell zeigt den bedingten
+Zusammenhang, also den Effekt bei konstant gehaltenen übrigen Grössen. Wer auf
+Basis univariater Modelle Variablen ausschliesst, riskiert, relevante
+Prädiktoren zu übersehen oder Scheinzusammenhänge zu berichten.
 
 ## Beispiele
 

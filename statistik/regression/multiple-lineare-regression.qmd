@@ -161,6 +161,57 @@ deutlich ändern, und deshalb ist er nicht dasselbe wie eine einfache Korrelatio
 | Keine starke Multikollinearität | Prädiktoren sind nicht nahezu Linearkombinationen voneinander | VIF, Werte über 5 sind auffällig, über 10 kritisch | einzelne Koeffizienten instabil und nicht signifikant, obwohl das Modell gut passt | eine Variable entfernen oder zusammenfassen |
 | Keine einflussreichen Einzelfälle | Kein einzelner Punkt bestimmt das Ergebnis | Cook-Distanz, Hebelwerte | Koeffizient hängt an einer Beobachtung | Fall prüfen, Modell mit und ohne ihn berichten |
 
+### Interaktionsterme
+
+Bisher wird angenommen, dass jeder Prädiktor unabhängig von den anderen auf die
+Zielgrösse wirkt. Ein Interaktionsterm lockert diese Annahme: Der Effekt von
+$x_1$ darf davon abhängen, welchen Wert $x_2$ hat.
+
+Die Formelschreibweise `y ~ x1 * x2` ist eine Kurzform für
+`y ~ x1 + x2 + x1:x2`. Im Modell stehen also drei Terme: die beiden
+Haupteffekte und ihr Produkt. Der Koeffizient des Produktterms $x_1 \cdot x_2$
+gibt an, um wie viel sich die Steigung von $x_1$ ändert, wenn $x_2$ um eine
+Einheit steigt. Ist er null, wirken die Prädiktoren additiv.
+
+| Sprache | Code |
+|---|---|
+| R | `lm(y ~ x1 * x2, data = df)` |
+| Python | `smf.ols("y ~ x1 * x2", data=df).fit()` |
+
+**Wann aufnehmen:** Wenn inhaltlich plausibel ist, dass der Effekt eines
+Prädiktors je nach Ausprägung eines anderen stärker oder schwächer wird,
+etwa wenn die Wirkung einer Therapie vom Alter abhängt.
+
+**Hierarchieprinzip:** Ist der Interaktionsterm im Modell, bleiben die
+zugehörigen Haupteffekte immer drin, auch wenn sie einzeln nicht signifikant
+sind. Ohne sie wäre der Interaktionsterm nicht sinnvoll interpretierbar.
+
+### Nichtlinearität mit poly()
+
+Wenn der Residuenplot eine Krümmung zeigt, kann ein Polynomterm den
+nichtlinearen Anteil auffangen. Das Modell bleibt eine lineare Regression,
+weil es linear in den Koeffizienten ist; nur die Prädiktorvariable geht
+zusätzlich als Quadrat oder höhere Potenz ein.
+
+| Sprache | Code | Bemerkung |
+|---|---|---|
+| R | `lm(y ~ poly(x, 2), data = df)` | orthogonale Polynome, Koeffizienten sind unkorreliert |
+| R | `lm(y ~ poly(x, 2, raw = TRUE), data = df)` | rohe Potenzen, Koeffizienten wie in der Schulformel |
+| Python | `smf.ols("y ~ x + I(x**2)", data=df).fit()` | rohe Potenzen |
+| Python | `np.column_stack([x, x**2])` als Designmatrix | Alternative mit `sm.OLS` |
+
+Der quadratische Term bedeutet: Die Steigung von $y$ bezüglich $x$ ist nicht
+konstant, sondern ändert sich über den Wertebereich von $x$. Ein positiver
+quadratischer Koeffizient ergibt eine nach oben geöffnete Parabel, ein
+negativer eine nach unten geöffnete.
+
+**Wann aufnehmen:** Wenn der Plot der Residuen gegen die Vorhersage oder
+gegen den betreffenden Prädiktor ein systematisch gekrümmtes Muster zeigt.
+
+**Warnung:** Polynome höheren Grades (über 3) schwingen ausserhalb des
+beobachteten Bereichs stark und führen dort zu unsinnigen Vorhersagen.
+Für flexible Kurven sind Splines die bessere Wahl.
+
 ## Output lesen
 
 R, `summary(modell)`:
