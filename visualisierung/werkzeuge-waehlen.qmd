@@ -1,0 +1,133 @@
+---
+title: "Werkzeuge wählen"
+description: "Werkzeuglandschaft, Reproduzierbarkeit und die Frage statisch, interaktiv oder konversationell."
+categories: ["Visualisierung", "Dashboards", "Interaktivität"]
+quelle: ["DAVI"]
+seitentyp: konzept
+stand: entwurf
+order: 75
+---
+
+## Kernideen
+
+- Die Werkzeugwahl folgt der Fragestellung und dem Kontext, nicht der persönlichen
+  Vorliebe
+- Reproduzierbarkeit ist ein zentrales Qualitätsmerkmal: Kann jemand anderes
+  dieselbe Grafik aus denselben Daten neu erzeugen?
+- Code-basierte Werkzeuge trennen Daten und Darstellung; GUI-Werkzeuge koppeln
+  beides
+- Statische, interaktive und konversationelle Formate lösen unterschiedliche
+  Probleme zu unterschiedlichen Kosten
+- Ad-hoc-Analysen und wiederkehrende Berichte stellen verschiedene Anforderungen
+  an Automatisierung und Wartung
+- Self-Service-BI und kuratierte Dashboards sind keine Gegensätze, sondern
+  Endpunkte eines Spektrums
+
+## Erklärung
+
+### Werkzeuglandschaft
+
+| Werkzeug | Stärke | Typisches Szenario | Reproduzierbar? | Interaktiv? |
+|---|---|---|---|---|
+| Excel | Schneller Einstieg, breite Verfügbarkeit | Ad-hoc-Tabellen und einfache Diagramme | Nein | Nein |
+| Tableau | Drag-and-Drop-Exploration grosser Datenmengen | BI-Dashboards für Business-Teams | Teilweise | Ja |
+| Power BI | Microsoft-Integration, Self-Service-BI | Unternehmensweite Berichterstattung | Teilweise | Ja |
+| Looker | Zentrales Datenmodell (LookML) | Konsistente Metriken über Teams hinweg | Ja (Modell) | Ja |
+| Datawrapper | Saubere statische Grafiken ohne Code | Redaktionelle Publikationen | Nein | Begrenzt |
+| Flourish | Animierte und interaktive Story-Formate | Scrollytelling, Präsentationen | Nein | Ja |
+| D3.js | Volle Kontrolle über jedes SVG-Element | Massgeschneiderte interaktive Grafiken | Ja | Ja |
+| R (ggplot2 / Shiny) | Grammar of Graphics, statistische Nähe | Explorative Analyse, reproduzierbare Reports | Ja | Ja (Shiny) |
+| Python (matplotlib / plotly / Dash / Streamlit) | Breites Ökosystem, ML-Integration | Daten-Pipelines, ML-Dashboards | Ja | Ja (Dash/Streamlit) |
+
+### Reproduzierbarkeit und Trennung von Daten und Darstellung
+
+Wilke (Kap. 27) formuliert vier Kriterien für ein gutes Visualisierungswerkzeug:
+
+1. **Reproduzierbar**: Dieselben Daten und derselbe Code erzeugen dieselbe Grafik.
+2. **Daten und Darstellung getrennt**: Die Grafik wird aus den Daten generiert,
+   nicht manuell gezeichnet.
+3. **Versionierbar**: Code und Daten lassen sich in einem Versionskontrollsystem
+   verwalten.
+4. **Automatisierbar**: Die Grafik kann ohne manuellen Eingriff neu gebaut werden,
+   wenn sich die Daten ändern.
+
+Code-basierte Werkzeuge (R, Python, D3.js) erfüllen diese Kriterien von Haus aus.
+Die Grafik existiert als Skript; bei aktualisierten Daten wird sie neu generiert.
+GUI-Werkzeuge (Excel, Tableau) betten die Grafik in eine Datei ein. Ändern sich
+die Daten, muss die Grafik manuell nachgezogen werden. Manche GUI-Werkzeuge
+(Tableau, Power BI) bieten Datenquellen-Anbindungen, die einen Teil der
+Automatisierung abdecken, aber die Darstellungslogik bleibt in der Oberfläche
+verborgen.
+
+::: {.note-box}
+Reproduzierbarkeit ist kein Selbstzweck. Sie zahlt sich aus, sobald eine Grafik
+mehr als einmal erstellt wird oder wenn Dritte das Ergebnis prüfen müssen.
+:::
+
+### Statisch, interaktiv oder konversationell
+
+| Format | Passt wenn ... | Kosten | Vertiefung |
+|---|---|---|---|
+| Statisch | Eine Aussage steht fest und wird präsentiert | Niedrig | -- |
+| Interaktiv | Das Publikum eigene Fragen an die Daten stellen soll | Mittel (Entwicklung + Wartung) | [Dashboards und Interaktivität](dashboards-interaktivitaet.qmd) |
+| Konversationell / agentisch | Die Fragen sich laufend ändern und nicht vorhersehbar sind | Hoch (Datenmodell + Governance) | -- |
+
+Statische Grafiken sind der Standard für wissenschaftliche Publikationen und
+Berichte mit klarer Aussage. Interaktive Dashboards lohnen sich, wenn das
+Publikum explorieren soll. Konversationelle Oberflächen (z. B. Chat-basierte
+BI-Tools) sind dann sinnvoll, wenn die Fragen so vielfältig sind, dass kein
+vordefiniertes Dashboard sie abdeckt.
+
+### Self-Service-BI vs. kuratiert
+
+- **Self-Service**: Jede Abteilung baut eigene Dashboards. Vorteil: kurze
+  Reaktionszeit. Risiko: widersprüchliche Metriken ("Welcher Umsatz stimmt?").
+- **Kuratiert**: Ein zentrales Team baut und pflegt Dashboards. Vorteil:
+  einheitliche Definitionen. Risiko: Engpass, lange Wartezeiten.
+- **Hybridmodell**: Zentrale Metrik-Definitionen (Single Source of Truth),
+  dezentrale Visualisierung. Das zentrale Team definiert und pflegt die Metriken;
+  Fachbereiche visualisieren darauf aufbauend.
+
+Der eigentliche Engpass ist selten das Werkzeug, sondern die Governance der
+Metrik-Definitionen: Was genau ist "aktiver Kunde"? Was zählt als "Umsatz"?
+
+### Ad-hoc vs. wiederkehrend
+
+| Merkmal | Ad-hoc | Wiederkehrend |
+|---|---|---|
+| Zweck | Einmalige Exploration, schnelle Antwort | Regelmässig aktualisierter Bericht |
+| Typische Werkzeuge | Excel, Jupyter Notebook, Datawrapper | Code-Pipeline, Scheduled Dashboard |
+| Reproduzierbarkeit | Wünschenswert, aber nicht zwingend | Zwingend |
+| Automatisierung | Nicht nötig | Kernvoraussetzung |
+| Wartungsaufwand | Keiner | Laufend (Datenquellen, Schema-Änderungen) |
+
+Eine häufige Falle: Ad-hoc-Analysen werden zu wiederkehrenden Berichten, ohne
+dass die Infrastruktur angepasst wird. Das Excel-Sheet, das "nur einmal"
+gebraucht wurde, wird plötzlich monatlich per E-Mail verschickt.
+
+### Entscheidungstabelle
+
+| Kriterium | Excel | Tableau / Power BI | R / Python Code | Datawrapper / Flourish | D3.js |
+|---|---|---|---|---|---|
+| Einarbeitungszeit | Gering | Mittel | Hoch | Gering | Sehr hoch |
+| Reproduzierbarkeit | Niedrig | Mittel | Hoch | Niedrig | Hoch |
+| Interaktivität | Keine | Hoch | Mittel bis hoch | Mittel | Sehr hoch |
+| Automatisierung | Schwierig | Mittel | Hoch | Keine | Hoch |
+| Anpassbarkeit | Begrenzt | Mittel | Sehr hoch | Begrenzt | Unbegrenzt |
+| Kosten (Lizenz) | Vorhanden (Office) | Hoch | Kostenlos (Open Source) | Freemium | Kostenlos |
+| Team-Kompetenz nötig | Tabellenkalkulaton | BI / Datenmodellierung | Programmierung | Keine | JavaScript / SVG |
+
+::: {.note-box}
+Kein Werkzeug ist universell besser. Die richtige Wahl hängt von Fragestellung,
+Publikum, Aktualisierungsfrequenz und vorhandenen Kompetenzen im Team ab.
+:::
+
+## Verlinkte Ressourcen
+
+- Wilke, Kap. 27 -- Choosing the right visualization software:
+  <https://clauswilke.com/dataviz/choosing-visualization-software.html>
+- [Dashboards und Interaktivität](dashboards-interaktivitaet.qmd)
+- [ggplot2](ggplot2.qmd)
+- [matplotlib](matplotlib.qmd)
+- [seaborn / plotly](seaborn-plotly.qmd)
+- [Fünf Dimensionen der Visualisierung](fuenf-dimensionen.qmd)
