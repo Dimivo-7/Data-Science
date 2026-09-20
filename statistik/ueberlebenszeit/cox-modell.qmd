@@ -240,9 +240,48 @@ das Hazard Ratio bezieht.
 | [Kaplan-Meier](kaplan-meier.qmd) | beschreibende Kurve ohne Einflussgrössen |
 | [Log-Rank-Test](log-rank-test.qmd) | nur die Frage, ob sich zwei Gruppen unterscheiden |
 | [Logistische Regression](../regression/logistische-regression.qmd) | nur ob, nicht wann; keine Zensierung |
-| Parametrische Modelle, etwa Weibull | Verteilungsform begründet, Vorhersage über den Beobachtungszeitraum hinaus |
+| Weibull-Modell | monotoner Hazard begründet, Extrapolation nötig |
+| AFT-Modell (log-logistisch u. a.) | Zeitverhältnisse statt Hazard Ratios gewünscht, nicht-monotoner Hazard |
 | Modelle mit zeitabhängigen Effekten | Proportionalität verletzt und der Effekt selbst interessiert |
 | Frailty-Modelle | geschachtelte oder wiederholte Ereignisse je Person |
+
+### Parametrische Modelle: Exponential, Weibull, AFT
+
+Das Cox-Modell lässt das Grundrisiko unspezifiziert (semiparametrisch).
+Parametrische Modelle gehen weiter und legen dessen Form fest.
+
+**Exponentialmodell:** konstanter Hazard $h(t) = \lambda$. Der einfachste Fall:
+Das Risiko ändert sich über die Zeit nicht. Passt zu Prozessen ohne Alterung
+(Gedächtnislosigkeit). In der Praxis selten realistisch.
+
+**Weibull-Modell:** $h(t) = \lambda \, p \, (\lambda t)^{p-1}$. Der
+Formparameter $p$ bestimmt, ob der Hazard steigt ($p > 1$, Alterung), fällt
+($p < 1$, Frühausfälle) oder konstant bleibt ($p = 1$, Exponentialfall). Das am
+häufigsten verwendete parametrische Modell.
+
+**Accelerated Failure Time (AFT):** Modelliert die logarithmierte
+Überlebenszeit direkt: $\log(T) = \beta_0 + \beta_1 x_1 + \dots + \sigma\varepsilon$.
+Die Koeffizienten haben eine direkte Deutung als Zeitverhältnisse:
+$e^{\beta_1} = 1.3$ heisst, die erwartete Überlebenszeit ist 30 Prozent länger
+je Einheit von $x_1$. Das ist oft anschaulicher als Hazard Ratios.
+
+**Wann parametrische Modelle statt Cox:**
+
+- Wenn die Form des Hazards selbst interessiert (steigt oder fällt das Risiko
+  über die Zeit?)
+- Wenn Extrapolation über den beobachteten Zeitraum hinaus nötig ist (Cox kann
+  nicht extrapolieren)
+- Wenn die Annahme proportionaler Hazards verletzt ist, ein AFT-Modell aber passt
+
+**R:** `survreg(Surv(zeit, ereignis) ~ x1, data = df, dist = "weibull")` aus
+dem Paket survival. **Python:** `WeibullAFTFitter` aus lifelines.
+
+| Modell | Hazard-Form | R | Python | Wann |
+|---|---|---|---|---|
+| Cox | unspezifiziert | `coxph()` | `CoxPHFitter` | Default, wenn die Form nicht interessiert |
+| Exponential | konstant | `survreg(..., dist="exponential")` | `ExponentialFitter` | gedächtnisloser Prozess |
+| Weibull | monoton | `survreg(..., dist="weibull")` | `WeibullAFTFitter` | Alterung oder Frühausfälle |
+| Log-logistisch | nicht-monoton | `survreg(..., dist="loglogistic")` | `LogLogisticAFTFitter` | Hazard steigt zuerst, fällt dann |
 
 ## Beispiele
 

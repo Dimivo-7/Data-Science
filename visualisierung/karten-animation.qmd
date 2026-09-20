@@ -1,0 +1,227 @@
+---
+title: "Karten und Animation"
+description: "Choroplethen, Punktkarten und animierte Grafiken in R und Python."
+categories: ["Visualisierung", "plotly", "ggplot2", "R", "Python"]
+quelle: ["DAVI"]
+seitentyp: werkzeug
+stand: entwurf
+order: 85
+---
+
+```{r}
+#| label: setup-r
+#| include: false
+# Erzwingt die knitr-Engine. Ohne R-Chunk waehlt Quarto Jupyter, das im Build
+# nicht installiert ist.
+```
+
+::: {.note-box}
+Die Codebeispiele sind Listings (nicht ausführbar). `sf` und `geopandas` sind
+im Build nicht installiert (Systemabhängigkeiten GDAL, proj, GEOS). Die
+Muster lassen sich lokal direkt übernehmen, sobald die Pakete vorhanden sind.
+:::
+
+## Kernideen
+
+- Karten kodieren Daten über die Position auf einer Landkarte
+- Choroplethen färben Flächen (Regionen, Kantone, Länder), Punktkarten setzen
+  Marker an einzelne Koordinaten
+- Animation zeigt Veränderung über die Zeit, aber nur wenn die Zeitachse die
+  Aussage trägt
+- Karten und Animationen können irreführen: Fläche ist nicht Bevölkerung,
+  Bewegung ist nicht Zusammenhang
+- R: `sf` + `ggplot2` für statische Karten, `plotly` für interaktive;
+  Python: `geopandas` + `matplotlib` oder `plotly`
+- `plotly.express` bietet Choroplethen und Animation ohne Geo-Abhängigkeiten
+  (eingebaute Geometrien)
+
+## Erklärung
+
+### Choroplethenkarte
+
+Eine Choroplethenkarte färbt Flächen (Länder, Kantone, Gemeinden) nach einem
+numerischen Wert ein. Sie eignet sich für regionale Vergleiche und räumliche
+Muster. Vorsicht: Grosse, dünn besiedelte Flächen dominieren visuell.
+Ohne Normierung (pro Kopf, pro Fläche) verzerrt die Karte die Aussage.
+
+::: {.panel-tabset}
+
+## R
+
+```r
+library(sf)
+library(ggplot2)
+
+kantone <- st_read("kantone.gpkg")
+ggplot(kantone) +
+  geom_sf(aes(fill = bevoelkerungsdichte)) +
+  scale_fill_viridis_c(name = "Einw./km²") +
+  theme_minimal()
+```
+
+## Python
+
+```python
+import plotly.express as px
+
+fig = px.choropleth(
+    df, locations="iso_alpha", color="wert",
+    hover_name="land", color_continuous_scale="Viridis",
+)
+fig.show()
+```
+
+:::
+
+`px.choropleth` mit ISO-3166-Codes braucht keine Geo-Bibliotheken. Für
+Schweizer Kantone braucht man eigene GeoJSON-Dateien.
+
+### Punktkarte
+
+Eine Punktkarte setzt Marker an geografische Koordinaten. Sie eignet sich,
+wenn genaue Standorte sichtbar sein sollen. Bei vielen Punkten droht
+Overplotting; Abhilfe: Transparenz, Aggregation oder Hexbin-Raster.
+
+::: {.panel-tabset}
+
+## R
+
+```r
+library(sf)
+library(ggplot2)
+
+basemap <- st_read("kantone.gpkg")
+ggplot() +
+  geom_sf(data = basemap, fill = "grey95", color = "grey70") +
+  geom_point(data = df, aes(x = lon, y = lat, size = wert),
+             alpha = 0.6, color = "#0072B2") +
+  theme_minimal()
+```
+
+## Python
+
+```python
+import plotly.express as px
+
+fig = px.scatter_geo(
+    df, lat="lat", lon="lon",
+    size="wert", hover_name="name",
+)
+fig.show()
+```
+
+:::
+
+### Animation
+
+Animation fügt eine Zeitachse hinzu. In `plotly.express` genügt der Parameter
+`animation_frame`, um aus einem statischen Diagramm ein animiertes zu machen.
+In R bietet `gganimate` eine ggplot2-Erweiterung mit `transition_time()`.
+
+**Wann Animation hilft:** Klare zeitliche Abfolge, wenige Frames, das
+Publikum kann pausieren. **Wann sie schadet:** Zu viele Frames (Flackern),
+kein Pausieren möglich, Bewegung suggeriert Zusammenhang ohne Beleg.
+
+::: {.panel-tabset}
+
+## Python
+
+```python
+import plotly.express as px
+
+fig = px.scatter(
+    df, x="x", y="y",
+    animation_frame="jahr", animation_group="land",
+    size="bevoelkerung", color="kontinent",
+    hover_name="land", range_x=[0, 50000], range_y=[25, 90],
+)
+fig.show()
+```
+
+## R
+
+```r
+library(plotly)
+
+p <- plot_ly(
+  df,
+  x = ~x, y = ~y,
+  size = ~bevoelkerung, color = ~kontinent,
+  frame = ~jahr, text = ~land,
+  type = "scatter", mode = "markers"
+)
+p
+```
+
+:::
+
+### Wann eine Karte irreführt
+
+| Problem | Ursache | Gegenmassnahme |
+|---|---|---|
+| Fläche dominiert | Grosse Regionen fallen ins Auge | Normierung pro Kopf/km², Kartogramm |
+| Falsche Farbskala | Sequenziell vs. divergierend verwechselt | Skala an Datentyp anpassen |
+| Bewegung suggeriert Kausalität | Animation zeigt nur Koinzidenz | Korrelation benennen, keine Kausalbehauptung |
+| Grenzeffekte (MAUP) | Werte hängen vom Regionszuschnitt ab | Mehrere Aggregationsebenen vergleichen |
+
+::: {.note-box}
+Wenn die Fläche der Regionen nichts mit dem dargestellten Wert zu tun hat,
+ist eine Choroplethenkarte problematisch. Ein Balkendiagramm ist oft ehrlicher.
+:::
+
+## Typische Aufgaben
+
+**Choropleth der Schweizer Kantone (Python, geopandas)**
+
+```python
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+kantone = gpd.read_file("kantone.geojson").merge(daten, on="kanton_id")
+kantone.plot(column="rate", cmap="viridis", legend=True)
+plt.title("Rate nach Kanton")
+plt.axis("off")
+plt.show()
+```
+
+R-Variante: `st_read()` + `geom_sf(aes(fill = rate))`, siehe oben.
+
+**Interaktive Weltkarte mit Animation (plotly)**
+
+```python
+import plotly.express as px
+
+fig = px.choropleth(
+    df, locations="iso_alpha", color="co2_pro_kopf",
+    hover_name="land", animation_frame="jahr",
+    color_continuous_scale="RdYlGn_r",
+    title="CO2-Ausstoss pro Kopf",
+)
+fig.update_layout(geo=dict(showframe=False))
+fig.show()
+```
+
+**Animiertes Streudiagramm (Gapminder-Stil)**
+
+```python
+import plotly.express as px
+
+fig = px.scatter(
+    gapminder, x="gdpPercap", y="lifeExp",
+    animation_frame="year", animation_group="country",
+    size="pop", color="continent", hover_name="country",
+    log_x=True, size_max=55, range_y=[25, 90],
+)
+fig.show()
+```
+
+## Verlinkte Ressourcen
+
+- plotly Choropleth-Dokumentation:
+  <https://plotly.com/python/choropleth-maps/>
+- geopandas-Dokumentation: <https://geopandas.org/>
+- sf-Paket (R): <https://r-spatial.github.io/sf/>
+- [Farbe](farbe.qmd)
+- [Irreführende Darstellungen](irrefuehrende-darstellungen.qmd)
+- [Fünf Dimensionen der Visualisierung](fuenf-dimensionen.qmd)
+- [Werkzeuge wählen](werkzeuge-waehlen.qmd)
