@@ -123,7 +123,9 @@ mit `numpy scipy statsmodels scikit-learn pingouin` genügt dafür.
 
 Zusätzlich: 10 Glossareinträge, je 8 Befehle in referenz/r.qmd und referenz/python.qmd, 3 Fragen in statistik/fragen.qmd, 2 Fragen in daten/fragen.qmd. Neue R-Pakete: glmnet, leaps, boot.
 
-Alle drei neuen Statistikseiten stehen auf `stand: entwurf`, weil die Zahlen im Fliesstext erst nach dem Build gegen die tatsaechliche Ausgabe geprueft werden koennen.
+Alle drei neuen Statistikseiten standen zunächst auf `stand: entwurf`. Nach dem
+grünen Build wurden die Zahlen mit `zeige-ausgaben.py` und `pruefe-zahlen.py`
+geprüft (10 Regressionsseiten ohne Befund) und auf `stand: fertig` gesetzt.
 
 **Phase 4: Private Lernpfade**
 
@@ -148,17 +150,29 @@ Infrastruktur: `personal/_metadata.yml` (draft: true, search: false), `_quarto.y
 
 Zusätzlich: Glossar-Fix (YAML-Fehler in def-Zeile bei Datenleck, Tippfehler Irreduzibler).
 
-**Noch offen nach dem Build:**
-- Zahlen der drei neuen Statistikseiten gegen die Freeze-Ausgabe pruefen (`zeige-ausgaben.py`)
-- `pruefe-zahlen.py` auf die drei neuen Seiten
-- Dann `stand: fertig` setzen
-- Verifikation Phase 4: sitemap.xml und search.json enthalten kein "personal", personal/*.html ist im Build vorhanden
+**Phase 3: DaVi Blöcke 4 und 5, Optionales**
+
+| Bereich | Neue/erweiterte Seiten | Stand |
+|---|---|---|
+| `visualisierung/` | NEU werkzeuge-waehlen.qmd (Konzept): Werkzeuglandschaft, Reproduzierbarkeit, Entscheidungstabelle | fertig |
+| `visualisierung/` | NEU visualisierungen-bewerten.qmd (Konzept): 5-Sekunden-Test, Kriterienraster, MVP, Iteration | fertig |
+| `visualisierung/` | NEU karten-animation.qmd (Werkzeug): Choropleth, Punktkarte, Animation (Listings, kein sf/geopandas im Build) | entwurf |
+| `visualisierung/` | ERWEITERT dashboards-interaktivitaet.qmd: Conversational/Agentic Analytics, Self-Service vs. kuratiert, ad-hoc vs. wiederkehrend | fertig |
+| `visualisierung/` | ERWEITERT ggplot2.qmd: Abschnitt drei Grafiksysteme in R (Base, Lattice, ggplot2) | fertig |
+| `statistik/ueberlebenszeit/` | ERWEITERT cox-modell.qmd: parametrische Modelle (Exponential, Weibull, AFT) | fertig |
+| `visualisierung/` | 3 neue Fragen in fragen.qmd (Arbeitsablauf, Self-Service, Choropleth) | fertig |
+
+**Verifikation Phase 4:** sitemap.xml enthält 0 Treffer für "personal" (lokal
+geprüft). Nach dem Build auf gh-pages: personal/*.html per URL erreichbar,
+nicht in Sidebar/Suche/Listings.
+
+**Damit sind Phase 1 bis 4 abgeschlossen.**
 
 ### Stand
 
 | Bereich | Stand |
 |---|---|
-| `statistik/` (53 Seiten) | **fertig** (50) plus 3 neue auf `entwurf` |
+| `statistik/` (54 Seiten) | **fertig**, 3 neue Regressionsseiten und 1 Survival-Erweiterung dazu |
 | `referenz/` (2 Seiten) | **fertig**, je 135 Befehle zeilenweise parallel |
 | `visualisierung/` (11 Seiten) | **fertig**, Zahlen maschinell geprüft |
 | `programmierung/` (9 Seiten + Fragen) | **fertig** (12.09.2026), Zahlen maschinell und von Hand geprüft |
