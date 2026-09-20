@@ -135,6 +135,19 @@ Alle drei neuen Statistikseiten stehen auf `stand: entwurf`, weil die Zahlen im 
 
 Infrastruktur: `personal/_metadata.yml` (draft: true, search: false), `_quarto.yml` (draft-mode: unlinked), Checkboxen mit localStorage. Neutralitaetsregel in instruction.md angepasst. Kein Link von oeffentlichen Seiten auf personal/.
 
+**Phase 2 (Teilmenge): DaVi-Grundgerüst und StatDa-Ergänzungen**
+
+| Bereich | Neue/erweiterte Seiten | Stand |
+|---|---|---|
+| `visualisierung/` | NEU fünf-dimensionen.qmd (Konzept): Arbeitsablauf in 5 Schritten | entwurf |
+| `visualisierung/` | ERWEITERT zielbild-audience.qmd: Stakeholder, Power-Interest, Entscheidungsebenen, Knaflic 4 Fragen | fertig |
+| `visualisierung/` | ERWEITERT wahrnehmung-kodierung.qmd: Datentyp-Ästhetik-Tabelle, Gestaltprinzipien, Data-Ink Ratio | fertig |
+| `visualisierung/` | ERWEITERT diagrammtyp-waehlen.qmd: Entscheidungstabelle 8 Aufgaben x Datentyp | fertig |
+| `statistik/regression/` | ERWEITERT logistische-regression.qmd: Devianzanalyse, Overdispersion, Konfundierung | fertig |
+| `statistik/regression/` | ERWEITERT multiple-lineare-regression.qmd: Interaktionsterme, poly() | fertig |
+
+Zusätzlich: Glossar-Fix (YAML-Fehler in def-Zeile bei Datenleck, Tippfehler Irreduzibler).
+
 **Noch offen nach dem Build:**
 - Zahlen der drei neuen Statistikseiten gegen die Freeze-Ausgabe pruefen (`zeige-ausgaben.py`)
 - `pruefe-zahlen.py` auf die drei neuen Seiten
